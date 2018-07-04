@@ -16,7 +16,7 @@
 	*/
 	function pendingLiabilitiesP4(taxType) {
 	
-		/* if (document.querySelector("#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow") != null)
+		if (document.querySelector("#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow") != null)
 		{
 			const totals = [];
 			for (let i=5;i<8;i++) {
@@ -39,7 +39,7 @@
 		else 
 		{
 
-		} */
+		}
 
 	
 	}
