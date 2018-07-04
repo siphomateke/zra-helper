@@ -122,6 +122,6 @@ browser.runtime.onMessage.addListener(async (message) => {
 		await getAllPendingLiabilities();
 	}
 	else if (message.dataType === 'totals') {
-		console.log(generateTaxTotals(message.taxType, message.totals));
+		console.log(generateTaxTotals(taxTypes[message.taxTypeId], message.totals));
 	}
 });
