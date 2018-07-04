@@ -1,20 +1,18 @@
 const taxTypes = ['ITX', 'VAT', 'PAYE', 'WHT'];
 
-/**
- * 
- * @param {browser.tabs.Tab} mytab 
- */
-async function getAllPendingLiabilities(mytab) {
+async function getAllPendingLiabilities() {
 	try {
+		let activeTab = await getActiveTab();
 		//Account History
 		//Taxpayer Profile
 		console.log('Navigating to taxpayer profile');
 		await browser.tabs.executeScript({code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div>div>div:nth-child(7)>a").click(); document.querySelector("[id=\\"4\\"]>li:nth-child(1)>div>a").click()' });
-		await tabLoaded(mytab.id);
+		await tabLoaded(activeTab.id);
 		//Pending Liabilities
 		console.log('Opening pending liabilities');
 		await browser.tabs.executeScript({code: 'document.querySelector("#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>fieldset:nth-child(5)>table>tbody>tr:nth-child(3)>td:nth-child(2)>a").click()'});
-		await tabLoaded(mytab.id);
+		activeTab = await getActiveTab();
+		await tabLoaded(activeTab.id);
 
 		for (let i=0;i<taxTypes.length;i++) {
 			const taxType = taxTypes[i];
@@ -29,9 +27,9 @@ async function getAllPendingLiabilities(mytab) {
 					throw new Error(response.error);
 				}
 				//Get Totals 
-				await tabLoaded(mytab.id);
+				await tabLoaded(activeTab.id);
 				await browser.tabs.executeScript({file: './content_scripts/pending_liabilities_p4.js'});
-				await browser.tabs.sendMessage(mytab.id,{
+				await browser.tabs.sendMessage(activeTab.id,{
 					command: "pendingLiabilitiesP4",
 					taxType,
 				});
@@ -100,6 +98,19 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	}
 });*/
 
+/**
+ * 
+ * @return {browser.tabs.Tab}
+ */
+async function getActiveTab() {
+	const tabs = await browser.tabs.query({active: true, currentWindow: true});
+	if (tabs.length > 0) {
+		return tabs[0];
+	} else {
+		return null;
+	}
+}
+
 function generateTaxTotals(type, totals) {
 	return [type, ...totals].join('\t');
 }
@@ -108,8 +119,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 	if (message.command === "getAllPendingLiabilities") {
 		//getAllPendingLiabilities()
 		//browser.tabs.executeScript({file: "/content_scripts/pending_liabilities_p1.js"})
-		const mytabs = await browser.tabs.query({active: true, currentWindow: true});
-		await getAllPendingLiabilities(mytabs[0]);
+		await getAllPendingLiabilities();
 	}
 	else if (message.dataType === 'totals') {
 		console.log(generateTaxTotals(message.taxType, message.totals));
