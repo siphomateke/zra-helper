@@ -1,0 +1,30 @@
+{
+
+  "manifest_version": 2,
+  "name": "zra-helper",
+  "version": "1.0",
+  "description": "Helps with ZRA",
+
+  "icons": {
+    "48": "icons/48-zra.png"
+  },
+
+  "background": {
+    "scripts": [
+      "browser-polyfill.min.js",
+      "background.js"
+    ]
+  },
+
+  "permissions": [
+    "tabs",
+    "<all_urls>" 
+  ],
+
+  "browser_action": {
+    "default_icon": "icons/32-zra.png",
+    "default_title": "ZRA Helper",
+    "default_popup": "popup/popup.html"
+  }
+
+}
