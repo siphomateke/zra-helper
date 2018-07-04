@@ -1,18 +1,19 @@
-console.log('generate report');
+console.log('generate report loaded');
 
-browser.runtime.onMessage.addListener(async (message) => {
-    console.log('message');
+browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.command === 'generateReport') {
+        // FIXME: Handle numbers being greater than 9
         const optionValue = '0'+message.taxTypeId;
         const optionExists = document.querySelector(`#prm_TaxType > option[value="${optionValue}"]`) != null;
-        let error = false;
+        let error = '';
         if (optionExists) {
             document.querySelector("#prm_TaxType").value = optionValue;
         } else {
-            error = true;
+            error = 'Tax type not found';
         }
-        await browser.runtime.sendMessage({
-            from: 'generate_report',
+        // Note: if this ever has to be asynchronous, the listener must return true
+        sendResponse({
+            taxTypeId: message.taxTypeId,
             error,
         });
         if (optionExists) {

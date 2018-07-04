@@ -17,35 +17,26 @@ async function getAllPendingLiabilities(mytab) {
 		await tabLoaded(mytab.id);
 
 		for (let i=0;i<taxTypes.length;i++) {
-			//Value Added Tax
-			// FIXME: Handle numbers being greater than 9
-			console.log(`Generating ${taxTypes[i]} totals...`);
+			const taxType = taxTypes[i];
+			console.log(`Generating ${taxType} reports`);
 			await browser.tabs.executeScript({file: './content_scripts/generate_report.js'});
-			await browser.tabs.sendMessage({
-				command: 'generateReport',
-				taxTypeId: i
-			});
 			try {
-				await (new Promise(async (resolve, reject) => {
-					await browser.tabs.onMessage.addListener((message) => {
-						if (message.from === 'generate_report') {
-							if (message.error) {
-								reject();
-							} else {
-								resolve(new Error('Tax type not found'));
-							}
-						}
-					});
-				}));
+				const response = await browser.tabs.sendMessage({
+					command: 'generateReport',
+					taxTypeId: i
+				});
+				if (response.error) {
+					throw new Error(response.error);
+				}
 				//Get Totals 
 				await tabLoaded(mytab.id);
 				await browser.tabs.executeScript({file: './content_scripts/pending_liabilities_p4.js'});
 				await browser.tabs.sendMessage(mytab.id,{
 					command: "pendingLiabilitiesP4",
-					taxType: taxTypes[i]
+					taxType,
 				});
-			} catch (e) {
-				// do a thing
+			} catch (error) {
+				console.log('Generating ${taxType} reports failed with error:', error);
 			}
 		}
 
