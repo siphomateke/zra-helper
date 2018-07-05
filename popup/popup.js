@@ -11,7 +11,7 @@ function listenForClicks() {
 		//if (e.target.ids.contains("get-all-pending-liabilities")) {
 		//	getAllPendingLiabilitiesAction()  
 		//}
-		if (e.target.classList.contains("zraaction")) {
+		if (e.target.classList.contains("zra-action")) {
 			getAllPendingLiabilitiesAction()  
 		}
 	});

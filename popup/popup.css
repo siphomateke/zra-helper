@@ -1,5 +1,5 @@
 html, body {
-  width: 100px;
+  /* width: 100px; */
 }
 
 .hidden {
@@ -12,13 +12,18 @@ html, body {
   text-align: center;
   font-size: 1.5em;
   cursor: pointer;
+  white-space: nowrap;
+  display: block;
+  width: 100%;
 }
 
-.zraaction:hover {
+.zra-action:hover {
   background-color: #CFF2F2;
 }
 
-.zraaction {
+.zra-action {
+  border: 1px solid rgb(96, 160, 160);
+  border-radius: 3px;
   background-color: #E5F2F2;
 }
 
