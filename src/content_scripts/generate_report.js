@@ -10,7 +10,7 @@ browser.runtime.onMessage.addListener((message) => {
             if (optionExists) {
                 document.querySelector("#prm_TaxType").value = optionValue;
             } else {
-                error = 'Tax type not found';
+                error = 'tax_type_not_found';
             }
             resolve({
                 taxTypeId: message.taxTypeId,

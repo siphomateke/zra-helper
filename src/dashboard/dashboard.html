@@ -9,15 +9,18 @@
 </head>
 <body>
     <div class="container">
-        <h1>Actions</h1>
+        <h1>ZRA Helper</h1>
+        <h2>Actions</h2>
         <div class="actions">
             <button type="button" class="button zra-action" id="get-all-pending-liabilities">Get All Pending Liabilities</button>
-            <button type="button" class="button zra-action" id="get-all-returns">Get All Returns</button>
         </div>
-        <div id="error-message" class="message error hidden">
-            <span>No connection</span>
+        <div id="log-wrapper" class="hidden">
+            <h2>Log</h2>
+            <p id="log"></p>
         </div>
-        <pre id="log" class="hidden"></pre>
+        <progress id="progress" class="hidden"></progress>
+        <h2>Output</h2>
+        <textarea id="output" rows="7"></textarea>
     </div>
     <script src="../../vendor/browser-polyfill.min.js"></script>
     <script src="dashboard.js"></script>
