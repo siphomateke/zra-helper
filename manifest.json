@@ -11,8 +11,8 @@
 
   "background": {
     "scripts": [
-      "browser-polyfill.min.js",
-      "background.js"
+      "vendor/browser-polyfill.min.js",
+      "src/background.js"
     ]
   },
 
@@ -24,7 +24,7 @@
   "browser_action": {
     "default_icon": "icons/32-zra.png",
     "default_title": "ZRA Helper",
-    "default_popup": "popup/popup.html"
+    "default_popup": "src/popup/popup.html"
   }
 
 }

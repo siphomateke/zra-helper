@@ -63,7 +63,7 @@ function onExecuteScriptError(error) {
 console.log("background script loaded")
 
 //browser.tabs.query({currentWindow: true, active: true})
-//.then(browser.tabs.executeScript({file: "/content_scripts/pending_liabilities_p1.js"}))
+//.then(browser.tabs.executeScript({file: "./content_scripts/pending_liabilities_p1.js"}))
 //.catch(onExecuteScriptError);
 
 function tabLoaded(desiredTabId) {
@@ -118,7 +118,7 @@ function generateTaxTotals(type, totals) {
 browser.runtime.onMessage.addListener(async (message) => {
 	if (message.command === "getAllPendingLiabilities") {
 		//getAllPendingLiabilities()
-		//browser.tabs.executeScript({file: "/content_scripts/pending_liabilities_p1.js"})
+		//browser.tabs.executeScript({file: "./content_scripts/pending_liabilities_p1.js"})
 		await getAllPendingLiabilities();
 	}
 	else if (message.dataType === 'totals') {
