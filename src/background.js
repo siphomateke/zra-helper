@@ -1,3 +1,5 @@
+console.log("background script loaded");
+
 const taxTypes = ['ITX', 'VAT', 'PAYE', 'WHT'];
 
 async function getAllPendingLiabilities() {
@@ -37,34 +39,11 @@ async function getAllPendingLiabilities() {
 				console.log('Generating ${taxType} reports failed with error:', error);
 			}
 		}
-
-
-		//'document.querySelector("#rsltTableHtml>table>tbody>tr:nth-child(2)>td>center.Label3").value'
-		//#rsltTableHtml>table>tbody>tr:nth-child(2)>td>center.Label3
-
 	}
 	catch (error) {
 		console.error('Error: ', error);
 	}
 }
-
-//await browser.tabs.sendMessage(mytab.id,{
-//	command: "pendingLiabilitiesP1"
-//});
-
-/*function onError(error) {
-	console.error('Error: ' + error);
-}
-
-function onExecuteScriptError(error) {
-	console.error('Execute Script Error: ' + error);
-}*/
-
-console.log("background script loaded")
-
-//browser.tabs.query({currentWindow: true, active: true})
-//.then(browser.tabs.executeScript({file: "./content_scripts/pending_liabilities_p1.js"}))
-//.catch(onExecuteScriptError);
 
 function tabLoaded(desiredTabId) {
 	return new Promise((resolve) => {
@@ -117,8 +96,6 @@ function generateTaxTotals(type, totals) {
 
 browser.runtime.onMessage.addListener(async (message) => {
 	if (message.command === "getAllPendingLiabilities") {
-		//getAllPendingLiabilities()
-		//browser.tabs.executeScript({file: "./content_scripts/pending_liabilities_p1.js"})
 		await getAllPendingLiabilities();
 	}
 	else if (message.dataType === 'totals') {
