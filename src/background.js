@@ -2,31 +2,32 @@ console.log("background script loaded");
 
 const taxTypes = ['ITX', 'VAT', 'PAYE', 'WHT'];
 
+function log(value) {
+	browser.runtime.sendMessage({
+		type: 'log',
+		from: 'background',
+		value: value,
+	});
+}
+
 async function getAllPendingLiabilities() {
 	try {
 		// TODO: Auto open ZRA tab and login
-		// Get ZRA tab
-		let matches = await browser.tabs.query({url: 'https://www.zra.org.zm/*', status: 'complete'});
-		if (matches.length > 0) {
-			// get first match
-			let tab = matches[0];
-			// Account History
-			// Taxpayer Profile
-			console.log('Navigating to taxpayer profile');
-			await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div>div>div:nth-child(7)>a").click(); document.querySelector("[id=\\"4\\"]>li:nth-child(1)>div>a").click()' });
-			await tabLoaded(tab.id);
-			// Pending Liabilities
-			console.log('Opening pending liabilities');
-			await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>fieldset:nth-child(5)>table>tbody>tr:nth-child(3)>td:nth-child(2)>a").click()'});
-			tab = await getActiveTab();
-			await tabLoaded(tab.id);
+		let promises = [];
+		for (let i=0;i<taxTypes.length;i++) {
+			promises.push(new Promise(async (resolve, reject) => {
+				const tab = await browser.tabs.create({
+					url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
+					active: false,
+				});
+				await tabLoaded(tab.id);
+				await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
+				await browser.tabs.executeScript(tab.id, {file: 'src/content_scripts/generate_report.js'});
 
-			for (let i=0;i<taxTypes.length;i++) {
 				const taxType = taxTypes[i];
-				console.log(`Generating ${taxType} reports`);
-				await browser.tabs.executeScript(tab.id, {file: './content_scripts/generate_report.js'});
+				log(`Generating ${taxType} report`);
 				try {
-					const response = await browser.tabs.sendMessage({
+					const response = await browser.tabs.sendMessage(tab.id, {
 						command: 'generateReport',
 						taxTypeId: i
 					});
@@ -35,17 +36,19 @@ async function getAllPendingLiabilities() {
 					}
 					// Get Totals 
 					await tabLoaded(tab.id);
-					await browser.tabs.executeScript(tab.id, {file: './content_scripts/pending_liabilities_p4.js'});
-					await browser.tabs.sendMessage(tab.id,{
-						command: "pendingLiabilitiesP4",
-						taxType,
+					await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
+					await browser.tabs.executeScript(tab.id, {file: 'src/content_scripts/get_totals.js'});
+					const totalsResponse = await browser.tabs.sendMessage(tab.id,{
+						command: "getTotals",
+					});
+					resolve({
+						taxType: taxTypes[i],
+						totals: totalsResponse.totals,
 					});
 				} catch (error) {
-					console.log('Generating ${taxType} reports failed with error:', error);
+					reject(error);
 				}
-			}
-		} else {
-			throw new Error('No ZRA tabs open');
+			}));
 		}
 	}
 	catch (error) {
@@ -98,15 +101,29 @@ async function getActiveTab() {
 	}
 }
 
+function waitForMessage(validator) {
+	return new Promise(async (resolve) => {
+		function listener(message) {
+			if (validator(message)) {
+				browser.runtime.onMessage.addListener.removeListener(listener);
+				resolve(message);
+			}
+		}
+		browser.runtime.onMessage.addListener(listener);
+	});
+}
+
 function generateTaxTotals(type, totals) {
-	return [type, ...totals].join('\t');
+	return [type, ...totals].join(',');
 }
 
 browser.runtime.onMessage.addListener(async (message) => {
 	if (message.command === "getAllPendingLiabilities") {
 		await getAllPendingLiabilities();
 	}
-	else if (message.dataType === 'totals') {
-		console.log(generateTaxTotals(taxTypes[message.taxTypeId], message.totals));
-	}
+});
+
+browser.browserAction.onClicked.addListener(() => {
+	console.log('Opening dashboard');
+	browser.tabs.create({url: 'src/dashboard/dashboard.html'});
 });

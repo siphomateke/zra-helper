@@ -51,3 +51,9 @@ body {
     color: #0e301a;
     background-color: #f6fef9;
 }
+
+#log {
+    border: 1px solid #b7b7b7;
+    padding: 5px;
+    border-radius: 3px;
+}
