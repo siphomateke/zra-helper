@@ -23,8 +23,7 @@
 
   "browser_action": {
     "default_icon": "icons/32-zra.png",
-    "default_title": "ZRA Helper",
-    "default_popup": "src/popup/popup.html"
+    "default_title": "ZRA Helper"
   }
 
 }
