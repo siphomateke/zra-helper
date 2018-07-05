@@ -8,7 +8,7 @@ function listenForClicks() {
 			});
 		}
 
-		//if (e.target.ids.contains("get-all-pending-liabilites")) {
+		//if (e.target.ids.contains("get-all-pending-liabilities")) {
 		//	getAllPendingLiabilitiesAction()  
 		//}
 		if (e.target.classList.contains("zraaction")) {
