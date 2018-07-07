@@ -102,9 +102,13 @@ class IO {
         this.outputElement.value = '';
     }
     refreshProgress() {
-        this.progressElement.value = this.progress;
         if (this.progress !== -2) {
             this.progressElement.classList.remove('hidden');
+        }
+        if (this.progress === -1) {
+            this.progressElement.removeAttribute('value');
+        } else {
+            this.progressElement.value = this.progress;
         }
     }
     setProgress(progress)  {
