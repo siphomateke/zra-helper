@@ -3,6 +3,7 @@ const taxTypes = ['ITX', 'VAT', 'PAYE', 'WHT', 'TOT'];
 function tabLoaded(desiredTabId) {
 	return new Promise((resolve) => {
 		function listener(tabId, changeInfo) {
+            // TODO: Handle no internet
 			if (tabId === desiredTabId && changeInfo.status === 'complete') {
 				browser.tabs.onUpdated.removeListener(listener);
 				resolve();
@@ -33,7 +34,7 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });*/
 
 /**
- * 
+ *
  * @return {browser.tabs.Tab}
  */
 async function getActiveTab() {
@@ -70,7 +71,10 @@ class IO {
         this.progressElement = document.querySelector('#progress');
         this.progress = -2;
     }
-    log(value, category, type) {
+    setCategory(category) {
+        this.category = category;
+    }
+    log(value, type) {
         this.logLines.push(value);
         if (this.logLines.length > 0) {
             this.logWrapperEl.classList.remove('hidden');
@@ -78,7 +82,7 @@ class IO {
         const now = new Date(Date.now());
         let timestamp = now.getDate()+'/'+now.getMonth()+'/'+now.getFullYear();
         timestamp += ' '+now.getHours()+':'+now.getMinutes()+':'+now.getSeconds()+':'+now.getMilliseconds();
-        let text = '['+timestamp+'] '+category+': '+value+'<br>'
+        let text = '['+timestamp+'] '+this.category+': '+value+'<br>'
         if (type === 'error') {
             text = '<span class="error">'+text+'</span>';
         }
@@ -87,9 +91,9 @@ class IO {
     clearLog() {
         this.logElement.innerHTML = '';
     }
-    showError(error, category) {
+    showError(error) {
         this.errors.push(error);
-        this.log('[Error] '+error, category, 'error');
+        this.log('[Error] '+error, 'error');
     }
     output(row) {
         this.outputElement.value += row+'\n';
@@ -123,6 +127,7 @@ function getAllPendingLiabilitiesAction() {
 	// TODO: Auto open ZRA tab and login
     let promises = [];
     const totals = {};
+    io.setCategory('pending_liabilities');
     io.setProgress(0);
     io.setProgressMax(taxTypes.length);
 	for (let i=0;i<taxTypes.length;i++) {
@@ -134,9 +139,9 @@ function getAllPendingLiabilitiesAction() {
             await tabLoaded(tab.id);
             await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
             await browser.tabs.executeScript(tab.id, {file: 'src/content_scripts/generate_report.js'});
-            
+
             const taxType = taxTypes[i];
-            io.log(`Generating ${taxType} report`, 'pending_liabilities');
+            io.log(`Generating ${taxType} report`);
             try {
                 const response = await browser.tabs.sendMessage(tab.id, {
                     command: 'generateReport',
@@ -145,26 +150,26 @@ function getAllPendingLiabilitiesAction() {
                 if (response.error) {
                     throw new Error(response.error);
                 }
-                // Get Totals 
+                // Get Totals
                 await tabLoaded(tab.id);
                 await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
                 await browser.tabs.executeScript(tab.id, {file: 'src/content_scripts/get_totals.js'});
                 const totalsResponse = await browser.tabs.sendMessage(tab.id,{
-                    command: "getTotals",
+                    command: 'getTotals',
                 });
                 totals[taxType] = totalsResponse.totals;
                 resolve();
             } catch (error) {
                 resolve();
-                let errorString = error.toString();
+                let errorString = error.message;
                 if (error.message === 'tax_type_not_found') {
                     errorString = taxType+' tax type not found';
                 }
-                io.showError(errorString, 'pending_liabilities');
+                io.showError(errorString);
             } finally {
                 browser.tabs.remove(tab.id);
                 io.addProgress(1);
-                io.log(`Finished generating ${taxType} report`, 'pending_liabilities');
+                io.log(`Finished generating ${taxType} report`);
             }
         }));
     }
