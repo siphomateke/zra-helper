@@ -277,6 +277,8 @@ const io = new IO();
  * @param {Client} client 
  */
 async function login(client) {
+    io.setCategory('login');
+    io.log(`Login client "${client.name}"`);
     const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
     await tabLoaded(tab.id);
     // Click login button
@@ -292,6 +294,7 @@ async function login(client) {
         client,
     });
     await tabLoaded(tab.id);
+    io.log(`Done logging in "${client.name}"`);
     // Don't need to wait for the tab to close to carry out logged in actions
     browser.tabs.remove(tab.id);
 }
