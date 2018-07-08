@@ -415,7 +415,7 @@ async function allClientsAction(action) {
                 validateClient(client);
                 await login(client);
                 await action(client);
-                await logout();    
+                await logout(client);
             } catch (e) {
                 let errorString = e.message;
                 if (e.message === 'client_invalid') {
