@@ -29,6 +29,7 @@ config.copy = [{
         'node_modules/webextension-polyfill/dist/browser-polyfill.min.js',
         'node_modules/jquery/dist/jquery.min.js',
         'node_modules/font-awesome/css/font-awesome.min.css',
+        'node_modules/ocrad.js/ocrad.js',
     ],
     to: 'vendor',
 }, {

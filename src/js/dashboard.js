@@ -265,6 +265,48 @@ class Task {
 
 const io = new IO();
 
+/**
+ * @typedef Client
+ * @property {string} username
+ * @property {string} password
+ */
+
+/**
+ * Creates a new tab, logs in and then closes the tab
+ * @async
+ * @param {Client} client 
+ */
+async function login(client) {
+    const tab = await browser.tabs.create({url: 'https://www.zra.org.zm'});
+    await tabLoaded(tab.id);
+    // Click login button
+    await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'});
+    await tabLoaded(tab.id);
+    
+    await browser.tabs.executeScript(tab.id, {file: 'vendor/ocrad.js'});
+    await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
+    await browser.tabs.executeScript(tab.id, {file: 'content_scripts/login.js'});
+    // Actually login
+    await browser.tabs.sendMessage(tab.id, {
+        command: 'login',
+        client,
+    });
+    await tabLoaded(tab.id);
+    // Don't need to wait for the tab to close to carry out logged in actions
+    browser.tabs.remove(tab.id);
+}
+
+/**
+ * Creates a new tab, logs out and then closes the tab
+ * @async
+ */
+async function logout() {
+    const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick'});
+    await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
+    // Note: The tab automatically closes after pressing logout
+    await browser.tabs.remove(tab.id);
+}
+
 function getAllPendingLiabilitiesAction() {
 	// TODO: Auto open ZRA tab and login
     let promises = [];
@@ -365,4 +407,4 @@ $(document).on('click', '.zra-action', (e) => {
 $(document).on('click', '.task .open-details', (e) => {
     const target = $(e.currentTarget);
     target.closest('.task').toggleClass('open');
-})
+});
