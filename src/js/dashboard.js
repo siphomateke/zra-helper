@@ -1,4 +1,13 @@
-const taxTypes = ['ITX', 'VAT', 'PAYE', 'WHT', 'TOT'];
+const taxTypes = {
+    '01': 'ITX',
+    '02': 'VAT',
+    '03': 'PAYE',
+    '05': 'TOT',
+    '06': 'WHT',
+    '07': 'TLEVY',
+    '08': 'MINROY',
+    '09': 'PTT',
+};
 
 function tabLoaded(desiredTabId) {
 	return new Promise((resolve) => {
@@ -134,7 +143,7 @@ function getAllPendingLiabilitiesAction() {
     io.setCategory('pending_liabilities');
     io.setProgress(0);
     io.setProgressMax(taxTypes.length);
-	for (let i=0;i<taxTypes.length;i++) {
+	for (const taxTypeId of Object.keys(taxTypes)) {
         promises.push(new Promise(async (resolve, reject) => {
             const tab = await browser.tabs.create({
                 url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
@@ -144,12 +153,12 @@ function getAllPendingLiabilitiesAction() {
             await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
             await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
 
-            const taxType = taxTypes[i];
+            const taxType = taxTypes[taxTypeId];
             io.log(`Generating ${taxType} report`);
             try {
                 const response = await browser.tabs.sendMessage(tab.id, {
                     command: 'generateReport',
-                    taxTypeId: i
+                    taxTypeId: taxTypeId
                 });
                 if (response.error) {
                     throw new Error(response.error);

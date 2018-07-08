@@ -18,8 +18,7 @@ function getError() {
 browser.runtime.onMessage.addListener((message) => {
     return new Promise((resolve, reject) => {
         if (message.command === 'generateReport') {
-            // FIXME: Handle numbers being greater than 9
-            const optionValue = '0'+(message.taxTypeId+1);
+            const optionValue = message.taxTypeId;
             const optionExists = document.querySelector(`#prm_TaxType>option[value="${optionValue}"]`) != null;
             let error = '';
             if (optionExists) {
