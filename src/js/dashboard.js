@@ -395,13 +395,21 @@ function getAllPendingLiabilitiesAction(client) {
         }
         Promise.all(promises).then(() => {
             mainTask.state = 'success';
+            const rows = [];
+            let i = 0;
             for (const taxType of Object.values(taxTypes)) {
-                if (totals[taxType]) {
-                    let row = [taxType, ...totals[taxType]];
-                    row = row.map((total) => '"'+total+'"');
-                    io.output(row.join(','));
+                let firstCol = '';
+                if (i === 0) {
+                    firstCol = client.name;
                 }
+                if (totals[taxType]) {
+                    rows.push([firstCol , taxType, ...totals[taxType]]);
+                }
+                i++;
             }
+            io.output(Papa.unparse(rows, {
+                quotes: true,
+            }));
             resolve();
         });
     });
