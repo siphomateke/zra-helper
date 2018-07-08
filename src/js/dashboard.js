@@ -325,8 +325,6 @@ function getAllPendingLiabilitiesAction(client) {
         mainTask.progressMax = 4 * Object.keys(taxTypes).length;
         mainTask.progress = 0;
         io.setCategory('pending_liabilities');
-        io.setProgress(0);
-        io.setProgressMax(Object.keys(taxTypes).length);
         for (const taxTypeId of Object.keys(taxTypes)) {
             promises.push(new Promise(async (resolve, reject) => {
                 const taxType = taxTypes[taxTypeId];
@@ -391,7 +389,6 @@ function getAllPendingLiabilitiesAction(client) {
                     io.showError(errorString);
                 } finally {
                     browser.tabs.remove(tab.id);
-                    io.addProgress(1);
                     io.log(`Finished generating ${taxType} report`);
                 }
             }));
