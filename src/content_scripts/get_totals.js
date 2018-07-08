@@ -6,7 +6,7 @@ browser.runtime.onMessage.addListener((message) => {
 				for (let i = 5; i < 9; i++) {
 					let cellValue = document.querySelector(`#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow>td:nth-child(${i})`).innerText;
 					cellValue = cellValue.replace(/\n\n/g, '');
-					totals.push(parseFloat(cellValue));
+					totals.push(cellValue);
 				}
 				resolve({
 					dataType: 'totals',

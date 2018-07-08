@@ -348,7 +348,9 @@ function getAllPendingLiabilitiesAction() {
         mainTask.state = 'success';
         for (const taxType of Object.values(taxTypes)) {
             if (totals[taxType]) {
-                io.output([taxType, ...totals[taxType]].join(','));
+                let row = [taxType, ...totals[taxType]];
+                row = row.map((total) => '"'+total+'"');
+                io.output(row.join(','));
             }
         }
     });
