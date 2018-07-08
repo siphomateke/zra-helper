@@ -277,7 +277,7 @@ const io = new IO();
  * @param {Client} client 
  */
 async function login(client) {
-    const tab = await browser.tabs.create({url: 'https://www.zra.org.zm'});
+    const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
     await tabLoaded(tab.id);
     // Click login button
     await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'});
@@ -301,7 +301,7 @@ async function login(client) {
  * @async
  */
 async function logout() {
-    const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick'});
+    const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
     await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
     // Note: The tab automatically closes after pressing logout
     await browser.tabs.remove(tab.id);
