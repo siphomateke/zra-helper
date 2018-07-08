@@ -9,6 +9,16 @@ const taxTypes = {
     '09': 'PTT',
 };
 
+/**
+ * @typedef Client
+ * @property {string} name
+ * @property {string} username
+ * @property {string} password
+ */
+
+/** @type {Client[]} */
+let clientList = [];
+
 function tabLoaded(desiredTabId) {
 	return new Promise((resolve) => {
 		function listener(tabId, changeInfo) {
@@ -266,12 +276,6 @@ class Task {
 const io = new IO();
 
 /**
- * @typedef Client
- * @property {string} username
- * @property {string} password
- */
-
-/**
  * Creates a new tab, logs in and then closes the tab
  * @async
  * @param {Client} client 
@@ -310,104 +314,162 @@ async function logout() {
     await browser.tabs.remove(tab.id);
 }
 
-function getAllPendingLiabilitiesAction() {
-	// TODO: Auto open ZRA tab and login
-    let promises = [];
-    const totals = {};
-    const mainTask = new Task('Get pending liabilities');
-    mainTask.progressMax = 4 * Object.keys(taxTypes).length;
-    mainTask.progress = 0;
-    io.setCategory('pending_liabilities');
-    io.setProgress(0);
-    io.setProgressMax(Object.keys(taxTypes).length);
-	for (const taxTypeId of Object.keys(taxTypes)) {
-        promises.push(new Promise(async (resolve, reject) => {
-            const taxType = taxTypes[taxTypeId];
-            const task = new Task(`Get ${taxType} totals`, mainTask.id);
-            task.progress = 0;
-            task.progressMax = 4;
-            task.status = 'Opening tab';
+function getAllPendingLiabilitiesAction(client) {
+    return new Promise((resolve) => {
+        let promises = [];
+        const totals = {};
+        const mainTask = new Task(client.name+': Get all pending liabilities');
+        mainTask.progressMax = 4 * Object.keys(taxTypes).length;
+        mainTask.progress = 0;
+        io.setCategory('pending_liabilities');
+        io.setProgress(0);
+        io.setProgressMax(Object.keys(taxTypes).length);
+        for (const taxTypeId of Object.keys(taxTypes)) {
+            promises.push(new Promise(async (resolve, reject) => {
+                const taxType = taxTypes[taxTypeId];
+                const task = new Task(`Get ${taxType} totals`, mainTask.id);
+                task.progress = 0;
+                task.progressMax = 4;
+                task.status = 'Opening tab';
 
-            io.log(`Generating ${taxType} report`);
+                io.log(`Generating ${taxType} report`);
 
-            const tab = await browser.tabs.create({
-                url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
-                active: false,
-            });
-            await tabLoaded(tab.id);
-
-            task.status = 'Selecting tax type';
-            task.progress++;
-            mainTask.autoUpdateProgress();
-
-            await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-            await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
-
-            try {
-                task.status = 'Generating report';
-                task.progress++;
-                mainTask.autoUpdateProgress();
-
-                const response = await browser.tabs.sendMessage(tab.id, {
-                    command: 'generateReport',
-                    taxTypeId: taxTypeId
+                const tab = await browser.tabs.create({
+                    url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
+                    active: false,
                 });
-                if (response.error) {
-                    throw new Error(response.error);
-                }
-                // Get Totals
                 await tabLoaded(tab.id);
 
-                task.status = 'Getting totals';
+                task.status = 'Selecting tax type';
                 task.progress++;
                 mainTask.autoUpdateProgress();
 
                 await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-                await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
-                const totalsResponse = await browser.tabs.sendMessage(tab.id,{
-                    command: 'getTotals',
-                });
-                totals[taxType] = totalsResponse.totals;
-                task.complete = true;
-                task.state = 'success';
-                mainTask.autoUpdateProgress();
-                resolve();
-            } catch (error) {
-                resolve();
-                let errorString = error.message;
-                if (error.message === 'tax_type_not_found') {
-                    errorString = taxType+' tax type not found';
-                    task.complete = true;
-                    task.state = 'error';
+                await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
+
+                try {
+                    task.status = 'Generating report';
+                    task.progress++;
                     mainTask.autoUpdateProgress();
+
+                    const response = await browser.tabs.sendMessage(tab.id, {
+                        command: 'generateReport',
+                        taxTypeId: taxTypeId
+                    });
+                    if (response.error) {
+                        throw new Error(response.error);
+                    }
+                    // Get Totals
+                    await tabLoaded(tab.id);
+
+                    task.status = 'Getting totals';
+                    task.progress++;
+                    mainTask.autoUpdateProgress();
+
+                    await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
+                    await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
+                    const totalsResponse = await browser.tabs.sendMessage(tab.id,{
+                        command: 'getTotals',
+                    });
+                    totals[taxType] = totalsResponse.totals;
+                    task.complete = true;
+                    task.state = 'success';
+                    mainTask.autoUpdateProgress();
+                    resolve();
+                } catch (error) {
+                    resolve();
+                    let errorString = error.message;
+                    if (error.message === 'tax_type_not_found') {
+                        errorString = taxType+' tax type not found';
+                        task.complete = true;
+                        task.state = 'error';
+                        mainTask.autoUpdateProgress();
+                    }
+                    io.showError(errorString);
+                } finally {
+                    browser.tabs.remove(tab.id);
+                    io.addProgress(1);
+                    io.log(`Finished generating ${taxType} report`);
                 }
-                io.showError(errorString);
-            } finally {
-                browser.tabs.remove(tab.id);
-                io.addProgress(1);
-                io.log(`Finished generating ${taxType} report`);
+            }));
+        }
+        Promise.all(promises).then(() => {
+            mainTask.state = 'success';
+            for (const taxType of Object.values(taxTypes)) {
+                if (totals[taxType]) {
+                    let row = [taxType, ...totals[taxType]];
+                    row = row.map((total) => '"'+total+'"');
+                    io.output(row.join(','));
+                }
             }
-        }));
-    }
-    Promise.all(promises).then(() => {
-        mainTask.state = 'success';
-        for (const taxType of Object.values(taxTypes)) {
-            if (totals[taxType]) {
-                let row = [taxType, ...totals[taxType]];
-                row = row.map((total) => '"'+total+'"');
-                io.output(row.join(','));
+            resolve();
+        });
+    });
+}
+
+async function allClientsAction(action) {
+    if (clientList.length > 0) {
+        for (let i=0;i<clientList.length;i++) {
+            const client = clientList[i];
+            try {
+                validateClient(client);
+                await login(client);
+                await action(client);
+                await logout();    
+            } catch (e) {
+                let errorString = e.message;
+                if (e.message === 'client_invalid') {
+                    errorString = `Row number ${i} is not a valid client`;
+                }
+                io.setCategory('client_action');
+                io.showError(errorString);
             }
         }
-    });
+    } else {
+        io.setCategory('client_action');
+        io.showError('No clients found');
+    }
 }
 
 $(document).on('click', '.zra-action', (e) => {
     if (e.currentTarget.id === 'get-all-pending-liabilities') {
-        getAllPendingLiabilitiesAction();
+        allClientsAction(getAllPendingLiabilitiesAction);
     }
 });
 
 $(document).on('click', '.task .open-details', (e) => {
     const target = $(e.currentTarget);
     target.closest('.task').toggleClass('open');
+});
+
+function validateClient(client) {
+    if (client.name && client.username && client.password) {
+        const tpin = client.username;
+        if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
+            throw new Error(`Client "${client.username}" has an invalid TPIN`);
+        }
+    } else {
+        throw new Error(`client_invalid`);
+    }
+}
+
+$('#clientListInput').on('input', (e) => {
+    const clientListFile = e.target.files[0];
+    const fileReader = new FileReader();
+    fileReader.onload = function (fileLoadedEvent) {
+        const text = fileLoadedEvent.target.result;
+        const parsed = Papa.parse(text);
+        const rows = parsed.data.slice(1,parsed.data.length);
+        clientList = [];
+        for (const row of rows) {
+            if (row.length === 3) {
+                clientList.push({
+                    name: row[0],
+                    username: row[1],
+                    password: row[2],
+                });
+            }
+        }
+    }
+    fileReader.readAsText(clientListFile, 'UTF-8');
 });

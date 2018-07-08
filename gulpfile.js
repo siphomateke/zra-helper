@@ -30,6 +30,7 @@ config.copy = [{
         'node_modules/jquery/dist/jquery.min.js',
         'node_modules/font-awesome/css/font-awesome.min.css',
         'node_modules/ocrad.js/ocrad.js',
+        'node_modules/papaparse/papaparse.min.js',
     ],
     to: 'vendor',
 }, {
