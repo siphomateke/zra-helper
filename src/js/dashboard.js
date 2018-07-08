@@ -134,28 +134,175 @@ class IO {
     }
 }
 
+/** @type {Object.<string, Task>} */
+const tasks = {};
+let lastTaskId = 0;
+
+class Task {
+    constructor(title, parentId=null) {
+        this.title = title;
+        this.parentId = parentId;
+        this.hasParent = this.parentId !== null;
+        this.parent = (this.hasParent) ? tasks[this.parentId] : null;
+        this._status = '';
+
+        this._progress = -2;
+        this._progressMax = 100;
+
+        this._complete = false;
+        this._state = '';
+
+        /** HTML Elements */
+        this.els = {
+            root: $(`<div class="task"></div>`),
+            content: $('<div class="content"></div>'),
+            title: $(`<div class="title">${this.title}</div>`),
+            status: $('<div class="status"></div>'),
+            progress: $(`<progress value="${this._progress}" max="${this._progressMax}"></progress>`),
+            // TODO: Improve details button
+            detailsButton: $('<button type="button" class="open-details"><i class="fa fa-caret-right closed-icon"></i><i class="fa fa-caret-down open-icon"></i>Details</button>'),
+        };
+
+        if (this.hasParent) {
+            /* this.els.root.removeClass('task'); */
+            this.els.root.addClass('sub-task');
+            const parentEl = this.parent.els.root;
+            let subTasks = parentEl.find('.sub-tasks');
+            if (!subTasks.length) {
+                subTasks = $('<div class="sub-tasks"></div>')
+                parentEl.append(subTasks);
+            }
+
+            subTasks.append(this.els.root);
+        } else {
+            $('.tasks').append(this.els.root);
+        }
+
+        this.els.content.append(this.els.title);
+        this.els.content.append(this.els.progress);
+        this.els.content.append(this.els.status);
+        if (!this.hasParent) {
+            this.els.content.append(this.els.detailsButton);
+        }
+
+        this.els.root.append(this.els.content);
+
+        this.status = this._status;
+        this.id = lastTaskId;
+        tasks[this.id] = this;
+        lastTaskId++;
+    }
+    get status() {
+        return this._status;
+    }
+    set status(status) {
+        this._status = status;
+        if (this._status) {
+            this.els.status.show();
+        } else {
+            this.els.status.hide();
+        }
+        this.els.status.text(this._status);
+    }
+    refreshProgress() {
+        if (this._progress !== -2) {
+            this.els.progress.removeClass('hidden');
+        }
+        if (this._progress === -1) {
+            this.els.progress.removeAttr('value');
+        } else {
+            this.els.progress.val(this._progress);
+        }
+    }
+    get progress() {
+        return this._progress;
+    }
+    set progress(progress)  {
+        this._progress = progress;
+        this.refreshProgress();
+    }
+    get progressMax() {
+        return this._progressMax;
+    }
+    set progressMax(max) {
+        this._progressMax = max;
+        this.els.progress.attr('max', this._progressMax);
+    }
+    autoUpdateProgress() {
+        this.progress = 0;
+        this.progressMax = 0;
+        for (const taskId of Object.keys(tasks)) {
+            const task = tasks[taskId];
+            this.progress += task.progress;
+            this.progressMax += task.progressMax;
+        }
+    }
+    get complete() {
+        return this._complete;
+    }
+    set complete(complete) {
+        this._complete = complete;
+        this.status = '';
+        if (this._complete) {
+            this.progress = this.progressMax;
+            this.els.root.addClass('complete');
+        } else {
+            this.els.root.removeClass('complete');
+        }
+    }
+    get state() {
+        return this._state;
+    }
+    set state(state) {
+        this._state = state;
+        this.els.root.removeClass('error');
+        this.els.root.removeClass('success');
+        if (this._state) {
+            this.els.root.addClass(this._state);
+        }
+    }
+}
+
 const io = new IO();
 
 function getAllPendingLiabilitiesAction() {
 	// TODO: Auto open ZRA tab and login
     let promises = [];
     const totals = {};
+    const mainTask = new Task('Get pending liabilities');
+    mainTask.progressMax = 4 * Object.keys(taxTypes).length;
+    mainTask.progress = 0;
     io.setCategory('pending_liabilities');
     io.setProgress(0);
     io.setProgressMax(Object.keys(taxTypes).length);
 	for (const taxTypeId of Object.keys(taxTypes)) {
         promises.push(new Promise(async (resolve, reject) => {
+            const taxType = taxTypes[taxTypeId];
+            const task = new Task(`Get ${taxType} totals`, mainTask.id);
+            task.progress = 0;
+            task.progressMax = 4;
+            task.status = 'Opening tab';
+
+            io.log(`Generating ${taxType} report`);
+
             const tab = await browser.tabs.create({
                 url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
                 active: false,
             });
             await tabLoaded(tab.id);
+
+            task.status = 'Selecting tax type';
+            task.progress++;
+            mainTask.autoUpdateProgress();
+
             await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
             await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
 
-            const taxType = taxTypes[taxTypeId];
-            io.log(`Generating ${taxType} report`);
             try {
+                task.status = 'Generating report';
+                task.progress++;
+                mainTask.autoUpdateProgress();
+
                 const response = await browser.tabs.sendMessage(tab.id, {
                     command: 'generateReport',
                     taxTypeId: taxTypeId
@@ -165,18 +312,29 @@ function getAllPendingLiabilitiesAction() {
                 }
                 // Get Totals
                 await tabLoaded(tab.id);
+
+                task.status = 'Getting totals';
+                task.progress++;
+                mainTask.autoUpdateProgress();
+
                 await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
                 await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
                 const totalsResponse = await browser.tabs.sendMessage(tab.id,{
                     command: 'getTotals',
                 });
                 totals[taxType] = totalsResponse.totals;
+                task.complete = true;
+                task.state = 'success';
+                mainTask.autoUpdateProgress();
                 resolve();
             } catch (error) {
                 resolve();
                 let errorString = error.message;
                 if (error.message === 'tax_type_not_found') {
                     errorString = taxType+' tax type not found';
+                    task.complete = true;
+                    task.state = 'error';
+                    mainTask.autoUpdateProgress();
                 }
                 io.showError(errorString);
             } finally {
@@ -187,6 +345,7 @@ function getAllPendingLiabilitiesAction() {
         }));
     }
     Promise.all(promises).then(() => {
+        mainTask.state = 'success';
         for (const taxType of Object.values(taxTypes)) {
             if (totals[taxType]) {
                 io.output([taxType, ...totals[taxType]].join(','));
@@ -200,3 +359,8 @@ $(document).on('click', '.zra-action', (e) => {
         getAllPendingLiabilitiesAction();
     }
 });
+
+$(document).on('click', '.task .open-details', (e) => {
+    const target = $(e.currentTarget);
+    target.closest('.task').toggleClass('open');
+})
