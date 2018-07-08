@@ -42,22 +42,22 @@ button {
     border-left-width: 6px;
     padding: 1.25em 1.5em;
     font-size: 1rem;
-}
 
-.message:not(:last-child) {
-    margin-bottom: 1.5rem;
-}
-
-.message.error {
-    border-color: #ff3860;
-    color: #cd0930;
-    background-color: #fff5f7;
-}
-
-.message.success {
-    border-color: #23d160;
-    color: #0e301a;
-    background-color: #f6fef9;
+    &:not(:last-child) {
+        margin-bottom: 1.5rem;
+    }
+    
+    &.error {
+        border-color: #ff3860;
+        color: #cd0930;
+        background-color: #fff5f7;
+    }
+    
+    &.success {
+        border-color: #23d160;
+        color: #0e301a;
+        background-color: #f6fef9;
+    }
 }
 
 /********************
@@ -69,15 +69,19 @@ button {
     padding: 5px;
     border-radius: 3px;
     font-family: monospace;
+
+    .error {
+        color: red;
+    }
 }
 
 #output {
     width: 100%;
 }
 
-#log .error {
-    color: red;
-}
+/********************
+        Other
+*********************/
 
 #progress {
     width: 100%;
