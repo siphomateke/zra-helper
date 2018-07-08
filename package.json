@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "watch": "./node_modules/.bin/gulp watch",
+    "watch": "./node_modules/.bin/gulp default",
     "build": "./node_modules/.bin/gulp build"
   },
   "author": "rahensonzam",

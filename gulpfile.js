@@ -99,5 +99,3 @@ gulp.task('watch', gulp.parallel([
 gulp.task('build', gulp.series('clean', 'copy', 'build:styles'));
 
 gulp.task('default', gulp.series('build', 'watch'));
-
-gulp.task('default', gulp.series('build', 'watch'));
