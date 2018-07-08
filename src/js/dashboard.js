@@ -142,7 +142,7 @@ function getAllPendingLiabilitiesAction() {
             });
             await tabLoaded(tab.id);
             await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-            await browser.tabs.executeScript(tab.id, {file: 'src/content_scripts/generate_report.js'});
+            await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
 
             const taxType = taxTypes[i];
             io.log(`Generating ${taxType} report`);
@@ -157,7 +157,7 @@ function getAllPendingLiabilitiesAction() {
                 // Get Totals
                 await tabLoaded(tab.id);
                 await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-                await browser.tabs.executeScript(tab.id, {file: 'src/content_scripts/get_totals.js'});
+                await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
                 const totalsResponse = await browser.tabs.sendMessage(tab.id,{
                     command: 'getTotals',
                 });

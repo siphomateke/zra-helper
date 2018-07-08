@@ -12,7 +12,7 @@
   "background": {
     "scripts": [
       "vendor/browser-polyfill.min.js",
-      "src/background.js"
+      "js/background.js"
     ]
   },
 
