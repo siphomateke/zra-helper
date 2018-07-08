@@ -142,7 +142,7 @@ function getAllPendingLiabilitiesAction() {
     const totals = {};
     io.setCategory('pending_liabilities');
     io.setProgress(0);
-    io.setProgressMax(taxTypes.length);
+    io.setProgressMax(Object.keys(taxTypes).length);
 	for (const taxTypeId of Object.keys(taxTypes)) {
         promises.push(new Promise(async (resolve, reject) => {
             const tab = await browser.tabs.create({
@@ -187,7 +187,7 @@ function getAllPendingLiabilitiesAction() {
         }));
     }
     Promise.all(promises).then(() => {
-        for (const taxType of taxTypes) {
+        for (const taxType of Object.values(taxTypes)) {
             if (totals[taxType]) {
                 io.output([taxType, ...totals[taxType]].join(','));
             }
