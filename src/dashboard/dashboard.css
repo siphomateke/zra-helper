@@ -13,20 +13,28 @@ body {
     display: none;
 }
 
-.button {
-    padding: 10px;
-    font-size: 1rem;
+/********************
+        Buttons
+*********************/
+
+button {
     cursor: pointer;
-    font-weight: 600;
 }
 
 .zra-action {
+    padding: 10px;
+    font-size: 1rem;
+    font-weight: 600;
     margin-right: 0.3em;
 }
 
 .actions {
     margin-bottom: 1em;
 }
+
+/********************
+        Messages
+*********************/
 
 .message {
     border: 1px solid;
@@ -51,6 +59,10 @@ body {
     color: #0e301a;
     background-color: #f6fef9;
 }
+
+/********************
+        Logs
+*********************/
 
 #log {
     border: 1px solid #b7b7b7;
