@@ -32,6 +32,9 @@ config.copy = [{
     ],
     to: 'vendor',
 }, {
+    from: 'node_modules/font-awesome/fonts/**/*',
+    to: 'fonts',
+}, {
     from: 'static/**/*',
     to: '',
 }];
