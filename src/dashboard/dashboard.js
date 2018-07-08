@@ -61,14 +61,14 @@ function waitForMessage(validator) {
 class IO {
     constructor() {
         this.logLines = [];
-        this.logWrapperEl = document.querySelector('#log-wrapper');
-        this.logElement = document.querySelector('#log');
+        this.logWrapperEl = $('#log-wrapper');
+        this.logElement = $('#log');
 
-        this.outputElement = document.querySelector('#output');
+        this.outputElement = $('#output');
 
         this.errors = [];
 
-        this.progressElement = document.querySelector('#progress');
+        this.progressElement = $('#progress');
         this.progress = -2;
     }
     setCategory(category) {
@@ -77,7 +77,7 @@ class IO {
     log(value, type) {
         this.logLines.push(value);
         if (this.logLines.length > 0) {
-            this.logWrapperEl.classList.remove('hidden');
+            this.logWrapperEl.removeClass('hidden');
         }
         const now = new Date(Date.now());
         let timestamp = now.getDate()+'/'+now.getMonth()+'/'+now.getFullYear();
@@ -86,29 +86,29 @@ class IO {
         if (type === 'error') {
             text = '<span class="error">'+text+'</span>';
         }
-        this.logElement.innerHTML += text;
+        this.logElement.append(text);
     }
     clearLog() {
-        this.logElement.innerHTML = '';
+        this.logElement.text('');
     }
     showError(error) {
         this.errors.push(error);
         this.log('[Error] '+error, 'error');
     }
     output(row) {
-        this.outputElement.value += row+'\n';
+        this.outputElement.val(this.outputElement.val() + row+'\n');
     }
     clearOutput() {
-        this.outputElement.value = '';
+        this.outputElement.val('');
     }
     refreshProgress() {
         if (this.progress !== -2) {
-            this.progressElement.classList.remove('hidden');
+            this.progressElement.removeClass('hidden');
         }
         if (this.progress === -1) {
-            this.progressElement.removeAttribute('value');
+            this.progressElement.removeAttr('value');
         } else {
-            this.progressElement.value = this.progress;
+            this.progressElement.val(this.progress);
         }
     }
     setProgress(progress)  {
@@ -121,7 +121,7 @@ class IO {
     }
     setProgressMax(max) {
         this.progressMax = max;
-        this.progressElement.max = this.progressMax;
+        this.progressElement.attr('max', this.progressMax);
     }
 }
 
@@ -186,10 +186,8 @@ function getAllPendingLiabilitiesAction() {
     });
 }
 
-document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("zra-action")) {
-        if (e.target.id === "get-all-pending-liabilities") {
-            getAllPendingLiabilitiesAction();
-        }
+$(document).on('click', '.zra-action', (e) => {
+    if (e.currentTarget.id === 'get-all-pending-liabilities') {
+        getAllPendingLiabilitiesAction();
     }
 });
