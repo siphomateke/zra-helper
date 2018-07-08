@@ -382,10 +382,11 @@ function getAllPendingLiabilitiesAction(client) {
                     let errorString = error.message;
                     if (error.message === 'tax_type_not_found') {
                         errorString = taxType+' tax type not found';
-                        task.complete = true;
-                        task.state = 'error';
-                        mainTask.autoUpdateProgress();
                     }
+                    task.complete = true;
+                    task.state = 'error';
+                    task.status = errorString;
+                    mainTask.autoUpdateProgress();
                     io.showError(errorString);
                 } finally {
                     browser.tabs.remove(tab.id);
