@@ -307,11 +307,14 @@ async function login(client) {
  * Creates a new tab, logs out and then closes the tab
  * @async
  */
-async function logout() {
+async function logout(client) {
+    io.setCategory('logout');
+    io.log(`Logging out "${client.name}"`);
     const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
     await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
+    io.log(`Done logging out "${client.name}"`);
     // Note: The tab automatically closes after pressing logout
-    await browser.tabs.remove(tab.id);
+    browser.tabs.remove(tab.id);
 }
 
 function getAllPendingLiabilitiesAction(client) {
