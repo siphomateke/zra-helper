@@ -18,7 +18,7 @@
 
   "permissions": [
     "tabs",
-    "<all_urls>" 
+    "https://www.zra.org.zm/*" 
   ],
 
   "browser_action": {
