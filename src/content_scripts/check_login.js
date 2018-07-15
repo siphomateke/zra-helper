@@ -3,7 +3,7 @@ browser.runtime.onMessage.addListener((message) => {
         if (message.command === 'checkLogin') {
             const errorEl = document.querySelector('.error');
             if (errorEl) {
-                resolve({error: `From ZRA: "${errorEl.innerText}"`});
+                resolve({error: `zra_error: "${errorEl.innerText}"`});
                 return;
             }
 

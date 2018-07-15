@@ -8,7 +8,7 @@ function getError() {
         if (errorTableHeader !== null && errorTableHeader.innerText.includes('An Error has occurred')) {
             const error = errorTable.querySelector('tbody>tr:nth-child(2)>td');
             if (error !== null) {
-                return 'From ZRA: "'+errorTableHeader.innerText.trim()+'. '+error.innerText+'"';
+                return 'zra_error: "'+errorTableHeader.innerText.trim()+'. '+error.innerText+'"';
             }
         }
     }
