@@ -320,6 +320,8 @@ async function logout(client) {
 function getAllPendingLiabilitiesAction(client) {
     return new Promise((resolve) => {
         let promises = [];
+        /** Total number of pending liabilities including the grand total */
+        const numTotals = 4;
         const totals = {};
         const mainTask = new Task(client.name+': Get all pending liabilities');
         mainTask.progressMax = 4 * Object.keys(taxTypes).length;
@@ -371,6 +373,9 @@ function getAllPendingLiabilitiesAction(client) {
                     await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
                     const totalsResponse = await browser.tabs.sendMessage(tab.id,{
                         command: 'getTotals',
+                        numTotals,
+                        /** The first column with a pending liability */
+                        startColumn: 5
                     });
                     totals[taxType] = totalsResponse.totals;
                     task.complete = true;
@@ -405,6 +410,12 @@ function getAllPendingLiabilitiesAction(client) {
                 }
                 if (totals[taxType]) {
                     rows.push([firstCol , taxType, ...totals[taxType]]);
+                } else {
+                    const cols = [firstCol , taxType];
+                    for (let j=0;j<numTotals;j++) {
+                        cols.push("");
+                    }
+                    rows.push(cols);
                 }
                 i++;
             }

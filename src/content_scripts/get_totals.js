@@ -3,7 +3,7 @@ browser.runtime.onMessage.addListener((message) => {
 		if (message.command === "getTotals") {
 			if (document.querySelector("#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow") != null) {
 				const totals = [];
-				for (let i = 5; i < 9; i++) {
+				for (let i = message.startColumn; i < message.startColumn + message.numTotals; i++) {
 					let cellValue = document.querySelector(`#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow>td:nth-child(${i})`).innerText;
 					cellValue = cellValue.replace(/\n\n/g, '');
 					totals.push(cellValue);
