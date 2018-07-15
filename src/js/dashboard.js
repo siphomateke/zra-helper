@@ -315,22 +315,35 @@ async function login(client) {
     io.setCategory('login');
     io.log(`Login client "${client.name}"`);
     const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
-    await tabLoaded(tab.id);
-    // Click login button
-    await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'}, false);
-    await tabLoaded(tab.id);
-    
-    await executeScript(tab.id, {file: 'vendor/ocrad.js'});
-    await executeScript(tab.id, {file: 'content_scripts/login.js'});
-    // Actually login
-    await browser.tabs.sendMessage(tab.id, {
-        command: 'login',
-        client,
-    });
-    await tabLoaded(tab.id);
-    io.log(`Done logging in "${client.name}"`);
-    // Don't need to wait for the tab to close to carry out logged in actions
-    browser.tabs.remove(tab.id);
+    try {
+        await tabLoaded(tab.id);
+        // Click login button
+        await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'}, false);
+        await tabLoaded(tab.id);
+        
+        await executeScript(tab.id, {file: 'vendor/ocrad.js'});
+        await executeScript(tab.id, {file: 'content_scripts/login.js'});
+        // Actually login
+        await browser.tabs.sendMessage(tab.id, {
+            command: 'login',
+            client,
+        });
+        await tabLoaded(tab.id);
+        await executeScript(tab.id, {file: 'content_scripts/check_login.js'});
+        const response = await browser.tabs.sendMessage(tab.id, {
+            command: 'checkLogin',
+            client,
+        });
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        io.log(`Done logging in "${client.name}"`);
+    } catch (error) {
+        throw error;
+    } finally {
+        // Don't need to wait for the tab to close to carry out logged in actions
+        browser.tabs.remove(tab.id);
+    }
 }
 
 /**
