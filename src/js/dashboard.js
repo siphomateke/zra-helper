@@ -1,3 +1,5 @@
+const debug = false;
+
 const taxTypes = {
     '01': 'ITX',
     '02': 'VAT',
@@ -431,6 +433,9 @@ function getAllPendingLiabilitiesAction(client) {
                         io.log(`Finished generating ${taxType} report`);
                     }
                 } catch (error) {
+                    if (debug) {
+                        console.error(error);
+                    }
                     resolve();
                     let errorString = error.message;
                     if (error.message === 'tax_type_not_found') {
@@ -489,9 +494,12 @@ async function allClientsAction(action) {
                 await login(client);
                 await action(client);
                 await logout(client);
-            } catch (e) {
-                let errorString = e.message;
-                if (e.message === 'client_invalid') {
+            } catch (error) {
+                if (debug) {
+                    console.error(error);
+                }
+                let errorString = error.message;
+                if (error.message === 'client_invalid') {
                     errorString = `Row number ${i} is not a valid client`;
                 }
                 io.setCategory('client_action');
