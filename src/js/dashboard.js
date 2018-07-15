@@ -19,16 +19,31 @@ const taxTypes = {
 /** @type {Client[]} */
 let clientList = [];
 
+/**
+ * Waits for a tab to load
+ * @param {number} desiredTabId 
+ * @return {Promise}
+ * 
+ * @throws Throws an error if the tab is closed before it loads
+ */
 function tabLoaded(desiredTabId) {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		function listener(tabId, changeInfo) {
             // TODO: Handle no internet
 			if (tabId === desiredTabId && changeInfo.status === 'complete') {
-				browser.tabs.onUpdated.removeListener(listener);
+                browser.tabs.onUpdated.removeListener(listener);
+                browser.tabs.onRemoved.removeListener(closeListener);
 				resolve();
 			}
 		}
+        function closeListener(tabId) {
+            if (tabId === desiredTabId) {
+                browser.tabs.onRemoved.removeListener(closeListener);
+                reject(new Error('tab_closed_prematurely'));
+            }
+        }
 		browser.tabs.onUpdated.addListener(listener);
+        browser.tabs.onRemoved.addListener(closeListener);
 	});
 }
 
@@ -337,51 +352,58 @@ function getAllPendingLiabilitiesAction(client) {
 
                 io.log(`Generating ${taxType} report`);
 
-                const tab = await browser.tabs.create({
-                    url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
-                    active: false,
-                });
-                await tabLoaded(tab.id);
-
-                task.status = 'Selecting tax type';
-                task.progress++;
-                mainTask.autoUpdateProgress();
-
-                await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-                await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
-
+                let tab = null;
                 try {
-                    task.status = 'Generating report';
-                    task.progress++;
-                    mainTask.autoUpdateProgress();
-
-                    const response = await browser.tabs.sendMessage(tab.id, {
-                        command: 'generateReport',
-                        taxTypeId: taxTypeId
+                    tab = await browser.tabs.create({
+                        url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
+                        active: false,
                     });
-                    if (response.error) {
-                        throw new Error(response.error);
-                    }
-                    // Get Totals
                     await tabLoaded(tab.id);
 
-                    task.status = 'Getting totals';
+                    task.status = 'Selecting tax type';
                     task.progress++;
                     mainTask.autoUpdateProgress();
 
                     await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-                    await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
-                    const totalsResponse = await browser.tabs.sendMessage(tab.id,{
-                        command: 'getTotals',
-                        numTotals,
-                        /** The first column with a pending liability */
-                        startColumn: 5
-                    });
-                    totals[taxType] = totalsResponse.totals;
-                    task.complete = true;
-                    task.state = 'success';
-                    mainTask.autoUpdateProgress();
-                    resolve();
+                    await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
+
+                    try {
+                        task.status = 'Generating report';
+                        task.progress++;
+                        mainTask.autoUpdateProgress();
+
+                        const response = await browser.tabs.sendMessage(tab.id, {
+                            command: 'generateReport',
+                            taxTypeId: taxTypeId
+                        });
+                        if (response.error) {
+                            throw new Error(response.error);
+                        }
+                        // Get Totals
+                        await tabLoaded(tab.id);
+
+                        task.status = 'Getting totals';
+                        task.progress++;
+                        mainTask.autoUpdateProgress();
+
+                        await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
+                        await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
+                        const totalsResponse = await browser.tabs.sendMessage(tab.id,{
+                            command: 'getTotals',
+                            numTotals,
+                            /** The first column with a pending liability */
+                            startColumn: 5
+                        });
+                        totals[taxType] = totalsResponse.totals;
+                        task.complete = true;
+                        task.state = 'success';
+                        mainTask.autoUpdateProgress();
+                        resolve();
+                    } catch (error) {
+                        throw error;
+                    } finally {
+                        io.log(`Finished generating ${taxType} report`);
+                    }
                 } catch (error) {
                     resolve();
                     let errorString = error.message;
@@ -394,8 +416,13 @@ function getAllPendingLiabilitiesAction(client) {
                     mainTask.autoUpdateProgress();
                     io.showError(errorString);
                 } finally {
-                    browser.tabs.remove(tab.id);
-                    io.log(`Finished generating ${taxType} report`);
+                    if (tab) {
+                        try {
+                            await browser.tabs.remove(tab.id);
+                        } catch (error) {
+                            // If we fail to close the tab then it's probably already closed
+                        }
+                    }
                 }
             }));
         }
