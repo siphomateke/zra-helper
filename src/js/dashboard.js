@@ -317,7 +317,7 @@ async function login(client) {
     const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
     try {
         await tabLoaded(tab.id);
-        // Click login button
+        // Navigate to login page
         await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'}, false);
         await tabLoaded(tab.id);
         
