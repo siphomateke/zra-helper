@@ -215,6 +215,7 @@ class Task {
             }
 
             subTasks.append(this.els.root);
+            this.parent.els.detailsButton.show();
         } else {
             $('.tasks').append(this.els.root);
         }
@@ -224,6 +225,7 @@ class Task {
         this.els.content.append(this.els.status);
         if (!this.hasParent) {
             this.els.content.append(this.els.detailsButton);
+            this.els.detailsButton.hide();
         }
 
         this.els.root.append(this.els.content);
