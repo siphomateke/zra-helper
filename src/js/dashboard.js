@@ -427,8 +427,6 @@ function getAllPendingLiabilitiesAction(client) {
                         task.state = 'success';
                         mainTask.autoUpdateProgress();
                         resolve();
-                    } catch (error) {
-                        throw error;
                     } finally {
                         io.log(`Finished generating ${taxType} report`);
                     }
