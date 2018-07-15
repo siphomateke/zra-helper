@@ -291,8 +291,8 @@ class Task {
     }
     set complete(complete) {
         this._complete = complete;
-        this.status = '';
         if (this._complete) {
+            this.status = '';
             this.progress = this.progressMax;
             this.els.root.addClass('complete');
         } else {
