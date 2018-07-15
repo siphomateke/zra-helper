@@ -4,9 +4,9 @@ const taxTypes = {
     '03': 'PAYE',
     '05': 'TOT',
     '06': 'WHT',
-    '07': 'TLEVY',
+    '07': 'PTT',
     '08': 'MINROY',
-    '09': 'PTT',
+    '09': 'TLEVY',
 };
 
 /**
