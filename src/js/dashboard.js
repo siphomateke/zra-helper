@@ -187,6 +187,7 @@ class Task {
         this.parentId = parentId;
         this.hasParent = this.parentId !== null;
         this.parent = (this.hasParent) ? tasks[this.parentId] : null;
+        this.children = [];
         this._status = '';
 
         this._progress = -2;
@@ -235,6 +236,9 @@ class Task {
         this.status = this._status;
         this.id = lastTaskId;
         tasks[this.id] = this;
+        if (this.hasParent) {
+            this.parent.addChild(this.id);
+        }
         lastTaskId++;
     }
     get status() {
@@ -276,7 +280,7 @@ class Task {
     autoUpdateProgress() {
         this.progress = 0;
         this.progressMax = 0;
-        for (const taskId of Object.keys(tasks)) {
+        for (const taskId of this.children) {
             const task = tasks[taskId];
             this.progress += task.progress;
             this.progressMax += task.progressMax;
@@ -305,6 +309,9 @@ class Task {
         if (this._state) {
             this.els.root.addClass(this._state);
         }
+    }
+    addChild(id) {
+        this.children.push(id);
     }
 }
 
