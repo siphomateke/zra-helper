@@ -20,6 +20,22 @@ const taxTypes = {
 let clientList = [];
 
 /**
+ * Executes a script in a particular tab. A browser polyfill is added by default
+ * 
+ * @param {nubmer} tabId 
+ * @param {browser.extensionTypes.InjectDetails} details 
+ * @param {boolean} addPolyfill Whether or not a browser polyfill should be added
+ * 
+ * @return {Promise}
+ */
+async function executeScript(tabId, details, addPolyfill=true) {
+    if (addPolyfill) {
+        await browser.tabs.executeScript(tabId, {file: 'vendor/browser-polyfill.min.js'});
+    }
+    await browser.tabs.executeScript(tabId, details);
+}
+
+/**
  * Waits for a tab to load
  * @param {number} desiredTabId 
  * @return {Promise}
@@ -301,12 +317,11 @@ async function login(client) {
     const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
     await tabLoaded(tab.id);
     // Click login button
-    await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'});
+    await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'}, false);
     await tabLoaded(tab.id);
     
-    await browser.tabs.executeScript(tab.id, {file: 'vendor/ocrad.js'});
-    await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-    await browser.tabs.executeScript(tab.id, {file: 'content_scripts/login.js'});
+    await executeScript(tab.id, {file: 'vendor/ocrad.js'});
+    await executeScript(tab.id, {file: 'content_scripts/login.js'});
     // Actually login
     await browser.tabs.sendMessage(tab.id, {
         command: 'login',
@@ -326,7 +341,7 @@ async function logout(client) {
     io.setCategory('logout');
     io.log(`Logging out "${client.name}"`);
     const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
-    await browser.tabs.executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
+    await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'}, false);
     io.log(`Done logging out "${client.name}"`);
     // Note: The tab automatically closes after pressing logout
     browser.tabs.remove(tab.id);
@@ -364,8 +379,7 @@ function getAllPendingLiabilitiesAction(client) {
                     task.progress++;
                     mainTask.autoUpdateProgress();
 
-                    await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-                    await browser.tabs.executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
+                    await executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
 
                     try {
                         task.status = 'Generating report';
@@ -386,8 +400,7 @@ function getAllPendingLiabilitiesAction(client) {
                         task.progress++;
                         mainTask.autoUpdateProgress();
 
-                        await browser.tabs.executeScript(tab.id, {file: 'vendor/browser-polyfill.min.js'});
-                        await browser.tabs.executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
+                        await executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
                         const totalsResponse = await browser.tabs.sendMessage(tab.id,{
                             command: 'getTotals',
                             numTotals,
