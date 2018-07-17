@@ -45,6 +45,7 @@ async function executeScript(tabId, details, addPolyfill=true) {
  * @throws Throws an error if the tab is closed before it loads
  */
 function tabLoaded(desiredTabId) {
+    // TODO: Add timeout
 	return new Promise((resolve, reject) => {
 		function listener(tabId, changeInfo) {
             // TODO: Handle no internet
@@ -465,25 +466,12 @@ class ClientAction {
         try {
             // TODO: Treat each of the following statuses as different actions with separate progresses.
             // Keep in mind that each task may updates it's parent's progress.
-            validateClient(client);
             this.mainTask.status = 'Logging in';
             await login(client, this.mainTask);
             this.mainTask.status = this.taskName;
             await this.action(client, this.mainTask);
             this.mainTask.status = 'Logging out';
             await logout(client, this.mainTask);
-        } catch (error) {
-            if (debug) {
-                console.error(error);
-            }
-            let errorString = error.message;
-            if (error.message === 'client_invalid') {
-                errorString = `Row number ${i} is not a valid client`;
-            }
-            io.setCategory('client_action');
-            // TODO: Consider checking if a tab has been closed prematurely all the time.
-            // Currently, only tabLoaded checks for this.
-            io.showError(errorString);
         } finally {
             this.mainTask.complete = true;
         }
@@ -616,7 +604,17 @@ async function allClientsAction(action) {
     if (clientList.length > 0) {
         for (let i=0;i<clientList.length;i++) {
             const client = clientList[i];
-            await action.run(client);
+            try {
+                // TODO: Consider checking if a tab has been closed prematurely all the time.
+                // Currently, only tabLoaded checks for this.
+                await action.run(client);
+            } catch (error) {
+                if (debug) {
+                    console.error(error);
+                }
+                io.setCategory('client_action');
+                io.showError(error.message);
+            }
         }
     } else {
         io.setCategory('client_action');
@@ -630,39 +628,202 @@ $(document).on('click', '.zra-action', (e) => {
     }
 });
 
-$(document).on('click', '.task .open-details', (e) => {
+$(document).on('click', '.task .open-details', (e) => {        
     const target = $(e.currentTarget);
     target.closest('.task').toggleClass('open');
 });
 
+/**
+ * @typedef ClientValidationResult
+ * @property {boolean} valid True if the client is valid
+ * @property {string[]} errors An array of errors that will be set when the client is invalid
+ */
+
+/**
+ * Checks if a client is valid
+ * 
+ * The following validation rules are used on the client:
+ * - has a name, username and password
+ * - username is a 10 digit number
+ * - password is at least 8 characters long
+ * 
+ * @param {Client} client The client to validate
+ * @return {ClientValidationResult}
+ */
 function validateClient(client) {
-    if (client.name && client.username && client.password) {
+    /** Properties that must exist on each client */
+    let requiredProps = ['name', 'username', 'password'];
+    let missingProps = [];
+    requiredProps.map(prop => {
+        if (!client[prop]) {
+            missingProps.push(prop);
+        }
+    });
+    let validationErrors = [];
+    if (missingProps.length > 0) {
+        let missingString = '['+missingProps.join(', ')+']';
+        validationErrors.push(`Properties missing: ${missingString}`);
+    }
+    if (!missingProps.includes('username')) {
         const tpin = client.username;
         if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
-            throw new Error(`Client "${client.username}" has an invalid TPIN`);
+            validationErrors.push('TPIN (username) must be a 10 digit number');
         }
+    }
+    if (!missingProps.includes('password') && client.password.length < 8) {
+        validationErrors.push('Password must be at least 8 characters long');
+    }
+    if (validationErrors.length > 0) {
+        return {
+            valid: false,
+            errors: validationErrors,
+        };
     } else {
-        throw new Error(`client_invalid`);
+        return {valid: true};
     }
 }
 
-$('#clientListInput').on('input', (e) => {
-    const clientListFile = e.target.files[0];
-    const fileReader = new FileReader();
-    fileReader.onload = function (fileLoadedEvent) {
-        const text = fileLoadedEvent.target.result;
-        const parsed = Papa.parse(text);
-        const rows = parsed.data.slice(1,parsed.data.length);
-        clientList = [];
-        for (const row of rows) {
-            if (row.length === 3) {
-                clientList.push({
-                    name: row[0],
-                    username: row[1],
-                    password: row[2],
-                });
+/**
+ * Gets an array of clients from a csv string
+ * 
+ * @param {string} csvString The CSV to parse as a string
+ * @param {Papa.ParseConfig} config CSV parsing config
+ * @return {Client[]}
+ */
+function getClientsFromCsv(csvString, config={}) {
+    const list = [];
+
+    io.setCategory('get_client_list');
+    io.log('Parsing CSV');
+    let parseConfig = Object.assign({
+        header: true,
+        trimHeaders: true,
+        skipEmptyLines: true,
+    }, config);
+    const parsed = Papa.parse(csvString, parseConfig);
+
+    /**
+     * Converts a row index (from Papa.parse) to a line number
+     * 
+     * @param {number} rowIndex 
+     * @return {number}
+     */
+    function toLineNumber(rowIndex) {
+        let lineNumber = rowIndex + 1;
+        if (parseConfig.header) {
+            // Since the headers aren't included in the parsed output,
+            // we need to add one to get back to the original line number.
+            lineNumber++;
+        }
+        return lineNumber;
+    }
+
+    /** 
+     * An object whose keys are row numbers and the errors associated with 
+     * the row numbers are values
+     * @type {Object.<string, Papa.ParseError[]>} 
+     */
+    const rowErrors = {};
+    parsed.errors.map((error) => {
+        if (!Array.isArray(rowErrors[error.row])) {
+            rowErrors[error.row] = [];
+        }
+        rowErrors[error.row].push(error);
+    });
+    
+    // Output all the row errors
+    for (const row of Object.keys(rowErrors)) {
+        io.showError(rowErrors[row].map(error => {
+            return `CSV parse error in row ${toLineNumber(error.row)}: ${error.message}`;
+        }).join(', '));
+    }
+
+    io.log('Finished parsing CSV');
+
+    // Only attempt to parse clients if the number of row errors is less than
+    // the number of parsed rows.
+    if (Object.keys(rowErrors).length < parsed.data.length) {
+        const fields = parsed.meta.fields;
+        if (Object.keys(rowErrors).length) {
+            io.log("Attempting to parse clients in rows that don't have CSV parsing errors");
+        } else {
+            io.log('Parsing clients');
+        }
+        for (let i=0;i<parsed.data.length;i++) {
+            // If there was an error parsing this row of the CSV,
+            // don't attempt to use it as a client
+            if (!rowErrors[i]) {
+                const row = parsed.data[i];
+                const client = {
+                    name: row[fields[0]],
+                    username: row[fields[1]],
+                    password: row[fields[2]],
+                };
+                const validationResult = validateClient(client);
+                if (validationResult.valid) {
+                    io.log(`Parsed valid client "${client.name}"`);
+                    list.push(client);
+                } else {
+                    const errors = validationResult.errors.join(', ');
+                    io.showError(`Row ${toLineNumber(i)} is not a valid client: ${errors}`);
+                }
             }
         }
+    } else if (parsed.data.length > 0) {
+        // Count the number of rows that have the field mismatch error
+        let numberOfFieldMismatchErrors = 0;
+        for (const errors of Object.values(rowErrors)) {
+            for (const error of errors) {
+                if (error.type === 'FieldMismatch') {
+                    numberOfFieldMismatchErrors++;
+                    break;
+                }
+            }
+        }
+
+        // If the number of 'FieldMismatch' errors matches the number of data rows,
+        // then the header row probably has the wrong number of columns
+        if (numberOfFieldMismatchErrors === parsed.data.length) {
+            io.log('A large number of field mismatch errors were detected. ' +
+            'Make sure that a header with the same number of columns as the rest of the CSV is present.');
+        }
     }
-    fileReader.readAsText(clientListFile, 'UTF-8');
+    io.log(`Parsed ${list.length} valid client(s)`);
+    return list;
+}
+
+/**
+ * Gets clients from a Blob file
+ * 
+ * @param {Blob} file The file to get clients from
+ * @return {Promise<Client[]|Error>}
+ */
+function getClientsFromFile(file) {
+    return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        // TODO: Add file load progress
+        fileReader.onload = async function (fileLoadedEvent) {
+            const text = fileLoadedEvent.target.result;
+            io.setCategory('load_client_list_file');
+            io.log(`Successfully loaded client list file "${file.name}"`);
+            resolve(getClientsFromCsv(text));
+        }
+        fileReader.onerror = function (event) {
+            io.setCategory('load_client_list_file');
+            io.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
+            reject(new Error(event.target.error));
+        }
+        io.setCategory('load_client_list_file');
+        io.log(`Loading client list file "${file.name}"`);
+        fileReader.readAsText(file, 'UTF-8');
+    });
+}
+
+$('#clientListInput').on('input', async (e) => {
+    try {
+        clientList = await getClientsFromFile(e.target.files[0]);
+    } catch (error) {
+        // TODO: See if this needs to do anything since errors are already
+        // logged in getClientsFromFile
+    }
 });
