@@ -1,5 +1,35 @@
 const debug = false;
 
+class ExtendedError extends Error {
+    constructor(message, code, type) {
+        super(message);
+        this.code = code;
+        this.type = type;
+        this.name = type;
+    }
+    static fromJSON(json) {
+        return new ExtendedError(json.message, json.code, json.type);
+    }
+    toJSON() {
+        return {
+            message: this.message,
+            code: this.code,
+            type: this.type,
+        };
+    }
+}
+
+// FIXME: Use this everywhere that an error is retrieved from a response
+function errorFromResponse(response) {
+    let createdError = null;
+    if (response.error.code) {
+        createdError = ExtendedError.fromJSON(response.error);
+    } else {
+        createdError = new Error(response.error.message);
+    }
+    return createdError;
+}
+
 const taxTypes = {
     '01': 'ITX',
     '02': 'VAT',
@@ -441,19 +471,22 @@ async function login(client, parentTask) {
             task.addStep('Waiting for login page to load');
             await tabLoaded(tab.id);
             task.addStep('Logging in');
-        
             await executeScript(tab.id, {file: 'vendor/ocrad.js'});
             await executeScript(tab.id, {file: 'content_scripts/login.js'});
             // Actually login
-            await browser.tabs.sendMessage(tab.id, {
+            let response = await browser.tabs.sendMessage(tab.id, {
                 command: 'login',
                 client,
+                maxCaptchaRefreshes: 10
             });
+            if (response.error) {
+                throw errorFromResponse(response);
+            }
             task.addStep('Waiting for login to complete');
             await tabLoaded(tab.id);
             task.addStep('Checking if login was successful');
             await executeScript(tab.id, {file: 'content_scripts/check_login.js'});
-            const response = await browser.tabs.sendMessage(tab.id, {
+            response = await browser.tabs.sendMessage(tab.id, {
                 command: 'checkLogin',
                 client,
             });
