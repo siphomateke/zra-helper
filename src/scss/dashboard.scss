@@ -64,19 +64,67 @@ button {
         Logs
 *********************/
 
-#log {
-    border: 1px solid #b7b7b7;
-    padding: 5px;
-    border-radius: 3px;
-    font-family: monospace;
-    display: block;
-    margin-top: 0.5em;
-    width: 100%;
+@mixin logColoredLine($color, $backgroundColor, $borderColor, $iconColor) {
+    color: $color;
+    background-color: $backgroundColor;
+    position: relative;
+
+    .icon {
+        color: $iconColor;
+    }
+}
+
+.log {
     max-height: 300px;
     overflow-y: scroll;
+    border: 1px solid #b7b7b7;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: dejavu sans mono, monospace;
+    
+    .log-inner {
+        border-collapse: collapse;
 
-    .error {
-        color: red;
+        .line {
+            display: table-row;
+
+            border-bottom: 1px solid rgb(240, 240, 240);
+
+            &:last-child {
+                border-bottom-width: 0;
+            }
+
+            &.error {
+                @include logColoredLine(red, hsl(0, 100%, 97%), hsl(50, 100%, 88%), red);
+            }
+        
+            &.warning {
+                @include logColoredLine(hsl(39, 100%, 18%), hsl(50, 100%, 95%), hsl(50, 100%, 80%), hsl(39, 100%, 58%));
+            }
+        
+            &.info {
+                @include logColoredLine(hsl(221, 100%, 18%), hsl(231, 100%, 98%), hsl(231, 100%, 88%), hsl(221, 100%, 37%));
+            }
+
+            & > .cell {
+                display: table-cell;
+                padding: 0.1em 0.5em;
+            }
+
+            .timestamp {
+                white-space: nowrap;
+                color: gray;
+            }
+
+            .icon {
+                min-width: 1em;
+                text-align: center;
+            }
+
+            .content {
+                width: 100%;
+            }
+        }
     }
 }
 
