@@ -1,28 +1,4 @@
-// FIXME: Use same classes as in dashboard.js
-class ExtendedError extends Error {
-    constructor(message, code, type) {
-        super(message);
-        this.code = code;
-        this.type = type;
-        this.name = type;
-    }
-    static fromJSON(json) {
-        return new ExtendedError(json.message, json.code, json.type);
-    }
-    toJSON() {
-        return {
-            message: this.message,
-            code: this.code,
-            type: this.type,
-        };
-    }
-}
-
-class ElementNotFoundError extends ExtendedError {
-    constructor(message, code) {
-        super(message, code, 'ElementNotFoundError');
-    }    
-}
+import {ExtendedError, ElementNotFoundError, errorToJson} from '../errors';
 
 /**
  * Creates a canvas from a HTML image element
@@ -180,17 +156,8 @@ browser.runtime.onMessage.addListener(async (message) => {
             await login(message.client, message.maxCaptchaRefreshes);
             return true;
         } catch (error) {
-            // FIXME: Standardise all content script returns to be like this
-            let errorToReturn = {};
-            if (error instanceof ExtendedError) {
-                errorToReturn = error.toJSON();
-            } else if (error.message) {
-                errorToReturn.message = error.message;
-            } else {
-                errorToReturn.message = error.toString();
-            }
             return {
-                error: errorToReturn
+                error: errorToJson(error),
             };
         }
     }

@@ -1,34 +1,8 @@
+import $ from 'jquery';
+import Papa from 'papaparse';
+import {errorFromJson} from './errors';
+
 const debug = false;
-
-class ExtendedError extends Error {
-    constructor(message, code, type) {
-        super(message);
-        this.code = code;
-        this.type = type;
-        this.name = type;
-    }
-    static fromJSON(json) {
-        return new ExtendedError(json.message, json.code, json.type);
-    }
-    toJSON() {
-        return {
-            message: this.message,
-            code: this.code,
-            type: this.type,
-        };
-    }
-}
-
-// FIXME: Use this everywhere that an error is retrieved from a response
-function errorFromResponse(response) {
-    let createdError = null;
-    if (response.error.code) {
-        createdError = ExtendedError.fromJSON(response.error);
-    } else {
-        createdError = new Error(response.error.message);
-    }
-    return createdError;
-}
 
 const taxTypes = {
     '01': 'ITX',
@@ -52,17 +26,21 @@ const taxTypes = {
 let clientList = [];
 
 /**
- * Executes a script in a particular tab. A browser polyfill is added by default
+ * Executes a script in a particular tab
  * 
- * @param {nubmer} tabId 
+ * @param {number} tabId 
  * @param {browser.extensionTypes.InjectDetails} details 
- * @param {boolean} addPolyfill Whether or not a browser polyfill should be added
+ * @param {boolean} vendor
  * 
  * @return {Promise}
  */
-async function executeScript(tabId, details, addPolyfill=true) {
-    if (addPolyfill) {
-        await browser.tabs.executeScript(tabId, {file: 'vendor/browser-polyfill.min.js'});
+async function executeScript(tabId, details, vendor=false) {
+    if (details.file) {
+        if (!vendor) {
+            details.file = 'js/content_scripts/' + details.file;
+        } else {
+            details.file = 'vendor/' + details.file;
+        }
     }
     await browser.tabs.executeScript(tabId, details);
 }
@@ -467,12 +445,14 @@ async function login(client, parentTask) {
             await tabLoaded(tab.id);
             task.addStep('Navigating to login page');
             // Navigate to login page
-            await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'}, false);
+            await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'});
             task.addStep('Waiting for login page to load');
             await tabLoaded(tab.id);
             task.addStep('Logging in');
-            await executeScript(tab.id, {file: 'vendor/ocrad.js'});
-            await executeScript(tab.id, {file: 'content_scripts/login.js'});
+            // OCRAD should imported in login.js but doesn't play nice
+            // with webpack
+            await executeScript(tab.id, {file: 'ocrad.js'}, true);
+            await executeScript(tab.id, {file: 'login.js'});
             // Actually login
             let response = await browser.tabs.sendMessage(tab.id, {
                 command: 'login',
@@ -480,18 +460,18 @@ async function login(client, parentTask) {
                 maxCaptchaRefreshes: 10
             });
             if (response.error) {
-                throw errorFromResponse(response);
+                throw errorFromJson(response.error);
             }
             task.addStep('Waiting for login to complete');
             await tabLoaded(tab.id);
             task.addStep('Checking if login was successful');
-            await executeScript(tab.id, {file: 'content_scripts/check_login.js'});
+            await executeScript(tab.id, {file: 'check_login.js'});
             response = await browser.tabs.sendMessage(tab.id, {
                 command: 'checkLogin',
                 client,
             });
             if (response.error) {
-                throw new Error(response.error);
+                throw errorFromJson(response.error);
             }
             task.complete = true;
             task.state = 'success';
@@ -527,7 +507,7 @@ async function logout(client, parentTask) {
         const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
         try {
             task.addStep('Initiating logout');
-            await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'}, false);
+            await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
             task.addStep('Waiting to finish logging out');
             task.complete = true;
             task.state = 'success';
@@ -604,7 +584,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
 
                     task.addStep('Selecting tax type');
 
-                    await executeScript(tab.id, {file: 'content_scripts/generate_report.js'});
+                    await executeScript(tab.id, {file: 'generate_report.js'});
 
                     try {
                         task.addStep('Generating report');
@@ -614,20 +594,23 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                             taxTypeId: taxTypeId
                         });
                         if (response.error) {
-                            throw new Error(response.error);
+                            throw errorFromJson(response.error);
                         }
                         // Get Totals
                         await tabLoaded(tab.id);
 
                         task.addStep('Getting totals');
 
-                        await executeScript(tab.id, {file: 'content_scripts/get_totals.js'});
+                        await executeScript(tab.id, {file: 'get_totals.js'});
                         const totalsResponse = await browser.tabs.sendMessage(tab.id,{
                             command: 'getTotals',
                             numTotals,
                             /** The first column with a pending liability */
                             startColumn: 5
                         });
+                        if (response.error) {
+                            throw errorFromJson(response.error);
+                        }
                         totals[taxType] = totalsResponse.totals;
                         task.complete = true;
                         task.state = 'success';
@@ -640,16 +623,20 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         console.error(error);
                     }
                     resolve();
-                    let errorString = error.message;
-                    if (error.message === 'tax_type_not_found') {
-                        // TODO: Don't show the tax type if it's under a task which
-                        // already has the tax type in it's title
-                        errorString = taxType+' tax type not found';
+                    let status = '';
+                    if (error.type === 'TaxTypeNotFound') {
+                        // Don't show the tax type in the status since it's under
+                        // a task which already has the tax type in it's title
+                        status = 'Tax type not found';
+                    } else if (error.message) {
+                        status = error.message;
+                    } else {
+                        status = error.toString();
                     }
                     task.complete = true;
                     task.state = 'error';
-                    task.status = errorString;
-                    io.showError(errorString);
+                    task.status = status;
+                    io.showError(error);
                 } finally {
                     if (tab) {
                         try {

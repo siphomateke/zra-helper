@@ -3,6 +3,9 @@ const del = require('del');
 const sass = require('gulp-sass');
 const merge2 = require('merge2');
 const concat = require('gulp-concat');
+const webpack = require('webpack');
+const webpackDevConfig = require('./build/webpack.dev.conf.js');
+const webpackProdConfig = require('./build/webpack.prod.conf.js');
 
 let config = {
     dir: {
@@ -23,14 +26,12 @@ config.copy = [{
     to: '',
     ignore: [
         config.dir.src+'/{scss,scss/**}',
+        config.dir.src+'/{js,js/**}',
     ],
 }, {
     from: [
-        'node_modules/webextension-polyfill/dist/browser-polyfill.min.js',
-        'node_modules/jquery/dist/jquery.min.js',
         'node_modules/font-awesome/css/font-awesome.min.css',
         'node_modules/ocrad.js/ocrad.js',
-        'node_modules/papaparse/papaparse.min.js',
     ],
     to: 'vendor',
 }, {
@@ -80,8 +81,24 @@ gulp.task('build:styles', function () {
     return merge2(tasks);
 });
 
+gulp.task('build:scripts', function (done) {
+    let webpackConfig = process.env.NODE_ENV === 'production' ? webpackProdConfig : webpackDevConfig;
+    webpack(webpackConfig).run((err, stats) => {
+        if (err || stats.hasErrors()) {
+            done(err);
+        } else {
+            console.log(stats.toString({colors: true}));
+            done();
+        }
+    });
+});
+
 gulp.task('watch:styles', function() {
     gulp.watch(config.dir.src+'/**/*.scss', gulp.task('build:styles'));
+});
+
+gulp.task('watch:js', function() {
+    gulp.watch(config.dir.src+'/**/*.js', gulp.task('build:scripts'));
 });
 
 gulp.task('watch:markup', function() {
@@ -99,8 +116,9 @@ gulp.task('watch:markup', function() {
 gulp.task('watch', gulp.parallel([
     'watch:styles',
     'watch:markup',
+    'watch:js',
 ]));
 
-gulp.task('build', gulp.series('clean', 'copy', 'build:styles'));
+gulp.task('build', gulp.series('clean', 'copy', 'build:styles', 'build:scripts'));
 
 gulp.task('default', gulp.series('build', 'watch'));

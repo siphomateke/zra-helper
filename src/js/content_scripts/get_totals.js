@@ -1,6 +1,7 @@
 browser.runtime.onMessage.addListener((message) => {
 	return new Promise((resolve, reject) => {
 		if (message.command === "getTotals") {
+			// TODO: Send back any errors
 			if (document.querySelector("#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow") != null) {
 				const totals = [];
 				for (let i = message.startColumn; i < message.startColumn + message.numTotals; i++) {
