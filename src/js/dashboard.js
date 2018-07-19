@@ -523,18 +523,17 @@ async function login(client, parentTask) {
 /**
  * Creates a new tab, logs out and then closes the tab
  * 
- * @param {Client} client
  * @param {Task} parentTask
  * @return {Promise}
  */
-async function logout(client, parentTask) {
+async function logout(parentTask) {
     const task = new Task('Logout', parentTask.id);
     task.progress = 0;
     task.progressMax = 3;
     task.status = 'Opening tab';
 
     io.setCategory('logout');
-    io.log(`Logging out "${client.name}"`);
+    io.log('Logging out');
     try {
         const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
         try {
@@ -543,6 +542,7 @@ async function logout(client, parentTask) {
             task.addStep('Waiting to finish logging out');
             task.complete = true;
             task.state = taskStates.SUCCESS;
+            io.log('Done logging out');
         } finally {
             // Note: The tab automatically closes after pressing logout
             // TODO: Catch tab close errors
@@ -574,7 +574,7 @@ class ClientAction {
             this.mainTask.status = this.taskName;
             await this.action(client, this.mainTask);
             this.mainTask.status = 'Logging out';
-            await logout(client, this.mainTask);
+            await logout(this.mainTask);
         } finally {
             this.mainTask.complete = true;
         }
