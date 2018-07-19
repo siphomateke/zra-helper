@@ -1,3 +1,8 @@
+// FIXME: Actually use these
+$errorColor: red;
+$successColor: #23d160;
+$warningColor: hsl(39, 100%, 58%);
+
 body {
     font-family: "Open Sans",arial,x-locale-body,sans-serif;
     line-height: 1.5;
@@ -95,11 +100,11 @@ button {
             }
 
             &.error {
-                @include logColoredLine(red, hsl(0, 100%, 97%), hsl(50, 100%, 88%), red);
+                @include logColoredLine(red, hsl(0, 100%, 97%), hsl(50, 100%, 88%), $errorColor);
             }
         
             &.warning {
-                @include logColoredLine(hsl(39, 100%, 18%), hsl(50, 100%, 95%), hsl(50, 100%, 80%), hsl(39, 100%, 58%));
+                @include logColoredLine(hsl(39, 100%, 18%), hsl(50, 100%, 95%), hsl(50, 100%, 80%), $warningColor);
             }
         
             &.info {
@@ -150,13 +155,36 @@ button {
     }
 
     & > .content {
-        & > .title {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 0.2em;
+        .header {
+            display: flex;
+            .title {
+                font-size: 1.2em;
+                font-weight: bold;
+                margin-bottom: 0.2em;
+            }
+
+            .subtasks-info {
+                margin-left: auto;
+                display: flex;
+                .item:not(:last-child) {
+                    padding-right: 1em;
+                }
+                .icon {
+                    padding-right: 0.2em;
+                }
+                .error .icon {
+                    color: $errorColor;
+                }
+                .warning .icon {
+                    color: $warningColor;
+                }
+                .success .icon {
+                    color: $successColor;
+                }
+            }
         }
 
-        & > progress {
+        progress {
             width: 100%;
         }
     }

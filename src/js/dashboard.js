@@ -233,6 +233,17 @@ class IO {
 const tasks = {};
 let lastTaskId = 0;
 
+/**
+ * All the states a task can have
+ * @readonly
+ * @enum {string}
+ */
+const taskStates = {
+    ERROR: 'error',
+    SUCCESS: 'success',
+    WARNING: 'warning',
+}
+
 class Task {
     constructor(title, parentId=null) {
         this.title = title;
@@ -257,12 +268,22 @@ class Task {
         this.els = {
             root: $(`<div class="task"></div>`),
             content: $('<div class="content"></div>'),
+            header: $('<div class="header"></div>'),
             title: $(`<div class="title">${this.title}</div>`),
+            subtasksInfo: {
+                root: $('<div class="subtasks-info"><span class="hidden item error"><i class="fa icon fa-exclamation-circle"></i> <span class=count></span> </span><span class="hidden item warning"><i class="fa icon fa-exclamation-triangle"></i> <span class=count></span> </span><span class="hidden item success"><i class="fa icon fa-check-circle"></i> <span class=count></span></span></div>'),
+            },
             status: $('<div class="status"></div>'),
             progress: $(`<progress value="${this._progress}" max="${this._progressMax}"></progress>`),
             // TODO: Improve details button
             detailsButton: $('<button type="button" class="open-details"><i class="fa fa-caret-right closed-icon"></i><i class="fa fa-caret-down open-icon"></i>Details</button>'),
         };
+
+        for (const state of Object.values(taskStates)) {
+            this.els.subtasksInfo[state] = {};
+            this.els.subtasksInfo[state].root = this.els.subtasksInfo.root.find(`.item.${state}`);
+            this.els.subtasksInfo[state].count = this.els.subtasksInfo[state].root.find('.count');
+        }
 
         if (this.hasParent) {
             /* this.els.root.removeClass('task'); */
@@ -280,7 +301,9 @@ class Task {
             $('.tasks').append(this.els.root);
         }
 
-        this.els.content.append(this.els.title);
+        this.els.header.append(this.els.title);
+        this.els.header.append(this.els.subtasksInfo.root);
+        this.els.content.append(this.els.header);
         this.els.content.append(this.els.progress);
         this.els.content.append(this.els.status);
         if (!this.hasParent) {
@@ -338,31 +361,48 @@ class Task {
         this._progressMax = max;
         this.els.progress.attr('max', this._progressMax);
     }
+    /**
+     * Sets the number of sub tasks that have a particular state.
+     * 
+     * @param {string} state 
+     * @param {number} count 
+     */
+    // TODO: Call sub-tasks children
+    setSubtasksStateCount(state, count) {
+        if (count > 0) {
+            this.els.subtasksInfo[state].root.show();
+            this.els.subtasksInfo[state].count.text(count);
+        } else {
+            this.els.subtasksInfo[state].root.hide();
+        }
+    }
     refresh() {
         this.progress = 0;
         this.progressMax = 0;
         let complete = true;
-        let errors = false;
+        // Get the number of sub tasks that have a particular state
+        const stateCounts = {};
         for (const taskId of this.children) {
             const task = tasks[taskId];
             this.progress += task.progress;
             this.progressMax += task.progressMax;
-            if (task.broadcastState && task.state === 'error') {
-                errors = true;
+            if (task.state) {
+                if (!stateCounts[task.state]) stateCounts[task.state] = 0;
+                stateCounts[task.state]++;
             }
             if (!task.complete) {
                 complete = false;
             }
         }
-        if (errors) {
-            this.state = 'error';
-        } else {
-            if (complete) {
-                this.state = 'success';
-            } else {
-                this.state = '';
-            }
+        // Show the number of sub-tasks that have a particular state
+        const stateStrings = [];
+        for (const state of Object.keys(stateCounts)) {
+            const count = stateCounts[state];
+            this.setSubtasksStateCount(state, count);
+            stateStrings.push(`${count} ${state}(s)`);
         }
+        // TODO: Store the state counts and use them to set this
+        this.els.subtasksInfo.root.attr('title', stateStrings.join(', '));
         this.complete = complete;
     }
     get complete() {
@@ -382,15 +422,19 @@ class Task {
         return this._state;
     }
     set state(state) {
-        this._state = state;
-        this.els.root.removeClass('error');
-        this.els.root.removeClass('success');
-        if (this._state) {
-            this.els.root.addClass(this._state);
-        }
+        if (Object.values(taskStates).includes(state)) {
+            this._state = state;
+            this.els.root.removeClass(taskStates.ERROR);
+            this.els.root.removeClass(taskStates.SUCCESS);
+            if (this._state) {
+                this.els.root.addClass(this._state);
+            }
 
-        if (this.autoUpdateParent && this.hasParent) {
-            this.parent.refresh();
+            if (this.autoUpdateParent && this.hasParent) {
+                this.parent.refresh();
+            }
+        } else {
+            throw new Error(`State must be one of the following: ${Object.values(taskStates).join(', ')}`);
         }
     }
     addChild(id) {
@@ -461,7 +505,7 @@ async function login(client, parentTask) {
                 throw errorFromJson(response.error);
             }
             task.complete = true;
-            task.state = 'success';
+            task.state = taskStates.SUCCESS;
             io.log(`Done logging in "${client.name}"`);
         } finally {
             // Don't need to wait for the tab to close to carry out logged in actions
@@ -470,7 +514,7 @@ async function login(client, parentTask) {
         }
     } catch (error) {
         task.complete = true;
-        task.state = 'error';
+        task.state = taskStates.ERROR;
         task.status = error.message;
         throw error;
     }
@@ -498,8 +542,7 @@ async function logout(client, parentTask) {
             await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
             task.addStep('Waiting to finish logging out');
             task.complete = true;
-            task.state = 'success';
-            io.log(`Done logging out "${client.name}"`);
+            task.state = taskStates.SUCCESS;
         } finally {
             // Note: The tab automatically closes after pressing logout
             // TODO: Catch tab close errors
@@ -507,7 +550,7 @@ async function logout(client, parentTask) {
         }
     } catch (error) {
         task.complete = true;
-        task.state = 'error';
+        task.state = taskStates.ERROR;
         task.status = error.message;
         throw error;
     }
@@ -601,7 +644,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         }
                         totals[taxType] = totalsResponse.totals;
                         task.complete = true;
-                        task.state = 'success';
+                        task.state = taskStates.SUCCESS;
                         resolve();
                     } finally {
                         io.log(`Finished generating ${taxType} report`);
@@ -622,7 +665,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         status = error.toString();
                     }
                     task.complete = true;
-                    task.state = 'error';
+                    task.state = taskStates.ERROR;
                     task.status = status;
                     io.showError(error);
                 } finally {
