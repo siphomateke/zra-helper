@@ -494,7 +494,7 @@ async function login(client, parentTask) {
             task.addStep('Waiting for login page to load');
             await tabLoaded(tab.id);
             task.addStep('Logging in');
-            // OCRAD should imported in login.js but work with webpack
+            // OCRAD should be imported in login.js but work with webpack
             await executeScript(tab.id, {file: 'ocrad.js'}, true);
             await executeScript(tab.id, {file: 'login.js'});
             // Actually login
