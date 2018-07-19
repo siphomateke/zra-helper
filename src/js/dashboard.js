@@ -411,7 +411,6 @@ class Task {
     set complete(complete) {
         this._complete = complete;
         if (this._complete) {
-            this.status = '';
             this.progress = this.progressMax;
             this.els.root.addClass('complete');
         } else {
@@ -504,6 +503,7 @@ async function login(client, parentTask) {
                 throw errorFromJson(response.error);
             }
             task.state = taskStates.SUCCESS;
+            task.status = '';
             io.log(`Done logging in "${client.name}"`);
         } finally {
             // Don't need to wait for the tab to close to carry out logged in actions
@@ -540,6 +540,7 @@ async function logout(parentTask) {
             await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
             task.addStep('Waiting to finish logging out');
             task.state = taskStates.SUCCESS;
+            task.status = '';
             io.log('Done logging out');
         } finally {
             // Note: The tab automatically closes after pressing logout
@@ -590,6 +591,7 @@ class ClientAction {
             this.mainTask.status = 'Logging out';
             await logout(this.mainTask);
             this.mainTask.state = taskStates.SUCCESS;
+            this.mainTask.status = '';
         } catch (error) {
             if (debug) {
                 console.error(error);
@@ -597,6 +599,7 @@ class ClientAction {
             io.setCategory(this.logCategory);
             io.showError(error.message);
             this.mainTask.state = taskStates.ERROR;
+            this.mainTask.status = '';
         } finally {
             this.mainTask.complete = true;
         }
@@ -666,6 +669,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         }
                         totals[taxType] = totalsResponse.totals;
                         task.state = taskStates.SUCCESS;
+                        task.status = '';
                         resolve();
                     } finally {
                         io.log(`Finished generating ${taxType} report`);
