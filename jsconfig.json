@@ -1,4 +1,12 @@
 {
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "checkJs": true
+  },
+  "include": [
+    "./src/**/*"
+  ],
   "typeAcquisition": {
     "include": [
       "firefox-webext-browser",
