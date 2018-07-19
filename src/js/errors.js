@@ -5,9 +5,20 @@ export class ExtendedError extends Error {
         this.type = type ? type : this.constructor.name;
         this.name = this.type;
     }
+    /**
+     * Creates an ExtendedError from a JSON representation of one
+     * 
+     * @param {ExtendedErrorJson} json 
+     * @returns {ExtendedError}
+     */
     static fromJSON(json) {
         return new ExtendedError(json.message, json.code, json.type);
     }
+    /**
+     * Converts this error to a JSON object
+     * 
+     * @returns {ExtendedErrorJson}
+     */
     toJSON() {
         return {
             message: this.message,
@@ -21,6 +32,26 @@ export class ZraError extends ExtendedError {}
 export class TaxTypeNotFoundError extends ExtendedError {}
 export class ElementNotFoundError extends ExtendedError {}
 
+/**
+ * @typedef JsonError
+ * @property {string} message
+ * @property {string} [code]
+ * @property {string} [type]
+ */
+
+/**
+ * @typedef ExtendedErrorJson
+ * @property {string} message
+ * @property {string} code
+ * @property {string} type
+ */
+
+/**
+ * Converts an error to a JSON object
+ * 
+ * @param {Error} error 
+ * @returns {JsonError|null}
+ */
 export function errorToJson(error) {
     if (error) {
         let output = {};
@@ -37,6 +68,12 @@ export function errorToJson(error) {
     }
 }
 
+/**
+ * Creates an Error from it's JSON representation
+ * 
+ * @param {JsonError} json 
+ * @returns {ExtendedError|Error}
+ */
 export function errorFromJson(json) {
     let output = null;
     if (json.code) {

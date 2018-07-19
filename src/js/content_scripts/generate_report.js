@@ -3,7 +3,7 @@ import {ZraError, TaxTypeNotFoundError, errorToJson} from '../errors.js';
 /**
  * Gets error message from page if it exists
  * 
- * @return {Error|null}
+ * @returns {ZraError|null}
  */
 function getZraError() {
     const errorTable = document.querySelector('#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>div>table>tbody>tr>td>table');

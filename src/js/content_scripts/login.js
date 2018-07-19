@@ -5,7 +5,7 @@ import {ExtendedError, ElementNotFoundError, errorToJson} from '../errors';
  * 
  * @param {HTMLImageElement} image The image to use
  * @param {number} [scale=1] Optional scale to apply to the image
- * @return {HTMLCanvasElement}
+ * @returns {HTMLCanvasElement}
  */
 function imageToCanvas(image, scale=1) {
     const width = image.width * scale;
@@ -24,7 +24,7 @@ function imageToCanvas(image, scale=1) {
  * 
  * @param {HTMLImageElement} imageElement Image element to get captcha from
  * @param {number} [scale=2] Optional scale to help recognize the image
- * @return {HTMLCanvasElement}
+ * @returns {Promise.<HTMLCanvasElement>}
  */
 function getCaptcha(imageElement, scale = 2) {
     return new Promise((resolve, reject) => {
@@ -41,6 +41,8 @@ function getCaptcha(imageElement, scale = 2) {
 
 /**
  * Requests a new captcha
+ * 
+ * @throws {ElementNotFoundError}
  */
 function refreshCaptcha() {
     let selector = '#loginForm a[href="javaScript:refreshCaptchaImage()"]';
@@ -61,7 +63,7 @@ function refreshCaptcha() {
  * @param {string} text Text containing arithmetic question.
  * @example 
  * solveCaptcha('112- 11?') // 101
- * @return {number}
+ * @returns {number}
  */
 function solveCaptcha(text) {
     const captchaArithmetic = text.replace(/\s/g, '').replace(/\?/g, '');
@@ -88,10 +90,10 @@ const commonIncorrectCharacters = [
 /**
  * Logs into a particular client's account
  * 
- * @param {Client} client The client whose account to login to
+ * @param {import('../dashboard').Client} client The client whose account to login to
  * @param {number} maxCaptchaRefreshes The maximum number of times that a new captcha will be loaded if the OCR fails
+ * @throws {ElementNotFoundError}
  */
-// TODO: Import Client for JSDoc
 async function login(client, maxCaptchaRefreshes) {
     // Get required elements and check if any are missing
     let elementSelectors = {

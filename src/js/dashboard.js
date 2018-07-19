@@ -31,8 +31,6 @@ let clientList = [];
  * @param {number} tabId 
  * @param {browser.extensionTypes.InjectDetails} details 
  * @param {boolean} vendor
- * 
- * @return {Promise}
  */
 async function executeScript(tabId, details, vendor=false) {
     if (details.file) {
@@ -46,10 +44,10 @@ async function executeScript(tabId, details, vendor=false) {
 }
 
 /**
- * Waits for a tab to load
- * @param {number} desiredTabId 
- * @return {Promise}
+ * Waits for a tab with a specific ID to load
  * 
+ * @param {number} desiredTabId 
+ * @returns {Promise}
  * @throws Throws an error if the tab is closed before it loads
  */
 function tabLoaded(desiredTabId) {
@@ -95,8 +93,9 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });*/
 
 /**
- *
- * @return {browser.tabs.Tab}
+ * Gets the active tab in the current window
+ * 
+ * @returns {Promise.<browser.tabs.Tab>}
  */
 async function getActiveTab() {
 	const tabs = await browser.tabs.query({active: true, currentWindow: true});
@@ -107,6 +106,11 @@ async function getActiveTab() {
 	}
 }
 
+/**
+ * Waits for a specific message.
+ * 
+ * @param {function} validator Function that checks if a message is the one we are waiting for
+ */
 function waitForMessage(validator) {
 	return new Promise(async (resolve) => {
 		function listener(message) {
@@ -414,6 +418,7 @@ class Task {
     }
     /**
      * Increments progress and sets status
+     * 
      * @param {string} status 
      */
     addStep(status) {
@@ -426,9 +431,11 @@ const io = new IO();
 
 /**
  * Creates a new tab, logs in and then closes the tab
- * @async
+ * 
  * @param {Client} client 
  * @param {Task} parentTask
+ * @return {Promise}
+ * @throws {import('./errors').ExtendedError}
  */
 async function login(client, parentTask) {
     const task = new Task('Login', parentTask.id);
@@ -491,9 +498,10 @@ async function login(client, parentTask) {
 
 /**
  * Creates a new tab, logs out and then closes the tab
+ * 
  * @param {Client} client
  * @param {Task} parentTask
- * @async
+ * @return {Promise}
  */
 async function logout(client, parentTask) {
     const task = new Task('Logout', parentTask.id);
@@ -676,6 +684,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
 });
 
 /**
+ * Runs a client action on all the clients
  * 
  * @param {ClientAction} action 
  */
@@ -715,7 +724,7 @@ $(document).on('click', '.task .open-details', (e) => {
 /**
  * @typedef ClientValidationResult
  * @property {boolean} valid True if the client is valid
- * @property {string[]} errors An array of errors that will be set when the client is invalid
+ * @property {string[]} [errors] An array of errors that will be set when the client is invalid
  */
 
 /**
@@ -727,7 +736,7 @@ $(document).on('click', '.task .open-details', (e) => {
  * - password is at least 8 characters long
  * 
  * @param {Client} client The client to validate
- * @return {ClientValidationResult}
+ * @returns {ClientValidationResult}
  */
 function validateClient(client) {
     /** Properties that must exist on each client */
@@ -767,7 +776,7 @@ function validateClient(client) {
  * 
  * @param {string} csvString The CSV to parse as a string
  * @param {Papa.ParseConfig} config CSV parsing config
- * @return {Client[]}
+ * @returns {Client[]}
  */
 function getClientsFromCsv(csvString, config={}) {
     const list = [];
@@ -785,7 +794,7 @@ function getClientsFromCsv(csvString, config={}) {
      * Converts a row index (from Papa.parse) to a line number
      * 
      * @param {number} rowIndex 
-     * @return {number}
+     * @returns {number}
      */
     function toLineNumber(rowIndex) {
         let lineNumber = rowIndex + 1;
@@ -872,10 +881,11 @@ function getClientsFromCsv(csvString, config={}) {
 }
 
 /**
- * Gets clients from a Blob file
+ * Gets clients from a CSV file.
  * 
- * @param {Blob} file The file to get clients from
- * @return {Promise<Client[]|Error>}
+ * @param {File} file The CSV file to get clients from
+ * @returns {Promise.<Client[]>}
+ * @throws Will throw an error if the file fails to load
  */
 function getClientsFromFile(file) {
     return new Promise((resolve, reject) => {
