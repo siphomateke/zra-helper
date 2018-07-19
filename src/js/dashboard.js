@@ -503,7 +503,6 @@ async function login(client, parentTask) {
             if (response.error) {
                 throw errorFromJson(response.error);
             }
-            task.complete = true;
             task.state = taskStates.SUCCESS;
             io.log(`Done logging in "${client.name}"`);
         } finally {
@@ -512,10 +511,11 @@ async function login(client, parentTask) {
             browser.tabs.remove(tab.id);
         }
     } catch (error) {
-        task.complete = true;
         task.state = taskStates.ERROR;
         task.status = error.message;
         throw error;
+    } finally {
+        task.complete = true;
     }
 }
 
@@ -539,7 +539,6 @@ async function logout(parentTask) {
             task.addStep('Initiating logout');
             await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
             task.addStep('Waiting to finish logging out');
-            task.complete = true;
             task.state = taskStates.SUCCESS;
             io.log('Done logging out');
         } finally {
@@ -548,10 +547,11 @@ async function logout(parentTask) {
             browser.tabs.remove(tab.id);
         }
     } catch (error) {
-        task.complete = true;
         task.state = taskStates.ERROR;
         task.status = error.message;
         throw error;
+    } finally {
+        task.complete = true;
     }
 }
 
@@ -665,7 +665,6 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                             throw errorFromJson(response.error);
                         }
                         totals[taxType] = totalsResponse.totals;
-                        task.complete = true;
                         task.state = taskStates.SUCCESS;
                         resolve();
                     } finally {
@@ -686,7 +685,6 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                     } else {
                         status = error.toString();
                     }
-                    task.complete = true;
                     task.state = taskStates.ERROR;
                     task.status = status;
                     io.showError(error);
@@ -698,6 +696,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                             // If we fail to close the tab then it's probably already closed
                         }
                     }
+                    task.complete = true;
                 }
             }));
         }
