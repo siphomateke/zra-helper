@@ -187,7 +187,7 @@ class IO {
     clearLog() {
         this.logElement.text('');
     }
-    showError(error) {
+    showError(error, warning=false) {
         this.errors.push(error);
         let errorString = '';
         if (!(error instanceof Error) && error.message) {
@@ -197,7 +197,7 @@ class IO {
         } else {
             errorString = 'Error: '+error;
         }
-        this.log(errorString, 'error');
+        this.log(errorString, warning ? 'warning' : 'error');
     }
     output(row) {
         this.outputElement.val(this.outputElement.val() + row+'\n');
@@ -480,8 +480,7 @@ async function login(client, parentTask) {
             task.addStep('Waiting for login page to load');
             await tabLoaded(tab.id);
             task.addStep('Logging in');
-            // OCRAD should imported in login.js but doesn't play nice
-            // with webpack
+            // OCRAD should imported in login.js but work with webpack
             await executeScript(tab.id, {file: 'ocrad.js'}, true);
             await executeScript(tab.id, {file: 'login.js'});
             // Actually login
@@ -557,9 +556,10 @@ async function logout(parentTask) {
 }
 
 class ClientAction {
-    constructor(taskName, action) {
+    constructor(taskName, logCategory, action) {
         this.mainTask = null;
         this.taskName = taskName;
+        this.logCategory = logCategory;
         this.action = action;
     }
 
@@ -570,18 +570,40 @@ class ClientAction {
             // TODO: Treat each of the following statuses as different actions with separate progresses.
             // Keep in mind that each task may updates it's parent's progress.
             this.mainTask.status = 'Logging in';
-            await login(client, this.mainTask);
+            try {
+                await login(client, this.mainTask);
+            } catch (error) {
+                if (error.type === 'LoginError' && error.code === 'WrongClient') {
+                    // TODO: Move this to login()
+                    io.setCategory(this.logCategory);
+                    io.showError(error, true);
+                    this.mainTask.status = 'Logging out';
+                    await logout(this.mainTask);
+                    this.mainTask.status = 'Logging in again';
+                    await login(client, this.mainTask);
+                } else {
+                    throw error;
+                }
+            }
             this.mainTask.status = this.taskName;
             await this.action(client, this.mainTask);
             this.mainTask.status = 'Logging out';
             await logout(this.mainTask);
+            this.mainTask.state = taskStates.SUCCESS;
+        } catch (error) {
+            if (debug) {
+                console.error(error);
+            }
+            io.setCategory(this.logCategory);
+            io.showError(error.message);
+            this.mainTask.state = taskStates.ERROR;
         } finally {
             this.mainTask.complete = true;
         }
     }
 }
 
-const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabilities', 
+const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabilities', 'pending_liabilities', 
     /**
      * @param {Client} client
      * @param {Task} mainTask
@@ -715,17 +737,9 @@ async function allClientsAction(action) {
     if (clientList.length > 0) {
         for (let i=0;i<clientList.length;i++) {
             const client = clientList[i];
-            try {
-                // TODO: Consider checking if a tab has been closed prematurely all the time.
-                // Currently, only tabLoaded checks for this.
-                await action.run(client);
-            } catch (error) {
-                if (debug) {
-                    console.error(error);
-                }
-                io.setCategory('client_action');
-                io.showError(error.message);
-            }
+            // TODO: Consider checking if a tab has been closed prematurely all the time.
+            // Currently, only tabLoaded checks for this.
+            await action.run(client);
         }
     } else {
         io.setCategory('client_action');
