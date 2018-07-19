@@ -115,7 +115,7 @@ function waitForMessage(validator) {
 	return new Promise(async (resolve) => {
 		function listener(message) {
 			if (validator(message)) {
-				browser.runtime.onMessage.addListener.removeListener(listener);
+				browser.runtime.onMessage.removeListener(listener);
 				resolve(message);
 			}
 		}
