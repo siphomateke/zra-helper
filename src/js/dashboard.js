@@ -72,26 +72,6 @@ function tabLoaded(desiredTabId) {
 	});
 }
 
-/*const tabLoadObjects = [];
-
-function tabLoaded(desiredTabId) {
-	return new Promise((resolve) => {
-		tabLoadObjects.push({
-			id: desiredTabId,
-			callback: resolve,
-		});
-	});
-}
-
-browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
-	for (const tabLoadObject of tabLoadObjects) {
-		if (tabId === tabLoadObject.id && changeInfo.status === 'complete') {
-			tabLoadObject.callback();
-			// delete it from array
-		}
-	}
-});*/
-
 /**
  * Gets the active tab in the current window
  * 
