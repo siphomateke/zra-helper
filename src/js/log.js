@@ -8,9 +8,6 @@ class Log {
         this.logElement = this.logElementWrapper.find('.log-inner');
 
         this.errors = [];
-
-        this.progressElement = $('#progress');
-        this.progress = -2;
     }
     setCategory(category) {
         this.category = category;
@@ -93,28 +90,6 @@ class Log {
             errorString = 'Error: '+error;
         }
         this.log(errorString, warning ? 'warning' : 'error');
-    }
-    refreshProgress() {
-        if (this.progress !== -2) {
-            this.progressElement.removeClass('hidden');
-        }
-        if (this.progress === -1) {
-            this.progressElement.removeAttr('value');
-        } else {
-            this.progressElement.val(this.progress);
-        }
-    }
-    setProgress(progress)  {
-        this.progress = progress;
-        this.refreshProgress();
-    }
-    addProgress(toAdd) {
-        this.progress += toAdd;
-        this.refreshProgress();
-    }
-    setProgressMax(max) {
-        this.progressMax = max;
-        this.progressElement.attr('max', this.progressMax);
     }
 }
 
