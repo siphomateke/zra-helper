@@ -1,6 +1,8 @@
 import $ from 'jquery';
 import Papa from 'papaparse';
 import {errorFromJson} from './errors';
+import {taskStates, Task} from './tasks';
+import {log} from './log';
 
 const debug = false;
 
@@ -118,355 +120,6 @@ async function sendMessage(tabId, message) {
     return response;
 }
 
-class IO {
-    constructor() {
-        this.logLines = [];
-        this.logWrapperEl = $('#log-wrapper');
-        this.logElementWrapper = $('.log');
-        this.logElement = this.logElementWrapper.find('.log-inner');
-
-        this.outputElement = $('#output');
-
-        this.errors = [];
-
-        this.progressElement = $('#progress');
-        this.progress = -2;
-    }
-    setCategory(category) {
-        this.category = category;
-    }
-    log(value, type) {
-        this.logLines.push(value);
-        if (this.logLines.length > 0) {
-            this.logWrapperEl.removeClass('hidden');
-        }
-
-        const now = new Date(Date.now());
-        let dateValues = [
-            now.getDate(),
-            now.getMonth(),
-            now.getFullYear()
-        ];
-        let date = dateValues.map(val => val.toString().padStart(2, '0')).join('/');
-        let times = [
-            now.getHours(),
-            now.getMinutes(),
-            now.getSeconds(),
-        ];
-        times = times.map(val => val.toString().padStart(2, '0'));
-        times.push(now.getMilliseconds().toString().padStart(3,'0'));
-        let time = times.join(':');
-        let timestamp = `${date} ${time}`;
-
-        let text = this.category+': '+value;
-        let classes = ['line'];
-        let icon = '';
-        switch (type) {
-            case 'error':
-                classes.push('error');
-                icon = 'exclamation-circle';
-                console.error(text);
-                break;
-            case 'warning':
-                classes.push('warning');
-                icon = 'exclamation-triangle';
-                console.warn(text);
-                break;
-            case 'info':
-                classes.push('info');
-                icon = 'info-circle';
-                console.info(text);
-                break;
-            default:
-                console.log(text);
-                break;
-        }
-        let output = `<span class="cell timestamp">${timestamp}</span>`;
-        output += `<span class="cell icon">`;
-        if (icon) {
-            output += `<i class="fa fa-${icon}" aria-hidden="true"></i>`;
-        }
-        output += '</span>';
-        output += `<span class="cell category"><span class="tag">${this.category}</span></span>`;
-        output += `<span class="cell content">${value}</span>`;
-        output = `<span class="${classes.join(' ')}">${output}</span>`;
-
-        // Output log and keep scroll at bottom if already scrolled to bottom
-        let scrollEl = this.logElementWrapper;
-        let isScrolledToBottom = scrollEl[0].scrollHeight - scrollEl[0].clientHeight <= scrollEl[0].scrollTop + 1;
-        this.logElement.append(output);
-        if (isScrolledToBottom) {
-            scrollEl.scrollTop(scrollEl[0].scrollHeight);
-        }
-    }
-    clearLog() {
-        this.logElement.text('');
-    }
-    showError(error, warning=false) {
-        this.errors.push(error);
-        let errorString = '';
-        if (!(error instanceof Error) && error.message) {
-            errorString = error.message;
-        } else if (typeof error !== 'string') {
-            errorString = error.toString();
-        } else {
-            errorString = 'Error: '+error;
-        }
-        this.log(errorString, warning ? 'warning' : 'error');
-    }
-    output(row) {
-        this.outputElement.val(this.outputElement.val() + row+'\n');
-    }
-    clearOutput() {
-        this.outputElement.val('');
-    }
-    refreshProgress() {
-        if (this.progress !== -2) {
-            this.progressElement.removeClass('hidden');
-        }
-        if (this.progress === -1) {
-            this.progressElement.removeAttr('value');
-        } else {
-            this.progressElement.val(this.progress);
-        }
-    }
-    setProgress(progress)  {
-        this.progress = progress;
-        this.refreshProgress();
-    }
-    addProgress(toAdd) {
-        this.progress += toAdd;
-        this.refreshProgress();
-    }
-    setProgressMax(max) {
-        this.progressMax = max;
-        this.progressElement.attr('max', this.progressMax);
-    }
-}
-
-/** @type {Object.<string, Task>} */
-const tasks = {};
-let lastTaskId = 0;
-
-/**
- * All the states a task can have
- * @readonly
- * @enum {string}
- */
-const taskStates = {
-    ERROR: 'error',
-    SUCCESS: 'success',
-    WARNING: 'warning',
-}
-
-class Task {
-    constructor(title, parentId=null) {
-        this.title = title;
-        this.parentId = parentId;
-        this.hasParent = this.parentId !== null;
-        this.parent = (this.hasParent) ? tasks[this.parentId] : null;
-        this.children = [];
-        this._status = '';
-
-        this._progress = -2;
-        this._progressMax = 100;
-        /** Whether this task's state affects its parent's state */
-        this.broadcastState = true;
-        /** Whether this task will automatically update it's parent progress and status */
-        this.autoUpdateParent = true;
-
-        this._complete = false;
-        // TODO: Use an enum for states
-        this._state = '';
-
-        /** HTML Elements */
-        this.els = {
-            root: $(`<div class="task"></div>`),
-            content: $('<div class="content"></div>'),
-            header: $('<div class="header"></div>'),
-            title: $(`<div class="title">${this.title}</div>`),
-            subtasksInfo: {
-                root: $('<div class="subtasks-info"><span class="hidden item error"><i class="fa icon fa-exclamation-circle"></i> <span class=count></span> </span><span class="hidden item warning"><i class="fa icon fa-exclamation-triangle"></i> <span class=count></span> </span><span class="hidden item success"><i class="fa icon fa-check-circle"></i> <span class=count></span></span></div>'),
-            },
-            status: $('<div class="status"></div>'),
-            progress: $(`<progress value="${this._progress}" max="${this._progressMax}"></progress>`),
-            // TODO: Improve details button
-            detailsButton: $('<button type="button" class="open-details"><i class="fa fa-caret-right closed-icon"></i><i class="fa fa-caret-down open-icon"></i>Details</button>'),
-        };
-
-        for (const state of Object.values(taskStates)) {
-            this.els.subtasksInfo[state] = {};
-            this.els.subtasksInfo[state].root = this.els.subtasksInfo.root.find(`.item.${state}`);
-            this.els.subtasksInfo[state].count = this.els.subtasksInfo[state].root.find('.count');
-        }
-
-        if (this.hasParent) {
-            /* this.els.root.removeClass('task'); */
-            this.els.root.addClass('sub-task');
-            const parentEl = this.parent.els.root;
-            let subTasks = parentEl.find('.sub-tasks');
-            if (!subTasks.length) {
-                subTasks = $('<div class="sub-tasks"></div>')
-                parentEl.append(subTasks);
-            }
-
-            subTasks.append(this.els.root);
-            this.parent.els.detailsButton.show();
-        } else {
-            $('.tasks').append(this.els.root);
-        }
-
-        this.els.header.append(this.els.title);
-        this.els.header.append(this.els.subtasksInfo.root);
-        this.els.content.append(this.els.header);
-        this.els.content.append(this.els.progress);
-        this.els.content.append(this.els.status);
-        if (!this.hasParent) {
-            this.els.content.append(this.els.detailsButton);
-            this.els.detailsButton.hide();
-        }
-
-        this.els.root.append(this.els.content);
-
-        this.status = this._status;
-        this.id = lastTaskId;
-        tasks[this.id] = this;
-        if (this.hasParent) {
-            this.parent.addChild(this.id);
-        }
-        lastTaskId++;
-    }
-    get status() {
-        return this._status;
-    }
-    set status(status) {
-        this._status = status;
-        if (this._status) {
-            this.els.status.show();
-        } else {
-            this.els.status.hide();
-        }
-        this.els.status.text(this._status);
-    }
-    refreshProgress() {
-        if (this._progress !== -2) {
-            this.els.progress.removeClass('hidden');
-        }
-        if (this._progress === -1) {
-            this.els.progress.removeAttr('value');
-        } else {
-            this.els.progress.val(this._progress);
-        }
-    }
-    get progress() {
-        return this._progress;
-    }
-    set progress(progress)  {
-        this._progress = progress;
-        this.refreshProgress();
-
-        if (this.autoUpdateParent && this.hasParent) {
-            this.parent.refresh();
-        }
-    }
-    get progressMax() {
-        return this._progressMax;
-    }
-    set progressMax(max) {
-        this._progressMax = max;
-        this.els.progress.attr('max', this._progressMax);
-    }
-    /**
-     * Sets the number of sub tasks that have a particular state.
-     * 
-     * @param {string} state 
-     * @param {number} count 
-     */
-    // TODO: Call sub-tasks children
-    setSubtasksStateCount(state, count) {
-        if (count > 0) {
-            this.els.subtasksInfo[state].root.show();
-            this.els.subtasksInfo[state].count.text(count);
-        } else {
-            this.els.subtasksInfo[state].root.hide();
-        }
-    }
-    refresh() {
-        this.progress = 0;
-        this.progressMax = 0;
-        let complete = true;
-        // Get the number of sub tasks that have a particular state
-        const stateCounts = {};
-        for (const taskId of this.children) {
-            const task = tasks[taskId];
-            this.progress += task.progress;
-            this.progressMax += task.progressMax;
-            if (task.state) {
-                if (!stateCounts[task.state]) stateCounts[task.state] = 0;
-                stateCounts[task.state]++;
-            }
-            if (!task.complete) {
-                complete = false;
-            }
-        }
-        // Show the number of sub-tasks that have a particular state
-        const stateStrings = [];
-        for (const state of Object.keys(stateCounts)) {
-            const count = stateCounts[state];
-            this.setSubtasksStateCount(state, count);
-            stateStrings.push(`${count} ${state}(s)`);
-        }
-        // TODO: Store the state counts and use them to set this
-        this.els.subtasksInfo.root.attr('title', stateStrings.join(', '));
-        this.complete = complete;
-    }
-    get complete() {
-        return this._complete;
-    }
-    set complete(complete) {
-        this._complete = complete;
-        if (this._complete) {
-            this.progress = this.progressMax;
-            this.els.root.addClass('complete');
-        } else {
-            this.els.root.removeClass('complete');
-        }
-    }
-    get state() {
-        return this._state;
-    }
-    set state(state) {
-        if (Object.values(taskStates).includes(state)) {
-            this._state = state;
-            this.els.root.removeClass(taskStates.ERROR);
-            this.els.root.removeClass(taskStates.SUCCESS);
-            if (this._state) {
-                this.els.root.addClass(this._state);
-            }
-
-            if (this.autoUpdateParent && this.hasParent) {
-                this.parent.refresh();
-            }
-        } else {
-            throw new Error(`State must be one of the following: ${Object.values(taskStates).join(', ')}`);
-        }
-    }
-    addChild(id) {
-        this.children.push(id);
-    }
-    /**
-     * Increments progress and sets status
-     * 
-     * @param {string} status 
-     */
-    addStep(status) {
-        this.progress++;
-        this.status = status;
-    }
-}
-
-const io = new IO();
-
 /**
  * Creates a new tab, logs in and then closes the tab
  * 
@@ -481,8 +134,8 @@ async function login(client, parentTask) {
     task.progressMax = 7;
     task.status = 'Opening tab';
     
-    io.setCategory('login');
-    io.log(`Logging in client "${client.name}"`);
+    log.setCategory('login');
+    log.log(`Logging in client "${client.name}"`);
     try {
         const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
         task.addStep('Waiting for tab to load');
@@ -513,7 +166,7 @@ async function login(client, parentTask) {
             });
             task.state = taskStates.SUCCESS;
             task.status = '';
-            io.log(`Done logging in "${client.name}"`);
+            log.log(`Done logging in "${client.name}"`);
         } finally {
             // Don't need to wait for the tab to close to carry out logged in actions
             // TODO: Catch tab close errors
@@ -540,8 +193,8 @@ async function logout(parentTask) {
     task.progressMax = 3;
     task.status = 'Opening tab';
 
-    io.setCategory('logout');
-    io.log('Logging out');
+    log.setCategory('logout');
+    log.log('Logging out');
     try {
         const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
         try {
@@ -550,7 +203,7 @@ async function logout(parentTask) {
             task.addStep('Waiting to finish logging out');
             task.state = taskStates.SUCCESS;
             task.status = '';
-            io.log('Done logging out');
+            log.log('Done logging out');
         } finally {
             // Note: The tab automatically closes after pressing logout
             // TODO: Catch tab close errors
@@ -565,12 +218,33 @@ async function logout(parentTask) {
     }
 }
 
+class Output {
+    constructor() {
+        // TODO: Support multiple outputs
+        this.el = $('#output');
+    }
+    set value(value) {
+        this.el.val(value);
+    }
+    get value() {
+        return this.el.val();
+    }
+    addRow(row) {
+        this.value = this.value + row+'\n';
+    }
+    clear() {
+        this.value = '';
+    }
+}
+
 class ClientAction {
     constructor(taskName, logCategory, action) {
         this.mainTask = null;
         this.taskName = taskName;
         this.logCategory = logCategory;
         this.action = action;
+        
+        this.output = new Output();
     }
 
     async run(client) {
@@ -585,18 +259,18 @@ class ClientAction {
             } catch (error) {
                 if (error.type === 'LoginError' && error.code === 'WrongClient') {
                     // TODO: Move this to login()
-                    io.setCategory(this.logCategory);
-                    io.showError(error, true);
+                    log.setCategory(this.logCategory);
+                    log.showError(error, true);
                     this.mainTask.status = 'Logging out';
                     await logout(this.mainTask);
                     this.mainTask.status = 'Logging in again';
-                    await login(client, this.mainTask);
+                    await login(client, this.mainTask,);
                 } else {
                     throw error;
                 }
             }
             this.mainTask.status = this.taskName;
-            await this.action(client, this.mainTask);
+            await this.action(client, this.mainTask, this.output);
             this.mainTask.status = 'Logging out';
             await logout(this.mainTask);
             this.mainTask.state = taskStates.SUCCESS;
@@ -605,8 +279,8 @@ class ClientAction {
             if (debug) {
                 console.error(error);
             }
-            io.setCategory(this.logCategory);
-            io.showError(error.message);
+            log.setCategory(this.logCategory);
+            log.showError(error.message);
             this.mainTask.state = taskStates.ERROR;
             this.mainTask.status = '';
         } finally {
@@ -620,13 +294,13 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
      * @param {Client} client
      * @param {Task} mainTask
      */
-    (client, mainTask) => {
+    (client, mainTask, output) => {
         return new Promise((resolve) => {
             let promises = [];
             /** Total number of pending liabilities including the grand total */
             const numTotals = 4;
             const totals = {};
-            io.setCategory('pending_liabilities');
+            log.setCategory('pending_liabilities');
             for (const taxTypeId of Object.keys(taxTypes)) {
                 promises.push(new Promise(async (resolve, reject) => {
                     const taxType = taxTypes[taxTypeId];
@@ -637,7 +311,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                     task.broadcastState = false;
                     task.status = 'Opening tab';
 
-                    io.log(`Generating ${taxType} report`);
+                    log.log(`Generating ${taxType} report`);
 
                     let tab = null;
                     try {
@@ -690,7 +364,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                             task.status = '';
                             resolve();
                         } finally {
-                            io.log(`Finished generating ${taxType} report`);
+                            log.log(`Finished generating ${taxType} report`);
                         }
                     } catch (error) {
                         if (debug) {
@@ -709,7 +383,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         }
                         task.state = taskStates.ERROR;
                         task.status = status;
-                        io.showError(error);
+                        log.showError(error);
                     } finally {
                         if (tab) {
                             try {
@@ -741,7 +415,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                     }
                     i++;
                 }
-                io.output(Papa.unparse(rows, {
+                output.addRow(Papa.unparse(rows, {
                     quotes: true,
                 }));
                 resolve();
@@ -763,8 +437,8 @@ async function allClientsAction(action) {
             await action.run(client);
         }
     } else {
-        io.setCategory('client_action');
-        io.showError('No clients found');
+        log.setCategory('client_action');
+        log.showError('No clients found');
     }
 }
 
@@ -772,11 +446,6 @@ $(document).on('click', '.zra-action', (e) => {
     if (e.currentTarget.id === 'get-all-pending-liabilities') {
         allClientsAction(getAllPendingLiabilitiesAction);
     }
-});
-
-$(document).on('click', '.task .open-details', (e) => {        
-    const target = $(e.currentTarget);
-    target.closest('.task').toggleClass('open');
 });
 
 /**
@@ -839,8 +508,8 @@ function validateClient(client) {
 function getClientsFromCsv(csvString, config={}) {
     const list = [];
 
-    io.setCategory('get_client_list');
-    io.log('Parsing CSV');
+    log.setCategory('get_client_list');
+    log.log('Parsing CSV');
     let parseConfig = Object.assign({
         header: true,
         trimHeaders: true,
@@ -879,21 +548,21 @@ function getClientsFromCsv(csvString, config={}) {
     
     // Output all the row errors
     for (const row of Object.keys(rowErrors)) {
-        io.showError(rowErrors[row].map(error => {
+        log.showError(rowErrors[row].map(error => {
             return `CSV parse error in row ${toLineNumber(error.row)}: ${error.message}`;
         }).join(', '));
     }
 
-    io.log('Finished parsing CSV');
+    log.log('Finished parsing CSV');
 
     // Only attempt to parse clients if the number of row errors is less than
     // the number of parsed rows.
     if (Object.keys(rowErrors).length < parsed.data.length) {
         const fields = parsed.meta.fields;
         if (Object.keys(rowErrors).length) {
-            io.log("Attempting to parse clients in rows that don't have CSV parsing errors");
+            log.log("Attempting to parse clients in rows that don't have CSV parsing errors");
         } else {
-            io.log('Parsing clients');
+            log.log('Parsing clients');
         }
         for (let i=0;i<parsed.data.length;i++) {
             // If there was an error parsing this row of the CSV,
@@ -907,11 +576,11 @@ function getClientsFromCsv(csvString, config={}) {
                 };
                 const validationResult = validateClient(client);
                 if (validationResult.valid) {
-                    io.log(`Parsed valid client "${client.name}"`);
+                    log.log(`Parsed valid client "${client.name}"`);
                     list.push(client);
                 } else {
                     const errors = validationResult.errors.join(', ');
-                    io.showError(`Row ${toLineNumber(i)} is not a valid client: ${errors}`);
+                    log.showError(`Row ${toLineNumber(i)} is not a valid client: ${errors}`);
                 }
             }
         }
@@ -930,11 +599,11 @@ function getClientsFromCsv(csvString, config={}) {
         // If the number of 'FieldMismatch' errors matches the number of data rows,
         // then the header row probably has the wrong number of columns
         if (numberOfFieldMismatchErrors === parsed.data.length) {
-            io.log('A large number of field mismatch errors were detected. ' +
+            log.log('A large number of field mismatch errors were detected. ' +
             'Make sure that a header with the same number of columns as the rest of the CSV is present.', 'info');
         }
     }
-    io.log(`Parsed ${list.length} valid client(s)`);
+    log.log(`Parsed ${list.length} valid client(s)`);
     return list;
 }
 
@@ -951,17 +620,17 @@ function getClientsFromFile(file) {
         // TODO: Add file load progress
         fileReader.onload = async function (fileLoadedEvent) {
             const text = fileLoadedEvent.target.result;
-            io.setCategory('load_client_list_file');
-            io.log(`Successfully loaded client list file "${file.name}"`);
+            log.setCategory('load_client_list_file');
+            log.log(`Successfully loaded client list file "${file.name}"`);
             resolve(getClientsFromCsv(text));
         }
         fileReader.onerror = function (event) {
-            io.setCategory('load_client_list_file');
-            io.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
+            log.setCategory('load_client_list_file');
+            log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
             reject(new Error(event.target.error));
         }
-        io.setCategory('load_client_list_file');
-        io.log(`Loading client list file "${file.name}"`);
+        log.setCategory('load_client_list_file');
+        log.log(`Loading client list file "${file.name}"`);
         fileReader.readAsText(file, 'UTF-8');
     });
 }
