@@ -10,6 +10,22 @@ browser.runtime.onMessage.addListener((message) => {
                 return;
             }
 
+            // Detect expired password error
+            const loginErrorEl = document.querySelector('#loginAdminForm>p.tablerowhead');
+            if (loginErrorEl) {
+                const errorString = loginErrorEl.innerText;
+                if (errorString) {
+                    let error;
+                    if (errorString.toLowerCase().includes('your password has expired')) {
+                        error = new LoginError("Client's password has expired", 'PasswordExpired');
+                    } else {
+                        error = new LoginError(errorString);
+                    }
+                    resolve({error: errorToJson(error)});
+                    return;
+                }
+            }
+
             const clientEl = document.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(27)>b>label');
             if (clientEl) {
                 const clientInfo = clientEl.innerText;
