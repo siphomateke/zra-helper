@@ -1,13 +1,12 @@
-import {ZraError, LoginError, errorToJson} from '../errors';
+import { errorToJson, LoginError } from '../errors';
 
 browser.runtime.onMessage.addListener((message) => {
     return new Promise((resolve) => {
         if (message.command === 'checkLogin') {
+            // Detect general error
             const errorEl = document.querySelector('.error');
             if (errorEl) {
-                let error = errorEl.innerText ? errorEl.innerText : errorEl.textContent;
-                // TODO: Consider changing this to a LoginError
-                resolve({error: errorToJson(new ZraError(error))});
+                resolve({error: errorToJson(new LoginError(errorEl.textContent))});
                 return;
             }
 
