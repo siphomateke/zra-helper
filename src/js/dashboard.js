@@ -248,10 +248,11 @@ class ClientAction {
     /**
      * Logs in a client and retries if already logged in as another client
      * @param {Client} client 
+     * @param {Task} parentTask
      * @param {number} [maxLogouts=2] 
      */
-    async robustLogin(client, maxLogouts=2) {
-        const task = new Task('Robust login', this.mainTask.id);
+    async robustLogin(client, parentTask, maxLogouts=2) {
+        const task = new Task('Robust login', parentTask.id);
         let logouts = 0;
         try {
             while (logouts < maxLogouts) {
@@ -290,14 +291,16 @@ class ClientAction {
         this.mainTask = new Task(client.name+': '+this.taskName);
         this.mainTask.progress = -1;
         try {
-            // TODO: Treat each of the following statuses as different actions with separate progresses.
-            // Keep in mind that each task may updates it's parent's progress.
             this.mainTask.status = 'Logging in';
-            await this.robustLogin(client);
+            await this.robustLogin(client, this.mainTask);
+
             this.mainTask.status = this.taskName;
-            await this.action(client, this.mainTask, this.output);
+            let task = new Task(this.taskName, this.mainTask.id);
+            await this.action(client, task, this.output);
+
             this.mainTask.status = 'Logging out';
             await logout(this.mainTask);
+
             this.mainTask.state = taskStates.SUCCESS;
             this.mainTask.status = '';
         } catch (error) {
@@ -314,23 +317,23 @@ class ClientAction {
 const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabilities', 'pending_liabilities', 
     /**
      * @param {Client} client
-     * @param {Task} mainTask
+     * @param {Task} parentTask
+     * @param {Output} output
      */
-    (client, mainTask, output) => {
+    (client, parentTask, output) => {
         return new Promise((resolve) => {
             let promises = [];
             /** Total number of pending liabilities including the grand total */
             const numTotals = 4;
             const totals = {};
             log.setCategory('pending_liabilities');
+            parentTask.sequential = false;
             for (const taxTypeId of Object.keys(taxTypes)) {
-                promises.push(new Promise(async (resolve, reject) => {
+                promises.push(new Promise(async (resolve) => {
                     const taxType = taxTypes[taxTypeId];
-                    const task = new Task(`Get ${taxType} totals`, mainTask.id);
+                    const task = new Task(`Get ${taxType} totals`, parentTask.id);
                     task.progress = 0;
                     task.progressMax = 4;
-                    // Failing to retrieve a tax type is not really an error so don't tell our parent task
-                    task.broadcastState = false;
                     task.status = 'Opening tab';
 
                     log.log(`Generating ${taxType} report`);
@@ -416,6 +419,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                 }));
             }
             Promise.all(promises).then(() => {
+                parentTask.state = taskStates.SUCCESS;
                 const rows = [];
                 let i = 0;
                 for (const taxType of Object.values(taxTypes)) {

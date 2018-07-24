@@ -24,14 +24,25 @@ export class Task {
         this.parent = (this.hasParent) ? tasks[this.parentId] : null;
         this.children = [];
         this._status = '';
-
         this._progress = -2;
         this._progressMax = 100;
-        /** Whether this task's state affects its parent's state */
-        this.broadcastState = true;
+        /** 
+         * Whether the maximum progress of this task can be determined.
+         * 
+         * This is used to determine this task's progress from it's sub-tasks
+         * and is thus only used if it has sub-tasks.
+         * 
+         * Only set this to false if the total number of sub-tasks that this 
+         * task can ever have and their maximum progress' are known.
+         * If set to false then `progressMax` must also be set.
+         */
+        this.unknownMaxProgress = true;
+        /**
+         * Whether only one sub-task will be running at a time.
+         */
+        this.sequential = true;
         /** Whether this task will automatically update it's parent progress and status */
         this.autoUpdateParent = true;
-
         this._complete = false;
         // TODO: Use an enum for states
         this._state = '';
@@ -151,6 +162,9 @@ export class Task {
             this.els.subtasksInfo[state].root.hide();
         }
     }
+    /**
+     * Refresh progress based on sub-tasks
+     */
     refresh() {
         let progress = 0;
         let progressMax = 0;
@@ -159,8 +173,6 @@ export class Task {
         const stateCounts = {};
         for (const taskId of this.children) {
             const task = tasks[taskId];
-            progress += task.progress;
-            progressMax += task.progressMax;
             if (task.state) {
                 if (!stateCounts[task.state]) stateCounts[task.state] = 0;
                 stateCounts[task.state]++;
@@ -168,9 +180,24 @@ export class Task {
             if (!task.complete) {
                 complete = false;
             }
+            if (this.unknownMaxProgress) {
+                if (!this.sequential) {
+                    progress += task.progress;
+                    progressMax += task.progressMax;
+                } else if (!task.complete) {
+                    progress = task.progress;
+                    progressMax = task.progressMax;
+                }
+            } else {
+                progress += task.progress;
+            }
         }
-        this.progress = progress;
-        this.progressMax = progressMax;
+        if (!complete) {
+            if (this.unknownMaxProgress) {
+                this.progressMax = progressMax;
+            }
+            this.progress = progress;
+        }
         // Show the number of sub-tasks that have a particular state
         const stateStrings = [];
         for (const state of Object.keys(stateCounts)) {
@@ -180,7 +207,9 @@ export class Task {
         }
         // TODO: Store the state counts and use them to set this
         this.els.subtasksInfo.root.attr('title', stateStrings.join(', '));
-        this.complete = complete;
+        if (complete !== this.complete) {
+            this.complete = complete;
+        }
     }
     get complete() {
         return this._complete;
@@ -219,6 +248,10 @@ export class Task {
             throw new Error(`State must be one of the following: ${Object.values(taskStates).join(', ')}`);
         }
     }
+    /**
+     * Adds a sub-task to this task
+     * @param {number} id The ID of the sub task
+     */
     addChild(id) {
         if (this.children.length === 0) {
             this.els.content.append(this.els.detailsButton);
