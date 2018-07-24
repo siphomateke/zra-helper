@@ -90,8 +90,11 @@ export class Task {
     get status() {
         return this._status;
     }
-    set status(status) {
-        this._status = status;
+    /**
+     * @param {string} value
+     */
+    set status(value) {
+        this._status = value;
         if (this._status) {
             this.els.status.show();
         } else {
@@ -112,8 +115,11 @@ export class Task {
     get progress() {
         return this._progress;
     }
-    set progress(progress)  {
-        this._progress = progress;
+    /**
+     * @param {number} value
+     */
+    set progress(value)  {
+        this._progress = value;
         this.refreshProgress();
 
         if (this.autoUpdateParent && this.hasParent) {
@@ -123,8 +129,11 @@ export class Task {
     get progressMax() {
         return this._progressMax;
     }
-    set progressMax(max) {
-        this._progressMax = max;
+    /**
+     * @param {number} value
+     */
+    set progressMax(value) {
+        this._progressMax = value;
         this.els.progress.attr('max', this._progressMax);
     }
     /**
@@ -176,8 +185,11 @@ export class Task {
     get complete() {
         return this._complete;
     }
-    set complete(complete) {
-        this._complete = complete;
+    /**
+     * @param {boolean} value
+     */
+    set complete(value) {
+        this._complete = value;
         if (this._complete) {
             this.progress = this.progressMax;
             this.els.root.addClass('complete');
@@ -188,9 +200,12 @@ export class Task {
     get state() {
         return this._state;
     }
-    set state(state) {
-        if (Object.values(taskStates).includes(state)) {
-            this._state = state;
+    /**
+     * @param {string} value
+     */
+    set state(value) {
+        if (Object.values(taskStates).includes(value)) {
+            this._state = value;
             this.els.root.removeClass(taskStates.ERROR);
             this.els.root.removeClass(taskStates.SUCCESS);
             if (this._state) {
