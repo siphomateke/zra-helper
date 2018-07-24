@@ -639,22 +639,27 @@ function getClientsFromCsv(csvString, config={}) {
  */
 function getClientsFromFile(file) {
     return new Promise((resolve, reject) => {
-        const fileReader = new FileReader();
-        // TODO: Add file load progress
-        fileReader.onload = async function (fileLoadedEvent) {
-            const text = fileLoadedEvent.target.result;
+        if (file.type === 'text/csv') {
+            const fileReader = new FileReader();
+            // TODO: Add file load progress
+            fileReader.onload = async function (fileLoadedEvent) {
+                const text = fileLoadedEvent.target.result;
+                log.setCategory('load_client_list_file');
+                log.log(`Successfully loaded client list file "${file.name}"`);
+                resolve(getClientsFromCsv(text));
+            }
+            fileReader.onerror = function (event) {
+                log.setCategory('load_client_list_file');
+                log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
+                reject(new Error(event.target.error));
+            }
             log.setCategory('load_client_list_file');
-            log.log(`Successfully loaded client list file "${file.name}"`);
-            resolve(getClientsFromCsv(text));
-        }
-        fileReader.onerror = function (event) {
+            log.log(`Loading client list file "${file.name}"`);
+            fileReader.readAsText(file, 'UTF-8');
+        } else {
             log.setCategory('load_client_list_file');
-            log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
-            reject(new Error(event.target.error));
+            log.showError(`Client list file must be a CSV. Expected MIME type "text/csv" got "${file.type}".`);
         }
-        log.setCategory('load_client_list_file');
-        log.log(`Loading client list file "${file.name}"`);
-        fileReader.readAsText(file, 'UTF-8');
     });
 }
 
