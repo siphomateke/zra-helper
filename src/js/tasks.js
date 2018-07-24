@@ -49,7 +49,7 @@ export class Task {
 
         /** HTML Elements */
         this.els = {
-            root: $(`<div class="task"></div>`),
+            root: $('<div class="task"></div>'),
             content: $('<div class="content"></div>'),
             header: $('<div class="header"></div>'),
             title: $(`<div class="title">${this.title}</div>`),
