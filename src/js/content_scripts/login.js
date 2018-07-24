@@ -1,4 +1,5 @@
-import {ExtendedError, ElementNotFoundError, errorToJson} from '../errors';
+import { ElementNotFoundError, errorToJson } from '../errors';
+import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 
 /**
  * Creates a canvas from a HTML image element
@@ -155,6 +156,15 @@ async function login(client, maxCaptchaRefreshes) {
 browser.runtime.onMessage.addListener(async (message) => {
     if (message.command === 'login') {
         try {
+            const clientInfo = getClientInfo();
+            if (clientInfo) {
+                const foundUsername = usernameInClientInfo(message.client.username, clientInfo);
+                // If we did not find the username in the client info, then another client
+                // is already logged in.
+                if (!foundUsername) {
+                    throw getWrongClientError(clientInfo);
+                }
+            }
             await login(message.client, message.maxCaptchaRefreshes);
             return true;
         } catch (error) {

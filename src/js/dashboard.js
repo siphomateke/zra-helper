@@ -245,6 +245,47 @@ class ClientAction {
         this.output = new Output();
     }
 
+    /**
+     * Logs in a client and retries if already logged in as another client
+     * @param {Client} client 
+     * @param {number} [maxLogouts=2] 
+     */
+    async robustLogin(client, maxLogouts=2) {
+        const task = new Task('Robust login', this.mainTask.id);
+        let logouts = 0;
+        try {
+            while (logouts < maxLogouts) {
+                try {
+                    if (logouts > 0) {
+                        task.status = 'Logging in again';
+                    } else {
+                        task.status = 'Logging in';
+                    }
+                    await login(client, task);
+                    break;
+                } catch (error) {
+                    if (error.type === 'LoginError' && error.code === 'WrongClient') {
+                        log.setCategory('login');
+                        log.showError(error, true);
+                        task.status = 'Logging out';
+                        await logout(task);
+                        logouts++;
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+            task.state = taskStates.SUCCESS;
+            task.status = '';
+        } catch (error) {
+            task.state = taskStates.ERROR;
+            task.status = error.message ? error.message : error.toString();
+            throw error;
+        } finally {
+            task.complete = true;
+        }
+    }
+
     async run(client) {
         this.mainTask = new Task(client.name+': '+this.taskName);
         this.mainTask.progress = -1;
@@ -252,21 +293,7 @@ class ClientAction {
             // TODO: Treat each of the following statuses as different actions with separate progresses.
             // Keep in mind that each task may updates it's parent's progress.
             this.mainTask.status = 'Logging in';
-            try {
-                await login(client, this.mainTask);
-            } catch (error) {
-                if (error.type === 'LoginError' && error.code === 'WrongClient') {
-                    // TODO: Move this to login()
-                    log.setCategory(this.logCategory);
-                    log.showError(error, true);
-                    this.mainTask.status = 'Logging out';
-                    await logout(this.mainTask);
-                    this.mainTask.status = 'Logging in again';
-                    await login(client, this.mainTask,);
-                } else {
-                    throw error;
-                }
-            }
+            await this.robustLogin(client);
             this.mainTask.status = this.taskName;
             await this.action(client, this.mainTask, this.output);
             this.mainTask.status = 'Logging out';

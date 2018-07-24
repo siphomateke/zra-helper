@@ -1,4 +1,5 @@
 import { errorToJson, LoginError } from '../errors';
+import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 
 browser.runtime.onMessage.addListener((message) => {
     return new Promise((resolve) => {
@@ -26,19 +27,20 @@ browser.runtime.onMessage.addListener((message) => {
                 }
             }
 
-            const clientEl = document.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(27)>b>label');
-            if (clientEl) {
-                const clientInfo = clientEl.innerText;
-                const foundUsername = clientInfo.indexOf(message.client.username) > -1;
+            const clientInfo = getClientInfo();
+            if (clientInfo) {
+                const foundUsername = usernameInClientInfo(message.client.username, clientInfo);
+                // If we did not find the username in the client info, then another client
+                // is already logged in.
                 if (foundUsername) {
-                    // If we found the username in the client info, then we have successfully logged in
                     resolve({error: null});
                     return;
                 } else {
-                    resolve({error: errorToJson(new LoginError(`Still logged in as another client "${clientInfo}"`, 'WrongClient'))});
+                    resolve({error: errorToJson(getWrongClientError(clientInfo))});
                     return;
                 }
             }
+            // TODO: log no client info error
 
             resolve({error: errorToJson(new LoginError('Unknown error logging in'))});
         }
