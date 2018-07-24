@@ -12,8 +12,11 @@ const entry = {
 }
 
 for (const file of contentScripts) {
-    const filename = path.basename(file, path.extname(file));
-    entry['content_scripts/'+filename] = utils.resolve(contentScriptsPath + '/' + file);
+    const ext = path.extname(file);
+    if (ext === '.js') {
+        const filename = path.basename(file, ext);
+        entry['content_scripts/'+filename] = utils.resolve(contentScriptsPath + '/' + file);
+    }
 }
 
 module.exports = {
