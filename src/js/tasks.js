@@ -15,6 +15,7 @@ export const taskStates = {
     WARNING: 'warning',
 }
 
+// TODO: Add helper method to set error as status
 export class Task {
     constructor(title, parentId=null) {
         this.title = title;

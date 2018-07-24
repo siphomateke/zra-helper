@@ -172,7 +172,7 @@ async function login(client, parentTask) {
         }
     } catch (error) {
         task.state = taskStates.ERROR;
-        task.status = error.message;
+        task.status = error.message ? error.message : error.toString();
         throw error;
     } finally {
         task.complete = true;
@@ -209,7 +209,7 @@ async function logout(parentTask) {
         }
     } catch (error) {
         task.state = taskStates.ERROR;
-        task.status = error.message;
+        task.status = error.message ? error.message : error.toString();
         throw error;
     } finally {
         task.complete = true;
@@ -275,9 +275,9 @@ class ClientAction {
             this.mainTask.status = '';
         } catch (error) {
             log.setCategory(this.logCategory);
-            log.showError(error.message);
+            log.showError(error);
             this.mainTask.state = taskStates.ERROR;
-            this.mainTask.status = '';
+            this.mainTask.status = error.message ? error.message : error.toString();
         } finally {
             this.mainTask.complete = true;
         }
