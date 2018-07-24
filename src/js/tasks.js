@@ -47,7 +47,7 @@ export class Task {
             status: $('<div class="status"></div>'),
             progress: $(`<progress value="${this._progress}" max="${this._progressMax}"></progress>`),
             // TODO: Improve details button
-            detailsButton: $('<button type="button" class="open-details"><i class="fa fa-caret-right closed-icon"></i><i class="fa fa-caret-down open-icon"></i>Details</button>'),
+            detailsButton: $('<button type="button" class="open-details"><i class="icon fa fa-caret-right closed-icon"></i><i class="icon fa fa-caret-down open-icon"></i>Details</button>'),
         };
 
         for (const state of Object.values(taskStates)) {
@@ -57,17 +57,15 @@ export class Task {
         }
 
         if (this.hasParent) {
-            /* this.els.root.removeClass('task'); */
             this.els.root.addClass('sub-task');
             const parentEl = this.parent.els.root;
-            let subTasks = parentEl.find('.sub-tasks');
+            let subTasks = parentEl.children('.sub-tasks');
             if (!subTasks.length) {
                 subTasks = $('<div class="sub-tasks"></div>')
                 parentEl.append(subTasks);
             }
 
             subTasks.append(this.els.root);
-            this.parent.els.detailsButton.show();
         } else {
             $('.tasks').append(this.els.root);
         }
@@ -77,10 +75,6 @@ export class Task {
         this.els.content.append(this.els.header);
         this.els.content.append(this.els.progress);
         this.els.content.append(this.els.status);
-        if (!this.hasParent) {
-            this.els.content.append(this.els.detailsButton);
-            this.els.detailsButton.hide();
-        }
 
         this.els.root.append(this.els.content);
 
@@ -148,15 +142,15 @@ export class Task {
         }
     }
     refresh() {
-        this.progress = 0;
-        this.progressMax = 0;
+        let progress = 0;
+        let progressMax = 0;
         let complete = true;
         // Get the number of sub tasks that have a particular state
         const stateCounts = {};
         for (const taskId of this.children) {
             const task = tasks[taskId];
-            this.progress += task.progress;
-            this.progressMax += task.progressMax;
+            progress += task.progress;
+            progressMax += task.progressMax;
             if (task.state) {
                 if (!stateCounts[task.state]) stateCounts[task.state] = 0;
                 stateCounts[task.state]++;
@@ -165,6 +159,8 @@ export class Task {
                 complete = false;
             }
         }
+        this.progress = progress;
+        this.progressMax = progressMax;
         // Show the number of sub-tasks that have a particular state
         const stateStrings = [];
         for (const state of Object.keys(stateCounts)) {
@@ -208,6 +204,9 @@ export class Task {
         }
     }
     addChild(id) {
+        if (this.children.length === 0) {
+            this.els.content.append(this.els.detailsButton);
+        }
         this.children.push(id);
     }
     /**

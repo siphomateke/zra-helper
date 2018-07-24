@@ -143,18 +143,20 @@ button {
 
 /* TODO: Use color variables */
 
-.task {
-    background: rgb(245, 245, 245);
-    border: 1px solid rgb(139, 139, 139);
-    border-radius: 3px;
-    border-left-width: 5px;
-    padding: 1em;
+$taskBorderWidth: 1px;
+$taskBorderRadius: 3px;
 
+.task {
     &:not(:last-child) {
         margin-bottom: 1em;
     }
 
     & > .content {
+        background: rgb(245, 245, 245);
+        border: $taskBorderWidth solid rgb(139, 139, 139);
+        border-radius: $taskBorderRadius;
+        border-left-width: 5px;
+        padding: 0.5em;
         .header {
             display: flex;
             .title {
@@ -166,6 +168,7 @@ button {
             .subtasks-info {
                 margin-left: auto;
                 display: flex;
+                white-space: nowrap;
                 .item:not(:last-child) {
                     padding-right: 1em;
                 }
@@ -187,99 +190,85 @@ button {
         progress {
             width: 100%;
         }
+
+        .open-details .icon {
+            white-space: nowrap;
+            padding-right: 0.5em;
+            &.closed-icon {
+                display: inline-block;
+            }
+            &.open-icon {
+                display: none;
+            }
+        }
     }
 
-    &.error {
+    &.error > .content {
         border-color: #ff3860;
         color: #cd0930;
         background-color: #fff5f7;
     }
     
-    &.success {
+    &.success > .content {
         border-color: #23d160;
         color: #0e301a;
         background-color: #f6fef9;
     }
 
-    &.complete progress {
+    &.complete > .content progress {
         display: none;
     }
 
-    .closed-icon {
-        display: inline-block;
-    }
-
-    .open-icon {
+    & > .sub-tasks {
         display: none;
+        background: #eee;
+        padding: 1em;
+        border: 1px solid #bdbdbd;
     }
 
     &.open {
-        .closed-icon {
-            display: none;
-        }
-        
-        .open-icon {
-            display: inline-block;
+        & > .content {
+            border-bottom-width: 0;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+
+            .open-details .icon {
+                &.closed-icon {
+                    display: none;
+                }
+                &.open-icon {
+                    display: inline-block;
+                }
+            }
         }
 
         & > .sub-tasks {
             display: block;
         }
     }
-
-    & > .sub-tasks {
-        margin-top: 1em;
-        background: #fff;
-        border: 1px solid rgb(172, 172, 172);
-        display: none;
-    }
 }
 
 .sub-task {
-    padding: 0.5em;
-    border: none;
-    border-radius: 0;
-    color: #000;
-
+    margin-bottom: 0;
     &:not(:last-child) {
-        border-bottom: 1px solid rgba(172, 172, 172, 0.5);
+        // Override .task
         margin-bottom: 0;
     }
-
-    &.error {
-        border-color: #8a0721;
-        color: #fff;
-        background-color: #cd0930;
-    }
     
-    &.success {
-        border-color: #00aa25;
-        color: #fff;
-        background-color: #00be29;
+    & > .content {
+        border-radius: 0;
+        border-bottom-width: 0;
     }
-
-    &.complete progress {
-        
-    }
-
-    &.compact .content {
-        padding: 0.2em;
-        padding-left: 0.85em;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-    
-        .title {
-            white-space: nowrap;
+    &:not(.open) {
+        &:last-child > .content {
+            border-bottom-width: $taskBorderWidth;
+            border-bottom-left-radius: $taskBorderRadius;
+            border-bottom-right-radius: $taskBorderRadius;
         }
-        
-        .status {
-            display: none;
-        }
-        
-        progress {
-            max-width: 85%;
-            margin-left: auto;
+        &:first-child > .content {
+            border-top-width: $taskBorderWidth;
+            border-top-left-radius: $taskBorderRadius;
+            border-top-right-radius: $taskBorderRadius;
         }
     }
 }
