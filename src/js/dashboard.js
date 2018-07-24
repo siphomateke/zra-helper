@@ -4,8 +4,6 @@ import {errorFromJson} from './errors';
 import {taskStates, Task} from './tasks';
 import {log} from './log';
 
-const debug = false;
-
 const taxTypes = {
     '01': 'ITX',
     '02': 'VAT',
@@ -276,9 +274,6 @@ class ClientAction {
             this.mainTask.state = taskStates.SUCCESS;
             this.mainTask.status = '';
         } catch (error) {
-            if (debug) {
-                console.error(error);
-            }
             log.setCategory(this.logCategory);
             log.showError(error.message);
             this.mainTask.state = taskStates.ERROR;
@@ -367,9 +362,6 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                             log.log(`Finished generating ${taxType} report`);
                         }
                     } catch (error) {
-                        if (debug) {
-                            console.error(error);
-                        }
                         resolve();
                         let status = '';
                         if (error.type === 'TaxTypeNotFound') {

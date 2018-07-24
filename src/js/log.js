@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import { debug } from './config';
 
 class Log {
     constructor() {
@@ -90,6 +91,9 @@ class Log {
             errorString = 'Error: '+error;
         }
         this.log(errorString, warning ? 'warning' : 'error');
+        if (debug && error instanceof Error) {
+            console.error(error);
+        }
     }
 }
 
