@@ -2,6 +2,19 @@
 $errorColor: red;
 $successColor: #23d160;
 $warningColor: hsl(39, 100%, 58%);
+$infoColor: hsl(221, 100%, 37%);
+$stateColors: (
+    'error': $errorColor,
+    'success': $successColor,
+    'warning': $warningColor,
+    'info': $infoColor,
+);
+
+$taskColors: (
+    'error': $errorColor,
+    'success': $successColor,
+    'warning': $warningColor,
+);
 
 body {
     font-family: "Open Sans",arial,x-locale-body,sans-serif;
@@ -41,6 +54,12 @@ button {
         Messages
 *********************/
 
+@mixin messageState($color) {
+    border-color: $color;
+    color: darken($color, 20%);
+    background-color: lighten($color, 50%);
+}
+
 .message {
     border: 1px solid;
     border-radius: 4px;
@@ -51,17 +70,11 @@ button {
     &:not(:last-child) {
         margin-bottom: 1.5rem;
     }
-    
-    &.error {
-        border-color: #ff3860;
-        color: #cd0930;
-        background-color: #fff5f7;
-    }
-    
-    &.success {
-        border-color: #23d160;
-        color: #0e301a;
-        background-color: #f6fef9;
+
+    @each $state, $color in $stateColors {
+        &.#{$state} {
+            @include messageState($color);
+        }
     }
 }
 
@@ -108,7 +121,7 @@ button {
             }
         
             &.info {
-                @include logColoredLine(hsl(221, 100%, 18%), hsl(231, 100%, 98%), hsl(231, 100%, 88%), hsl(221, 100%, 37%));
+                @include logColoredLine(hsl(221, 100%, 18%), hsl(231, 100%, 98%), hsl(231, 100%, 88%), $infoColor);
             }
 
             & > .cell {
@@ -140,8 +153,6 @@ button {
 /********************
         Tasks
 *********************/
-
-/* TODO: Use color variables */
 
 $taskBorderWidth: 1px;
 $taskBorderRadius: 3px;
@@ -175,14 +186,10 @@ $taskBorderRadius: 3px;
                 .icon {
                     padding-right: 0.2em;
                 }
-                .error .icon {
-                    color: $errorColor;
-                }
-                .warning .icon {
-                    color: $warningColor;
-                }
-                .success .icon {
-                    color: $successColor;
+                @each $state, $color in $taskColors {
+                    .#{$state} .icon {
+                        color: $color;
+                    }
                 }
             }
         }
@@ -203,16 +210,14 @@ $taskBorderRadius: 3px;
         }
     }
 
-    &.error > .content {
-        border-color: #ff3860;
-        color: #cd0930;
-        background-color: #fff5f7;
+    @mixin taskState($color) {
+        @include messageState($color);
     }
     
-    &.success > .content {
-        border-color: #23d160;
-        color: #0e301a;
-        background-color: #f6fef9;
+    @each $state, $color in $taskColors {
+        &.#{$state} > .content {
+            @include taskState($color);
+        }
     }
 
     &.complete > .content progress {
