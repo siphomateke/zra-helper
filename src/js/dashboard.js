@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import Papa from 'papaparse';
 import {errorFromJson} from './errors';
 import {taskStates, Task} from './tasks';

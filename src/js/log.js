@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import { debug } from './config';
 
 class Log {

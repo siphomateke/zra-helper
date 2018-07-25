@@ -1,4 +1,5 @@
 const gulp = require('gulp');
+const runSequence = require('run-sequence');
 const del = require('del');
 const sass = require('gulp-sass');
 const merge2 = require('merge2');
@@ -6,6 +7,8 @@ const concat = require('gulp-concat');
 const webpack = require('webpack');
 const webpackDevConfig = require('./build/webpack.dev.conf.js');
 const webpackProdConfig = require('./build/webpack.prod.conf.js');
+const semanticWatch = require('./vendor/semantic/tasks/watch');
+const semanticBuild = require('./vendor/semantic/tasks/build');
 
 let config = {
     dir: {
@@ -30,20 +33,17 @@ config.copy = [{
     ],
 }, {
     from: [
-        'node_modules/font-awesome/css/font-awesome.min.css',
         'node_modules/ocrad.js/ocrad.js',
+        'node_modules/jquery/dist/jquery.min.js',
     ],
     to: 'vendor',
-}, {
-    from: 'node_modules/font-awesome/fonts/**/*',
-    to: 'fonts',
 }, {
     from: 'static/**/*',
     to: '',
 }];
 
 gulp.task('clean', function () {
-    return del([config.dir.dest+'/**/*']);
+    return del([config.dir.dest+'/**/*', '!'+config.dir.dest+'/vendor/semantic']);
 });
 
 gulp.task('copy', function () {
@@ -69,13 +69,13 @@ gulp.task('copy', function () {
     return merge2(tasks);
 });
 
-gulp.task('build:styles', function () {
+gulp.task('build:styles', function (done) {
     let tasks = [];
     for (const name of Object.keys(config.sass.entries)) {
-        let stream = gulp.src(config.sass.entries[name]);
-        stream.pipe(sass({includePaths: ['node_modules/']}).on('error', sass.logError))
-              .pipe(concat(name+'.css'))
-              .pipe(gulp.dest(config.dir.dest+'/'+config.sass.output));
+        let stream = gulp.src(config.sass.entries[name])
+            .pipe(sass({includePaths: ['node_modules/']}).on('error', sass.logError))
+            .pipe(concat(name+'.css'))
+            .pipe(gulp.dest(config.dir.dest+'/'+config.sass.output));
         tasks.push(stream);
     }
     return merge2(tasks);
@@ -93,8 +93,10 @@ gulp.task('build:scripts', function (done) {
     });
 });
 
+gulp.task('build:ui', semanticBuild);
+
 gulp.task('watch:styles', function() {
-    gulp.watch(config.dir.src+'/**/*.scss', gulp.task('build:styles'));
+    return gulp.watch(config.dir.src+'/**/*.scss', ['build:styles']);
 });
 
 gulp.task('watch:js', function() {
@@ -108,17 +110,24 @@ gulp.task('watch:markup', function() {
             for (const pattern of copy.watch) {
                 watch.push(config.dir.src+'/'+pattern);
             }
-            gulp.watch(watch, gulp.task('copy'));
+            gulp.watch(watch, ['copy']);
         }
     }
 });
 
-gulp.task('watch', gulp.parallel([
+gulp.task('watch:ui', semanticWatch);
+
+gulp.task('watch', [
     'watch:styles',
     'watch:markup',
     'watch:js',
-]));
+    'watch:ui'
+]);
 
-gulp.task('build', gulp.series('clean', 'copy', 'build:styles', 'build:scripts'));
+gulp.task('build', function (done) {
+    runSequence('clean', ['copy', 'build:styles', 'build:scripts', 'build:ui'], done);
+});
 
-gulp.task('default', gulp.series('build', 'watch'));
+gulp.task('default', function (done) {
+    runSequence('build', 'watch', done);
+});

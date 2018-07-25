@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 /** @type {Object.<string, Task>} */
 const tasks = {};
 let lastTaskId = 0;

@@ -1,3 +1,9 @@
 node_modules
 .vs
 dist
+semantic/tasks
+semantic/gulpfile.js
+semantic/src/definitions
+semantic/src/semantic.less
+semantic/src/theme.less
+semantic/src/themes

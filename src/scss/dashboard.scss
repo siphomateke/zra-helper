@@ -16,17 +16,6 @@ $taskColors: (
     'warning': $warningColor,
 );
 
-body {
-    font-family: "Open Sans",arial,x-locale-body,sans-serif;
-    line-height: 1.5;
-}
-
-.container {
-    padding: 10px;
-    margin: 0 auto;
-    max-width: 1000px;
-}
-
 .hidden {
     display: none;
 }
@@ -34,17 +23,6 @@ body {
 /********************
         Buttons
 *********************/
-
-button {
-    cursor: pointer;
-}
-
-.zra-action {
-    padding: 10px;
-    font-size: 1rem;
-    font-weight: 600;
-    margin-right: 0.3em;
-}
 
 .actions {
     margin-bottom: 1em;

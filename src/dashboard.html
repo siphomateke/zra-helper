@@ -6,18 +6,15 @@
     <title>ZRA Helper | Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" media="screen" href="css/dashboard.css" />
-    <link rel="stylesheet" href="vendor/font-awesome.min.css">
+    <link rel="stylesheet" href="vendor/semantic/semantic.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>ZRA Helper</h1>
-        <form>
-            <label for="clientListInput">Client List</label>
-            <input id="clientListInput" type="file">
+    <div class="ui container">
+        <h1 class="ui header">ZRA Helper</h1>
         </form>
         <h2>Actions</h2>
         <div class="actions">
-            <button type="button" class="zra-action" id="get-all-pending-liabilities">Get All Pending Liabilities</button>
+            <button type="button" class="ui button zra-action" id="get-all-pending-liabilities">Get All Pending Liabilities</button>
         </div>
         <div id="log-wrapper" class="hidden">
             <h2>Log</h2>
@@ -30,6 +27,8 @@
         <h2>Output</h2>
         <textarea id="output" rows="7"></textarea>
     </div>
+    <script src="vendor/jquery.min.js"></script>
+    <script src="vendor/semantic/semantic.min.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>
