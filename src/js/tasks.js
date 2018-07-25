@@ -169,7 +169,8 @@ export class Task {
         let progress = 0;
         let progressMax = 0;
         let complete = true;
-        // Get the number of sub tasks that have a particular state
+        // Get the number of sub tasks that have a particular state and
+        // calculate progress and progressMax from sub tasks
         const stateCounts = {};
         for (const taskId of this.children) {
             const task = tasks[taskId];
@@ -181,12 +182,16 @@ export class Task {
                 complete = false;
             }
             if (this.unknownMaxProgress) {
+                // If task execution sequential, change this tasks maximum 
+                // and total progress on the fly.
                 if (!this.sequential) {
                     progress += task.progress;
                     progressMax += task.progressMax;
+                // Otherwise, use the first uncompleted task as the current task.
                 } else if (!task.complete) {
                     progress = task.progress;
                     progressMax = task.progressMax;
+                    break;
                 }
             } else {
                 progress += task.progress;
