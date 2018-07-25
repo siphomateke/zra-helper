@@ -21,13 +21,9 @@ let config = {
 };
 
 config.copy = [{
-    watch: ['**/*.html', '**/*.js'],
-    from: config.dir.src+'/**',
+    watch: ['**/*.html'],
+    from: config.dir.src+'/**/*.html',
     to: '',
-    ignore: [
-        config.dir.src+'/{scss,scss/**}',
-        config.dir.src+'/{js,js/**}',
-    ],
 }, {
     from: [
         'node_modules/font-awesome/css/font-awesome.min.css',
