@@ -81,13 +81,26 @@ gulp.task('build:styles', function () {
     return merge2(tasks);
 });
 
+const webpackConfig = process.env.NODE_ENV === 'production' ? webpackProdConfig : webpackDevConfig;
+const webpackCompiler = webpack(webpackConfig);
+/** @type {webpack.Stats.ToStringOptions} */
+const webpackStatsOptions = {
+    colors: true,
+    assets: true,
+    chunks: false,
+    entrypoints: false,
+    modules: false,
+    version: false,
+    builtAt: false,
+    hash: false,
+};
+
 gulp.task('build:scripts', function (done) {
-    let webpackConfig = process.env.NODE_ENV === 'production' ? webpackProdConfig : webpackDevConfig;
-    webpack(webpackConfig).run((err, stats) => {
+    webpackCompiler.run((err, stats) => {
         if (err || stats.hasErrors()) {
             done(err);
         } else {
-            console.log(stats.toString({colors: true}));
+            console.log(stats.toString(webpackStatsOptions));
             done();
         }
     });
@@ -98,7 +111,11 @@ gulp.task('watch:styles', function() {
 });
 
 gulp.task('watch:js', function() {
-    gulp.watch(config.dir.src+'/**/*.js', gulp.task('build:scripts'));
+    webpackCompiler.watch({
+        ignored: /node_modules/
+    }, (err, stats) => {
+        console.log(stats.toString(webpackStatsOptions));
+    });
 });
 
 gulp.task('watch:markup', function() {
