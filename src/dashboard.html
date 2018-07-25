@@ -6,30 +6,65 @@
     <title>ZRA Helper | Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" media="screen" href="css/dashboard.css" />
-    <link rel="stylesheet" href="vendor/font-awesome.min.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>ZRA Helper</h1>
-        <form>
-            <label for="clientListInput">Client List</label>
-            <input id="clientListInput" type="file">
-        </form>
-        <h2>Actions</h2>
-        <div class="actions">
-            <button type="button" class="zra-action" id="get-all-pending-liabilities">Get All Pending Liabilities</button>
-        </div>
-        <div id="log-wrapper" class="hidden">
-            <h2>Log</h2>
-            <div class="log">
-                <div class="log-inner"></div>
+    <section class="hero is-primary is-bold is-small">
+        <div class="hero-body">
+            <div class="container">
+            <h1 class="title">
+                ZRA Helper
+            </h1>
+            <h2 class="subtitle">
+                Dashboard
+            </h2>
             </div>
         </div>
-        <h2>Tasks</h2>
-        <div class="tasks"></div>
-        <h2>Output</h2>
-        <textarea id="output" rows="7"></textarea>
-    </div>
+    </section>
+    <section class="section">
+        <div class="container">
+            <form>
+                <div class="field">
+                    <div class="label">
+                        Client list file
+                    </div>
+                    <div class="control">
+                        <div class="file">
+                            <label class="file-label">
+                                <input class="file-input" type="file" name="clientList">
+                                <span class="file-cta">
+                                    <span class="file-icon">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    <span class="file-label">
+                                        Browse...
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+    <section>
+        <div class="container">
+            <h2 class="title is-2">Actions</h2>
+            <div class="actions">
+                <button type="button" class="button zra-action" id="get-all-pending-liabilities">Get All Pending Liabilities</button>
+            </div>
+            <div id="log-wrapper" class="hidden">
+                <h2 class="title is-2">Log</h2>
+                <div class="log">
+                    <div class="log-inner"></div>
+                </div>
+            </div>
+            <h2 class="title is-2">Tasks</h2>
+            <div class="tasks"></div>
+            <h2 class="title is-2">Output</h2>
+            <textarea id="output" rows="7"></textarea>
+        </div>
+    </section>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

@@ -26,13 +26,15 @@ config.copy = [{
     to: '',
 }, {
     from: [
-        'node_modules/font-awesome/css/font-awesome.min.css',
         'node_modules/ocrad.js/ocrad.js',
     ],
     to: 'vendor',
 }, {
-    from: 'node_modules/font-awesome/fonts/**/*',
-    to: 'fonts',
+    from: 'node_modules/@fortawesome/fontawesome-free/css/all.min.css',
+    to: 'vendor/fontawesome/css',
+}, {
+    from: 'node_modules/@fortawesome/fontawesome-free/webfonts/**/*',
+    to: 'vendor/fontawesome/webfonts',
 }, {
     from: 'static/**/*',
     to: '',

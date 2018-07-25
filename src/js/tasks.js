@@ -54,12 +54,12 @@ export class Task {
             header: $('<div class="header"></div>'),
             title: $(`<div class="title">${this.title}</div>`),
             subtasksInfo: {
-                root: $('<div class="subtasks-info"><span class="hidden item error"><i class="fa icon fa-exclamation-circle"></i> <span class=count></span> </span><span class="hidden item warning"><i class="fa icon fa-exclamation-triangle"></i> <span class=count></span> </span><span class="hidden item success"><i class="fa icon fa-check-circle"></i> <span class=count></span></span></div>'),
+                root: $('<div class="subtasks-info"><span class="hidden item error"><i class="fas icon fa-exclamation-circle"></i> <span class=count></span> </span><span class="hidden item warning"><i class="fas icon fa-exclamation-triangle"></i> <span class=count></span> </span><span class="hidden item success"><i class="fas icon fa-check-circle"></i> <span class=count></span></span></div>'),
             },
             status: $('<div class="status"></div>'),
             progress: $(`<progress value="${this._progress}" max="${this._progressMax}"></progress>`),
             // TODO: Improve details button
-            detailsButton: $('<button type="button" class="open-details"><i class="icon fa fa-caret-right closed-icon"></i><i class="icon fa fa-caret-down open-icon"></i>Details</button>'),
+            detailsButton: $('<button type="button" class="open-details"><i class="icon fas fa-caret-right closed-icon"></i><i class="icon fas fa-caret-down open-icon"></i>Details</button>'),
         };
 
         for (const state of Object.values(taskStates)) {
