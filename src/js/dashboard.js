@@ -249,32 +249,34 @@ class ClientAction {
      * Logs in a client and retries if already logged in as another client
      * @param {Client} client 
      * @param {Task} parentTask
-     * @param {number} [maxLogouts=2] 
+     * @param {number} [maxAttempts=2] 
      */
-    async robustLogin(client, parentTask, maxLogouts=2) {
+    async robustLogin(client, parentTask, maxAttempts=2) {
         const task = new Task('Robust login', parentTask.id);
-        let logouts = 0;
+        let attempts = 0;
+        let run = true;
         try {
-            while (logouts < maxLogouts) {
+            while (run) {
                 try {
-                    if (logouts > 0) {
+                    if (attempts > 0) {
                         task.status = 'Logging in again';
                     } else {
                         task.status = 'Logging in';
                     }
                     await login(client, task);
-                    break;
+                    run = false;
                 } catch (error) {
-                    if (error.type === 'LoginError' && error.code === 'WrongClient') {
+                    if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts < maxAttempts) {
                         log.setCategory('login');
                         log.showError(error, true);
                         task.status = 'Logging out';
                         await logout(task);
-                        logouts++;
+                        run = true;
                     } else {
                         throw error;
                     }
                 }
+                attempts++;
             }
             task.state = taskStates.SUCCESS;
             task.status = '';
