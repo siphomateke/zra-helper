@@ -32,8 +32,8 @@ class Log {
             now.getSeconds(),
         ];
         times = times.map(val => val.toString().padStart(2, '0'));
-        times.push(now.getMilliseconds().toString().padStart(3,'0'));
         let time = times.join(':');
+        time = time + '.' + now.getMilliseconds().toString().padStart(3,'0');
         let timestamp = `${date} ${time}`;
 
         let text = this.category+': '+value;
