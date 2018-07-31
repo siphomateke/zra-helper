@@ -1,5 +1,6 @@
-import { ElementNotFoundError, errorToJson, CaptchaLoadError } from '../errors';
+import { errorToJson, CaptchaLoadError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
+import { getElements, getElement } from './helpers/elements';
 
 /**
  * Creates a canvas from a HTML image element
@@ -47,16 +48,11 @@ function getCaptcha(imageElement, scale = 2) {
 /**
  * Requests a new captcha
  * 
- * @throws {ElementNotFoundError}
+ * @throws {import('../errors').ElementNotFoundError}
  */
 function refreshCaptcha() {
-    let selector = '#loginForm a[href="javaScript:refreshCaptchaImage()"]';
-    let refreshCaptchaButton = document.querySelector(selector);
-    if (refreshCaptchaButton) {
-        refreshCaptchaButton.click();
-    } else {
-        throw new ElementNotFoundError('Refresh captcha button not found', 'RefreshCaptchaButtonNotFound');
-    }
+    const refreshCaptchaButton = getElement('#loginForm a[href="javaScript:refreshCaptchaImage()"]', 'refresh captcha button');
+    refreshCaptchaButton.click();
 }
 
 /**
@@ -97,11 +93,11 @@ const commonIncorrectCharacters = [
  * 
  * @param {import('../dashboard').Client} client The client whose account to login to
  * @param {number} maxCaptchaRefreshes The maximum number of times that a new captcha will be loaded if the OCR fails
- * @throws {ElementNotFoundError}
+ * @throws {import('../errors').ElementsNotFoundError}
  */
 async function login(client, maxCaptchaRefreshes) {
     // Get required elements and check if any are missing
-    let elementSelectors = {
+    let selectors = {
         username: '#userName',
         password: '#xxZTT9p2wQ',
         // Note: the ZRA website misspelled captcha
@@ -109,52 +105,41 @@ async function login(client, maxCaptchaRefreshes) {
         submitButton: '#submitButton',
         captchaImage: '#captchaImage',
     }
-    let missingElements = [];
-    let els = {};
-    for (const name of Object.keys(elementSelectors)) {
-        els[name] = document.querySelector(elementSelectors[name]);
-        if (!els[name]) {
-            missingElements.push(name);
+    const els = getElements(selectors, 'Failed to find the following elements in the login form: $1.');
+
+    // Enter the username and password
+    els.username.value = client.username;
+    els.password.value = client.password;
+
+    // Solve captcha
+    let answer = null;
+    let refreshes = 0;
+    while (refreshes < maxCaptchaRefreshes) {
+        const captcha = await getCaptcha(els.captchaImage);
+        let captchaText = OCRAD(captcha);
+        answer = solveCaptcha(captchaText);
+
+        // If captcha reading failed, try again with common recognition errors fixed.
+        let newText = '';
+        if (isNaN(answer)) {
+            newText = captchaText;
+            for (const error of commonIncorrectCharacters) {
+                newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
+            }
+            answer = solveCaptcha(newText);
+        }
+
+        // If captcha reading still failed, try again with a new one.
+        if (isNaN(answer)) {
+            refreshCaptcha();
+            refreshes++;
+        } else {
+            break;
         }
     }
+    els.captchaInput.value = answer;
 
-    if (missingElements.length === 0) {
-        // Enter the username and password
-        els.username.value = client.username;
-        els.password.value = client.password;
-    
-        // Solve captcha
-        let answer = null;
-        let refreshes = 0;
-        while (refreshes < maxCaptchaRefreshes) {
-            const captcha = await getCaptcha(els.captchaImage);
-            let captchaText = OCRAD(captcha);
-            answer = solveCaptcha(captchaText);
-
-            // If captcha reading failed, try again with common recognition errors fixed.
-            let newText = '';
-            if (isNaN(answer)) {
-                newText = captchaText;
-                for (const error of commonIncorrectCharacters) {
-                    newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
-                }
-                answer = solveCaptcha(newText);
-            }
-
-            // If captcha reading still failed, try again with a new one.
-            if (isNaN(answer)) {
-                refreshCaptcha();
-                refreshes++;
-            } else {
-                break;
-            }
-        }
-        els.captchaInput.value = answer;
-
-        els.submitButton.click();
-    } else {
-        throw new ElementNotFoundError(`Elements missing from login form: [${missingElements.join(', ')}]`);
-    }
+    els.submitButton.click();
 }
 
 browser.runtime.onMessage.addListener(async (message) => {
@@ -172,9 +157,7 @@ browser.runtime.onMessage.addListener(async (message) => {
             await login(message.client, message.maxCaptchaRefreshes);
             return true;
         } catch (error) {
-            return {
-                error: errorToJson(error),
-            };
+            return {error: errorToJson(error)};
         }
     }
 });

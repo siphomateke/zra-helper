@@ -32,8 +32,10 @@ export function usernameInClientInfo(username, clientInfo) {
 /**
  * Creates a WrongClient error.
  * @param {ClientInfo} clientInfo Currently logged in client's information.
- * @return {LoginError}
+ * @returns {LoginError}
  */
 export function getWrongClientError(clientInfo) {
-    return new LoginError(`Still logged in as another client "${clientInfo}"`, 'WrongClient');
+    return new LoginError(`Still logged in as another client "${clientInfo}"`, 'WrongClient', {
+        loggedInClient: clientInfo,
+    });
 }

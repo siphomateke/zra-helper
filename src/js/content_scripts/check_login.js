@@ -7,7 +7,11 @@ browser.runtime.onMessage.addListener((message) => {
             // Detect general error
             const errorEl = document.querySelector('.error');
             if (errorEl) {
-                resolve({error: errorToJson(new LoginError(errorEl.textContent))});
+                resolve({
+                    error: errorToJson(new LoginError(errorEl.textContent, null, {
+                        clientName: message.client.username,
+                    }))
+                });
                 return;
             }
 
@@ -18,9 +22,13 @@ browser.runtime.onMessage.addListener((message) => {
                 if (errorString) {
                     let error;
                     if (errorString.toLowerCase().includes('your password has expired')) {
-                        error = new LoginError("Client's password has expired", 'PasswordExpired');
+                        error = new LoginError("Client's password has expired", 'PasswordExpired', {
+                            clientName: message.client.username,
+                        });
                     } else {
-                        error = new LoginError(errorString);
+                        error = new LoginError(errorString, null, {
+                            clientName: message.client.username,
+                        });
                     }
                     resolve({error: errorToJson(error)});
                     return;
@@ -42,7 +50,9 @@ browser.runtime.onMessage.addListener((message) => {
             }
             // TODO: log no client info error
 
-            resolve({error: errorToJson(new LoginError('Unknown error logging in'))});
+            resolve({error: errorToJson(new LoginError('Unknown error logging in', null, {
+                clientName: message.client.username
+            }))});
         }
     });
 });

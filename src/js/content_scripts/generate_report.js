@@ -1,4 +1,5 @@
 import {ZraError, TaxTypeNotFoundError, errorToJson} from '../errors.js';
+import { getElement } from './helpers/elements.js';
 
 /**
  * Gets error message from page if it exists
@@ -12,7 +13,9 @@ function getZraError() {
         if (errorTableHeader !== null && errorTableHeader.innerText.includes('An Error has occurred')) {
             const error = errorTable.querySelector('tbody>tr:nth-child(2)>td');
             if (error !== null) {
-                return new ZraError(`${errorTableHeader.innerText.trim()}. ${error.innerText}`);
+                return new ZraError(`${errorTableHeader.innerText.trim()}. ${error.innerText}`, null, {
+                    error: error.innerText,
+                });
             }
         }
     }
@@ -22,25 +25,28 @@ function getZraError() {
 browser.runtime.onMessage.addListener((message) => {
     return new Promise((resolve, reject) => {
         if (message.command === 'generateReport') {
-            const optionValue = message.taxTypeId;
-            const optionExists = document.querySelector(`#prm_TaxType>option[value="${optionValue}"]`) != null;
-            let error = null;
-            if (optionExists) {
-                document.querySelector("#prm_TaxType").value = optionValue;
-            } else {
-                let zraError = getZraError();
-                if (zraError) {
-                    error = zraError;
+            try {
+                const optionValue = message.taxTypeId;
+                const optionExists = document.querySelector(`#prm_TaxType>option[value="${optionValue}"]`) != null;
+                if (optionExists) {
+                    document.querySelector("#prm_TaxType").value = optionValue;
                 } else {
-                    error = new TaxTypeNotFoundError(`Tax type with id "${optionValue}" not found`);
+                    let zraError = getZraError();
+                    if (zraError) {
+                        throw zraError;
+                    } else {
+                        throw new TaxTypeNotFoundError(`Tax type with id "${optionValue}" not found`, null, {
+                            taxTypeId: optionValue,
+                        });
+                    }
                 }
-            }
-            resolve({
-                taxTypeId: message.taxTypeId,
-                error: errorToJson(error),
-            });
-            if (optionExists) {
-                document.querySelector("body>table>tbody>tr:nth-child(2)>td>table>tbody>tr>td>form>table>tbody>tr>td>table>tbody>tr:nth-child(2)>td>input:nth-child(1)").click();
+                const generateButtonSelector = 'body>table>tbody>tr:nth-child(2)>td>table>tbody>tr>td>form>table>tbody>tr>td>table>tbody>tr:nth-child(2)>td>input:nth-child(1)';
+                /** @type {HTMLButtonElement} */
+                const generateButton = getElement(generateButtonSelector, 'generate report button');
+                resolve({});
+                generateButton.click();
+            } catch (error) {
+                resolve({error: errorToJson(error)});
             }
         }
     });

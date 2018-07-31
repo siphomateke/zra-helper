@@ -32,6 +32,7 @@ let clientList = [];
  * @param {number} tabId 
  * @param {browser.extensionTypes.InjectDetails} details 
  * @param {boolean} vendor
+ * @throws {ExecuteScriptError}
  */
 async function executeScript(tabId, details, vendor=false) {
     if (details.file) {
@@ -52,9 +53,9 @@ async function executeScript(tabId, details, vendor=false) {
             error.message.includes('Cannot access contents of url "chrome-error://chromewebdata/"') ||
             error.message.includes('Missing host permission for the tab'))) {
                 
-            throw new ExecuteScriptError(`Cannot access tab with ID ${tabId}. Please check your internet connection and try again.`, 'NoAccess');
+            throw new ExecuteScriptError(`Cannot access tab with ID ${tabId}. Please check your internet connection and try again.`, 'NoAccess', {tabId});
         }
-        throw new ExecuteScriptError(`Failed to execute script: "${errorString}"`);
+        throw new ExecuteScriptError(`Failed to execute script: "${errorString}"`, null, {tabId});
     }
 }
 
@@ -64,7 +65,7 @@ async function executeScript(tabId, details, vendor=false) {
  * @param {number} desiredTabId 
  * @param {number} [timeout] The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in config.
  * @returns {Promise}
- * @throws Throws an error if the tab is closed before it loads
+ * @throws {TabError} Throws an error if the tab is closed before it loads
  */
 function tabLoaded(desiredTabId, timeout=null) {
     if (timeout === null) timeout = config.tabLoadTimeout;
@@ -79,7 +80,7 @@ function tabLoaded(desiredTabId, timeout=null) {
         function removedListener(tabId) {
             if (tabId === desiredTabId) {
                 removeListeners();
-                reject(new TabError(`Tab with ID ${tabId} was closed before it could finish loading.`, 'Closed'));
+                reject(new TabError(`Tab with ID ${tabId} was closed before it could finish loading.`, 'Closed', {tabId}));
             }
         }
         function removeListeners() {
@@ -92,7 +93,9 @@ function tabLoaded(desiredTabId, timeout=null) {
 
         setTimeout(() => {
             removeListeners();
-            reject(new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut'));
+            reject(new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut', {
+                tabId: desiredTabId
+            }));
         }, timeout);
 	});
 }
@@ -134,6 +137,7 @@ function waitForMessage(validator) {
  * 
  * @param {number} tabId 
  * @param {any} message 
+ * @throws {SendMessageError}
  */
 async function sendMessage(tabId, message) {
     let response;
@@ -154,7 +158,7 @@ async function sendMessage(tabId, message) {
  * 
  * @param {Client} client 
  * @param {Task} parentTask
- * @return {Promise}
+ * @returns {Promise}
  * @throws {import('./errors').ExtendedError}
  */
 async function login(client, parentTask) {
@@ -172,7 +176,8 @@ async function login(client, parentTask) {
             await tabLoaded(tab.id);
             task.addStep('Navigating to login page');
             // Navigate to login page
-            await executeScript(tab.id, {code: 'document.querySelector("#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a").click()'});
+            await executeScript(tab.id, {file: 'go_to_login.js'});
+            await sendMessage(tab.id, {command: 'goToLogin'});
             task.addStep('Waiting for login page to load');
             await tabLoaded(tab.id);
             task.addStep('Logging in');
@@ -214,7 +219,7 @@ async function login(client, parentTask) {
  * Creates a new tab, logs out and then closes the tab
  * 
  * @param {Task} parentTask
- * @return {Promise}
+ * @returns {Promise}
  */
 async function logout(parentTask) {
     const task = new Task('Logout', parentTask.id);
@@ -228,7 +233,8 @@ async function logout(parentTask) {
         const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
         try {
             task.addStep('Initiating logout');
-            await executeScript(tab.id, {code: 'document.querySelector("#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)").click()'});
+            await executeScript(tab.id, {file: 'logout.js'});
+            await sendMessage(tab.id, {command: 'logout'});
             task.addStep('Waiting to finish logging out');
             task.state = taskStates.SUCCESS;
             task.status = '';
