@@ -45,6 +45,15 @@ async function executeScript(tabId, details, vendor=false) {
         await browser.tabs.executeScript(tabId, details);
     } catch (error) {
         let errorString = error.message ? error.message : error.toString();
+        // If the extension does not have permission to execute a script on this tab,
+        // then this tab is probably the browser error page which usually only
+        // shows up when the user is offline.
+        if (error.message && (
+            error.message.includes('Cannot access contents of url "chrome-error://chromewebdata/"') ||
+            error.message.includes('Missing host permission for the tab'))) {
+                
+            throw new ExecuteScriptError(`Cannot access tab with ID ${tabId}. Please check your internet connection and try again.`, 'NoAccess');
+        }
         throw new ExecuteScriptError(`Failed to execute script: "${errorString}"`);
     }
 }
@@ -62,7 +71,6 @@ function tabLoaded(desiredTabId, timeout=null) {
 
 	return new Promise((resolve, reject) => {
 		function updatedListener(tabId, changeInfo) {
-            // TODO: Handle no internet
 			if (tabId === desiredTabId && changeInfo.status === 'complete') {
                 removeListeners();
 				resolve();

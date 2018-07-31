@@ -1,10 +1,20 @@
 export class ExtendedError extends Error {
-    constructor(message, code, type) {
+    constructor(message, code=null, props={}) {
         super(message);
         this.code = code;
-        this.type = type ? type : this.constructor.name;
+        this.type = this.constructor.name;
         this.name = this.type;
+        this.props = props;
     }
+    /**
+     * @typedef ExtendedErrorJson
+     * @property {string} message
+     * @property {string} code
+     * @property {string} type
+     * @property {any} [props]
+     * @property {'ExtendedError'} errorType
+     */
+    
     /**
      * Creates an ExtendedError from a JSON representation of one
      * 
@@ -12,7 +22,9 @@ export class ExtendedError extends Error {
      * @returns {ExtendedError}
      */
     static fromJSON(json) {
-        return new ExtendedError(json.message, json.code, json.type);
+        const error = new ExtendedError(json.message, json.code, json.props);
+        error.type = json.type;
+        return error;
     }
     /**
      * Converts this error to a JSON object
@@ -24,6 +36,8 @@ export class ExtendedError extends Error {
             message: this.message,
             code: this.code,
             type: this.type,
+            props: this.props,
+            errorType: 'ExtendedError',
         };
     }
 }
@@ -31,7 +45,18 @@ export class ExtendedError extends Error {
 export class ZraError extends ExtendedError {}
 export class TaxTypeNotFoundError extends ExtendedError {}
 export class ElementNotFoundError extends ExtendedError {}
+export class ImageLoadError extends ExtendedError {
+    /** 
+     * @param {object} props
+     * @param {string} props.src The url of the image that failed to load 
+     */
+    constructor(message, code, props) {
+        super(message, code, props);
+    }
+}
+export class CaptchaLoadError extends ImageLoadError {}
 export class LoginError extends ExtendedError {}
+
 export class TabError extends ExtendedError {}
 export class ExecuteScriptError extends ExtendedError {}
 export class SendMessageError extends ExtendedError {}
@@ -41,13 +66,8 @@ export class SendMessageError extends ExtendedError {}
  * @property {string} message
  * @property {string} [code]
  * @property {string} [type]
- */
-
-/**
- * @typedef ExtendedErrorJson
- * @property {string} message
- * @property {string} code
- * @property {string} type
+ * @property {object} [props]
+ * @property {'ExtendedError'} [errorType]
  */
 
 /**
@@ -80,7 +100,7 @@ export function errorToJson(error) {
  */
 export function errorFromJson(json) {
     let output = null;
-    if (json.code) {
+    if (json.errorType === 'ExtendedError') {
         output = ExtendedError.fromJSON(json);
     } else {
         output = new Error(json.message);

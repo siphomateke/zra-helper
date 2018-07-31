@@ -1,4 +1,4 @@
-import { ElementNotFoundError, errorToJson } from '../errors';
+import { ElementNotFoundError, errorToJson, CaptchaLoadError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 
 /**
@@ -35,7 +35,11 @@ function getCaptcha(imageElement, scale = 2) {
             resolve(imageToCanvas(image, scale));
         }
         image.onerror = function (event) {
-            reject(event.error);
+            let src = null;
+            if (event.path && event.path[0] && event.path[0].src) {
+                src = event.path[0].src;
+            }
+            reject(new CaptchaLoadError('Error loading captcha.', null, {src}));
         }
     });
 }

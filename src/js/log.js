@@ -1,5 +1,6 @@
 import $ from 'jquery';
 import config from './config';
+import { ExtendedError } from './errors';
 
 class Log {
     constructor() {
@@ -92,7 +93,19 @@ class Log {
         }
         this.log(errorString, warning ? 'warning' : 'error');
         if (config.debug && error instanceof Error) {
-            console.error(error);
+            if (error instanceof ExtendedError) {
+                console.groupCollapsed(error.type + ' Details');
+                console.log(error.stack);
+                console.log({
+                    code: error.code,
+                    message: error.message,
+                    type: error.type,
+                    props: error.props,
+                });
+                console.groupEnd();
+            } else {
+                console.error(error);
+            }
         }
     }
 }
