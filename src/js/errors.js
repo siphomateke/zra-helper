@@ -32,6 +32,7 @@ export class ZraError extends ExtendedError {}
 export class TaxTypeNotFoundError extends ExtendedError {}
 export class ElementNotFoundError extends ExtendedError {}
 export class LoginError extends ExtendedError {}
+export class TabError extends ExtendedError {}
 
 /**
  * @typedef JsonError
