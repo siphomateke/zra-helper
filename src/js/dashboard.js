@@ -2,7 +2,7 @@ import $ from 'jquery';
 import Papa from 'papaparse';
 import {taskStates, Task} from './tasks';
 import {log} from './log';
-import {executeScript, tabLoaded, sendMessage} from './utils';
+import {executeScript, tabLoaded, sendMessage, clickElement} from './utils';
 
 const taxTypes = {
     '01': 'ITX',
@@ -48,8 +48,7 @@ async function login(client, parentTask) {
             await tabLoaded(tab.id);
             task.addStep('Navigating to login page');
             // Navigate to login page
-            await executeScript(tab.id, {file: 'go_to_login.js'});
-            await sendMessage(tab.id, {command: 'goToLogin'});
+            await clickElement(tab.id, '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a', 'go to login button');
             task.addStep('Waiting for login page to load');
             await tabLoaded(tab.id);
             task.addStep('Logging in');
@@ -105,8 +104,8 @@ async function logout(parentTask) {
         const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
         try {
             task.addStep('Initiating logout');
-            await executeScript(tab.id, {file: 'logout.js'});
-            await sendMessage(tab.id, {command: 'logout'});
+            // Click logout button
+            await clickElement(tab.id, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
             task.addStep('Waiting to finish logging out');
             task.state = taskStates.SUCCESS;
             task.status = '';
@@ -287,11 +286,8 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
 
                             let totalsResponse = await getTotals();
                             if (totalsResponse.numberOfPages > 1) {
-                                await executeScript(tab.id, {file: 'set_totals_page.js'})
-                                await sendMessage(tab.id, {
-                                    command: 'setPage',
-                                    page: totalsResponse.numberOfPages
-                                });
+                                // Set the current page to be the last one by clicking the "last page" button.
+                                await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
                                 await tabLoaded(tab.id);
                                 totalsResponse = await getTotals();
                             }
