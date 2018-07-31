@@ -1,18 +1,13 @@
 import { errorToJson } from '../errors';
-import { getElements } from './helpers/elements';
+import { getElement } from './helpers/elements';
 
 browser.runtime.onMessage.addListener((message) => {
     return new Promise((resolve) => {
         if (message.command === 'setPage') {
             try {
-                const selectors = {
-                    goToPageInputField: '#goToInpFld',
-                    goToPageButton: '#navTable>tbody>tr:nth-child(2)>td:nth-child(6)>input.gotoPageBtn',
-                };
-                const els = getElements(selectors, '"Go to page" controls not found.');
-                els.goToPageInputField.value = message.page;
+                const lastPageButton = getElement('#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page link');
                 resolve({});
-                els.goToPageButton.click();
+                lastPageButton.click();
             } catch (error) {
                 resolve({error: errorToJson(error)});
             }
