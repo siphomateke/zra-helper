@@ -641,7 +641,11 @@ function getClientsFromCsv(csvString, config={}) {
  */
 function getClientsFromFile(file) {
     return new Promise((resolve, reject) => {
-        if (file.type === 'text/csv') {
+        const supportedMimeTypes = [
+            'text/csv',
+            'application/vnd.ms-excel',
+        ];
+        if (supportedMimeTypes.includes(file.type)) {
             const fileReader = new FileReader();
             // TODO: Add file load progress
             fileReader.onload = async function (fileLoadedEvent) {
@@ -660,7 +664,7 @@ function getClientsFromFile(file) {
             fileReader.readAsText(file, 'UTF-8');
         } else {
             log.setCategory('load_client_list_file');
-            log.showError(`Client list file must be a CSV. Expected MIME type "text/csv" got "${file.type}".`);
+            log.showError(`Client list file must be a CSV. Expected one of the following MIME types: "${supportedMimeTypes.join('", "')}". Got "${file.type}".`);
         }
     });
 }
