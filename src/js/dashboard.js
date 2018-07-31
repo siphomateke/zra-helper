@@ -1,6 +1,6 @@
 import $ from 'jquery';
 import Papa from 'papaparse';
-import {errorFromJson, TabError} from './errors';
+import {errorFromJson, TabError, ExecuteScriptError, SendMessageError} from './errors';
 import {taskStates, Task} from './tasks';
 import {log} from './log';
 import config from './config';
@@ -41,7 +41,12 @@ async function executeScript(tabId, details, vendor=false) {
             details.file = 'vendor/' + details.file;
         }
     }
-    await browser.tabs.executeScript(tabId, details);
+    try {
+        await browser.tabs.executeScript(tabId, details);
+    } catch (error) {
+        let errorString = error.message ? error.message : error.toString();
+        throw new ExecuteScriptError(`Failed to execute script: "${errorString}"`);
+    }
 }
 
 /**
@@ -123,7 +128,13 @@ function waitForMessage(validator) {
  * @param {any} message 
  */
 async function sendMessage(tabId, message) {
-    const response = await browser.tabs.sendMessage(tabId, message);
+    let response;
+    try {
+        response = await browser.tabs.sendMessage(tabId, message);
+    } catch (error) {
+        let errorString = error.message ? error.message : error.toString();
+        throw new SendMessageError(`Failed to send message to tab with ID ${tabId}: "${errorString}"`);
+    }
     if (response.error) {
         throw errorFromJson(response.error);
     }

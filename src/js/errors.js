@@ -33,6 +33,8 @@ export class TaxTypeNotFoundError extends ExtendedError {}
 export class ElementNotFoundError extends ExtendedError {}
 export class LoginError extends ExtendedError {}
 export class TabError extends ExtendedError {}
+export class ExecuteScriptError extends ExtendedError {}
+export class SendMessageError extends ExtendedError {}
 
 /**
  * @typedef JsonError
