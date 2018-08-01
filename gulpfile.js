@@ -36,6 +36,9 @@ config.copy = [{
 }, {
     from: 'static/**/*',
     to: '',
+}, {
+    from: 'LICENSE.txt',
+    to: '',
 }];
 
 gulp.task('clean', function () {
