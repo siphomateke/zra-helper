@@ -301,9 +301,10 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         task.state = taskStates.ERROR;
                         task.error = error;
                         let status = '';
-                        if (error.type === 'TaxTypeNotFound') {
-                            // Don't show the tax type in the status since it's under
-                            // a task which already has the tax type in it's title
+                        if (error.type === 'TaxTypeNotFoundError') {
+                            // By default the `TaxTypeNotFoundError` contains the tax type.
+                            // We don't need to show the tax type in the status since it's under
+                            // a task which already has the tax type in it's title.
                             status = 'Tax type not found';
                         } else {
                             status = task.getStatusFromError();
