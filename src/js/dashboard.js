@@ -2,7 +2,7 @@ import $ from 'jquery';
 import Papa from 'papaparse';
 import {taskStates, Task} from './tasks';
 import {log} from './log';
-import {executeScript, tabLoaded, sendMessage, clickElement} from './utils';
+import {executeScript, tabLoaded, sendMessage, clickElement, createTab} from './utils';
 
 const taxTypes = {
     '01': 'ITX',
@@ -42,7 +42,7 @@ async function login(client, parentTask) {
     log.setCategory('login');
     log.log(`Logging in client "${client.name}"`);
     try {
-        const tab = await browser.tabs.create({url: 'https://www.zra.org.zm', active: false});
+        const tab = await createTab('https://www.zra.org.zm');
         task.addStep('Waiting for tab to load');
         try {
             await tabLoaded(tab.id);
@@ -101,7 +101,7 @@ async function logout(parentTask) {
     log.setCategory('logout');
     log.log('Logging out');
     try {
-        const tab = await browser.tabs.create({url: 'https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick', active: false});
+        const tab = await createTab('https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick');
         try {
             task.addStep('Initiating logout');
             // Click logout button
@@ -250,10 +250,7 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
 
                     let tab = null;
                     try {
-                        tab = await browser.tabs.create({
-                            url: 'https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability',
-                            active: false,
-                        });
+                        tab = await createTab('https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability');
                         await tabLoaded(tab.id);
 
                         task.addStep('Selecting tax type');

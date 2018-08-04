@@ -1,6 +1,93 @@
 import {errorFromJson, TabError, ExecuteScriptError, SendMessageError} from './errors';
 import config from './config';
 
+class TabCreator {
+    constructor() {
+        /** 
+         * Array of IDs of tabs created by the extension which are currently open.
+         * @type {number[]} 
+         */
+        this.tabs = [];
+        /** The number of tabs that are currently open. */
+        this.openTabsCount = 0;
+        this.lastTabOpenTime = null;
+        this.queue = [];
+        this.drainingQueue = false;
+        
+        browser.tabs.onRemoved.addListener((tabId) => {
+            if (this.tabs.includes(tabId)) {
+                this.openTabsCount--;
+                this.tabs.splice(this.tabs.indexOf(tabId), 1);
+                this.drainQueue();
+            }
+        });
+    }
+
+    /**
+     * Checks if a tab can be opened.
+     * @returns {boolean}
+     */
+    slotFree() {
+        const notMaxOpenTabs = config.maxOpenTabs === 0 || this.openTabsCount < config.maxOpenTabs;
+        const timeSinceLastTabOpened = Date.now() - this.lastTabOpenTime;
+        const delayLargeEnough = this.lastTabOpenTime === null || timeSinceLastTabOpened >= config.tabOpenDelay;
+        return notMaxOpenTabs && delayLargeEnough;
+    }
+
+    /**
+     * Loops through pending tabs and checks if they can be created.
+     */
+    drainQueue() {
+        if (!this.drainingQueue) {
+            this.drainingQueue = true;
+            while (this.queue.length > 0 && this.slotFree()) {
+                const callback = this.queue.shift();
+                this.openTabsCount++;
+                this.lastTabOpenTime = Date.now();
+                this.startDrainQueueTimer();
+                callback();
+            }
+            this.drainingQueue = false;
+        }
+    }
+
+    /**
+     * Starts a timer that triggers `drainQueue()` after `config.tabOpenDelay`.
+     */
+    startDrainQueueTimer() {
+        if (config.tabOpenDelay > 0) {
+            setTimeout(() => {
+                this.drainQueue();
+            }, config.tabOpenDelay);
+        }
+    }
+
+    waitForFreeTabSlot() {
+        return new Promise((resolve) => {
+            this.queue.push(resolve);
+            this.drainQueue();
+        });
+    }
+
+    async create(createProperties) {
+        await this.waitForFreeTabSlot();
+        const tab = await browser.tabs.create(createProperties);
+        this.tabs.push(tab.id);
+        return tab;
+    }
+}
+
+export const tabCreator = new TabCreator();
+
+/**
+ * Creates a new tab.
+ * @param {string} url The URL to navigate the tab to initially
+ * @param {*} active Whether the tab should become the active tab in the window.
+ */
+export function createTab(url, active=false) {
+    return tabCreator.create({url, active});
+}
+
 /**
  * Executes a script in a particular tab
  * 
