@@ -8,6 +8,7 @@
   "version": "0.3.0",
   "description": "A browser extension that automates various aspects of the ZRA website",
   "scripts": {
+    "version": "node version.js && git add static/manifest.json",
     "build:dev": "cross-env NODE_ENV=development ./node_modules/.bin/gulp build",
     "build:prod": "cross-env NODE_ENV=production ./node_modules/.bin/gulp build",
     "watch": "cross-env NODE_ENV=development ./node_modules/.bin/gulp default"
