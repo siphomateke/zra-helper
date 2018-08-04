@@ -1,28 +1,22 @@
 {
-
-  "manifest_version": 2,
-  "name": "zra-helper",
-  "version": "1.0",
-  "description": "Helps with ZRA",
-
-  "icons": {
-    "48": "icons/48-zra.png"
-  },
-
-  "background": {
-    "scripts": [
-      "js/background.js"
-    ]
-  },
-
-  "permissions": [
-    "tabs",
-    "https://www.zra.org.zm/*" 
-  ],
-
-  "browser_action": {
-    "default_icon": "icons/32-zra.png",
-    "default_title": "ZRA Helper"
-  }
-
+    "manifest_version": 2,
+    "name": "zra-helper",
+    "version": "0.3.0",
+    "description": "Automates various aspects of the ZRA website.",
+    "icons": {
+        "48": "icons/48-zra.png"
+    },
+    "background": {
+        "scripts": [
+            "js/background.js"
+        ]
+    },
+    "permissions": [
+        "tabs",
+        "https://www.zra.org.zm/*"
+    ],
+    "browser_action": {
+        "default_icon": "icons/32-zra.png",
+        "default_title": "ZRA Helper"
+    }
 }
