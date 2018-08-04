@@ -78,8 +78,7 @@ async function login(client, parentTask) {
             browser.tabs.remove(tab.id);
         }
     } catch (error) {
-        task.state = taskStates.ERROR;
-        task.status = error.message ? error.message : error.toString();
+        task.setError(error);
         throw error;
     } finally {
         task.complete = true;
@@ -116,8 +115,7 @@ async function logout(parentTask) {
             browser.tabs.remove(tab.id);
         }
     } catch (error) {
-        task.state = taskStates.ERROR;
-        task.status = error.message ? error.message : error.toString();
+        task.setError(error);
         throw error;
     } finally {
         task.complete = true;
@@ -189,8 +187,7 @@ class ClientAction {
             task.state = taskStates.SUCCESS;
             task.status = '';
         } catch (error) {
-            task.state = taskStates.ERROR;
-            task.status = error.message ? error.message : error.toString();
+            task.setError(error);
             throw error;
         } finally {
             task.complete = true;
@@ -207,17 +204,21 @@ class ClientAction {
             this.mainTask.status = this.taskName;
             let task = new Task(this.taskName, this.mainTask.id);
             await this.action(client, task, this.output);
+            if (task.state === taskStates.ERROR) {
+                this.mainTask.state = taskStates.ERROR;
+            }
 
             this.mainTask.status = 'Logging out';
             await logout(this.mainTask);
 
-            this.mainTask.state = taskStates.SUCCESS;
+            if (this.mainTask.state !== taskStates.ERROR) {
+                this.mainTask.state = taskStates.SUCCESS;
+            }
             this.mainTask.status = '';
         } catch (error) {
             log.setCategory(this.logCategory);
             log.showError(error);
-            this.mainTask.state = taskStates.ERROR;
-            this.mainTask.status = error.message ? error.message : error.toString();
+            this.mainTask.setError(error);
         } finally {
             this.mainTask.complete = true;
         }
@@ -297,17 +298,16 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                         }
                     } catch (error) {
                         resolve();
+                        task.state = taskStates.ERROR;
+                        task.error = error;
                         let status = '';
                         if (error.type === 'TaxTypeNotFound') {
                             // Don't show the tax type in the status since it's under
                             // a task which already has the tax type in it's title
                             status = 'Tax type not found';
-                        } else if (error.message) {
-                            status = error.message;
                         } else {
-                            status = error.toString();
+                            status = task.getStatusFromError();
                         }
-                        task.state = taskStates.ERROR;
                         task.status = status;
                         log.showError(error);
                     } finally {
@@ -323,7 +323,27 @@ const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabili
                 }));
             }
             Promise.all(promises).then(() => {
-                parentTask.state = taskStates.SUCCESS;
+                let errorCount = 0;
+                let taxTypeErrorCount = 0;
+                for (const task of parentTask.getChildren()) {
+                    if (task.state === taskStates.ERROR) {
+                        if (task.error.type !== 'TaxTypeNotFoundError') {
+                            errorCount++;
+                        } else {
+                            taxTypeErrorCount++;
+                        }
+                    }
+                }
+                if (errorCount > 0) {
+                    parentTask.state = taskStates.ERROR;
+                } else if (taxTypeErrorCount === parentTask.children.length) {
+                    // If all sub tasks don't have a tax type, something probably went wrong
+                    parentTask.state = taskStates.WARNING;
+                    parentTask.status = 'No tax types found.';
+                } else {
+                    parentTask.state = taskStates.SUCCESS;
+                }
+
                 const rows = [];
                 let i = 0;
                 for (const taxType of Object.values(taxTypes)) {

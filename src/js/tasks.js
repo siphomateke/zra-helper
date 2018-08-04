@@ -46,6 +46,8 @@ export class Task {
         this._complete = false;
         // TODO: Use an enum for states
         this._state = '';
+        /** The error this task encountered. */
+        this.error = null;
 
         /** HTML Elements */
         this.els = {
@@ -112,6 +114,15 @@ export class Task {
             this.els.status.hide();
         }
         this.els.status.text(this._status);
+    }
+    /**
+     * Returns a status generated from this task's error.
+     * @returns {string}
+     */
+    getStatusFromError() {
+        if (this.error) {
+            return this.error.message ? this.error.message : this.error.toString();
+        }
     }
     refreshProgress() {
         if (this._progress !== -2) {
@@ -254,6 +265,15 @@ export class Task {
         }
     }
     /**
+     * Sets this task's error, state and status
+     * @param {any} error 
+     */
+    setError(error) {
+        this.state = taskStates.ERROR;
+        this.error = error;
+        this.status = this.getStatusFromError();
+    }
+    /**
      * Adds a sub-task to this task
      * @param {number} id The ID of the sub task
      */
@@ -262,6 +282,9 @@ export class Task {
             this.els.content.append(this.els.detailsButton);
         }
         this.children.push(id);
+    }
+    getChildren() {
+        return this.children.map(id => tasks[id]);
     }
     /**
      * Increments progress and sets status
