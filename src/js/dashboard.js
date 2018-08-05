@@ -465,8 +465,16 @@ async function allClientsAction(action) {
     }
 }
 
-$(document).on('click', '.zra-action', (e) => {
-    if (e.currentTarget.id === 'get-all-pending-liabilities') {
+$(document).on('submit', '#action-form', (e) => {
+    e.preventDefault();
+    const data = $('#action-form').serializeArray();
+    const actions = [];
+    for (const field of data) {
+        if (field.name === 'actions') {
+            actions.push(field.value);
+        }
+    }
+    if (actions.includes('pending-liabilities')) {
         allClientsAction(getAllPendingLiabilitiesAction);
     }
 });

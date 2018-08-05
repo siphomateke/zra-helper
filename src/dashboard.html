@@ -12,57 +12,51 @@
     <section class="hero is-primary is-bold is-small">
         <div class="hero-body">
             <div class="container">
-            <h1 class="title">
-                ZRA Helper
-            </h1>
-            <h2 class="subtitle">
-                Dashboard
-            </h2>
+                <h1 class="title">
+                    ZRA Helper
+                </h1>
+                <h2 class="subtitle">
+                    Dashboard
+                </h2>
             </div>
         </div>
     </section>
     <section class="section">
-        <div class="container">
-            <form>
-                <div class="field">
-                    <div class="label">
-                        Client list file
+        <div class="dashboard container">
+            <section class="dashboard-section">
+                <form id="action-form">
+                    <div class="field">
+                        <label class="label">Client list</label>
+                        <div class="control">
+                            <input type="file" id="clientList" name="clientList">
+                        </div>
                     </div>
-                    <div class="control">
-                        <div class="file">
-                            <label class="file-label">
-                                <input class="file-input" type="file" name="clientList">
-                                <span class="file-cta">
-                                    <span class="file-icon">
-                                        <i class="fas fa-upload"></i>
-                                    </span>
-                                    <span class="file-label">
-                                        Browse...
-                                    </span>
-                                </span>
+                    <div class="field">
+                        <label class="label">Select actions</label>
+                        <div class="control">
+                            <label class="checkbox">
+                                <input type="checkbox" name="actions" value="pending-liabilities">
+                                Get all pending liabilites
                             </label>
                         </div>
                     </div>
-                </div>
-            </form>
-        </div>
-    </section>
-    <section>
-        <div class="container">
-            <h2 class="title is-2">Actions</h2>
-            <div class="actions">
-                <button type="button" class="button zra-action" id="get-all-pending-liabilities">Get All Pending Liabilities</button>
-            </div>
-            <div id="log-wrapper" class="hidden">
-                <h2 class="title is-2">Log</h2>
+                    <button class="button is-primary" type="submit">Run selected action(s)</button>
+                </form>
+            </section>
+            <section class="dashboard-section hidden" id="log-wrapper">
+                <h1 class="title is-4">Log</h1>
                 <div class="log">
                     <div class="log-inner"></div>
                 </div>
-            </div>
-            <h2 class="title is-2">Tasks</h2>
-            <div class="tasks"></div>
-            <h2 class="title is-2">Output</h2>
-            <textarea id="output" rows="7"></textarea>
+            </section>
+            <section class="dashboard-section">
+                <h1 class="title is-4">Tasks</h1>
+                <div class="tasks"></div>
+            </section>
+            <section class="dashboard-section">
+                <h1 class="title is-4">Output</h1>
+                <textarea id="output" rows="7"></textarea>
+            </section>
         </div>
     </section>
     <script src="js/dashboard.js"></script>

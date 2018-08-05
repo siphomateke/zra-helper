@@ -24,14 +24,6 @@ $taskColors: (
 }
 
 /********************
-        Buttons
-*********************/
-
-.actions {
-    margin-bottom: 1em;
-}
-
-/********************
         Logs
 *********************/
 
@@ -124,8 +116,6 @@ $taskBorderRadius: 3px;
         .header {
             display: flex;
             .title {
-                font-size: 1.2em;
-                font-weight: bold;
                 margin-bottom: 0.2em;
             }
 
@@ -135,9 +125,6 @@ $taskBorderRadius: 3px;
                 white-space: nowrap;
                 .item:not(:last-child) {
                     padding-right: 1em;
-                }
-                .icon {
-                    padding-right: 0.2em;
                 }
                 @each $state, $color in $taskColors {
                     .#{$state} .icon {
@@ -154,10 +141,10 @@ $taskBorderRadius: 3px;
         .open-details .icon {
             white-space: nowrap;
             padding-right: 0.5em;
-            &.closed-icon {
+            .closed-icon {
                 display: inline-block;
             }
-            &.open-icon {
+            .open-icon {
                 display: none;
             }
         }
@@ -193,10 +180,10 @@ $taskBorderRadius: 3px;
             border-bottom-right-radius: 0;
 
             .open-details .icon {
-                &.closed-icon {
+                .closed-icon {
                     display: none;
                 }
-                &.open-icon {
+                .open-icon {
                     display: inline-block;
                 }
             }
@@ -236,3 +223,7 @@ $taskBorderRadius: 3px;
 /********************
         Other
 *********************/
+
+.dashboard-section {
+    margin-bottom: 0.75rem;
+}
