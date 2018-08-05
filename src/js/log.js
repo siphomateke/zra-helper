@@ -63,7 +63,7 @@ class Log {
         let output = `<span class="cell timestamp">${timestamp}</span>`;
         output += `<span class="cell icon">`;
         if (icon) {
-            output += `<i class="fa fa-${icon}" aria-hidden="true"></i>`;
+            output += `<i class="fas fa-${icon}" aria-hidden="true"></i>`;
         }
         output += '</span>';
         output += `<span class="cell category"><span class="tag">${this.category}</span></span>`;

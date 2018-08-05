@@ -390,8 +390,16 @@ async function allClientsAction(action) {
     }
 }
 
-$(document).on('click', '.zra-action', (e) => {
-    if (e.currentTarget.id === 'get-all-pending-liabilities') {
+$(document).on('submit', '#action-form', (e) => {
+    e.preventDefault();
+    const data = $('#action-form').serializeArray();
+    const actions = [];
+    for (const field of data) {
+        if (field.name === 'actions') {
+            actions.push(field.value);
+        }
+    }
+    if (actions.includes('pending-liabilities')) {
         allClientsAction(getAllPendingLiabilitiesAction);
     }
 });
@@ -592,11 +600,25 @@ function getClientsFromFile(file) {
     });
 }
 
-$('#clientListInput').on('input', async (e) => {
+$('[name="clientList"]').on('input', async (e) => {
     try {
         clientList = await getClientsFromFile(e.target.files[0]);
     } catch (error) {
         // TODO: See if this needs to do anything since errors are already
         // logged in getClientsFromFile
     }
+});
+
+// Updates bulma file inputs
+$('.file-input').on('input', (e) => {
+    const file = e.target.files[0];
+    const input = $(e.target);
+    input.closest('.file').addClass('has-name');
+    const fileLabelEl = input.closest('.file-label');
+    let fileNameEl = fileLabelEl.find('.file-name');
+    if (!fileNameEl.length) {
+        fileNameEl = $('<span class="file-name"></span>');
+        fileLabelEl.append(fileNameEl);
+    }
+    fileNameEl.text(file.name);
 });

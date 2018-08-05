@@ -1,3 +1,5 @@
+@import './bulma';
+
 // FIXME: Actually use these
 $errorColor: red;
 $successColor: #23d160;
@@ -15,67 +17,10 @@ $taskColors: (
     'success': $successColor,
     'warning': $warningColor,
 );
-
-body {
-    font-family: "Open Sans",arial,x-locale-body,sans-serif;
-    line-height: 1.5;
-}
-
-.container {
-    padding: 10px;
-    margin: 0 auto;
-    max-width: 1000px;
-}
+// TODO: Use bulma colors
 
 .hidden {
     display: none;
-}
-
-/********************
-        Buttons
-*********************/
-
-button {
-    cursor: pointer;
-}
-
-.zra-action {
-    padding: 10px;
-    font-size: 1rem;
-    font-weight: 600;
-    margin-right: 0.3em;
-}
-
-.actions {
-    margin-bottom: 1em;
-}
-
-/********************
-        Messages
-*********************/
-
-@mixin messageState($color) {
-    border-color: $color;
-    color: darken($color, 20%);
-    background-color: lighten($color, 50%);
-}
-
-.message {
-    border: 1px solid;
-    border-radius: 4px;
-    border-left-width: 6px;
-    padding: 1.25em 1.5em;
-    font-size: 1rem;
-
-    &:not(:last-child) {
-        margin-bottom: 1.5rem;
-    }
-
-    @each $state, $color in $stateColors {
-        &.#{$state} {
-            @include messageState($color);
-        }
-    }
 }
 
 /********************
@@ -171,8 +116,6 @@ $taskBorderRadius: 3px;
         .header {
             display: flex;
             .title {
-                font-size: 1.2em;
-                font-weight: bold;
                 margin-bottom: 0.2em;
             }
 
@@ -182,9 +125,6 @@ $taskBorderRadius: 3px;
                 white-space: nowrap;
                 .item:not(:last-child) {
                     padding-right: 1em;
-                }
-                .icon {
-                    padding-right: 0.2em;
                 }
                 @each $state, $color in $taskColors {
                     .#{$state} .icon {
@@ -201,17 +141,19 @@ $taskBorderRadius: 3px;
         .open-details .icon {
             white-space: nowrap;
             padding-right: 0.5em;
-            &.closed-icon {
+            .closed-icon {
                 display: inline-block;
             }
-            &.open-icon {
+            .open-icon {
                 display: none;
             }
         }
     }
 
     @mixin taskState($color) {
-        @include messageState($color);
+        border-color: $color;
+        color: darken($color, 20%);
+        background-color: lighten($color, 50%);
     }
     
     @each $state, $color in $taskColors {
@@ -238,10 +180,10 @@ $taskBorderRadius: 3px;
             border-bottom-right-radius: 0;
 
             .open-details .icon {
-                &.closed-icon {
+                .closed-icon {
                     display: none;
                 }
-                &.open-icon {
+                .open-icon {
                     display: inline-block;
                 }
             }
@@ -281,3 +223,7 @@ $taskBorderRadius: 3px;
 /********************
         Other
 *********************/
+
+.dashboard-section {
+    margin-bottom: 0.75rem;
+}
