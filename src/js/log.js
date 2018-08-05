@@ -86,15 +86,17 @@ class Log {
         let errorString = '';
         if (!(error instanceof Error) && error.message) {
             errorString = error.message;
+        } else if (error instanceof ExtendedError) {
+            errorString = `${error.type}: ${error.message}`;
         } else if (typeof error !== 'string') {
             errorString = error.toString();
         } else {
-            errorString = 'Error: '+error;
+            errorString = `Error: ${error}`;
         }
         this.log(errorString, warning ? 'warning' : 'error');
         if (config.debug && error instanceof Error) {
             if (error instanceof ExtendedError) {
-                console.groupCollapsed(error.type + ' Details');
+                console.groupCollapsed(`${error.type} Details`);
                 console.log(error.stack);
                 console.log({
                     code: error.code,
