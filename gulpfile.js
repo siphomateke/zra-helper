@@ -59,10 +59,7 @@ gulp.task('copy', function () {
             }
         }
 
-        let dest = config.dir.dest+'/'+copy.to;
-        tasks.push(gulp.src(src)
-            .pipe(gulp.dest(dest))
-        );
+        tasks.push(gulp.src(src).pipe(gulp.dest(config.dir.dest+'/'+copy.to)));
     }
     return merge2(tasks);
 });
