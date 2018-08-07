@@ -1,9 +1,9 @@
 {
   "name": "zra-helper",
-  "repository": "bitbucket:nextgensparx/zra-helper",
-  "homepage": "https://bitbucket.org/nextgensparx/zra-helper",
+  "repository": "github:nextgensparx/zra-helper",
+  "homepage": "https://github.com/nextgensparx/zra-helper",
   "bugs": {
-    "url": "https://bitbucket.org/nextgensparx/zra-helper/issues"
+    "url": "https://github.com/nextgensparx/zra-helper/issues"
   },
   "version": "0.3.0",
   "description": "A browser extension that automates various aspects of the ZRA website.",
