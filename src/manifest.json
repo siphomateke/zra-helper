@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "ZRA Helper",
+  "homepage_url": "https://github.com/nextgensparx/zra-helper/",
+  "icons": {
+    "32": "icons/32.png",
+    "48": "icons/48.png"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "tabs",
+    "https://www.zra.org.zm/*"
+  ],
+  "browser_action": {
+    "default_icon": "icons/32.png",
+    "default_title": "ZRA Helper"
+  }
+}

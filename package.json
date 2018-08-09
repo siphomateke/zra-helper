@@ -7,11 +7,11 @@
   },
   "version": "0.3.0",
   "description": "A browser extension that automates various aspects of the ZRA website.",
+  "private": true,
   "scripts": {
-    "version": "node version.js && git add static/manifest.json",
-    "build:dev": "cross-env NODE_ENV=development ./node_modules/.bin/gulp build",
-    "build:prod": "cross-env NODE_ENV=production ./node_modules/.bin/gulp build",
-    "watch": "cross-env NODE_ENV=development ./node_modules/.bin/gulp default"
+    "serve": "vue-cli-service build --mode development --watch",
+    "build": "vue-cli-service build --modern",
+    "lint": "vue-cli-service lint"
   },
   "contributors": [
     "rahensonzam",
@@ -20,26 +20,24 @@
   "license": "MIT",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.2.0",
-    "babel-runtime": "^6.26.0",
     "bulma": "^0.7.1",
     "jquery": "^3.3.1",
     "ocrad.js": "0.0.1",
     "papaparse": "^4.5.0",
-    "webextension-polyfill": "^0.2.1"
+    "vue": "^2.5.17",
+    "vue-router": "^3.0.1",
+    "vuex": "^3.0.1",
+    "webextension-polyfill": "^0.3.0"
   },
   "devDependencies": {
-    "babel-core": "^6.26.3",
-    "babel-loader": "^7.1.5",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-env": "^1.7.0",
-    "cross-env": "^5.2.0",
-    "del": "^3.0.0",
-    "gulp": "^4.0.0",
-    "gulp-concat": "^2.6.1",
-    "gulp-sass": "^4.0.1",
+    "@vue/cli-plugin-babel": "^3.0.0-rc.11",
+    "@vue/cli-plugin-eslint": "^3.0.0-rc.11",
+    "@vue/cli-service": "^3.0.0-rc.11",
+    "@vue/eslint-config-airbnb": "^3.0.0-rc.11",
     "imports-loader": "^0.8.0",
-    "merge2": "^1.2.2",
-    "webpack": "^4.14.0",
-    "webpack-merge": "^4.1.3"
+    "node-sass": "^4.9.0",
+    "sass-loader": "^7.0.1",
+    "vue-cli-plugin-browser-extension": "^0.11.0",
+    "vue-template-compiler": "^2.5.17"
   }
 }
