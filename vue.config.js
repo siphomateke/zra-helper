@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 
-const contentScriptsPath = 'src/js/content_scripts';
+const contentScriptsPath = 'src/old/content_scripts';
 const contentScripts = fs.readdirSync(contentScriptsPath);
 
 const contentScriptEntries = {};
@@ -60,7 +60,7 @@ module.exports = {
       autoImportPolyfill: true,
       componentOptions: {
         background: {
-          entry: 'src/js/background.js',
+          entry: 'src/old/background.js',
         },
         contentScripts: {
           entries: contentScriptEntries,
