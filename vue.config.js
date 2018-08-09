@@ -66,6 +66,7 @@ module.exports = {
           entries: contentScriptEntries,
         },
       },
+      manifestSync: ['version', 'description'],
     },
   },
 };
