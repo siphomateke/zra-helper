@@ -5,5 +5,5 @@
 </template>
 
 <style lang="scss">
-  @import "@/scss/dashboard.scss";
+  @import "@/assets/scss/dashboard.scss";
 </style>

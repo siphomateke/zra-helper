@@ -41,5 +41,11 @@ $link-focus-border: $light-blue;
 $message-body-border-width: 1px 1px 1px 4px;
 $box-padding: 0.75rem;
 
-// Import only what is needed from Bulma
 @import '~bulma';
+
+// Font Awesome 5
+$fa-font-path: "~@fortawesome/fontawesome-free/webfonts";
+@import "~@fortawesome/fontawesome-free/scss/fontawesome";
+@import "~@fortawesome/fontawesome-free/scss/regular";
+@import "~@fortawesome/fontawesome-free/scss/solid";
+@import "~@fortawesome/fontawesome-free/scss/brands";
