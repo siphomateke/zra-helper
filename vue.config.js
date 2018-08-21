@@ -34,13 +34,8 @@ module.exports = {
   chainWebpack: (config) => {
     config
       .plugin('copy')
-      .tap((args) => {
-        const newArgs = [...args];
-        newArgs[0] = newArgs[0].concat(copy);
-        return newArgs;
-      });
+      .tap(([paths]) => [paths.concat(copy)]);
   },
-
   pages: {
     dashboard: {
       entry: 'src/main.js',
@@ -48,7 +43,6 @@ module.exports = {
       title: 'ZRA Helper | Dashboard',
     },
   },
-
   pluginOptions: {
     browserExtension: {
       components: {
