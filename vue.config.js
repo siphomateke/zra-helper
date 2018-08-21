@@ -30,7 +30,7 @@ const copy = [
 
 module.exports = {
   lintOnSave: false,
-
+  productionSourceMap: false,
   chainWebpack: (config) => {
     config
       .plugin('copy')
