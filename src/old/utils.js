@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import {errorFromJson, TabError, ExecuteScriptError, SendMessageError} from './errors';
 import config from './config';
 

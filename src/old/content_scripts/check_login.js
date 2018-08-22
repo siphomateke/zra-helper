@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import { errorToJson, LoginError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 

@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import { errorToJson } from '../errors';
 import { getElement } from './helpers/elements';
 

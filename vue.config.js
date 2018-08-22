@@ -51,7 +51,7 @@ module.exports = {
       },
       api: 'browser',
       usePolyfill: true,
-      autoImportPolyfill: true,
+      autoImportPolyfill: false,
       componentOptions: {
         background: {
           entry: 'src/old/background.js',

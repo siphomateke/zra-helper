@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import {ZraError, TaxTypeNotFoundError, errorToJson} from '../errors.js';
 import { getElement } from './helpers/elements.js';
 

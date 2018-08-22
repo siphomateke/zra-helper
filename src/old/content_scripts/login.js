@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import { errorToJson, CaptchaLoadError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 import { getElements, getElement } from './helpers/elements';

@@ -1,4 +1,5 @@
+import browser from 'webextension-polyfill';
+
 browser.browserAction.onClicked.addListener(() => {
-	console.log('Opening dashboard');
 	browser.tabs.create({url: 'dashboard.html'});
 });
