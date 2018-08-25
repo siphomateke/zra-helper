@@ -4,18 +4,18 @@ module.exports = {
     node: true,
     browser: true,
     es6: true,
-    webextensions: true
+    webextensions: true,
   },
-  'extends': [
+  extends: [
     'plugin:vue/recommended',
-    '@vue/airbnb'
+    '@vue/airbnb',
   ],
   rules: {
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
-    'no-restricted-syntax': ['off']
+    'no-restricted-syntax': ['off'],
   },
   parserOptions: {
-    parser: 'babel-eslint'
-  }
-}
+    parser: 'babel-eslint',
+  },
+};
