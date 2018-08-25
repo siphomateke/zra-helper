@@ -52,7 +52,9 @@
         </section>
         <section class="dashboard-section">
           <h1 class="title is-4">Tasks</h1>
-          <div class="tasks"/>
+          <task-list
+            :tasks="tasks"
+            :is-root="true"/>
         </section>
         <section class="dashboard-section">
           <h1 class="title is-4">Output</h1>
@@ -66,8 +68,18 @@
 </template>
 
 <script>
+import TaskList from '@/components/TaskList.vue';
+import { mapState } from 'vuex';
 
 export default {
   name: 'Home',
+  components: {
+    TaskList,
+  },
+  computed: {
+    ...mapState({
+      tasks: state => state.tasks.all,
+    }),
+  },
 };
 </script>

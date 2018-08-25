@@ -35,6 +35,7 @@ module.exports = {
     config
       .plugin('copy')
       .tap(([paths]) => [paths.concat(copy)]);
+    config.resolve.alias.set('styles', path.resolve(__dirname, './src/assets/scss'));
   },
   pages: {
     dashboard: {
