@@ -141,14 +141,22 @@ class Output {
     }
 }
 
+const clientActions = {};
+
 class ClientAction {
-    constructor(taskName, logCategory, action) {
+    constructor(taskName, id, action) {
         this.mainTask = null;
         this.taskName = taskName;
-        this.logCategory = logCategory;
+        this.id = id;
+        this.logCategory = id;
         this.action = action;
         
         this.output = new Output();
+
+        const field = $(`<div class="control"><label class="checkbox"><input type="checkbox" name="actions" value="${id}"> ${taskName}</label></div>`);
+        $('#actions-field').append(field);
+
+        clientActions[this.id] = this;
     }
 
     /**
@@ -225,19 +233,19 @@ class ClientAction {
     }
 }
 
-const getAllPendingLiabilitiesAction = new ClientAction('Get all pending liabilities', 'pending_liabilities', 
+new ClientAction('Get all pending liabilities', 'pending_liabilities', 
     /**
      * @param {Client} client
      * @param {Task} parentTask
      * @param {Output} output
      */
-    (client, parentTask, output) => {
+    function (client, parentTask, output) {
         return new Promise((resolve) => {
             let promises = [];
             /** Total number of pending liabilities including the grand total */
             const numTotals = 4;
             const totals = {};
-            log.setCategory('pending_liabilities');
+            log.setCategory(this.id);
             parentTask.sequential = false;
             for (const taxTypeId of Object.keys(taxTypes)) {
                 promises.push(new Promise(async (resolve) => {
@@ -399,8 +407,10 @@ $(document).on('submit', '#action-form', (e) => {
             actions.push(field.value);
         }
     }
-    if (actions.includes('pending-liabilities')) {
-        allClientsAction(getAllPendingLiabilitiesAction);
+    for (const id of Object.keys(clientActions)) {
+        if (actions.includes(id)) {
+            allClientsAction(clientActions[id]);
+        }
     }
 });
 
