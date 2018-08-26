@@ -35,7 +35,6 @@ let clientList = [];
  */
 async function login(client, parentTask) {
     const task = new Task('Login', parentTask.id);
-    task.progress = 0;
     task.progressMax = 7;
     task.status = 'Opening tab';
     
@@ -93,7 +92,6 @@ async function login(client, parentTask) {
  */
 async function logout(parentTask) {
     const task = new Task('Logout', parentTask.id);
-    task.progress = 0;
     task.progressMax = 3;
     task.status = 'Opening tab';
 
@@ -167,6 +165,7 @@ class ClientAction {
      */
     async robustLogin(client, parentTask, maxAttempts=2) {
         const task = new Task('Robust login', parentTask.id);
+        task.progress = -2;
         let attempts = 0;
         let run = true;
         try {
@@ -251,7 +250,6 @@ new ClientAction('Get all pending liabilities', 'pending_liabilities',
                 promises.push(new Promise(async (resolve) => {
                     const taxType = taxTypes[taxTypeId];
                     const task = new Task(`Get ${taxType} totals`, parentTask.id);
-                    task.progress = 0;
                     task.progressMax = 4;
                     task.status = 'Opening tab';
 

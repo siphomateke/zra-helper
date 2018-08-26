@@ -24,7 +24,7 @@ export class Task {
         this.parent = (this.hasParent) ? tasks[this.parentId] : null;
         this.children = [];
         this._status = '';
-        this._progress = -2;
+        this._progress = 0;
         this._progressMax = 100;
         /** 
          * Whether the maximum progress of this task can be determined.
