@@ -1,6 +1,7 @@
 import $ from 'jquery';
 import config from './config';
 import { ExtendedError } from './errors';
+import moment from 'moment';
 
 class Log {
     constructor() {
@@ -20,22 +21,7 @@ class Log {
             this.logWrapperEl.removeClass('hidden');
         }
 
-        const now = new Date(Date.now());
-        let dateValues = [
-            now.getDate(),
-            now.getMonth(),
-            now.getFullYear()
-        ];
-        let date = dateValues.map(val => val.toString().padStart(2, '0')).join('/');
-        let times = [
-            now.getHours(),
-            now.getMinutes(),
-            now.getSeconds(),
-        ];
-        times = times.map(val => val.toString().padStart(2, '0'));
-        let time = times.join(':');
-        time = time + '.' + now.getMilliseconds().toString().padStart(3,'0');
-        let timestamp = `${date} ${time}`;
+        let timestamp = moment().format('DD/MM/YY HH:mm:ss.SS');
 
         let text = this.category+': '+value;
         let classes = ['line'];
