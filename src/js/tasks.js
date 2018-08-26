@@ -290,9 +290,10 @@ export class Task {
      * Increments progress and sets status
      * 
      * @param {string} status 
+     * @param {number} increment
      */
-    addStep(status) {
-        this.progress++;
+    addStep(status, increment=1) {
+        this.progress += increment;
         this.status = status;
     }
 }
