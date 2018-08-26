@@ -82,7 +82,7 @@ export const tabCreator = new TabCreator();
 /**
  * Creates a new tab.
  * @param {string} url The URL to navigate the tab to initially
- * @param {*} active Whether the tab should become the active tab in the window.
+ * @param {boolean} active Whether the tab should become the active tab in the window.
  */
 export function createTab(url, active=false) {
     return tabCreator.create({url, active});
