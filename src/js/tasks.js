@@ -99,6 +99,10 @@ export class Task {
             this.parent.addChild(this.id);
         }
         lastTaskId++;
+
+        if (this.autoUpdateParent && this.hasParent) {
+            this.parent.refresh();
+        }
     }
     get status() {
         return this._status;
