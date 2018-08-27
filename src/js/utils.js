@@ -89,6 +89,50 @@ export function createTab(url, active=false) {
 }
 
 /**
+ * Creates a tab with the result of a POST request.
+ * @param {Object} options
+ * @param {string} options.url The URL to send a POST request to
+ * @param {Object} options.data The POST parameters
+ * @param {boolean} [options.active=false] Whether the tab should become the active tab in the window
+ */
+export async function createTabPost({url, data, active=false}) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    for (const key of Object.keys(data)) {
+        const input = document.createElement('textarea');
+        input.setAttribute('name', key);
+        input.textContent = data[key];
+        form.appendChild(input);
+    }
+    
+    let generatedUrl = 'data:text/html;charset=utf8,';
+    generatedUrl += encodeURIComponent(form.outerHTML);
+    generatedUrl += encodeURIComponent('<script>document.forms[0].submit();</script>');
+
+    const tab = await createTab(generatedUrl, active);
+    // wait for form to load
+    await tabLoaded(tab.id);
+    return tab;
+}
+
+/**
+ * Promise version of chrome.pageCapture.saveAsMHTML
+ * @param {Object} options 
+ */
+export function saveAsMHTML(options) {
+    return new Promise((resolve, reject) => {
+        chrome.pageCapture.saveAsMHTML(options, (blob) => {
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+                resolve(blob);
+            }
+        });
+    });
+}
+
+/**
  * Executes a script in a particular tab
  * 
  * @param {number} tabId 
@@ -228,5 +272,27 @@ export async function clickElement(tabId, selector, name=null) {
         command: 'click',
         selector,
         name,
+    });
+}
+
+/**
+ * Wait's for a download with the specified ID to finish
+ * @param {number} id Download ID
+ */
+export function waitForDownloadToComplete(id) {
+    return new Promise((resolve, reject) => {
+        browser.downloads.onChanged.addListener(async (downloadDelta) => {
+            if (downloadDelta.id === id && downloadDelta.state) {
+                const state = downloadDelta.state.current;
+                if (state === 'complete') {
+                    resolve();
+                }
+                if (state === 'interrupted') {
+                    const downloads = await browser.downloads.search({id});
+                    // TODO: Handle download errors better
+                    reject(downloads[0].error);
+                }
+            }
+        });
     });
 }

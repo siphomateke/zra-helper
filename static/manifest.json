@@ -12,6 +12,8 @@
         ]
     },
     "permissions": [
+        "pageCapture",
+        "downloads",
         "tabs",
         "https://www.zra.org.zm/*"
     ],
