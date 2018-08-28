@@ -1,5 +1,7 @@
 import { toPascalCase } from '@/utils';
 
+/** @typedef {import('vuex').Store} VuexStore */
+
 /**
  * Gets a nested object property using a Vuex namespace.
  * @param {Object} obj
@@ -32,7 +34,7 @@ function normalizeNamespace(namespace) {
 
 /**
  * Gets a store module by namespace.
- * @param {import('vuex').Store} store
+ * @param {VuexStore} store
  * @param {string} namespace
  */
 function getModuleByNamespace(store, namespace) {
@@ -52,7 +54,7 @@ function getModuleByNamespace(store, namespace) {
  */
 export class ListItemStore {
   /**
-   * @param {import('vuex').Store} store
+   * @param {VuexStore} store
    * @param {ListItemStoreOptions} options
    */
   constructor(store, { namespace, list, id }) {
@@ -111,7 +113,7 @@ export class ListItemStore {
 }
 
 /**
- * @param {import('vuex').Store} store
+ * @param {VuexStore} store
  * @param {ListItemStoreOptions} options
  */
 export function getListItemStore(store, options) {

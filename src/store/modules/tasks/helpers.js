@@ -1,8 +1,10 @@
 import { getListItemStore } from '@/store/helpers/list_store';
 
+/** @typedef {import('vuex').Store} VuexStore */
+
 /**
  * Gets a task's ListItemStore from an ID.
- * @param {import('vuex').Store} store
+ * @param {VuexStore} store
  * @param {number} id
  * @returns {import('@/store/helpers/list_store').ListItemStore}
  */
@@ -16,7 +18,7 @@ export function taskFromId(store, id) {
 
 /**
  * Creates a new task.
- * @param {import('vuex').Store} store
+ * @param {VuexStore} store
  * @param {import('@/store/modules/tasks').TaskState} data
  */
 export async function createTask(store, data) {
