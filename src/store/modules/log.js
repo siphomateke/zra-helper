@@ -96,5 +96,15 @@ export default {
         }
       }
     },
+    log({ dispatch }, content) {
+      return dispatch('addLine', {
+        content,
+        type: '',
+        category: '',
+      });
+    },
+    setCategory({ commit }, category) {
+      commit('setCategory', category);
+    },
   },
 };
