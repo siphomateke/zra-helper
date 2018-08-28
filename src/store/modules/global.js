@@ -2,7 +2,7 @@ export default {
   state: {
     debug: false,
   },
-  mutation: {
+  mutations: {
     setDebugMode(state, mode) {
       state.debug = mode;
     },
