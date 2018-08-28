@@ -1,56 +1,75 @@
-import store, { storeOptions } from '@/store';
 import { toPascalCase } from '@/utils';
 
 /**
  * Gets a nested object property using a Vuex namespace.
- * @param {string} namespace Vuex namespace
  * @param {Object} obj
+ * @param {string} namespace Vuex namespace
  */
-function getByNamespace(namespace, obj) {
+function getByNamespace(obj, namespace) {
   const namespaces = namespace.split('/');
   return namespaces.reduce((accumulator, name) => accumulator[name], obj);
 }
 
 /**
  * Gets the state of a given namespace.
+ * @param {Object} rootState
  * @param {string} namespace
  */
-function getStateByNamespace(namespace) {
-  return getByNamespace(namespace, store.state);
+function getStateByNamespace(rootState, namespace) {
+  return getByNamespace(rootState, namespace);
+}
+
+/**
+ * Converts a namespace to the format that `store._modulesNamespaceMap` expects
+ * @param {string} namespace The namespace to convert
+ */
+function normalizeNamespace(namespace) {
+  if (typeof namespace === 'string' && namespace.charAt(namespace.length - 1) !== '/') {
+    namespace += '/';
+  }
+  return namespace;
 }
 
 /**
  * Gets a store module by namespace.
+ * @param {import('vuex').Store} store
  * @param {string} namespace
  */
-function getModuleByNamespace(namespace) {
-  return getByNamespace(namespace, storeOptions.modules);
+function getModuleByNamespace(store, namespace) {
+  // eslint-disable-next-line no-underscore-dangle
+  return store._modulesNamespaceMap[normalizeNamespace(namespace)]._rawModule;
 }
+
+/**
+ * @typedef ListItemStoreOptions
+ * @property {string} namespace The namespace in which the list resides
+ * @property {string} list The name of the list
+ * @property {number} id The ID of the list item
+ */
 
 /**
  * A reference to the store that is scoped by a list item.
  */
 export class ListItemStore {
   /**
-   * @param {Object} options
-   * @param {string} options.namespace The namespace in which the list resides
-   * @param {string} options.list The name of the list
-   * @param {number} options.id The ID of the list item
+   * @param {import('vuex').Store} store
+   * @param {ListItemStoreOptions} options
    */
-  constructor({ namespace, list, id }) {
+  constructor(store, { namespace, list, id }) {
+    this.store = store;
     this.namespace = namespace;
     this.list = list;
     this.id = id;
-    this.module = getModuleByNamespace(this.namespace);
+    this.module = getModuleByNamespace(this.store, this.namespace);
   }
   getState() {
-    return getStateByNamespace(this.namespace)[this.list][this.id];
+    return getStateByNamespace(this.store.state, this.namespace)[this.list][this.id];
   }
   propInState(prop) {
     return prop in this.getState();
   }
   propInGetters(prop) {
-    return `${this.namespace}/${prop}` in store.getters;
+    return `${this.namespace}/${prop}` in this.store.getters;
   }
   propInActions(prop) {
     return prop in this.module.actions;
@@ -63,7 +82,7 @@ export class ListItemStore {
    * @param {string} prop
    */
   getters(prop) {
-    return store.getters[`${this.namespace}/${prop}`](this.id);
+    return this.store.getters[`${this.namespace}/${prop}`](this.id);
   }
   /**
    * Commits a mutation with this list item's ID.
@@ -71,7 +90,7 @@ export class ListItemStore {
    * @param {*} value
    */
   commit(prop, value) {
-    store.commit(`${this.namespace}/set${toPascalCase(prop)}`, { id: this.id, value });
+    this.store.commit(`${this.namespace}/set${toPascalCase(prop)}`, { id: this.id, value });
   }
   /**
    * Dispatches an action with this list item's ID.
@@ -79,7 +98,7 @@ export class ListItemStore {
    * @param {Object} payload
    */
   dispatch(prop, payload) {
-    return store.dispatch(`${this.namespace}/${prop}`, Object.assign({ id: this.id }, payload));
+    return this.store.dispatch(`${this.namespace}/${prop}`, Object.assign({ id: this.id }, payload));
   }
   /**
    * Generates a dispatch function with a preset property.
@@ -91,8 +110,12 @@ export class ListItemStore {
   }
 }
 
-export function getListItemStore(options) {
-  const scopedStore = new ListItemStore(options);
+/**
+ * @param {import('vuex').Store} store
+ * @param {ListItemStoreOptions} options
+ */
+export function getListItemStore(store, options) {
+  const scopedStore = new ListItemStore(store, options);
   return new Proxy(scopedStore, {
     /**
      * @param {ListItemStore} obj
