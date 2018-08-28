@@ -45,7 +45,7 @@ export default {
     addLine({ commit, state, rootState }, payload) {
       commit('addLine', payload);
 
-      if (rootState.debug) {
+      if (rootState.global.debug) {
         const text = `${payload.category || state.currentCategory}: ${payload.content}`;
         switch (payload.type) {
           case 'error':
@@ -80,7 +80,7 @@ export default {
         type: warning ? 'warning' : 'error',
       });
 
-      if (rootState.debug && error instanceof Error) {
+      if (rootState.global.debug && error instanceof Error) {
         if (error instanceof ExtendedError) {
           console.groupCollapsed(`${error.type} Details`);
           console.log(error.stack);
