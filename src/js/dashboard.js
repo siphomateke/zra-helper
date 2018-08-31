@@ -576,7 +576,9 @@ function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
         for (const referenceNumber of referenceNumbers) {
             // TODO: Decide how to handle errors
             promises.push(new Promise((resolve) => {
-                downloadReceipt({client, taxType, referenceNumber, parentTask: task}).then(resolve);
+                downloadReceipt({client, taxType, referenceNumber, parentTask: task})
+                    .then(resolve)
+                    .catch(resolve);
             }));
         }
         Promise.all(promises).then(() => {
