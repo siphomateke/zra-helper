@@ -619,8 +619,8 @@ new ClientAction('Get all returns', 'get_all_returns',
                         const referenceNumbers = await getAllReturnHistoryReferenceNumbers({
                             tpin: client.username,
                             taxType: taxTypeId,
-                            fromDate: '01/10/2013',
-                            toDate: moment().format('DD/MM/YY'),
+                            fromDate: '01/01/2013',
+                            toDate: moment().format('31/12/YYYY'),
                             exciseType: exciseTypes.airtime,
                             parentTask: task,
                         });
