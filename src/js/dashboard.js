@@ -231,7 +231,11 @@ class ClientAction {
             await logout(this.mainTask);
 
             if (this.mainTask.state !== taskStates.ERROR) {
-                this.mainTask.state = taskStates.SUCCESS;
+                if (this.mainTask.childStateCounts[taskStates.WARNING] > 0) {
+                    this.mainTask.state = taskStates.WARNING;
+                } else {                
+                    this.mainTask.state = taskStates.SUCCESS;
+                }
             }
             this.mainTask.status = '';
         } catch (error) {
@@ -570,7 +574,7 @@ async function downloadReceipt({client, taxType, referenceNumber, parentTask}) {
 }
 
 function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
-    return new Promise((resolve) => {    
+    return new Promise((resolve, reject) => {    
         const task = new Task(`Download receipts`, parentTask.id);
         task.sequential = false;
         task.unknownMaxProgress = false;
@@ -585,14 +589,13 @@ function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
             }));
         }
         Promise.all(promises).then(() => {
-            let errorCount = 0;
-            for (const childTask of task.getChildren()) {
-                if (childTask.state === taskStates.ERROR) {
-                    errorCount++;
-                }
-            }
-            if (errorCount > 0) {
+            task.complete = true;
+            if (task.childStateCounts[taskStates.ERROR] > 0) {
+                task.state = taskStates.WARNING;
+            } else if (task.childStateCounts[taskStates.ERROR] === task.children.length) {
                 task.state = taskStates.ERROR;
+                reject();
+                return;
             } else {
                 task.state = taskStates.SUCCESS;
             }
@@ -641,14 +644,17 @@ new ClientAction('Get all returns', 'get_all_returns',
                             parentTask: task,
                             client,
                         });
-                        task.state = taskStates.SUCCESS;
                         task.status = '';
-                        resolve();
+                        if (task.childStateCounts[taskStates.WARNING] > 0) {
+                            task.state = taskStates.WARNING;
+                        } else {
+                            task.state = taskStates.SUCCESS;
+                        }
                     } catch (error) {
                         task.setError(error);
-                        resolve();
                     } finally {
                         task.complete = true;
+                        resolve();
                     }
                 }));
             }
@@ -671,6 +677,8 @@ new ClientAction('Get all returns', 'get_all_returns',
                     // If all sub tasks don't have a tax type, something probably went wrong
                     parentTask.state = taskStates.WARNING;
                     parentTask.status = 'No tax types found.';
+                } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
+                    parentTask.state = taskStates.WARNING;
                 } else {
                     parentTask.state = taskStates.SUCCESS;
                 }

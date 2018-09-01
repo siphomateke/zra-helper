@@ -48,6 +48,7 @@ export class Task {
         this._state = '';
         /** The error this task encountered. */
         this.error = null;
+        this.childStateCounts = {};
 
         /** HTML Elements */
         this.els = {
@@ -165,6 +166,7 @@ export class Task {
      */
     // TODO: Call sub-tasks children
     setSubtasksStateCount(state, count) {
+        this.childStateCounts[state] = count;
         if (count > 0) {
             this.els.subtasksInfo[state].root.show();
             this.els.subtasksInfo[state].count.text(count);
