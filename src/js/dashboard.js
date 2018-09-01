@@ -258,6 +258,8 @@ new ClientAction('Get all pending liabilities', 'pending_liabilities',
             const totals = {};
             log.setCategory(this.id);
             parentTask.sequential = false;
+            parentTask.unknownMaxProgress = false;
+            parentTask.progressMax = Object.keys(taxTypes).length;
             for (const taxTypeId of Object.keys(taxTypes)) {
                 promises.push(new Promise(async (resolve) => {
                     const taxType = taxTypes[taxTypeId];
@@ -524,9 +526,7 @@ async function getAllReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toD
 
 async function downloadReceipt({client, taxType, referenceNumber, parentTask}) {
     const task = new Task(`Download receipt ${referenceNumber}`, parentTask.id);
-    const numberOfSteps = 4;
-    task.progressMax = 1 / numberOfSteps;
-    const progressIncrement = task.progressMax / numberOfSteps;
+    task.progressMax = 4;
     task.status = 'Opening receipt tab';
     try {
         const tab = await createTabPost({
@@ -539,12 +539,12 @@ async function downloadReceipt({client, taxType, referenceNumber, parentTask}) {
             }
         });
         try {
-            task.addStep('Waiting for receipt to load', progressIncrement);
+            task.addStep('Waiting for receipt to load');
             await tabLoaded(tab.id);
-            task.addStep('Converting receipt to MHTML', progressIncrement);
+            task.addStep('Converting receipt to MHTML');
             const blob = await saveAsMHTML({tabId: tab.id});
             const url = URL.createObjectURL(blob);
-            task.addStep('Downloading generated MHTML', progressIncrement);
+            task.addStep('Downloading generated MHTML');
             const downloadId = await browser.downloads.download({
                 url, 
                 filename: `receipt-${client.username}-${taxType}-${referenceNumber}.mhtml`
@@ -610,13 +610,19 @@ new ClientAction('Get all returns', 'get_all_returns',
             log.setCategory(this.id);
             const promises = [];
             parentTask.sequential = false;
+            parentTask.unknownMaxProgress = false;
+            parentTask.progressMax = Object.keys(taxTypes).length;
+            
             const initialMaxOpenTabs = config.maxOpenTabs;
             config.maxOpenTabs = 3;
+
             for (const taxTypeId of Object.keys(taxTypes)) {
                 const taxType = taxTypes[taxTypeId];
                 promises.push(new Promise(async (resolve) => {
                     // TODO: Fix task progress
                     const task = new Task(`Get ${taxType} receipts`, parentTask.id);
+                    task.unknownMaxProgress = false;
+                    task.progressMax = 2;
                     try {
                         const referenceNumbers = await getAllReturnHistoryReferenceNumbers({
                             tpin: client.username,

@@ -209,7 +209,7 @@ export class Task {
                     break;
                 }
             } else {
-                progress += task.progress;
+                progress += task.progress / task.progressMax;
             }
         }
         if (!complete) {
