@@ -625,7 +625,6 @@ new ClientAction('Get all returns', 'get_all_returns',
             for (const taxTypeId of Object.keys(taxTypes)) {
                 const taxType = taxTypes[taxTypeId];
                 promises.push(new Promise(async (resolve) => {
-                    // TODO: Fix task progress
                     const task = new Task(`Get ${taxType} receipts`, parentTask.id);
                     task.unknownMaxProgress = false;
                     task.progressMax = 2;
