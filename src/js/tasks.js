@@ -100,9 +100,7 @@ export class Task {
         }
         lastTaskId++;
 
-        if (this.autoUpdateParent && this.hasParent) {
-            this.parent.refresh();
-        }
+        this.tryRefresh();
     }
     get status() {
         return this._status;
@@ -147,10 +145,7 @@ export class Task {
     set progress(value)  {
         this._progress = value;
         this.refreshProgress();
-
-        if (this.autoUpdateParent && this.hasParent) {
-            this.parent.refresh();
-        }
+        this.tryRefresh();
     }
     get progressMax() {
         return this._progressMax;
@@ -231,6 +226,11 @@ export class Task {
             this.complete = complete;
         }
     }
+    tryRefresh() {
+        if (this.autoUpdateParent && this.hasParent) {
+            this.parent.refresh();
+        }
+    }
     get complete() {
         return this._complete;
     }
@@ -261,9 +261,7 @@ export class Task {
                 this.els.root.addClass(this._state);
             }
 
-            if (this.autoUpdateParent && this.hasParent) {
-                this.parent.refresh();
-            }
+            this.tryRefresh();
         } else {
             throw new Error(`State must be one of the following: ${Object.values(taskStates).join(', ')}`);
         }
