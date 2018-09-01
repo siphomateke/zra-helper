@@ -222,9 +222,6 @@ export class Task {
         }
         // TODO: Store the state counts and use them to set this
         this.els.subtasksInfo.root.attr('title', stateStrings.join(', '));
-        if (complete !== this.complete) {
-            this.complete = complete;
-        }
     }
     tryRefresh() {
         if (this.autoUpdateParent && this.hasParent) {

@@ -386,6 +386,7 @@ new ClientAction('Get all pending liabilities', 'pending_liabilities',
                 output.addRow(Papa.unparse(rows, {
                     quotes: true,
                 }));
+                parentTask.complete = true;
                 resolve();
             });
         });
@@ -673,6 +674,8 @@ new ClientAction('Get all returns', 'get_all_returns',
                 } else {
                     parentTask.state = taskStates.SUCCESS;
                 }
+                
+                parentTask.complete = true;
                 resolve();
             });
         });
