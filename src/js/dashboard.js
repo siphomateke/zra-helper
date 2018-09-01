@@ -14,7 +14,7 @@ import {
 } from './utils';
 import moment from 'moment';
 import config from './config';
-import { ElementNotFoundError } from './errors';
+import { ElementNotFoundError, TaxTypeNotFoundError } from './errors';
 
 const taxTypes = {
     '01': 'ITX',
@@ -457,7 +457,9 @@ function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page
                                 return;
                             }
                         } else {
-                            reject(new Error('No return history found.'));
+                            reject(new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
+                                taxTypeId: taxType,
+                            }));
                         }
                     } else {
                         reject(new ElementNotFoundError(`Return history table element not found.`, null, {
@@ -651,15 +653,23 @@ new ClientAction('Get all returns', 'get_all_returns',
             }
             Promise.all(promises).then(() => {
                 config.maxOpenTabs = initialMaxOpenTabs;
-                
                 let errorCount = 0;
+                let taxTypeErrorCount = 0;
                 for (const task of parentTask.getChildren()) {
                     if (task.state === taskStates.ERROR) {
-                        errorCount++;
+                        if (task.error.type !== 'TaxTypeNotFoundError') {
+                            errorCount++;
+                        } else {
+                            taxTypeErrorCount++;
+                        }
                     }
                 }
                 if (errorCount > 0) {
                     parentTask.state = taskStates.ERROR;
+                } else if (taxTypeErrorCount === parentTask.children.length) {
+                    // If all sub tasks don't have a tax type, something probably went wrong
+                    parentTask.state = taskStates.WARNING;
+                    parentTask.status = 'No tax types found.';
                 } else {
                     parentTask.state = taskStates.SUCCESS;
                 }
