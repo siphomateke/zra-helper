@@ -3,9 +3,10 @@ import config from '../config';
 import { taxTypes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
-import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, getDocumentByAjax } from '../utils';
+import { getDocumentByAjax } from '../utils';
 import { ClientAction } from './base';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
+import { downloadReceipt } from './utils';
 
 /** 
  * @typedef {import('../constants').Client} Client 
@@ -121,12 +122,12 @@ async function getAllReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toD
     return referenceNumbers;
 }
 
-async function downloadReceipt({client, taxType, referenceNumber, parentTask}) {
-    const task = new Task(`Download receipt ${referenceNumber}`, parentTask.id);
-    task.progressMax = 4;
-    task.status = 'Opening receipt tab';
-    try {
-        const tab = await createTabPost({
+function downloadReturnHistoryReceipt({client, taxType, referenceNumber, parentTask}) {
+    return downloadReceipt({
+        filename: `receipt-${client.username}-${taxType}-${referenceNumber}.mhtml`,
+        taskTitle: `Download receipt ${referenceNumber}`,
+        parentTask,
+        createTabPostOptions: {
             url: 'https://www.zra.org.zm/retHist.htm',
             data: {
                 actionCode: 'printReceipt',
@@ -134,33 +135,8 @@ async function downloadReceipt({client, taxType, referenceNumber, parentTask}) {
                 ackNo: referenceNumber,
                 rtnType: taxType,
             }
-        });
-        try {
-            task.addStep('Waiting for receipt to load');
-            await tabLoaded(tab.id);
-            task.addStep('Converting receipt to MHTML');
-            const blob = await saveAsMHTML({tabId: tab.id});
-            const url = URL.createObjectURL(blob);
-            task.addStep('Downloading generated MHTML');
-            const downloadId = await browser.downloads.download({
-                url, 
-                filename: `receipt-${client.username}-${taxType}-${referenceNumber}.mhtml`
-            });
-            // TODO: Show download progress
-            await waitForDownloadToComplete(downloadId);
-            task.state = taskStates.SUCCESS;
-            task.status = '';
-        } finally {
-            // Don't need to wait for the tab to close to carry out logged in actions
-            // TODO: Catch tab close errors
-            browser.tabs.remove(tab.id);
-        }
-    } catch (error) {
-        task.setError(error);
-        throw error;
-    } finally {
-        task.complete = true;
-    }
+        },
+    });
 }
 
 function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
@@ -173,7 +149,7 @@ function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
         for (const referenceNumber of referenceNumbers) {
             // TODO: Decide how to handle errors
             promises.push(new Promise((resolve) => {
-                downloadReceipt({client, taxType, referenceNumber, parentTask: task})
+                downloadReturnHistoryReceipt({client, taxType, referenceNumber, parentTask: task})
                     .then(resolve)
                     .catch(resolve);
             }));
