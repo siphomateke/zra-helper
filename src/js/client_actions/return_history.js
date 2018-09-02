@@ -55,7 +55,7 @@ async function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate
     
     try {
         return await parseTableAdvanced({
-            doc,
+            root: doc,
             headers: recordHeaders,
             tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
             recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
