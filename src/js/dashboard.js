@@ -222,6 +222,7 @@ class ClientAction {
 
             this.mainTask.status = this.taskName;
             let task = new Task(this.taskName, this.mainTask.id);
+            log.setCategory(this.id);
             await this.action(client, task, this.output);
             if (task.state === taskStates.ERROR) {
                 this.mainTask.state = taskStates.ERROR;
@@ -260,7 +261,6 @@ new ClientAction('Get all pending liabilities', 'pending_liabilities',
             /** Total number of pending liabilities including the grand total */
             const numTotals = 4;
             const totals = {};
-            log.setCategory(this.id);
             parentTask.sequential = false;
             parentTask.unknownMaxProgress = false;
             parentTask.progressMax = Object.keys(taxTypes).length;
@@ -613,7 +613,6 @@ new ClientAction('Get all returns', 'get_all_returns',
     function (client, parentTask, output) {
         return new Promise((resolve) => {
             // TODO: Log all progress
-            log.setCategory(this.id);
             const promises = [];
             parentTask.sequential = false;
             parentTask.unknownMaxProgress = false;
