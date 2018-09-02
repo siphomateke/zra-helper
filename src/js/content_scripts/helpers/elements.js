@@ -66,7 +66,6 @@ export function getElementFromDocument(document, selector, name=null) {
  * From an object of selectors, generates an object of elements with the same keys as the selectors object.
  * 
  * If any of the elements are missing, an `ElementsNotFoundError` is thrown.
- * @param {Document} document
  * @param {Object.<string, string>} selectors Object of selectors with names as keys.
  * @param {string} [customErrorMessage=null] Error message to show if any elements are missing.
  * If `$1` or `$2` appear in this string, they will be replaced with the 
@@ -74,8 +73,8 @@ export function getElementFromDocument(document, selector, name=null) {
  * @returns {Object.<string, HTMLElement>} An object containing HTML elements with names as keys.
  * @throws {ElementsNotFoundError}
  */
-export function getElements(selector, name) {
-    return getElementsFromDocument(document, selector, name);
+export function getElements(selectors, customErrorMessage) {
+    return getElementsFromDocument(document, selectors, customErrorMessage);
 }
 
 
