@@ -5,7 +5,7 @@ import { ElementNotFoundError, ElementsNotFoundError } from '../../errors';
  * using the passed document.
  * 
  * If any of the elements are missing, an `ElementsNotFoundError` is thrown.
- * @param {Document} document
+ * @param {Document|Element} document
  * @param {Object.<string, string>} selectors Object of selectors with names as keys.
  * @param {string} [customErrorMessage=null] Error message to show if any elements are missing.
  * If `$1` or `$2` appear in this string, they will be replaced with the 
@@ -46,7 +46,7 @@ export function getElementsFromDocument(document, selectors, customErrorMessage=
 
 /**
  * Gets an element from a document using a selector and throws an `ElementNotFoundError` if it doesn't exist.
- * @param {Document} document
+ * @param {Document|Element} document
  * @param {string} selector
  * @param {string} name A descriptive name of the element. Used when generating errors.
  * @returns {HTMLElement}
