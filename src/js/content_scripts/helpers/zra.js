@@ -42,7 +42,18 @@ export function parseTable({root, headers, recordSelector}) {
         const row = {};
         const columns = recordElement.querySelectorAll('td');
         Array.from(columns, (column, index) => {
-            row[headers[index]] = column.innerText.trim();
+            let value = column.innerText.trim();
+            const link = column.querySelector('a');
+            if (link) {
+                const onclick = link.getAttribute('onclick');
+                if (onclick) {
+                    value = {
+                        innerText: value,
+                        onclick,
+                    };
+                }
+            }
+            row[headers[index]] = value;
         });
         records.push(row);
     }
