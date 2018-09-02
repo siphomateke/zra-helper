@@ -73,7 +73,7 @@ export function getElementFromDocument(document, selector, name=null) {
  * @returns {Object.<string, HTMLElement>} An object containing HTML elements with names as keys.
  * @throws {ElementsNotFoundError}
  */
-export function getElements(selectors, customErrorMessage) {
+export function getElements(selectors, customErrorMessage=null) {
     return getElementsFromDocument(document, selectors, customErrorMessage);
 }
 
@@ -85,6 +85,6 @@ export function getElements(selectors, customErrorMessage) {
  * @returns {HTMLElement}
  * @throws {ElementNotFoundError}
  */
-export function getElement(selector, name) {
+export function getElement(selector, name=null) {
     return getElementFromDocument(document, selector, name);
 }
