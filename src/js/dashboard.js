@@ -2,12 +2,12 @@ import $ from 'jquery';
 import Papa from 'papaparse';
 import pendingLiabilitiesAction from './client_actions/pending_liabilities';
 import returnHistoryAction from './client_actions/return_history';
-import { allClientsAction } from './client_actions/utils';
+import { allClientsAction } from './client_actions/base';
 import { log } from './log';
 
 /** 
  * @typedef {import('./constants').Client} Client 
- * @typedef {import('./client_actions/utils').ClientAction} ClientAction
+ * @typedef {import('./client_actions/base').ClientAction} ClientAction
  */
 
 /** @type {Client[]} */

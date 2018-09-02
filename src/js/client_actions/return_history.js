@@ -4,12 +4,12 @@ import { taxTypes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
 import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, getDocumentByAjax } from '../utils';
-import { ClientAction } from './utils';
+import { ClientAction } from './base';
 import { parseTable } from '../content_scripts/helpers/zra';
 
 /** 
  * @typedef {import('../constants').Client} Client 
- * @typedef {import('./utils').Output} Output
+ * @typedef {import('./base').Output} Output
  */
 
 const exciseTypes = {

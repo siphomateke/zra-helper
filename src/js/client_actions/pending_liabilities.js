@@ -3,11 +3,11 @@ import { taxTypes } from '../constants';
 import { log } from '../log';
 import { Task, taskStates } from '../tasks';
 import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '../utils';
-import { ClientAction } from './utils';
+import { ClientAction } from './base';
 
 /** 
  * @typedef {import('../constants').Client} Client 
- * @typedef {import('./utils').Output} Output
+ * @typedef {import('./base').Output} Output
  */
 
 export default new ClientAction('Get all pending liabilities', 'pending_liabilities', 
