@@ -156,16 +156,12 @@ function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
         }
         Promise.all(promises).then(() => {
             task.complete = true;
-            if (task.childStateCounts[taskStates.ERROR] > 0) {
-                task.state = taskStates.WARNING;
-            } else if (task.childStateCounts[taskStates.ERROR] === task.children.length) {
-                task.state = taskStates.ERROR;
+            task.state = task.getStateFromChildren();
+            if (task.state === taskStates.ERROR) {
                 reject();
-                return;
             } else {
-                task.state = taskStates.SUCCESS;
+                resolve();
             }
-            resolve();
         });
     });
 }
