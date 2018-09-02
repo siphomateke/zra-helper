@@ -1,5 +1,26 @@
+import { TableError, ZraError } from '../../errors';
 import { getElementFromDocument } from './elements';
-import { TableError } from '../../errors';
+
+/**
+ * Gets error message from page if it exists
+ * @param {Document} document
+ * @returns {ZraError|null}
+ */
+export function getZraError(document) {
+    const errorTable = document.querySelector('#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>div>table>tbody>tr>td>table');
+    if (errorTable !== null) {
+        const errorTableHeader = errorTable.querySelector('tbody>tr.tdborder>td');
+        if (errorTableHeader !== null && errorTableHeader.innerText.includes('An Error has occurred')) {
+            const error = errorTable.querySelector('tbody>tr:nth-child(2)>td');
+            if (error !== null) {
+                return new ZraError(`${errorTableHeader.innerText.trim()}. ${error.innerText}`, null, {
+                    error: error.innerText,
+                });
+            }
+        }
+    }
+    return null;
+}
 
 /**
  * @typedef {Object.<string, string>} ParsedTableRecord
