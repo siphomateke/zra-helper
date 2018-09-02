@@ -60,6 +60,7 @@ export class TaxTypeNotFoundError extends ExtendedError {
         super(message, code, props);
     }
 }
+export class TableError extends ExtendedError {}
 export class ElementsNotFoundError extends ExtendedError {
     /** 
      * @param {Object} props

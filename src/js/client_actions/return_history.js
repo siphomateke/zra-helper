@@ -6,7 +6,7 @@ import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
 import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete } from '../utils';
 import { ClientAction } from './utils';
-import { getElementFromDocument } from '../content_scripts/helpers/elements';
+import { parseTable } from '../content_scripts/helpers/zra';
 
 /** 
  * @typedef {import('../constants').Client} Client 
@@ -22,20 +22,20 @@ const exciseTypes = {
 	spiritsAndWine: '20025009',
 }
 
-    const recordHeaders = [
-        'srNo',
-        'referenceNo',
-        'searchCode',
-        'returnPeriodFrom',
-        'returnPeriodTo',
-        'returnAppliedDate',
-        'accountName',
-        'applicationType',
-        'status',
-        'appliedThrough',
-        'receipt',
-        'submittedForm',
-    ];
+const recordHeaders = [
+    'srNo',
+    'referenceNo',
+    'searchCode',
+    'returnPeriodFrom',
+    'returnPeriodTo',
+    'returnAppliedDate',
+    'accountName',
+    'applicationType',
+    'status',
+    'appliedThrough',
+    'receipt',
+    'submittedForm',
+];
 
 function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page, exciseType}) {
     return new Promise((resolve, reject) => {
@@ -53,36 +53,28 @@ function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page
                 actionCode: 'dealerReturnsView',
                 dispatch: 'dealerReturnsView',
             },
-            success(data, textStatus, jqXHR) {
+            async success(data, textStatus, jqXHR) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data, 'text/html');
                 try {
-                    const tableInfoElement = getElementFromDocument(doc, '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td', 'return history table info');
-                    const tableInfo = tableInfoElement.innerText;
-                    if (tableInfo && !tableInfo.includes('No Data Found')) {
-                        const [_, currentPage, numPages] = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
-                        const records = [];
-                        const recordElements = doc.querySelectorAll('#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput');
-                        for (const recordElement of recordElements) {
-                            const row = {};
-                            const columns = recordElement.querySelectorAll('td');
-                            Array.from(columns, (column, index) => {
-                                row[recordHeaders[index]] = column.innerText.trim();
-                            });
-                            records.push(row);
-                        }
-                            resolve({records, currentPage, numPages});
-                            return;
-                    } else {
+                    resolve(await parseTable({
+                        doc,
+                        headers: recordHeaders,
+                        tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
+                        recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
+                        noRecordsString: 'No Data Found'
+                    }));
+                } catch (error) {
+                    if (error.type === 'TableError' && error.code === 'NoRecordsFound') {
                         reject(new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
                             taxTypeId: taxType,
                         }));
+                    } else {
+                        reject(error);
                     }
-                    // TODO: Add custom error message for this
-                    reject(new Error('Unknown error retrieving return history reference numbers.'));
-                } catch (error) {
-                    reject(error);
                 }
+                // TODO: Add custom error message for this
+                reject(new Error('Unknown error retrieving return history reference numbers.'));
             },
             error(jqXHR, textStatus, error) {
                 // TODO: Handle errors
