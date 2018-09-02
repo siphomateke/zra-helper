@@ -5,7 +5,7 @@ import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
 import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, getDocumentByAjax } from '../utils';
 import { ClientAction } from './base';
-import { parseTable } from '../content_scripts/helpers/zra';
+import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 
 /** 
  * @typedef {import('../constants').Client} Client 
@@ -54,7 +54,7 @@ async function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate
     });
     
     try {
-        return await parseTable({
+        return await parseTableAdvanced({
             doc,
             headers: recordHeaders,
             tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
