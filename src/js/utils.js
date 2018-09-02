@@ -308,15 +308,21 @@ export function waitForDownloadToComplete(id) {
  * @returns {Promise.<Document>}
  */
 export async function getDocumentByAjax({url, method = 'get', data = {}}) {
+    /** @type {import('axios').AxiosRequestConfig} */
     const axiosOptions = { 
         url,
         method,
-        responseType: 'text'
+        responseType: 'text',
     };
     if (method === 'get') {
         axiosOptions.params = data;
     } else {
-        axiosOptions.data = data;
+        const formData = new FormData();
+        for (const key of Object.keys(data)) {
+            formData.set(key, data[key]);
+        }
+        axiosOptions.data = formData;
+        axiosOptions.headers = {'Content-Type': 'application/x-www-form-urlencoded'};
     }
     const response = await axios(axiosOptions);
     const parser = new DOMParser();
