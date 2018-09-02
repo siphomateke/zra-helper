@@ -1,9 +1,11 @@
 import { ElementNotFoundError, ElementsNotFoundError } from '../../errors';
 
 /**
- * From an object of selectors, generates an object of elements with the same keys as the selectors object.
+ * From an object of selectors, generates an object of elements with the same keys as the selectors object
+ * using the passed document.
  * 
  * If any of the elements are missing, an `ElementsNotFoundError` is thrown.
+ * @param {Document} document
  * @param {Object.<string, string>} selectors Object of selectors with names as keys.
  * @param {string} [customErrorMessage=null] Error message to show if any elements are missing.
  * If `$1` or `$2` appear in this string, they will be replaced with the 
@@ -11,7 +13,7 @@ import { ElementNotFoundError, ElementsNotFoundError } from '../../errors';
  * @returns {Object.<string, HTMLElement>} An object containing HTML elements with names as keys.
  * @throws {ElementsNotFoundError}
  */
-export function getElements(selectors, customErrorMessage=null) {
+export function getElementsFromDocument(document, selectors, customErrorMessage=null) {
     /** @type {string[]} Names of missing elements. */
     const missingElements = [];
     /** @type {string[]} Selectors of missing elements. */
@@ -43,13 +45,14 @@ export function getElements(selectors, customErrorMessage=null) {
 }
 
 /**
- * Gets an element using a selector and throws an `ElementNotFoundError` if it doesn't exist.
+ * Gets an element from a document using a selector and throws an `ElementNotFoundError` if it doesn't exist.
+ * @param {Document} document
  * @param {string} selector
  * @param {string} name A descriptive name of the element. Used when generating errors.
  * @returns {HTMLElement}
  * @throws {ElementNotFoundError}
  */
-export function getElement(selector, name=null) {
+export function getElementFromDocument(document, selector, name=null) {
     const element = document.querySelector(selector);
     if (!element) {
         if (name === null) name = selector;
@@ -57,4 +60,32 @@ export function getElement(selector, name=null) {
     } else {
         return element;
     }
+}
+
+/**
+ * From an object of selectors, generates an object of elements with the same keys as the selectors object.
+ * 
+ * If any of the elements are missing, an `ElementsNotFoundError` is thrown.
+ * @param {Document} document
+ * @param {Object.<string, string>} selectors Object of selectors with names as keys.
+ * @param {string} [customErrorMessage=null] Error message to show if any elements are missing.
+ * If `$1` or `$2` appear in this string, they will be replaced with the 
+ * names of the missing elements and the missing elements' selectors respectively.
+ * @returns {Object.<string, HTMLElement>} An object containing HTML elements with names as keys.
+ * @throws {ElementsNotFoundError}
+ */
+export function getElements(selector, name) {
+    return getElementsFromDocument(document, selector, name);
+}
+
+
+/**
+ * Gets an element using a selector and throws an `ElementNotFoundError` if it doesn't exist.
+ * @param {string} selector
+ * @param {string} name A descriptive name of the element. Used when generating errors.
+ * @returns {HTMLElement}
+ * @throws {ElementNotFoundError}
+ */
+export function getElement(selector, name) {
+    return getElementFromDocument(document, selector, name);
 }
