@@ -1,10 +1,9 @@
-import $ from 'jquery';
 import moment from 'moment';
 import config from '../config';
 import { taxTypes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
-import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete } from '../utils';
+import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, getDocumentByAjax } from '../utils';
 import { ClientAction } from './utils';
 import { parseTable } from '../content_scripts/helpers/zra';
 
@@ -37,51 +36,40 @@ const recordHeaders = [
     'submittedForm',
 ];
 
-function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page, exciseType}) {
-    return new Promise((resolve, reject) => {
-        $.ajax({
-            url: 'https://www.zra.org.zm/retHist.htm',
-            method: 'post',
-            data: {
-                'retHistVO.fromDate': fromDate,
-                'retHistVO.toDate': toDate,
-                'retHistVO.rtnackNo': '',
-                'retHistVO.rtnType': taxType,
-                'retHistVO.rtnTypeExc': exciseType,
-                'retHistVO.tinNo': tpin,
-                currentPage: page,
-                actionCode: 'dealerReturnsView',
-                dispatch: 'dealerReturnsView',
-            },
-            async success(data, textStatus, jqXHR) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(data, 'text/html');
-                try {
-                    resolve(await parseTable({
-                        doc,
-                        headers: recordHeaders,
-                        tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
-                        recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
-                        noRecordsString: 'No Data Found'
-                    }));
-                } catch (error) {
-                    if (error.type === 'TableError' && error.code === 'NoRecordsFound') {
-                        reject(new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
-                            taxTypeId: taxType,
-                        }));
-                    } else {
-                        reject(error);
-                    }
-                }
-                // TODO: Add custom error message for this
-                reject(new Error('Unknown error retrieving return history reference numbers.'));
-            },
-            error(jqXHR, textStatus, error) {
-                // TODO: Handle errors
-                reject();
-            },
-        });
+async function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page, exciseType}) {
+    const doc = await getDocumentByAjax({
+        url: 'https://www.zra.org.zm/retHist.htm', 
+        method: 'post', 
+        data: {
+            'retHistVO.fromDate': fromDate,
+            'retHistVO.toDate': toDate,
+            'retHistVO.rtnackNo': '',
+            'retHistVO.rtnType': taxType,
+            'retHistVO.rtnTypeExc': exciseType,
+            'retHistVO.tinNo': tpin,
+            currentPage: page,
+            actionCode: 'dealerReturnsView',
+            dispatch: 'dealerReturnsView',
+        },
     });
+    
+    try {
+        return await parseTable({
+            doc,
+            headers: recordHeaders,
+            tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
+            recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
+            noRecordsString: 'No Data Found'
+        });
+    } catch (error) {
+        if (error.type === 'TableError' && error.code === 'NoRecordsFound') {
+            throw new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
+                taxTypeId: taxType,
+            });
+        } else {
+            throw error;
+        }
+    }
 }
 
 async function getAllReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, exciseType, parentTask}) {

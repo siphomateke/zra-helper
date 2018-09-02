@@ -1,5 +1,7 @@
-import {errorFromJson, TabError, ExecuteScriptError, SendMessageError} from './errors';
+import axios from 'axios';
 import config from './config';
+import { getZraError } from './content_scripts/helpers/zra';
+import { errorFromJson, ExecuteScriptError, SendMessageError, TabError } from './errors';
 
 class TabCreator {
     constructor() {
@@ -295,4 +297,34 @@ export function waitForDownloadToComplete(id) {
             }
         });
     });
+}
+
+/**
+ * Gets a document from the response of an AJAX request.
+ * @param {Object} options 
+ * @param {string} options.url
+ * @param {string} [options.method=get] Type of request
+ * @param {Object} [options.data] POST request data
+ * @returns {Promise.<Document>}
+ */
+export async function getDocumentByAjax({url, method = 'get', data = {}}) {
+    const axiosOptions = { 
+        url,
+        method,
+        responseType: 'text'
+    };
+    if (method === 'get') {
+        axiosOptions.params = data;
+    } else {
+        axiosOptions.data = data;
+    }
+    const response = await axios(axiosOptions);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(response.data, 'text/html');
+    const zraError = getZraError(doc);
+    if (zraError) {
+        throw zraError;
+    } else {
+        return doc;
+    }
 }
