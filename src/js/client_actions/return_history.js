@@ -22,7 +22,6 @@ const exciseTypes = {
 	spiritsAndWine: '20025009',
 }
 
-function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page, exciseType}) {
     const recordHeaders = [
         'srNo',
         'referenceNo',
@@ -37,6 +36,8 @@ function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page
         'receipt',
         'submittedForm',
     ];
+
+function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page, exciseType}) {
     return new Promise((resolve, reject) => {
         $.ajax({
             url: 'https://www.zra.org.zm/retHist.htm',
