@@ -2,10 +2,11 @@ import $ from 'jquery';
 import moment from 'moment';
 import config from '../config';
 import { taxTypes } from '../constants';
-import { ElementNotFoundError, TaxTypeNotFoundError } from '../errors';
+import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
 import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete } from '../utils';
 import { ClientAction } from './utils';
+import { getElementFromDocument } from '../content_scripts/helpers/elements';
 
 /** 
  * @typedef {import('../constants').Client} Client 
@@ -52,43 +53,35 @@ function getReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toDate, page
                 dispatch: 'dealerReturnsView',
             },
             success(data, textStatus, jqXHR) {
-                const $html = $($.parseHTML(data));
-                // TODO: Make sure all the elements exist
-                // TODO: Add better errors
-                const tableInfoElementSelector = '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td';
-                const tableInfoElement = $html.find(tableInfoElementSelector);
-                if (tableInfoElement.length > 0) {
-                    const tableInfo = tableInfoElement.text();
-                    if (typeof tableInfo === 'string' && tableInfo.length > 0) {
-                        if (!tableInfo.includes('No Data Found')) {
-                            const [_, currentPage, numPages] = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
-                            let recordElements = $html.find('#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput');
-
-                            if (recordElements.length > 0) {
-                                const records = [];
-                                recordElements.each((index, rowElement) => {
-                                    const row = {};
-                                    $(rowElement).find('td').each((index, columnElement) => {
-                                        row[recordHeaders[index]] = $(columnElement).text().trim();
-                                    });
-                                    records.push(row);
-                                });
-
-                                resolve({records, currentPage, numPages});
-                                return;
-                            }
-                        } else {
-                            reject(new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
-                                taxTypeId: taxType,
-                            }));
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data, 'text/html');
+                try {
+                    const tableInfoElement = getElementFromDocument(doc, '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td', 'return history table info');
+                    const tableInfo = tableInfoElement.innerText;
+                    if (tableInfo && !tableInfo.includes('No Data Found')) {
+                        const [_, currentPage, numPages] = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
+                        const records = [];
+                        const recordElements = doc.querySelectorAll('#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput');
+                        for (const recordElement of recordElements) {
+                            const row = {};
+                            const columns = recordElement.querySelectorAll('td');
+                            Array.from(columns, (column, index) => {
+                                row[recordHeaders[index]] = column.innerText.trim();
+                            });
+                            records.push(row);
                         }
+                            resolve({records, currentPage, numPages});
+                            return;
                     } else {
-                        reject(new ElementNotFoundError(`Return history table element not found.`, null, {
-                            selector: tableInfoElementSelector
+                        reject(new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
+                            taxTypeId: taxType,
                         }));
                     }
+                    // TODO: Add custom error message for this
+                    reject(new Error('Unknown error retrieving return history reference numbers.'));
+                } catch (error) {
+                    reject(error);
                 }
-                reject(new Error('Unknown error retrieving return history reference numbers.'));
             },
             error(jqXHR, textStatus, error) {
                 // TODO: Handle errors
