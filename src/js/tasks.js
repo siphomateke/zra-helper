@@ -267,16 +267,16 @@ export class Task {
     }
     /**
      * Determines this task's state from it's children.
-     * - any child error then warning
      * - all children error then error
+     * - any child error then warning
      * - else success
      */
     getStateFromChildren() {
         let state;
-        if (this.childStateCounts[taskStates.ERROR] > 0) {
-            state = taskStates.WARNING;
-        } else if (this.childStateCounts[taskStates.ERROR] === this.children.length) {
+        if (this.childStateCounts[taskStates.ERROR] === this.children.length) {
             state = taskStates.ERROR;
+        } else if (this.childStateCounts[taskStates.ERROR] > 0) {
+            state = taskStates.WARNING;
         } else {
             state = taskStates.SUCCESS;
         }
