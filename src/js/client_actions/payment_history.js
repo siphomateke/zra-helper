@@ -75,13 +75,23 @@ async function getPaymentReceiptNumbers({
       prnNo: receiptNumber,
     },
   });
-  return parseTableAdvanced({
-    root: doc,
-    headers: recordHeaders,
-    tableInfoSelector: '#contentDiv>table>tbody>tr>td',
-    recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
-    noRecordsString: 'No Records Found',
-  });
+  try {
+    const parsed = await parseTableAdvanced({
+      root: doc,
+      headers: recordHeaders,
+      tableInfoSelector: '#contentDiv>table>tbody>tr>td',
+      recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
+      noRecordsString: 'No Records Found',
+    });
+    return parsed;
+  } catch (error) {
+    if (error.type === 'TableError' && error.code === 'NoRecordsFound') {
+      error.message = 'No payment receipts found.';
+      throw error;
+    } else {
+      throw error;
+    }
+  }
 }
 
 async function getPaymentReceiptNumbersTask(options, page, parentTask) {
