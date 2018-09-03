@@ -3,6 +3,21 @@ import {
   createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, executeScript, sendMessage,
 } from '../utils';
 
+/**
+ * Downloads a receipt
+ * @param {Object} options
+ * @param {'return'|'payment'} options.type
+ * @param {string|string[]|Function} options.filename
+ * Filename of the downloaded receipt.
+ *
+ * If an array of filenames is provided, multiple files will be downloaded.
+ *
+ * If a function is provided, it must return a string or array. It will be called with
+ * an object containing information about the receipt such as reference number.
+ * @param {string} options.taskTitle
+ * @param {Task} options.parentTask
+ * @param {import('../utils').CreateTabPostOptions} options.createTabPostOptions
+ */
 export async function downloadReceipt({
   type, filename, taskTitle, parentTask, createTabPostOptions,
 }) {

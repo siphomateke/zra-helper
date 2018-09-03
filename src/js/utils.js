@@ -93,11 +93,15 @@ export function createTab(url, active = false) {
 }
 
 /**
+ * @typedef CreateTabPostOptions
+ * @property {string} url The URL to send a POST request to
+ * @property {Object} data The POST parameters
+ * @property {boolean} [active=false] Whether the tab should become the active tab in the window
+ */
+
+/**
  * Creates a tab with the result of a POST request.
- * @param {Object} options
- * @param {string} options.url The URL to send a POST request to
- * @param {Object} options.data The POST parameters
- * @param {boolean} [options.active=false] Whether the tab should become the active tab in the window
+ * @param {CreateTabPostOptions} options
  */
 export async function createTabPost({ url, data, active = false }) {
   const form = document.createElement('form');
