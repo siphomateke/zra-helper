@@ -1,7 +1,7 @@
 import { Task, taskStates } from '../tasks';
-import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete } from '../utils';
+import { createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, executeScript, sendMessage } from '../utils';
 
-export async function downloadReceipt({filename, taskTitle, parentTask, createTabPostOptions}) {
+export async function downloadReceipt({type, filename, taskTitle, parentTask, createTabPostOptions}) {
     const task = new Task(taskTitle, parentTask.id);
     task.progressMax = 4;
     task.status = 'Opening receipt tab';
@@ -10,13 +10,30 @@ export async function downloadReceipt({filename, taskTitle, parentTask, createTa
         try {
             task.addStep('Waiting for receipt to load');
             await tabLoaded(tab.id);
+
+            await executeScript(tab.id, {file: 'get_receipt_data.js'});
+            const receiptData = await sendMessage(tab.id, { 
+                command: 'getReceiptData',
+                type,
+            });
+
             task.addStep('Converting receipt to MHTML');
             const blob = await saveAsMHTML({tabId: tab.id});
             const url = URL.createObjectURL(blob);
             task.addStep('Downloading generated MHTML');
+
+            let generatedFilename;
+            if (typeof filename === 'string') {
+                generatedFilename = filename;
+            } else if (typeof filename === 'function') {
+                generatedFilename = filename(receiptData);
+            } else {
+                throw new Error('Invalid filename attribute; filename must be a string or function.');
+            }
+
             const downloadId = await browser.downloads.download({
                 url, 
-                filename,
+                filename: generatedFilename,
             });
             // TODO: Show download progress
             await waitForDownloadToComplete(downloadId);

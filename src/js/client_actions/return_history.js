@@ -124,6 +124,7 @@ async function getAllReturnHistoryReferenceNumbers({tpin, taxType, fromDate, toD
 
 function downloadReturnHistoryReceipt({client, taxType, referenceNumber, parentTask}) {
     return downloadReceipt({
+        type: 'return',
         filename: `receipt-${client.username}-${taxType}-${referenceNumber}.mhtml`,
         taskTitle: `Download receipt ${referenceNumber}`,
         parentTask,
