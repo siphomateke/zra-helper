@@ -27,19 +27,19 @@ export class Task {
     this._progress = 0;
     this._progressMax = 100;
     /**
-         * Whether the maximum progress of this task can be determined.
-         *
-         * This is used to determine this task's progress from it's sub-tasks
-         * and is thus only used if it has sub-tasks.
-         *
-         * Only set this to false if the total number of sub-tasks that this
-         * task can ever have and their maximum progress' are known.
-         * If set to false then `progressMax` must also be set.
-         */
+     * Whether the maximum progress of this task can be determined.
+     *
+     * This is used to determine this task's progress from it's sub-tasks
+     * and is thus only used if it has sub-tasks.
+     *
+     * Only set this to false if the total number of sub-tasks that this
+     * task can ever have and their maximum progress' are known.
+     * If set to false then `progressMax` must also be set.
+     */
     this.unknownMaxProgress = true;
     /**
-         * Whether only one sub-task will be running at a time.
-         */
+     * Whether only one sub-task will be running at a time.
+     */
     this.sequential = true;
     /** Whether this task will automatically update it's parent progress and status */
     this.autoUpdateParent = true;
@@ -109,8 +109,8 @@ export class Task {
   }
 
   /**
-     * @param {string} value
-     */
+   * @param {string} value
+   */
   set status(value) {
     this._status = value;
     if (this._status) {
@@ -122,9 +122,9 @@ export class Task {
   }
 
   /**
-     * Returns a status generated from this task's error.
-     * @returns {string}
-     */
+   * Returns a status generated from this task's error.
+   * @returns {string}
+   */
   getStatusFromError() {
     if (this.error) {
       return this.error.message ? this.error.message : this.error.toString();
@@ -148,8 +148,8 @@ export class Task {
   }
 
   /**
-     * @param {number} value
-     */
+   * @param {number} value
+   */
   set progress(value) {
     this._progress = value;
     this.refreshProgress();
@@ -161,19 +161,19 @@ export class Task {
   }
 
   /**
-     * @param {number} value
-     */
+   * @param {number} value
+   */
   set progressMax(value) {
     this._progressMax = value;
     this.els.progress.attr('max', this._progressMax);
   }
 
   /**
-     * Sets the number of sub tasks that have a particular state.
-     *
-     * @param {string} state
-     * @param {number} count
-     */
+   * Sets the number of sub tasks that have a particular state.
+   *
+   * @param {string} state
+   * @param {number} count
+   */
   // TODO: Call sub-tasks children
   setSubtasksStateCount(state, count) {
     this.childStateCounts[state] = count;
@@ -186,8 +186,8 @@ export class Task {
   }
 
   /**
-     * Refresh progress based on sub-tasks
-     */
+   * Refresh progress based on sub-tasks
+   */
   refresh() {
     let progress = 0;
     let progressMax = 0;
@@ -248,8 +248,8 @@ export class Task {
   }
 
   /**
-     * @param {boolean} value
-     */
+   * @param {boolean} value
+   */
   set complete(value) {
     this._complete = value;
     if (this._complete) {
@@ -265,8 +265,8 @@ export class Task {
   }
 
   /**
-     * @param {string} value
-     */
+   * @param {string} value
+   */
   set state(value) {
     if (Object.values(taskStates).includes(value)) {
       this._state = value;
@@ -283,11 +283,11 @@ export class Task {
   }
 
   /**
-     * Determines this task's state from it's children.
-     * - all children error then error
-     * - any child error then warning
-     * - else success
-     */
+   * Determines this task's state from it's children.
+   * - all children error then error
+   * - any child error then warning
+   * - else success
+   */
   getStateFromChildren() {
     let state;
     if (this.childStateCounts[taskStates.ERROR] === this.children.length) {
@@ -301,9 +301,9 @@ export class Task {
   }
 
   /**
-     * Sets this task's error, state and status
-     * @param {any} error
-     */
+   * Sets this task's error, state and status
+   * @param {any} error
+   */
   setError(error) {
     this.state = taskStates.ERROR;
     this.error = error;
@@ -311,9 +311,9 @@ export class Task {
   }
 
   /**
-     * Adds a sub-task to this task
-     * @param {number} id The ID of the sub task
-     */
+   * Adds a sub-task to this task
+   * @param {number} id The ID of the sub task
+   */
   addChild(id) {
     if (this.children.length === 0) {
       this.els.content.append(this.els.detailsButton);
@@ -326,11 +326,11 @@ export class Task {
   }
 
   /**
-     * Increments progress and sets status
-     *
-     * @param {string} status
-     * @param {number} increment
-     */
+   * Increments progress and sets status
+   *
+   * @param {string} status
+   * @param {number} increment
+   */
   addStep(status, increment = 1) {
     this.progress += increment;
     this.status = status;

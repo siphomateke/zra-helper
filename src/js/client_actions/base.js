@@ -140,11 +140,11 @@ export class ClientAction {
   }
 
   /**
-     * Logs in a client and retries if already logged in as another client
-     * @param {Client} client
-     * @param {Task} parentTask
-     * @param {number} [maxAttempts=2]
-     */
+   * Logs in a client and retries if already logged in as another client
+   * @param {Client} client
+   * @param {Task} parentTask
+   * @param {number} [maxAttempts=2]
+   */
   async robustLogin(client, parentTask, maxAttempts = 2) {
     const task = new Task('Robust login', parentTask.id);
     task.progress = -2;

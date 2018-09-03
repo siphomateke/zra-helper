@@ -14,10 +14,10 @@ import { ClientAction } from './base';
 
 export default new ClientAction('Get all pending liabilities', 'pending_liabilities',
   /**
-     * @param {Client} client
-     * @param {Task} parentTask
-     * @param {Output} output
-     */
+   * @param {Client} client
+   * @param {Task} parentTask
+   * @param {Output} output
+   */
   ((client, parentTask, output) => new Promise((resolve) => {
     const promises = [];
     /** Total number of pending liabilities including the grand total */

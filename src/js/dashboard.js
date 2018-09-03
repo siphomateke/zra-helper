@@ -111,11 +111,11 @@ function getClientsFromCsv(csvString, config = {}) {
   const parsed = Papa.parse(csvString, parseConfig);
 
   /**
-     * Converts a row index (from Papa.parse) to a line number
-     *
-     * @param {number} rowIndex
-     * @returns {number}
-     */
+   * Converts a row index (from Papa.parse) to a line number
+   *
+   * @param {number} rowIndex
+   * @returns {number}
+   */
   function toLineNumber(rowIndex) {
     let lineNumber = rowIndex + 1;
     if (parseConfig.header) {
@@ -127,10 +127,10 @@ function getClientsFromCsv(csvString, config = {}) {
   }
 
   /**
-     * An object whose keys are row numbers and the errors associated with
-     * the row numbers are values
-     * @type {Object.<string, Papa.ParseError[]>}
-     */
+   * An object whose keys are row numbers and the errors associated with
+   * the row numbers are values
+   * @type {Object.<string, Papa.ParseError[]>}
+   */
   const rowErrors = {};
   for (const error of parsed.errors) {
     if (!Array.isArray(rowErrors[error.row])) {

@@ -7,20 +7,20 @@ export class ExtendedError extends Error {
     this.props = props;
   }
   /**
-     * @typedef ExtendedErrorJson
-     * @property {string} message
-     * @property {string} code
-     * @property {string} type
-     * @property {any} [props]
-     * @property {'ExtendedError'} errorType
-     */
+   * @typedef ExtendedErrorJson
+   * @property {string} message
+   * @property {string} code
+   * @property {string} type
+   * @property {any} [props]
+   * @property {'ExtendedError'} errorType
+   */
 
   /**
-     * Creates an ExtendedError from a JSON representation of one
-     *
-     * @param {ExtendedErrorJson} json
-     * @returns {ExtendedError}
-     */
+   * Creates an ExtendedError from a JSON representation of one
+   *
+   * @param {ExtendedErrorJson} json
+   * @returns {ExtendedError}
+   */
   static fromJSON(json) {
     const error = new ExtendedError(json.message, json.code, json.props);
     error.type = json.type;
@@ -28,10 +28,10 @@ export class ExtendedError extends Error {
   }
 
   /**
-     * Converts this error to a JSON object
-     *
-     * @returns {ExtendedErrorJson}
-     */
+   * Converts this error to a JSON object
+   *
+   * @returns {ExtendedErrorJson}
+   */
   toJSON() {
     return {
       message: this.message,
@@ -45,18 +45,18 @@ export class ExtendedError extends Error {
 
 export class ZraError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {string} props.error The error message reported by ZRA.
-     */
+   * @param {Object} props
+   * @param {string} props.error The error message reported by ZRA.
+   */
   constructor(message, code = null, props = { error: null }) {
     super(message, code, props);
   }
 }
 export class TaxTypeNotFoundError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {string} props.taxTypeId The tax type that was not found.
-     */
+   * @param {Object} props
+   * @param {string} props.taxTypeId The tax type that was not found.
+   */
   constructor(message, code = null, props = { taxTypeId: null }) {
     super(message, code, props);
   }
@@ -64,18 +64,18 @@ export class TaxTypeNotFoundError extends ExtendedError {
 export class TableError extends ExtendedError {}
 export class ElementsNotFoundError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {string[]} props.selectors Selectors of the elements that were not found.
-     */
+   * @param {Object} props
+   * @param {string[]} props.selectors Selectors of the elements that were not found.
+   */
   constructor(message, code = null, props = { selectors: null }) {
     super(message, code, props);
   }
 }
 export class ElementNotFoundError extends ElementsNotFoundError {
   /**
-     * @param {Object} props
-     * @param {string} props.selector Selector of the element that was not found.
-     */
+   * @param {Object} props
+   * @param {string} props.selector Selector of the element that was not found.
+   */
   constructor(message, code = null, props = { selector: null }) {
     super(message, code, {
       selectors: [props.selector],
@@ -84,9 +84,9 @@ export class ElementNotFoundError extends ElementsNotFoundError {
 }
 export class ImageLoadError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {string} props.src The url of the image that failed to load.
-     */
+   * @param {Object} props
+   * @param {string} props.src The url of the image that failed to load.
+   */
   constructor(message, code = null, props = { src: null }) {
     super(message, code, props);
   }
@@ -94,10 +94,10 @@ export class ImageLoadError extends ExtendedError {
 export class CaptchaLoadError extends ImageLoadError {}
 export class LoginError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {string} [props.clientName] The name of the client that failed to login.
-     * @param {string} [props.loggedInClient] Information about the client that is currently logged in.
-     */
+   * @param {Object} props
+   * @param {string} [props.clientName] The name of the client that failed to login.
+   * @param {string} [props.loggedInClient] Information about the client that is currently logged in.
+   */
   constructor(message, code = null, props = { clientName: null, loggedInClient: null }) {
     super(message, code, props);
   }
@@ -105,27 +105,27 @@ export class LoginError extends ExtendedError {
 
 export class TabError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {number} props.tabId The ID of the tab which had an error.
-     */
+   * @param {Object} props
+   * @param {number} props.tabId The ID of the tab which had an error.
+   */
   constructor(message, code = null, props = { tabId: null }) {
     super(message, code, props);
   }
 }
 export class ExecuteScriptError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {number} props.tabId The ID of the tab to which an attempt was made to execute a script.
-     */
+   * @param {Object} props
+   * @param {number} props.tabId The ID of the tab to which an attempt was made to execute a script.
+   */
   constructor(message, code = null, props = { tabId: null }) {
     super(message, code, props);
   }
 }
 export class SendMessageError extends ExtendedError {
   /**
-     * @param {Object} props
-     * @param {number} props.tabId The ID of the tab to which sending a message failed.
-     */
+   * @param {Object} props
+   * @param {number} props.tabId The ID of the tab to which sending a message failed.
+   */
   constructor(message, code = null, props = { tabId: null }) {
     super(message, code, props);
   }

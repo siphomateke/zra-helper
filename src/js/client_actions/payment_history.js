@@ -197,9 +197,9 @@ function downloadPaymentReceipts({ client, receipts, parentTask }) {
 
 export default new ClientAction('Get payment history', 'get_all_payments',
   /**
-     * @param {Client} client
-     * @param {Task} parentTask
-     */
+   * @param {Client} client
+   * @param {Task} parentTask
+   */
   ((client, parentTask) => new Promise(async (resolve) => {
     const options = {
       fromDate: '01/10/2013',

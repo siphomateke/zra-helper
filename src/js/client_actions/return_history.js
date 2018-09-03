@@ -162,9 +162,9 @@ function downloadReceipts({
 
 export default new ClientAction('Get all returns', 'get_all_returns',
   /**
-     * @param {Client} client
-     * @param {Task} parentTask
-     */
+   * @param {Client} client
+   * @param {Task} parentTask
+   */
   (async (client, parentTask) => {
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = 3;

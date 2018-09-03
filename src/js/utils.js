@@ -8,9 +8,9 @@ import {
 class TabCreator {
   constructor() {
     /**
-         * Array of IDs of tabs created by the extension which are currently open.
-         * @type {number[]}
-         */
+     * Array of IDs of tabs created by the extension which are currently open.
+     * @type {number[]}
+     */
     this.tabs = [];
     /** The number of tabs that are currently open. */
     this.openTabsCount = 0;
@@ -28,9 +28,9 @@ class TabCreator {
   }
 
   /**
-     * Checks if a tab can be opened.
-     * @returns {boolean}
-     */
+   * Checks if a tab can be opened.
+   * @returns {boolean}
+   */
   slotFree() {
     const notMaxOpenTabs = config.maxOpenTabs === 0 || this.openTabsCount < config.maxOpenTabs;
     const timeSinceLastTabOpened = Date.now() - this.lastTabOpenTime;
@@ -39,8 +39,8 @@ class TabCreator {
   }
 
   /**
-     * Loops through pending tabs and checks if they can be created.
-     */
+   * Loops through pending tabs and checks if they can be created.
+   */
   drainQueue() {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
@@ -56,8 +56,8 @@ class TabCreator {
   }
 
   /**
-     * Starts a timer that triggers `drainQueue()` after `config.tabOpenDelay`.
-     */
+   * Starts a timer that triggers `drainQueue()` after `config.tabOpenDelay`.
+   */
   startDrainQueueTimer() {
     if (config.tabOpenDelay > 0) {
       setTimeout(() => {
