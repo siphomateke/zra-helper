@@ -121,7 +121,7 @@ async function login(client, maxCaptchaRefreshes) {
 
     // If captcha reading failed, try again with common recognition errors fixed.
     let newText = '';
-    if (typeof answer !== 'number') {
+    if (isNaN(answer)) {
       newText = captchaText;
       for (const error of commonIncorrectCharacters) {
         newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
@@ -130,7 +130,7 @@ async function login(client, maxCaptchaRefreshes) {
     }
 
     // If captcha reading still failed, try again with a new one.
-    if (typeof answer !== 'number') {
+    if (isNaN(answer)) {
       refreshCaptcha();
       refreshes++;
     } else {
