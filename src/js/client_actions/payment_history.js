@@ -82,11 +82,31 @@ async function getPaymentReceiptNumbers({
   });
 }
 
+async function getPaymentReceiptNumbersTask(options, page, parentTask) {
+  const childTask = new Task(`Get payment receipt numbers from page ${page + 1}`, parentTask.id);
+  // TODO: set child tasks to be indeterminate. Haven't yet because of the way
+  // parent task progress is calculated
+  childTask.progress = 0;
+  childTask.progressMax = 1;
+  try {
+    const result = await getPaymentReceiptNumbers(Object.assign(options, { page: page + 1 }));
+    // Remove header row
+    result.records.shift();
+    childTask.state = taskStates.SUCCESS;
+    return result;
+  } catch (error) {
+    childTask.setError(error);
+    throw error;
+  } finally {
+    childTask.complete = true;
+  }
+}
+
 /**
-  * Gets payment receipt numbers from all pages.
-  * @param {GetAllPaymentReceiptNumbersOptions} options
-  * @param {Task} parentTask
-  */
+ * Gets payment receipt numbers from all pages.
+ * @param {GetAllPaymentReceiptNumbersOptions} options
+ * @param {Task} parentTask
+ */
 function getAllPaymentReceiptNumbers(options, parentTask) {
   const task = new Task('Get payment receipt numbers', parentTask.id);
   task.sequential = false;
@@ -94,58 +114,36 @@ function getAllPaymentReceiptNumbers(options, parentTask) {
   // this is overwritten once we know the number of pages
   task.progressMax = 1;
 
-  return new Promise((resolve, reject) => {
-    const promises = [];
-    async function getPaymentReceiptNumbersTask(page) {
-      promises.push(new Promise(async (resolve) => {
-        const childTask = new Task(`Get payment receipt numbers from page ${page + 1}`, task.id);
-        // TODO: set child tasks to be indeterminate. Haven't yet because of the way
-        // parent task progress is calculated
-        childTask.progress = 0;
-        childTask.progressMax = 1;
-        try {
-          const result = await getPaymentReceiptNumbers(Object.assign(options, { page: page + 1 }));
-          // Remove header row
-          result.records.shift();
-          childTask.state = taskStates.SUCCESS;
-          resolve(result);
-        } catch (error) {
-          childTask.setError(error);
-          resolve();
-        } finally {
-          childTask.complete = true;
-        }
-      }));
-    }
-    getPaymentReceiptNumbersTask(0);
-    Promise.all(promises).then(([result]) => {
-      if (result) {
-        if (result.numPages > 1) {
-          task.progressMax = result.numPages;
-        }
-        for (let page = 1; page < result.numPages; page++) {
-          getPaymentReceiptNumbersTask(page);
-        }
-        Promise.all(promises).then((results) => {
-          task.complete = true;
-
-          task.state = task.getStateFromChildren();
-          if (task.state === taskStates.ERROR) {
-            reject();
-          } else {
-            let records = [];
-            for (const result of results) {
-              records = records.concat(result.records);
-            }
-            // Ignore all the payment registrations
-            records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
-            resolve(records);
-          }
-        });
-      } else {
-        reject();
+  return new Promise(async (resolve, reject) => {
+    try {
+      const promises = [];
+      const result = await getPaymentReceiptNumbersTask(options, 0, task);
+      if (result.numPages > 1) {
+        task.progressMax = result.numPages;
       }
-    });
+      for (let page = 1; page < result.numPages; page++) {
+        promises.push(new Promise((resolve) => {
+          getPaymentReceiptNumbersTask(options, page, task)
+            .then(resolve)
+            .catch(resolve);
+        }));
+      }
+      Promise.all(promises).then((results) => {
+        let records = [];
+        for (const result of results) {
+          records = records.concat(result.records);
+        }
+        // Ignore all the payment registrations
+        records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
+        task.complete = true;
+        task.state = task.getStateFromChildren();
+        resolve(records);
+      });
+    } catch (error) {
+      task.complete = true;
+      task.setError(error);
+      reject(error);
+    }
   });
 }
 
@@ -200,7 +198,7 @@ export default new ClientAction('Get payment history', 'get_all_payments',
    * @param {Client} client
    * @param {Task} parentTask
    */
-  ((client, parentTask) => new Promise(async (resolve) => {
+  ((client, parentTask) => new Promise(async (resolve, reject) => {
     const options = {
       fromDate: '01/10/2013',
       toDate: moment().format('DD/MM/YYYY'),
@@ -209,7 +207,15 @@ export default new ClientAction('Get payment history', 'get_all_payments',
     parentTask.unknownMaxProgress = false;
     parentTask.progressMax = 2;
 
-    const receipts = await getAllPaymentReceiptNumbers(options, parentTask);
-    await downloadPaymentReceipts({ client, receipts, parentTask });
-    resolve();
+    try {
+      const receipts = await getAllPaymentReceiptNumbers(options, parentTask);
+      await downloadPaymentReceipts({ client, receipts, parentTask });
+      resolve();
+    } catch (error) {
+      parentTask.setError(error);
+      reject(error);
+    } finally {
+      parentTask.complete = true;
+      parentTask.state = parentTask.getStateFromChildren();
+    }
   })));
