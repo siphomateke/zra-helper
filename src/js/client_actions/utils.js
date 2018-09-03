@@ -27,20 +27,34 @@ export async function downloadReceipt({
       task.addStep('Downloading generated MHTML');
 
       let generatedFilename;
-      if (typeof filename === 'string') {
-        generatedFilename = filename;
-      } else if (typeof filename === 'function') {
+      if (typeof filename === 'function') {
         generatedFilename = filename(receiptData);
       } else {
-        throw new Error('Invalid filename attribute; filename must be a string or function.');
+        generatedFilename = filename;
       }
-
-      const downloadId = await browser.downloads.download({
-        url,
-        filename: generatedFilename,
-      });
-      // TODO: Show download progress
-      await waitForDownloadToComplete(downloadId);
+      let generatedFilenames;
+      if (typeof generatedFilename === 'string') {
+        generatedFilenames = [generatedFilename];
+      } else {
+        generatedFilenames = generatedFilename;
+      }
+      if (Array.isArray(generatedFilenames)) {
+        const promises = [];
+        for (const generatedFilename of generatedFilenames) {
+          promises.push(new Promise(async (resolve) => {
+            const downloadId = await browser.downloads.download({
+              url,
+              filename: generatedFilename,
+            });
+            // TODO: Show download progress
+            await waitForDownloadToComplete(downloadId);
+            resolve();
+          }));
+        }
+        await Promise.all(promises);
+      } else {
+        throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+      }
       task.state = taskStates.SUCCESS;
       task.status = '';
     } finally {
