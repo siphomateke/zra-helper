@@ -4,6 +4,7 @@ import { ClientAction } from './base';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap } from './utils';
+import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -148,6 +149,49 @@ function getAllPaymentReceiptNumbers(options, parentTask) {
 }
 
 /**
+ * Checks if two payments are different.
+ * @param {Object} payment1
+ * @param {Object} payment2
+ */
+function paymentsDifferent(payment1, payment2) {
+  const mustBeEqual = [
+    'taxType',
+    'periodFrom',
+    'periodTo',
+  ];
+  let anyDifferent = false;
+  for (const prop of mustBeEqual) {
+    if (payment1[prop] !== payment2[prop]) {
+      anyDifferent = true;
+      break;
+    }
+  }
+  return anyDifferent;
+}
+
+/**
+ * Gets the quarter number from a period.
+ * @param {string} from The month the period started. E.g. '01'
+ * @param {string} to The month the period ended.E.g. '03'
+ */
+function getQuarterFromPeriod(from, to) {
+  const quarterMap = [
+    ['01', '03'],
+    ['04', '06'],
+    ['07', '09'],
+    ['10', '12'],
+  ];
+  let quarter = null;
+  for (let i = 0; i < quarterMap.length; i++) {
+    if (from === quarterMap[i][0] && to === quarterMap[i][1]) {
+      quarter = i + 1;
+      break;
+    }
+  }
+  return quarter;
+}
+
+/**
  * @param {Object} options
  * @param {Client} options.client
  * @param {PaymentReceipt} options.receipt
@@ -159,8 +203,44 @@ function downloadPaymentReceipt({ client, receipt, parentTask }) {
   return downloadReceipt({
     type: 'payment',
     filename(receiptData) {
-      const date = moment(receiptData.paymentDate, 'DD/MM/YYYY').format('DD-MM-YYYY');
-      return `receipt-${client.username}-${date}-${refNo}.mhtml`;
+      const uniquePayments = [];
+      for (const payment of receiptData.payments) {
+        let unique = true;
+        for (const paymentCompare of uniquePayments) {
+          if (!paymentsDifferent(payment, paymentCompare)) {
+            unique = false;
+            break;
+          }
+        }
+        if (unique) {
+          uniquePayments.push(payment);
+        }
+      }
+
+      return uniquePayments.map((payment) => {
+        const taxTypeId = taxTypeNames[payment.taxType.toLowerCase()];
+        const periodFrom = moment(payment.periodFrom, 'DD/MM/YYYY');
+        const periodTo = moment(payment.periodTo, 'DD/MM/YYYY');
+        let filename = `receipt-${client.username}-${taxTypes[taxTypeId]}`;
+        if (taxTypeId === taxTypeNumericalCodes.ITX) {
+          const chargeYear = periodTo.format('YYYY');
+          filename += `-${chargeYear}`;
+
+          const periodFromMonth = periodFrom.format('MM');
+          const periodToMonth = periodTo.format('MM');
+          // Don't add quarter if the period is a whole year
+          if (Number(periodToMonth) - Number(periodFromMonth) < 11) {
+            const chargeQuater = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+            if (chargeQuater !== null) {
+              filename += `-${chargeQuater}`;
+            }
+          }
+        } else {
+          filename += `-${periodTo.format('MM')}-${periodTo.format('YYYY')}`;
+        }
+        filename += `-${receiptData.prn}.mhtml`;
+        return filename;
+      });
     },
     taskTitle: `Download receipt ${refNo}`,
     parentTask,

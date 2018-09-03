@@ -26,3 +26,14 @@ export const taxTypeNumericalCodes = {
   MINROY: '08',
   TLEVY: '09',
 };
+
+export const taxTypeNames = {
+  'income tax': taxTypeNumericalCodes.ITX,
+  'value added tax': taxTypeNumericalCodes.VAT,
+  'pay as you earn': taxTypeNumericalCodes.PAYE,
+  'turnover tax': taxTypeNumericalCodes.TOT,
+  'withholding tax': taxTypeNumericalCodes.WHT,
+  'property transfer tax': taxTypeNumericalCodes.PTT,
+  'mineral royalty': taxTypeNumericalCodes.MINROY,
+  'medical levy': taxTypeNumericalCodes.TLEVY,
+};
