@@ -47,6 +47,10 @@ browser.runtime.onMessage.addListener(message => new Promise((resolve) => {
           ],
           recordSelector: 'tbody>tr',
         });
+        // exclude 'total payment amount' row
+        if (payments.length > 0) {
+          payments.pop();
+        }
         data.payments = payments;
       } else if (message.type === 'return') {
         const periodInfo = getElement('#ReturnHistoryForm>table>tbody>tr:nth-child(2)>td:nth-child(2)>table>tbody>tr:nth-child(11)>td:nth-child(4)').innerText;
