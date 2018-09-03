@@ -176,7 +176,7 @@ export default new ClientAction('Get all returns', 'get_all_returns',
    */
   (async (client, parentTask) => {
     const initialMaxOpenTabs = config.maxOpenTabs;
-    config.maxOpenTabs = 3;
+    config.maxOpenTabs = config.returnHistory.maxOpenTabsWhenDownloading;
 
     await parallelTaskMap({
       list: Object.keys(taxTypes),
