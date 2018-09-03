@@ -51,3 +51,51 @@ export async function downloadReceipt({type, filename, taskTitle, parentTask, cr
         task.complete = true;
     }
 }
+
+/**
+ * Loops through a list and runs a provided function asynchronously on each item in the list.
+ * The provided parent task will be automatically configured.
+ * @param {Object} options 
+ * @param {Array} options.list The list to loop through
+ * @param {Task} options.task The parent task
+ * @param {Function} options.func The function to run on each list item
+ * @param {boolean} [options.autoCalculateTaskState=true] 
+ * Set this to false to disable the parent task's state from being automatically
+ * set when all the async functions have completed.
+ * 
+ * If this is true, the state will be set to `task.getStateFromChildren()` and the 
+ * promise will be rejected if the state evaluates to error.
+ */
+export function parallelTaskMap({
+    list,
+    task,
+    func,
+    autoCalculateTaskState=true,
+}) {
+    return new Promise((resolve, reject) => {    
+        task.sequential = false;
+        task.unknownMaxProgress = false;
+        task.progressMax = list.length;
+        const promises = [];
+        for (const item of list) {
+            promises.push(new Promise((resolve) => {
+                func(item, task)
+                    .then(resolve)
+                    .catch(resolve);
+            }));
+        }
+        Promise.all(promises).then((values) => {
+            task.complete = true;
+            if (autoCalculateTaskState) {
+                task.state = task.getStateFromChildren();
+                if (task.state === taskStates.ERROR) {
+                    reject();
+                } else {
+                    resolve(values);
+                }
+            } else {
+                resolve(values);
+            }
+        });
+    });
+}

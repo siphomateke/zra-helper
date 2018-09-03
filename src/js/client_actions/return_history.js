@@ -6,7 +6,7 @@ import { Task, taskStates } from '../tasks';
 import { getDocumentByAjax } from '../utils';
 import { ClientAction } from './base';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
-import { downloadReceipt } from './utils';
+import { downloadReceipt, parallelTaskMap } from './utils';
 
 /** 
  * @typedef {import('../constants').Client} Client 
@@ -141,29 +141,12 @@ function downloadReturnHistoryReceipt({client, taxType, referenceNumber, parentT
 }
 
 function downloadReceipts({client, taxType, referenceNumbers, parentTask}) {
-    return new Promise((resolve, reject) => {    
-        const task = new Task(`Download receipts`, parentTask.id);
-        task.sequential = false;
-        task.unknownMaxProgress = false;
-        task.progressMax = referenceNumbers.length;
-        const promises = [];
-        for (const referenceNumber of referenceNumbers) {
-            // TODO: Decide how to handle errors
-            promises.push(new Promise((resolve) => {
-                downloadReturnHistoryReceipt({client, taxType, referenceNumber, parentTask: task})
-                    .then(resolve)
-                    .catch(resolve);
-            }));
-        }
-        Promise.all(promises).then(() => {
-            task.complete = true;
-            task.state = task.getStateFromChildren();
-            if (task.state === taskStates.ERROR) {
-                reject();
-            } else {
-                resolve();
-            }
-        });
+    return parallelTaskMap({
+        list: referenceNumbers,
+        task: new Task('Download receipts', parentTask.id),
+        func(referenceNumber, parentTask) {
+            return downloadReturnHistoryReceipt({client, taxType, referenceNumber, parentTask});
+        },
     });
 }
 
@@ -173,79 +156,71 @@ export default new ClientAction('Get all returns', 'get_all_returns',
      * @param {Task} parentTask
      * @param {Output} output
      */
-    function (client, parentTask, output) {
-        return new Promise((resolve) => {
-            // TODO: Log all progress
-            const promises = [];
-            parentTask.sequential = false;
-            parentTask.unknownMaxProgress = false;
-            parentTask.progressMax = Object.keys(taxTypes).length;
-            
-            const initialMaxOpenTabs = config.maxOpenTabs;
-            config.maxOpenTabs = 3;
+    async function (client, parentTask, output) {
+        const initialMaxOpenTabs = config.maxOpenTabs;
+        config.maxOpenTabs = 3;
 
-            for (const taxTypeId of Object.keys(taxTypes)) {
+        await parallelTaskMap({
+            list: Object.keys(taxTypes),
+            task: parentTask,
+            autoCalculateTaskState: false,
+            async func(taxTypeId, parentTask) {
                 const taxType = taxTypes[taxTypeId];
-                promises.push(new Promise(async (resolve) => {
-                    const task = new Task(`Get ${taxType} receipts`, parentTask.id);
-                    task.unknownMaxProgress = false;
-                    task.progressMax = 2;
-                    try {
-                        const referenceNumbers = await getAllReturnHistoryReferenceNumbers({
-                            tpin: client.username,
-                            taxType: taxTypeId,
-                            fromDate: '01/01/2013',
-                            toDate: moment().format('31/12/YYYY'),
-                            exciseType: exciseTypes.airtime,
-                            parentTask: task,
-                        });
-                        await downloadReceipts({
-                            taxType: taxTypeId, 
-                            referenceNumbers,
-                            parentTask: task,
-                            client,
-                        });
-                        task.status = '';
-                        if (task.childStateCounts[taskStates.WARNING] > 0) {
-                            task.state = taskStates.WARNING;
-                        } else {
-                            task.state = taskStates.SUCCESS;
-                        }
-                    } catch (error) {
-                        task.setError(error);
-                    } finally {
-                        task.complete = true;
-                        resolve();
+
+                const task = new Task(`Get ${taxType} receipts`, parentTask.id);
+                task.unknownMaxProgress = false;
+                task.progressMax = 2;
+                try {
+                    const referenceNumbers = await getAllReturnHistoryReferenceNumbers({
+                        tpin: client.username,
+                        taxType: taxTypeId,
+                        fromDate: '01/01/2013',
+                        toDate: moment().format('31/12/YYYY'),
+                        exciseType: exciseTypes.airtime,
+                        parentTask: task,
+                    });
+                    await downloadReceipts({
+                        taxType: taxTypeId, 
+                        referenceNumbers,
+                        parentTask: task,
+                        client,
+                    });
+                    task.status = '';
+                    if (task.childStateCounts[taskStates.WARNING] > 0) {
+                        task.state = taskStates.WARNING;
+                    } else {
+                        task.state = taskStates.SUCCESS;
                     }
-                }));
-            }
-            Promise.all(promises).then(() => {
-                config.maxOpenTabs = initialMaxOpenTabs;
-                let errorCount = 0;
-                let taxTypeErrorCount = 0;
-                for (const task of parentTask.getChildren()) {
-                    if (task.state === taskStates.ERROR) {
-                        if (task.error.type !== 'TaxTypeNotFoundError') {
-                            errorCount++;
-                        } else {
-                            taxTypeErrorCount++;
-                        }
-                    }
+                } catch (error) {
+                    task.setError(error);
+                } finally {
+                    task.complete = true;
                 }
-                if (errorCount > 0) {
-                    parentTask.state = taskStates.ERROR;
-                } else if (taxTypeErrorCount === parentTask.children.length) {
-                    // If all sub tasks don't have a tax type, something probably went wrong
-                    parentTask.state = taskStates.WARNING;
-                    parentTask.status = 'No tax types found.';
-                } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
-                    parentTask.state = taskStates.WARNING;
-                } else {
-                    parentTask.state = taskStates.SUCCESS;
-                }
-                
-                parentTask.complete = true;
-                resolve();
-            });
+            },
         });
+
+        config.maxOpenTabs = initialMaxOpenTabs;
+
+        let errorCount = 0;
+        let taxTypeErrorCount = 0;
+        for (const task of parentTask.getChildren()) {
+            if (task.state === taskStates.ERROR) {
+                if (task.error.type !== 'TaxTypeNotFoundError') {
+                    errorCount++;
+                } else {
+                    taxTypeErrorCount++;
+                }
+            }
+        }
+        if (errorCount > 0) {
+            parentTask.state = taskStates.ERROR;
+        } else if (taxTypeErrorCount === parentTask.children.length) {
+            // If all sub tasks don't have a tax type, something probably went wrong
+            parentTask.state = taskStates.WARNING;
+            parentTask.status = 'No tax types found.';
+        } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
+            parentTask.state = taskStates.WARNING;
+        } else {
+            parentTask.state = taskStates.SUCCESS;
+        }
 });

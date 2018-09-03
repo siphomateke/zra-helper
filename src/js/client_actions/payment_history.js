@@ -3,7 +3,7 @@ import { ClientAction } from './base';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import moment from 'moment';
-import { downloadReceipt } from './utils';
+import { downloadReceipt, parallelTaskMap } from './utils';
 
 /** 
  * @typedef {import('../constants').Client} Client 
@@ -185,29 +185,12 @@ function downloadPaymentReceipt({client, receipt, parentTask}) {
  * @param {Task} options.parentTask 
  */
 function downloadPaymentReceipts({client, receipts, parentTask}) {
-    const task = new Task('Download payment receipts', parentTask.id);
-    task.sequential = false;
-    task.unknownMaxProgress = false;
-    task.progressMax = receipts.length;
-
-    return new Promise((resolve, reject) => {
-        const promises = [];
-        for (const receipt of receipts) {
-            promises.push(new Promise((resolve) => {
-                downloadPaymentReceipt({client, receipt, parentTask: task})
-                    .then(resolve)
-                    .catch(resolve);
-            }));
-        }
-        Promise.all(promises).then(() => {
-            task.complete = true;
-            task.state = task.getStateFromChildren();
-            if (task.state === taskStates.ERROR) {
-                reject();
-            } else {
-                resolve();
-            }
-        });
+    return parallelTaskMap({
+        list: receipts,
+        task: new Task('Download payment receipts', parentTask.id),
+        func(receipt, parentTask) {
+            return downloadPaymentReceipt({client, receipt, parentTask});
+        },
     });
 }
 
