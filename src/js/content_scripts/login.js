@@ -32,10 +32,10 @@ function getCaptcha(imageElement, scale = 2) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.src = imageElement.src;
-    image.onload = function () {
+    image.onload = function onload() {
       resolve(imageToCanvas(image, scale));
     };
-    image.onerror = function (event) {
+    image.onerror = function onerror(event) {
       let src = null;
       if (event.path && event.path[0] && event.path[0].src) {
         src = event.path[0].src;
@@ -68,8 +68,8 @@ function refreshCaptcha() {
  */
 function solveCaptcha(text) {
   const captchaArithmetic = text.replace(/\s/g, '').replace(/\?/g, '');
-  const numbers = captchaArithmetic.split(/\+|\-/).map(str => parseInt(str, 10));
-  const operator = captchaArithmetic[captchaArithmetic.search(/\+|\-/)];
+  const numbers = captchaArithmetic.split(/\+|-/).map(str => parseInt(str, 10));
+  const operator = captchaArithmetic[captchaArithmetic.search(/\+|-/)];
   let answer = null;
   if (operator === '+') {
     answer = numbers[0] + numbers[1];
@@ -121,7 +121,7 @@ async function login(client, maxCaptchaRefreshes) {
 
     // If captcha reading failed, try again with common recognition errors fixed.
     let newText = '';
-    if (isNaN(answer)) {
+    if (typeof answer !== 'number') {
       newText = captchaText;
       for (const error of commonIncorrectCharacters) {
         newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
@@ -130,7 +130,7 @@ async function login(client, maxCaptchaRefreshes) {
     }
 
     // If captcha reading still failed, try again with a new one.
-    if (isNaN(answer)) {
+    if (typeof answer !== 'number') {
       refreshCaptcha();
       refreshes++;
     } else {
@@ -142,7 +142,7 @@ async function login(client, maxCaptchaRefreshes) {
   els.submitButton.click();
 }
 
-browser.runtime.onMessage.addListener(async (message) => {
+browser.runtime.onMessage.addListener(message => new Promise((resolve) => {
   if (message.command === 'login') {
     try {
       const clientInfo = getClientInfo();
@@ -154,10 +154,11 @@ browser.runtime.onMessage.addListener(async (message) => {
           throw getWrongClientError(clientInfo);
         }
       }
-      await login(message.client, message.maxCaptchaRefreshes);
-      return true;
+      login(message.client, message.maxCaptchaRefreshes).then(() => {
+        resolve({});
+      });
     } catch (error) {
-      return { error: errorToJson(error) };
+      resolve({ error: errorToJson(error) });
     }
   }
-});
+}));

@@ -129,6 +129,7 @@ export class Task {
     if (this.error) {
       return this.error.message ? this.error.message : this.error.toString();
     }
+    return null;
   }
 
   refreshProgress() {

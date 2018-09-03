@@ -63,11 +63,11 @@ function validateClient(client) {
   /** Properties that must exist on each client */
   const requiredProps = ['name', 'username', 'password'];
   const missingProps = [];
-  requiredProps.map((prop) => {
+  for (const prop of requiredProps) {
     if (!client[prop]) {
       missingProps.push(prop);
     }
-  });
+  }
   const validationErrors = [];
   if (missingProps.length > 0) {
     const missingString = `[${missingProps.join(', ')}]`;
@@ -132,12 +132,12 @@ function getClientsFromCsv(csvString, config = {}) {
      * @type {Object.<string, Papa.ParseError[]>}
      */
   const rowErrors = {};
-  parsed.errors.map((error) => {
+  for (const error of parsed.errors) {
     if (!Array.isArray(rowErrors[error.row])) {
       rowErrors[error.row] = [];
     }
     rowErrors[error.row].push(error);
-  });
+  }
 
   // Output all the row errors
   for (const row of Object.keys(rowErrors)) {
@@ -214,13 +214,13 @@ function getClientsFromFile(file) {
     if (supportedMimeTypes.includes(file.type)) {
       const fileReader = new FileReader();
       // TODO: Add file load progress
-      fileReader.onload = async function (fileLoadedEvent) {
+      fileReader.onload = async function onload(fileLoadedEvent) {
         const text = fileLoadedEvent.target.result;
         log.setCategory('load_client_list_file');
         log.log(`Successfully loaded client list file "${file.name}"`);
         resolve(getClientsFromCsv(text));
       };
-      fileReader.onerror = function (event) {
+      fileReader.onerror = function onerror(event) {
         log.setCategory('load_client_list_file');
         log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
         reject(new Error(event.target.error));

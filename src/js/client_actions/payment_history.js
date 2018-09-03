@@ -156,8 +156,7 @@ function getAllPaymentReceiptNumbers(options, parentTask) {
  * @param {Task} options.parentTask
  */
 function downloadPaymentReceipt({ client, receipt, parentTask }) {
-  const onclick = receipt.prnNo.onclick;
-  const [searchCode, refNo, pmtRegType] = onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
+  const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
 
   return downloadReceipt({
     type: 'payment',

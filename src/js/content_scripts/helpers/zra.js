@@ -41,7 +41,8 @@ export function parseTable({ root, headers, recordSelector }) {
   for (const recordElement of recordElements) {
     const row = {};
     const columns = recordElement.querySelectorAll('td');
-    Array.from(columns, (column, index) => {
+    for (let index = 0; index < columns.length; index++) {
+      const column = columns[index];
       let value = column.innerText.trim();
       const link = column.querySelector('a');
       if (link) {
@@ -54,7 +55,7 @@ export function parseTable({ root, headers, recordSelector }) {
         }
       }
       row[headers[index]] = value;
-    });
+    }
     records.push(row);
   }
   return records;
@@ -85,7 +86,9 @@ export function parseTableAdvanced({
     const tableInfoElement = getElementFromDocument(root, tableInfoSelector, 'table info');
     const tableInfo = tableInfoElement.innerText;
     if (!tableInfo.includes(noRecordsString)) {
-      const [_, currentPage, numPages] = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
+      const tableInfoMatches = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
+      const currentPage = tableInfoMatches[1];
+      const numPages = tableInfoMatches[2];
       const records = parseTable({ root, headers, recordSelector });
       resolve({
         records,
