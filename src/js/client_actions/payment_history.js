@@ -1,4 +1,5 @@
 import moment from 'moment';
+import config from '../config';
 import { Task, taskStates } from '../tasks';
 import { ClientAction } from './base';
 import { getDocumentByAjax } from '../utils';
@@ -289,7 +290,10 @@ export default new ClientAction('Get payment history', 'get_all_payments',
 
     try {
       const receipts = await getAllPaymentReceiptNumbers(options, parentTask);
+      const initialMaxOpenTabs = config.maxOpenTabs;
+      config.maxOpenTabs = 3;
       await downloadPaymentReceipts({ client, receipts, parentTask });
+      config.maxOpenTabs = initialMaxOpenTabs;
       resolve();
     } catch (error) {
       parentTask.setError(error);
