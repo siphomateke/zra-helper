@@ -1,6 +1,6 @@
 import moment from 'moment';
 import config from '../config';
-import { taxTypes } from '../constants';
+import { taxTypes, taxTypeNumericalCodes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { Task, taskStates } from '../tasks';
 import { getDocumentByAjax } from '../utils';
@@ -131,7 +131,16 @@ function downloadReturnHistoryReceipt({
 }) {
   return downloadReceipt({
     type: 'return',
-    filename: `receipt-${client.username}-${taxType}-${referenceNumber}.mhtml`,
+    filename(receiptData) {
+      const date = moment(receiptData.periodFrom, 'DD/MM/YYYY');
+      let dateString = '';
+      if (taxType === taxTypeNumericalCodes.ITX) {
+        dateString = date.format('YYYY');
+      } else {
+        dateString = date.format('MM-YYYY');
+      }
+      return `receipt-${client.username}-${taxTypes[taxType]}-${dateString}-${referenceNumber}.mhtml`;
+    },
     taskTitle: `Download receipt ${referenceNumber}`,
     parentTask,
     createTabPostOptions: {

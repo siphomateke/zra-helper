@@ -15,3 +15,14 @@ export const taxTypes = {
   '08': 'MINROY',
   '09': 'TLEVY',
 };
+
+export const taxTypeNumericalCodes = {
+  ITX: '01',
+  VAT: '02',
+  PAYE: '03',
+  TOT: '05',
+  WHT: '06',
+  PTT: '07',
+  MINROY: '08',
+  TLEVY: '09',
+};
