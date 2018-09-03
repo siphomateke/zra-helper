@@ -3,7 +3,7 @@ import moment from 'moment';
 import config from './config';
 import { ExtendedError } from './errors';
 
-class Log {
+export class Log {
   constructor() {
     this.logLines = [];
     this.logWrapperEl = $('#log-wrapper');
