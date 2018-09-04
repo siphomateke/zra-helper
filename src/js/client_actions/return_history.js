@@ -137,7 +137,7 @@ function downloadReturnHistoryReceipt({
       if (taxType === taxTypeNumericalCodes.ITX) {
         dateString = date.format('YYYY');
       } else {
-        dateString = date.format('MM-YYYY');
+        dateString = date.format('YYYY-MM');
       }
       return `receipt-${client.username}-${taxTypes[taxType]}-${dateString}-${referenceNumber}.mhtml`;
     },
