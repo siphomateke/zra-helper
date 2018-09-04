@@ -30,7 +30,7 @@ export const taxTypeNumericalCodes = {
 export const taxTypeNames = {
   'income tax': taxTypeNumericalCodes.ITX,
   'value added tax': taxTypeNumericalCodes.VAT,
-  'pay as you earn': taxTypeNumericalCodes.PAYE,
+  'employment tax (pay as you earn)': taxTypeNumericalCodes.PAYE,
   'turnover tax': taxTypeNumericalCodes.TOT,
   'withholding tax': taxTypeNumericalCodes.WHT,
   'property transfer tax': taxTypeNumericalCodes.PTT,
