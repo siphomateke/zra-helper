@@ -2,6 +2,7 @@ import { Task, taskStates } from '../tasks';
 import {
   createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, executeScript, sendMessage,
 } from '../utils';
+import { InvalidReceiptError } from '../errors';
 
 /**
  * Downloads a receipt
@@ -35,6 +36,10 @@ export async function downloadReceipt({
         command: 'getReceiptData',
         type,
       });
+
+      if (!receiptData.referenceNumber) {
+        throw new InvalidReceiptError('Invalid receipt; missing reference number.');
+      }
 
       task.addStep('Converting receipt to MHTML');
       const blob = await saveAsMHTML({ tabId: tab.id });

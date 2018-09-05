@@ -130,6 +130,7 @@ export class SendMessageError extends ExtendedError {
     super(message, code, props);
   }
 }
+export class InvalidReceiptError extends ExtendedError {}
 
 /**
  * @typedef JsonError
