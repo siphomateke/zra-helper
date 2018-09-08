@@ -198,6 +198,11 @@ function getClientsFromCsv(csvString, config = {}) {
   return list;
 }
 
+function getExtension(filename) {
+  const split = filename.split('.');
+  return split[split.length - 1];
+}
+
 /**
  * Gets clients from a CSV file.
  *
@@ -207,11 +212,8 @@ function getClientsFromCsv(csvString, config = {}) {
  */
 function getClientsFromFile(file) {
   return new Promise((resolve, reject) => {
-    const supportedMimeTypes = [
-      'text/csv',
-      'application/vnd.ms-excel',
-    ];
-    if (supportedMimeTypes.includes(file.type)) {
+    const ext = getExtension(file.name);
+    if (ext === 'csv') {
       const fileReader = new FileReader();
       // TODO: Add file load progress
       fileReader.onload = async function onload(fileLoadedEvent) {
@@ -230,7 +232,7 @@ function getClientsFromFile(file) {
       fileReader.readAsText(file, 'UTF-8');
     } else {
       log.setCategory('load_client_list_file');
-      log.showError(`Client list file must be a CSV. Expected one of the following MIME types: "${supportedMimeTypes.join('", "')}". Got "${file.type}".`);
+      log.showError(`Client list file's extension must be '.csv' not '.${ext}'.`);
     }
   });
 }
