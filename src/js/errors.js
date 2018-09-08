@@ -1,11 +1,24 @@
-export class ExtendedError extends Error {
+export class ExtendedError {
   constructor(message, code = null, props = {}) {
-    super(message);
+    this.error = new Error(message);
     this.code = code;
-    this.type = this.constructor.name;
-    this.name = this.type;
     this.props = props;
+    this.setType('ExtendedError');
   }
+
+  get message() {
+    return this.error.message;
+  }
+
+  get name() {
+    return this.error.name;
+  }
+
+  setType(type) {
+    this.type = type;
+    this.error.name = this.type;
+  }
+
   /**
    * @typedef ExtendedErrorJson
    * @property {string} message
@@ -23,7 +36,7 @@ export class ExtendedError extends Error {
    */
   static fromJSON(json) {
     const error = new ExtendedError(json.message, json.code, json.props);
-    error.type = json.type;
+    error.setType(json.type);
     return error;
   }
 
@@ -50,6 +63,7 @@ export class ZraError extends ExtendedError {
    */
   constructor(message, code = null, props = { error: null }) {
     super(message, code, props);
+    this.setType('ZraError');
   }
 }
 export class TaxTypeNotFoundError extends ExtendedError {
@@ -59,9 +73,15 @@ export class TaxTypeNotFoundError extends ExtendedError {
    */
   constructor(message, code = null, props = { taxTypeId: null }) {
     super(message, code, props);
+    this.setType('TaxTypeNotFoundError');
   }
 }
-export class TableError extends ExtendedError {}
+export class TableError extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('TableError');
+  }
+}
 export class ElementsNotFoundError extends ExtendedError {
   /**
    * @param {Object} props
@@ -69,6 +89,7 @@ export class ElementsNotFoundError extends ExtendedError {
    */
   constructor(message, code = null, props = { selectors: null }) {
     super(message, code, props);
+    this.setType('ElementsNotFoundError');
   }
 }
 export class ElementNotFoundError extends ElementsNotFoundError {
@@ -80,6 +101,7 @@ export class ElementNotFoundError extends ElementsNotFoundError {
     super(message, code, {
       selectors: [props.selector],
     });
+    this.setType('ElementNotFoundError');
   }
 }
 export class ImageLoadError extends ExtendedError {
@@ -89,9 +111,15 @@ export class ImageLoadError extends ExtendedError {
    */
   constructor(message, code = null, props = { src: null }) {
     super(message, code, props);
+    this.setType('ImageLoadError');
   }
 }
-export class CaptchaLoadError extends ImageLoadError {}
+export class CaptchaLoadError extends ImageLoadError {
+  constructor(...args) {
+    super(...args);
+    this.setType('CaptchaLoadError');
+  }
+}
 export class LoginError extends ExtendedError {
   /**
    * @param {Object} props
@@ -100,6 +128,7 @@ export class LoginError extends ExtendedError {
    */
   constructor(message, code = null, props = { clientName: null, loggedInClient: null }) {
     super(message, code, props);
+    this.setType('LoginError');
   }
 }
 
@@ -110,6 +139,7 @@ export class TabError extends ExtendedError {
    */
   constructor(message, code = null, props = { tabId: null }) {
     super(message, code, props);
+    this.setType('TabError');
   }
 }
 export class ExecuteScriptError extends ExtendedError {
@@ -119,6 +149,7 @@ export class ExecuteScriptError extends ExtendedError {
    */
   constructor(message, code = null, props = { tabId: null }) {
     super(message, code, props);
+    this.setType('ExecuteScriptError');
   }
 }
 export class SendMessageError extends ExtendedError {
@@ -128,9 +159,15 @@ export class SendMessageError extends ExtendedError {
    */
   constructor(message, code = null, props = { tabId: null }) {
     super(message, code, props);
+    this.setType('SendMessageError');
   }
 }
-export class InvalidReceiptError extends ExtendedError {}
+export class InvalidReceiptError extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('InvalidReceiptError');
+  }
+}
 
 /**
  * @typedef JsonError

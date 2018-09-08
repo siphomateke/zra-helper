@@ -84,10 +84,10 @@ export class Log {
       errorString = `Error: ${error}`;
     }
     this.log(errorString, warning ? 'warning' : 'error');
-    if (config.debug && error instanceof Error) {
+    if (config.debug) {
       if (error instanceof ExtendedError) {
         console.groupCollapsed(`${error.type} Details`);
-        console.log(error.stack);
+        console.log(error.error.stack);
         console.log({
           code: error.code,
           message: error.message,
@@ -95,7 +95,7 @@ export class Log {
           props: error.props,
         });
         console.groupEnd();
-      } else {
+      } else if (error instanceof Error) {
         console.error(error);
       }
     }
