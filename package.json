@@ -5,7 +5,7 @@
   "bugs": {
     "url": "https://github.com/nextgensparx/zra-helper/issues"
   },
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "A browser extension that automates various aspects of the ZRA website.",
   "scripts": {
     "version": "node version.js && git add static/manifest.json",

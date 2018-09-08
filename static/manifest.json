@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "zra-helper",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "Automates various aspects of the ZRA website.",
     "icons": {
         "48": "icons/48-zra.png"
