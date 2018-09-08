@@ -204,11 +204,7 @@ export default new ClientAction('Get all returns', 'get_all_returns',
             client,
           });
           task.status = '';
-          if (task.childStateCounts[taskStates.WARNING] > 0) {
-            task.state = taskStates.WARNING;
-          } else {
-            task.state = taskStates.SUCCESS;
-          }
+          task.state = task.getStateFromChildren();
         } catch (error) {
           task.setError(error);
         } finally {

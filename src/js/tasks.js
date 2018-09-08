@@ -292,7 +292,8 @@ export class Task {
     let state;
     if (this.childStateCounts[taskStates.ERROR] === this.children.length) {
       state = taskStates.ERROR;
-    } else if (this.childStateCounts[taskStates.ERROR] > 0) {
+    } else if (this.childStateCounts[taskStates.ERROR] > 0
+            || this.childStateCounts[taskStates.WARNING] > 0) {
       state = taskStates.WARNING;
     } else {
       state = taskStates.SUCCESS;
