@@ -10,6 +10,10 @@ export class ExtendedError {
     return this.error.message;
   }
 
+  set message(value) {
+    this.error.message = value;
+  }
+
   get name() {
     return this.error.name;
   }
