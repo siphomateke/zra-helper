@@ -35,5 +35,5 @@ export const taxTypeNames = {
   'withholding tax': taxTypeNumericalCodes.WHT,
   'property transfer tax': taxTypeNumericalCodes.PTT,
   'mineral royalty': taxTypeNumericalCodes.MINROY,
-  'medical levy': taxTypeNumericalCodes.TLEVY,
+  'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
