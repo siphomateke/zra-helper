@@ -272,12 +272,13 @@ export async function sendMessage(tabId, message) {
  * @param {string} name A descriptive name of the element used when generating errors.
  * For example, "generate report button".
  */
-export async function clickElement(tabId, selector, name = null) {
+export async function clickElement(tabId, selector, name = null, ignoreZraErrors = false) {
   await executeScript(tabId, { file: 'click_element.js' });
   await sendMessage(tabId, {
     command: 'click',
     selector,
     name,
+    ignoreZraErrors,
   });
 }
 
