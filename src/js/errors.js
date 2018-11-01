@@ -124,13 +124,20 @@ export class CaptchaLoadError extends ImageLoadError {
     this.setType('CaptchaLoadError');
   }
 }
+// codes include:
+// PasswordExpired
+// InvalidUsernameOrPassword
+// WrongClient
+
+// TODO: Handle storing attempts remaining better. Perhaps a class that extends LoginError somehow
 export class LoginError extends ExtendedError {
   /**
    * @param {Object} props
    * @param {string} [props.clientName] The name of the client that failed to login.
    * @param {string} [props.loggedInClient] Information about the client that is currently logged in.
+   * @param {string} [props.attemptsRemaining] The number of login attempts remaining before the client's account is locked.
    */
-  constructor(message, code = null, props = { clientName: null, loggedInClient: null }) {
+  constructor(message, code = null, props = { clientName: null, loggedInClient: null, attemptsRemaining: null }) {
     super(message, code, props);
     this.setType('LoginError');
   }
