@@ -219,10 +219,10 @@ export default new ClientAction('Get all returns', 'get_all_returns',
     let taxTypeErrorCount = 0;
     for (const task of parentTask.getChildren()) {
       if (task.state === taskStates.ERROR) {
-        if (task.error.type !== 'TaxTypeNotFoundError') {
-          errorCount++;
-        } else {
+        if (task.error && task.error.type === 'TaxTypeNotFoundError') {
           taxTypeErrorCount++;
+        } else {
+          errorCount++;
         }
       }
     }
