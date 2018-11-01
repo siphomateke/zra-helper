@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import pendingLiabilitiesAction from './client_actions/pending_liabilities';
 import returnHistoryAction from './client_actions/return_history';
 import paymentHistoryAction from './client_actions/payment_history';
+import testLoginAction from './client_actions/test_login';
 import { allClientsAction } from './client_actions/base';
 import { log } from './log';
 
@@ -25,6 +26,7 @@ function addClientAction(action) {
 addClientAction(pendingLiabilitiesAction);
 addClientAction(returnHistoryAction);
 addClientAction(paymentHistoryAction);
+addClientAction(testLoginAction);
 
 $(document).on('submit', '#action-form', (e) => {
   e.preventDefault();

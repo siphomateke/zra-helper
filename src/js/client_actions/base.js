@@ -126,7 +126,7 @@ async function logout(parentTask) {
 }
 
 export class ClientAction {
-  constructor(taskName, id, action) {
+  constructor(taskName, id, action = null) {
     this.mainTask = null;
     this.taskName = taskName;
     this.id = id;
@@ -189,12 +189,14 @@ export class ClientAction {
       this.mainTask.status = 'Logging in';
       await this.robustLogin(client, this.mainTask);
 
-      this.mainTask.status = this.taskName;
-      const task = new Task(this.taskName, this.mainTask.id);
-      log.setCategory(this.id);
-      await this.action(client, task, this.output);
-      if (task.state === taskStates.ERROR) {
-        this.mainTask.state = taskStates.ERROR;
+      if (this.action) {
+        this.mainTask.status = this.taskName;
+        const task = new Task(this.taskName, this.mainTask.id);
+        log.setCategory(this.id);
+        await this.action(client, task, this.output);
+        if (task.state === taskStates.ERROR) {
+          this.mainTask.state = taskStates.ERROR;
+        }
       }
 
       this.mainTask.status = 'Logging out';
