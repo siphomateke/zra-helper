@@ -3,6 +3,7 @@
     "name": "zra-helper",
     "version": "0.5.0",
     "description": "Automates various aspects of the ZRA website.",
+    "homepage_url": "https://github.com/nextgensparx/zra-helper/",
     "icons": {
         "48": "icons/48.png"
     },
