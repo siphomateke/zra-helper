@@ -41,16 +41,4 @@ $link-focus-border: $light-blue;
 $message-body-border-width: 1px 1px 1px 4px;
 $box-padding: 0.75rem;
 
-// Import only what is needed from Bulma
-@import 'bulma/sass/utilities/_all.sass';
-@import 'bulma/sass/base/_all.sass';
-@import 'bulma/sass/elements/button.sass';
-@import 'bulma/sass/elements/container.sass';
-@import 'bulma/sass/elements/form.sass';
-@import 'bulma/sass/elements/title.sass';
-@import 'bulma/sass/elements/other.sass';
-@import 'bulma/sass/elements/box.sass';
-@import 'bulma/sass/elements/icon.sass';
-@import 'bulma/sass/layout/hero.sass';
-@import 'bulma/sass/layout/section.sass';
-@import 'bulma/sass/grid/columns.sass';
+@import '~bulma';
