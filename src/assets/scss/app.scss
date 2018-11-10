@@ -1,24 +1,6 @@
 @import './main';
 @import '~buefy/src/scss/buefy';
-
-// FIXME: Actually use these
-$errorColor: red;
-$successColor: #23d160;
-$warningColor: hsl(39, 100%, 58%);
-$infoColor: hsl(221, 100%, 37%);
-$stateColors: (
-    'error': $errorColor,
-    'success': $successColor,
-    'warning': $warningColor,
-    'info': $infoColor,
-);
-
-$taskColors: (
-    'error': $errorColor,
-    'success': $successColor,
-    'warning': $warningColor,
-);
-// TODO: Use bulma colors
+@import './variables.scss'; 
 
 .hidden {
     display: none;
@@ -99,9 +81,6 @@ $taskColors: (
 /********************
         Tasks
 *********************/
-
-$taskBorderWidth: 1px;
-$taskBorderRadius: 3px;
 
 .task {
     &:not(:last-child) {
