@@ -37,11 +37,9 @@
         </section>
         <section
           id="log-wrapper"
-          class="dashboard-section hidden">
+          class="dashboard-section">
           <h1 class="title is-4">Log</h1>
-          <div class="log">
-            <div class="log-inner"/>
-          </div>
+          <log/>
         </section>
         <section class="dashboard-section">
           <h1 class="title is-4">Tasks</h1>
@@ -62,12 +60,14 @@
 
 <script>
 import TaskList from '@/components/TaskList.vue';
+import Log from '@/components/Log.vue';
 import { mapState } from 'vuex';
 
 export default {
   name: 'Dashboard',
   components: {
     TaskList,
+    Log,
   },
   computed: {
     ...mapState({
