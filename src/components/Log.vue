@@ -34,6 +34,7 @@ const { mapState, mapGetters } = createNamespacedHelpers('log');
 
 // TODO: Consider merging this with `TaskListItem`'s `stateIcons`
 export const typeIcons = {
+  success: 'fa-check-circle',
   error: 'fa-exclamation-circle',
   warning: 'fa-exclamation-triangle',
   info: 'fa-info-circle',
@@ -108,6 +109,15 @@ export default {
 
       &:last-child {
         border-bottom-width: 0;
+      }
+
+      &.success {
+        @include logColoredLine(
+          green,
+          hsl(110, 100%, 98%),
+          hsl(110, 97%, 88%),
+          $successColor
+        );
       }
 
       &.error {
