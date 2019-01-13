@@ -19,10 +19,7 @@
             <div class="field">
               <label class="label">Client list</label>
               <div class="control">
-                <input
-                  id="clientList"
-                  type="file"
-                  name="clientList">
+                <ClientListFileUpload @input="updateClients"/>
               </div>
             </div>
             <div
@@ -59,6 +56,7 @@
 </template>
 
 <script>
+import ClientListFileUpload from '@/components/ClientListFileUpload.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/Log.vue';
 import { mapState } from 'vuex';
@@ -66,13 +64,24 @@ import { mapState } from 'vuex';
 export default {
   name: 'Dashboard',
   components: {
+    ClientListFileUpload,
     TaskList,
     Log,
+  },
+  data() {
+    return {
+      clients: [],
+    };
   },
   computed: {
     ...mapState({
       tasks: state => state.tasks.all,
     }),
+  },
+  methods: {
+    updateClients(clients) {
+      this.clients = clients;
+    },
   },
 };
 </script>
