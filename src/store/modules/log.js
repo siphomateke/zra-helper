@@ -1,6 +1,7 @@
 import moment from 'moment';
 import { ExtendedError } from '@/backend/errors';
 
+// TODO: Add documentation
 export default {
   namespaced: true,
   state: {
