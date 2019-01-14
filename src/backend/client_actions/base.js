@@ -136,6 +136,53 @@ async function logout(parentTaskId) {
   }
 }
 
+/**
+ * Logs in a client and retries if already logged in as another client
+ * @param {Client} client
+ * @param {number} parentTaskId
+ * @param {number} [maxAttempts=2]
+ */
+async function robustLogin(client, parentTaskId, maxAttempts = 2) {
+  const task = createTask(store, {
+    title: 'Robust login',
+    parent: parentTaskId,
+    progress: -2,
+  });
+  let attempts = 0;
+  let run = true;
+  try {
+    while (run) {
+      try {
+        if (attempts > 0) {
+          task.status = 'Logging in again';
+        } else {
+          task.status = 'Logging in';
+        }
+        await login(client, task.id);
+        run = false;
+      } catch (error) {
+        if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts < maxAttempts) {
+          log.setCategory('login');
+          log.showError(error, true);
+          task.status = 'Logging out';
+          await logout(task.id);
+          run = true;
+        } else {
+          throw error;
+        }
+      }
+      attempts++;
+    }
+    task.state = taskStates.SUCCESS;
+    task.status = '';
+  } catch (error) {
+    task.setError(error);
+    throw error;
+  } finally {
+    task.complete = true;
+  }
+}
+
 export class ClientAction {
   constructor(taskName, id, action = null) {
     this.mainTask = null;
@@ -151,58 +198,11 @@ export class ClientAction {
     $('#actions-field').append(field); */
   }
 
-  /**
-   * Logs in a client and retries if already logged in as another client
-   * @param {Client} client
-   * @param {number} parentTaskId
-   * @param {number} [maxAttempts=2]
-   */
-  async robustLogin(client, parentTaskId, maxAttempts = 2) {
-    const task = createTask(store, {
-      title: 'Robust login',
-      parent: parentTaskId,
-      progress: -2,
-    });
-    let attempts = 0;
-    let run = true;
-    try {
-      while (run) {
-        try {
-          if (attempts > 0) {
-            task.status = 'Logging in again';
-          } else {
-            task.status = 'Logging in';
-          }
-          await login(client, task.id);
-          run = false;
-        } catch (error) {
-          if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts < maxAttempts) {
-            log.setCategory('login');
-            log.showError(error, true);
-            task.status = 'Logging out';
-            await logout(task.id);
-            run = true;
-          } else {
-            throw error;
-          }
-        }
-        attempts++;
-      }
-      task.state = taskStates.SUCCESS;
-      task.status = '';
-    } catch (error) {
-      task.setError(error);
-      throw error;
-    } finally {
-      task.complete = true;
-    }
-  }
-
   async run(client) {
     this.mainTask = createTask(store, { title: `${client.name}: ${this.taskName}` });
     try {
       this.mainTask.status = 'Logging in';
-      await this.robustLogin(client, this.mainTask.id);
+      await robustLogin(client, this.mainTask.id);
 
       if (this.action) {
         this.mainTask.status = this.taskName;
