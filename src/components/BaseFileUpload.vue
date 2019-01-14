@@ -1,7 +1,5 @@
 <template>
-  <b-upload
-    v-model="file"
-    @input="fileUploaded">
+  <b-upload @input="fileInput">
     <div
       :class="{'has-name': file}"
       class="file">
@@ -27,22 +25,17 @@
 </template>
 
 <script>
-import getClientsFromFile from '@/backend/client_file_reader';
-
-// TODO: Move CSV file validation from client_file_reader.js to this component
-
 export default {
-  name: 'ClientListFileUpload',
+  name: 'BaseFileUpload',
   data() {
     return {
       file: null,
-      clients: [],
     };
   },
   methods: {
-    async fileUploaded(file) {
-      this.clients = await getClientsFromFile(file);
-      this.$emit('input', this.clients);
+    fileInput(file) {
+      this.file = file;
+      this.$emit('input', file);
     },
   },
 };

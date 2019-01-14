@@ -16,12 +16,18 @@
       <div class="dashboard container">
         <section class="dashboard-section">
           <form id="action-form">
-            <div class="field">
-              <label class="label">Client list</label>
-              <div class="control">
-                <ClientListFileUpload @input="updateClients"/>
+            <div>
+              <div class="field">
+                <label class="label">Client list</label>
+                <div class="control">
+                  <ClientListFileUpload @input="updateClients"/>
+                </div>
               </div>
+              <ClientList
+                v-if="clients.length > 0"
+                :clients="clients"/>
             </div>
+            <br>
             <div
               id="actions-field"
               class="field">
@@ -56,7 +62,8 @@
 </template>
 
 <script>
-import ClientListFileUpload from '@/components/ClientListFileUpload.vue';
+import ClientListFileUpload from '@/components/ClientList/ClientListFileUpload.vue';
+import ClientList from '@/components/ClientList/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/Log.vue';
 import { mapState } from 'vuex';
@@ -65,6 +72,7 @@ export default {
   name: 'Dashboard',
   components: {
     ClientListFileUpload,
+    ClientList,
     TaskList,
     Log,
   },
