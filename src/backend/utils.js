@@ -289,11 +289,17 @@ export async function sendMessage(tabId, message) {
 }
 
 /**
+ * @typedef {boolean} IgnoreZraError
+ * Whether errors from the ZRA website should be ignored.
+ */
+
+/**
  * Clicks on an element with the specified selector that is in a tab with the specified ID.
  * @param {number} tabId The ID of the tab on which the element resides.
  * @param {string} selector The selector of the element.
  * @param {string} name A descriptive name of the element used when generating errors.
  * For example, "generate report button".
+ * @param {IgnoreZraError} [ignoreZraErrors=false]
  */
 export async function clickElement(tabId, selector, name = null, ignoreZraErrors = false) {
   await executeScript(tabId, { file: 'click_element.js' });

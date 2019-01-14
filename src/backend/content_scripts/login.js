@@ -89,10 +89,15 @@ const commonIncorrectCharacters = [
 ];
 
 /**
+ * @typedef {number} MaxCaptchaRefreshes
+ * The maximum number of times that a new captcha will be loaded if the OCR fails
+ */
+
+/**
  * Logs into a particular client's account
  *
  * @param {import('../dashboard').Client} client The client whose account to login to
- * @param {number} maxCaptchaRefreshes The maximum number of times that a new captcha will be loaded if the OCR fails
+ * @param {MaxCaptchaRefreshes} maxCaptchaRefreshes
  * @throws {import('../errors').ElementsNotFoundError}
  */
 async function login(client, maxCaptchaRefreshes) {
@@ -142,23 +147,32 @@ async function login(client, maxCaptchaRefreshes) {
   els.submitButton.click();
 }
 
-browser.runtime.onMessage.addListener(message => new Promise((resolve) => {
-  if (message.command === 'login') {
-    try {
-      const clientInfo = getClientInfo();
-      if (clientInfo) {
-        const foundUsername = usernameInClientInfo(message.client.username, clientInfo);
-        // If we did not find the username in the client info, then another client
-        // is already logged in.
-        if (!foundUsername) {
-          throw getWrongClientError(clientInfo);
+/**
+ * @param {Object} message
+ * @param {string} message.command
+ * @param {import('../constants').Client} message.client
+ * @param {MaxCaptchaRefreshes} message.maxCaptchaRefreshes
+ */
+function listener(message) {
+  return new Promise((resolve) => {
+    if (message.command === 'login') {
+      try {
+        const clientInfo = getClientInfo();
+        if (clientInfo) {
+          const foundUsername = usernameInClientInfo(message.client.username, clientInfo);
+          // If we did not find the username in the client info, then another client
+          // is already logged in.
+          if (!foundUsername) {
+            throw getWrongClientError(clientInfo);
+          }
         }
+        login(message.client, message.maxCaptchaRefreshes).then(() => {
+          resolve({});
+        });
+      } catch (error) {
+        resolve({ error: errorToJson(error) });
       }
-      login(message.client, message.maxCaptchaRefreshes).then(() => {
-        resolve({});
-      });
-    } catch (error) {
-      resolve({ error: errorToJson(error) });
     }
-  }
-}));
+  });
+}
+browser.runtime.onMessage.addListener(listener);
