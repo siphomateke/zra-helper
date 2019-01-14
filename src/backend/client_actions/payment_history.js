@@ -19,19 +19,19 @@ const { config } = store.state;
 
 /**
  * @typedef GetAllPaymentReceiptNumbersOptions
- * @property {number} fromDate
- * @property {number} toDate
+ * @property {string} fromDate
+ * @property {string} toDate
  * @property {string} [receiptNumber]
  * @property {string} [referenceNumber]
  */
 
 /**
- * @typedef GetPaymentReceiptNumbersOptions
+ * @typedef GetPaymentReceiptNumbersOptions.Temp
  * @property {number} page
- * @property {number} fromDate
- * @property {number} toDate
- * @property {string} [receiptNumber]
- * @property {string} [referenceNumber]
+ */
+
+/**
+ * @typedef {GetAllPaymentReceiptNumbersOptions & GetPaymentReceiptNumbersOptions.Temp} GetPaymentReceiptNumbersOptions
  */
 
 /**
@@ -99,6 +99,12 @@ async function getPaymentReceiptNumbers({
   }
 }
 
+/**
+ * Creates a task to get payment receipt numbers from a single page.
+ * @param {GetAllPaymentReceiptNumbersOptions} options
+ * @param {number} page
+ * @param {number} parentTaskId
+ */
 async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
   const childTask = createTask(store, {
     title: `Get payment receipt numbers from page ${page + 1}`,
