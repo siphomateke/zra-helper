@@ -1,16 +1,17 @@
-import $ from 'jquery';
-import { log } from '../log';
-import { Task, taskStates } from '../tasks';
-import {
-  clickElement, createTab, executeScript, sendMessage, tabLoaded,
-} from '../utils';
+import store from '@/store';
+import log from '@/transitional/log';
+import createTask from '@/transitional/tasks';
+import { taskStates } from '@/store/modules/tasks';
+import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '../utils';
 
 /** @typedef {import('../constants').Client} Client */
 
 export class Output {
   constructor() {
     // TODO: Support multiple outputs
-    this.el = $('#output');
+    // FIXME: Re-implement output
+    // this.el = $('#output');
+    this.el = {};
   }
 
   set value(value) {
@@ -34,14 +35,17 @@ export class Output {
  * Creates a new tab, logs in and then closes the tab
  *
  * @param {Client} client
- * @param {Task} parentTask
+ * @param {number} parentTaskId
  * @returns {Promise}
  * @throws {import('./errors').ExtendedError}
  */
-async function login(client, parentTask) {
-  const task = new Task('Login', parentTask.id);
-  task.progressMax = 7;
-  task.status = 'Opening tab';
+async function login(client, parentTaskId) {
+  const task = createTask(store, {
+    title: 'Login',
+    parent: parentTaskId,
+    progressMax: 7,
+    status: 'Opening tab',
+  });
 
   log.setCategory('login');
   log.log(`Logging in client "${client.name}"`);
@@ -52,7 +56,11 @@ async function login(client, parentTask) {
       await tabLoaded(tab.id);
       task.addStep('Navigating to login page');
       // Navigate to login page
-      await clickElement(tab.id, '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a', 'go to login button');
+      await clickElement(
+        tab.id,
+        '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a',
+        'go to login button',
+      );
       task.addStep('Waiting for login page to load');
       await tabLoaded(tab.id);
       task.addStep('Logging in');
@@ -92,13 +100,16 @@ async function login(client, parentTask) {
 /**
  * Creates a new tab, logs out and then closes the tab
  *
- * @param {Task} parentTask
+ * @param {number} parentTaskId
  * @returns {Promise}
  */
-async function logout(parentTask) {
-  const task = new Task('Logout', parentTask.id);
-  task.progressMax = 3;
-  task.status = 'Opening tab';
+async function logout(parentTaskId) {
+  const task = createTask(store, {
+    title: 'Logout',
+    parent: parentTaskId,
+    progressMax: 3,
+    status: 'Opening tab',
+  });
 
   log.setCategory('logout');
   log.log('Logging out');
@@ -135,19 +146,23 @@ export class ClientAction {
 
     this.output = new Output();
 
-    const field = $(`<div class="control"><label class="checkbox"><input type="checkbox" name="actions" value="${id}"> ${taskName}</label></div>`);
-    $('#actions-field').append(field);
+    // FIXME: Display client actions to user
+    /* const field = $(`<div class="control"><label class="checkbox"><input type="checkbox" name="actions" value="${id}"> ${taskName}</label></div>`);
+    $('#actions-field').append(field); */
   }
 
   /**
    * Logs in a client and retries if already logged in as another client
    * @param {Client} client
-   * @param {Task} parentTask
+   * @param {number} parentTaskId
    * @param {number} [maxAttempts=2]
    */
-  async robustLogin(client, parentTask, maxAttempts = 2) {
-    const task = new Task('Robust login', parentTask.id);
-    task.progress = -2;
+  async robustLogin(client, parentTaskId, maxAttempts = 2) {
+    const task = createTask(store, {
+      title: 'Robust login',
+      parent: parentTaskId,
+      progress: -2,
+    });
     let attempts = 0;
     let run = true;
     try {
@@ -158,14 +173,14 @@ export class ClientAction {
           } else {
             task.status = 'Logging in';
           }
-          await login(client, task);
+          await login(client, task.id);
           run = false;
         } catch (error) {
           if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts < maxAttempts) {
             log.setCategory('login');
             log.showError(error, true);
             task.status = 'Logging out';
-            await logout(task);
+            await logout(task.id);
             run = true;
           } else {
             throw error;
@@ -184,14 +199,14 @@ export class ClientAction {
   }
 
   async run(client) {
-    this.mainTask = new Task(`${client.name}: ${this.taskName}`);
+    this.mainTask = createTask(store, { title: `${client.name}: ${this.taskName}` });
     try {
       this.mainTask.status = 'Logging in';
-      await this.robustLogin(client, this.mainTask);
+      await this.robustLogin(client, this.mainTask.id);
 
       if (this.action) {
         this.mainTask.status = this.taskName;
-        const task = new Task(this.taskName, this.mainTask.id);
+        const task = createTask(store, { title: this.taskName, parent: this.mainTask.id });
         log.setCategory(this.id);
         await this.action(client, task, this.output);
         if (task.state === taskStates.ERROR) {
@@ -200,7 +215,7 @@ export class ClientAction {
       }
 
       this.mainTask.status = 'Logging out';
-      await logout(this.mainTask);
+      await logout(this.mainTask.id);
 
       if (this.mainTask.state !== taskStates.ERROR) {
         if (this.mainTask.childStateCounts[taskStates.WARNING] > 0) {

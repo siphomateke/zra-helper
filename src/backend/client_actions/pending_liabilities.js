@@ -1,24 +1,37 @@
 import Papa from 'papaparse';
+import log from '@/transitional/log';
+import store from '@/store';
+import createTask from '@/transitional/tasks';
+import { taskStates } from '@/store/modules/tasks';
 import { taxTypes } from '../constants';
-import { log } from '../log';
-import { Task, taskStates } from '../tasks';
-import {
-  clickElement, createTab, executeScript, sendMessage, tabLoaded,
-} from '../utils';
+import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '../utils';
 import { ClientAction } from './base';
 
 /**
  * @typedef {import('../constants').Client} Client
  * @typedef {import('./base').Output} Output
+ * @typedef {import('@/transitional/tasks').TaskObject} Task
  */
 
-export default new ClientAction('Get all pending liabilities', 'pending_liabilities',
+async function getTotals(tabId, numTotals) {
+  await executeScript(tabId, { file: 'get_totals.js' });
+  const totalsResponse = await sendMessage(tabId, {
+    command: 'getTotals',
+    numTotals,
+    /** The first column with a pending liability */
+    startColumn: 5,
+  });
+  return totalsResponse;
+}
+
+export default new ClientAction(
+  'Get all pending liabilities', 'pending_liabilities',
   /**
    * @param {Client} client
    * @param {Task} parentTask
    * @param {Output} output
    */
-  ((client, parentTask, output) => new Promise((resolve) => {
+  (client, parentTask, output) => new Promise((resolve) => {
     const promises = [];
     /** Total number of pending liabilities including the grand total */
     const numTotals = 4;
@@ -29,9 +42,12 @@ export default new ClientAction('Get all pending liabilities', 'pending_liabilit
     for (const taxTypeId of Object.keys(taxTypes)) {
       promises.push(new Promise(async (resolve) => {
         const taxType = taxTypes[taxTypeId];
-        const task = new Task(`Get ${taxType} totals`, parentTask.id);
-        task.progressMax = 4;
-        task.status = 'Opening tab';
+        const task = createTask(store, {
+          title: `Get ${taxType} totals`,
+          parent: parentTask.id,
+          progressMax: 4,
+          status: 'Opening tab',
+        });
 
         log.log(`Generating ${taxType} report`);
 
@@ -56,23 +72,11 @@ export default new ClientAction('Get all pending liabilities', 'pending_liabilit
 
             task.addStep('Getting totals');
 
-            // TODO: move this out of this function
-            async function getTotals() {
-              await executeScript(tab.id, { file: 'get_totals.js' });
-              const totalsResponse = await sendMessage(tab.id, {
-                command: 'getTotals',
-                numTotals,
-                /** The first column with a pending liability */
-                startColumn: 5,
-              });
-              return totalsResponse;
-            }
-
-            let totalsResponse = await getTotals();
+            let totalsResponse = await getTotals(tab.id, numTotals);
             if (totalsResponse.numberOfPages > 1) {
               // Set the current page to be the last one by clicking the "last page" button.
               await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
-              totalsResponse = await getTotals();
+              totalsResponse = await getTotals(tab.id, numTotals);
             }
             totals[taxType] = totalsResponse.totals;
             task.state = taskStates.SUCCESS;
@@ -92,7 +96,7 @@ export default new ClientAction('Get all pending liabilities', 'pending_liabilit
             // a task which already has the tax type in it's title.
             status = 'Tax type not found';
           } else {
-            status = task.getStatusFromError();
+            task.setErrorAsStatus();
           }
           task.status = status;
           log.showError(error);
@@ -111,7 +115,7 @@ export default new ClientAction('Get all pending liabilities', 'pending_liabilit
     Promise.all(promises).then(() => {
       let errorCount = 0;
       let taxTypeErrorCount = 0;
-      for (const task of parentTask.getChildren()) {
+      for (const task of parentTask.children) {
         if (task.state === taskStates.ERROR) {
           if (task.error.type !== 'TaxTypeNotFoundError') {
             errorCount++;
@@ -154,4 +158,5 @@ export default new ClientAction('Get all pending liabilities', 'pending_liabilit
       parentTask.complete = true;
       resolve();
     });
-  })));
+  }),
+);

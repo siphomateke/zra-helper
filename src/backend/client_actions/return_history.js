@@ -1,16 +1,20 @@
 import moment from 'moment';
-import config from '../config';
+import store from '@/store';
+import createTask from '@/transitional/tasks';
+import { taskStates } from '@/store/modules/tasks';
 import { taxTypes, taxTypeNumericalCodes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
-import { Task, taskStates } from '../tasks';
 import { getDocumentByAjax } from '../utils';
 import { ClientAction } from './base';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap } from './utils';
 
+const { config } = store.state;
+
 /**
  * @typedef {import('../constants').Client} Client
  * @typedef {import('./base').Output} Output
+ * @typedef {import('@/transitional/tasks').TaskObject} Task
  */
 
 const exciseTypes = {
@@ -36,6 +40,8 @@ const recordHeaders = [
   'receipt',
   'submittedForm',
 ];
+
+// TODO: Document functions
 
 async function getReturnHistoryReferenceNumbers({
   tpin, taxType, fromDate, toDate, page, exciseType,
@@ -76,11 +82,14 @@ async function getReturnHistoryReferenceNumbers({
 }
 
 async function getAllReturnHistoryReferenceNumbers({
-  tpin, taxType, fromDate, toDate, exciseType, parentTask,
+  tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
 }) {
-  const task = new Task('Get reference numbers', parentTask.id);
-  task.progressMax = 1;
-  task.status = 'Getting reference numbers from first page';
+  const task = createTask(store, {
+    title: 'Get reference numbers',
+    parent: parentTaskId,
+    progressMax: 1,
+    status: 'Getting reference numbers from first page',
+  });
 
   let numPages = 1;
   const referenceNumbers = [];
@@ -127,7 +136,7 @@ async function getAllReturnHistoryReferenceNumbers({
 }
 
 function downloadReturnHistoryReceipt({
-  client, taxType, referenceNumber, parentTask,
+  client, taxType, referenceNumber, parentTaskId,
 }) {
   return downloadReceipt({
     type: 'return',
@@ -142,7 +151,7 @@ function downloadReturnHistoryReceipt({
       return `receipt-${client.username}-${taxTypes[taxType]}-${dateString}-${referenceNumber}.mhtml`;
     },
     taskTitle: `Download receipt ${referenceNumber}`,
-    parentTask,
+    parentTaskId,
     createTabPostOptions: {
       url: 'https://www.zra.org.zm/retHist.htm',
       data: {
@@ -156,25 +165,26 @@ function downloadReturnHistoryReceipt({
 }
 
 function downloadReceipts({
-  client, taxType, referenceNumbers, parentTask,
+  client, taxType, referenceNumbers, parentTaskId,
 }) {
   return parallelTaskMap({
     list: referenceNumbers,
-    task: new Task('Download receipts', parentTask.id),
-    func(referenceNumber, parentTask) {
+    task: createTask(store, { title: 'Download receipts', parent: parentTaskId }),
+    func(referenceNumber, parentTaskId) {
       return downloadReturnHistoryReceipt({
-        client, taxType, referenceNumber, parentTask,
+        client, taxType, referenceNumber, parentTaskId,
       });
     },
   });
 }
 
-export default new ClientAction('Get all returns', 'get_all_returns',
+export default new ClientAction(
+  'Get all returns', 'get_all_returns',
   /**
    * @param {Client} client
    * @param {Task} parentTask
    */
-  (async (client, parentTask) => {
+  async (client, parentTask) => {
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = config.returnHistory.maxOpenTabsWhenDownloading;
 
@@ -185,9 +195,12 @@ export default new ClientAction('Get all returns', 'get_all_returns',
       async func(taxTypeId, parentTask) {
         const taxType = taxTypes[taxTypeId];
 
-        const task = new Task(`Get ${taxType} receipts`, parentTask.id);
-        task.unknownMaxProgress = false;
-        task.progressMax = 2;
+        const task = createTask(store, {
+          title: `Get ${taxType} receipts`,
+          parent: parentTask.id,
+          unknownMaxProgress: false,
+          progressMax: 2,
+        });
         try {
           const referenceNumbers = await getAllReturnHistoryReferenceNumbers({
             tpin: client.username,
@@ -195,16 +208,16 @@ export default new ClientAction('Get all returns', 'get_all_returns',
             fromDate: '01/01/2013',
             toDate: moment().format('31/12/YYYY'),
             exciseType: exciseTypes.airtime,
-            parentTask: task,
+            parentTaskId: task.id,
           });
           await downloadReceipts({
             taxType: taxTypeId,
             referenceNumbers,
-            parentTask: task,
+            parentTaskId: task.id,
             client,
           });
           task.status = '';
-          task.state = task.getStateFromChildren();
+          task.setStateBasedOnChildren();
         } catch (error) {
           task.setError(error);
         } finally {
@@ -217,7 +230,7 @@ export default new ClientAction('Get all returns', 'get_all_returns',
 
     let errorCount = 0;
     let taxTypeErrorCount = 0;
-    for (const task of parentTask.getChildren()) {
+    for (const task of parentTask.children) {
       if (task.state === taskStates.ERROR) {
         if (task.error && task.error.type === 'TaxTypeNotFoundError') {
           taxTypeErrorCount++;
@@ -237,4 +250,5 @@ export default new ClientAction('Get all returns', 'get_all_returns',
     } else {
       parentTask.state = taskStates.SUCCESS;
     }
-  }));
+  },
+);

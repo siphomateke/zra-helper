@@ -1,11 +1,16 @@
 import moment from 'moment';
-import config from '../config';
-import { Task, taskStates } from '../tasks';
+import store from '@/store';
+import createTask from '@/transitional/tasks';
+import { taskStates } from '@/store/modules/tasks';
 import { ClientAction } from './base';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap } from './utils';
 import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
+
+const { config } = store.state;
+
+/** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -94,12 +99,15 @@ async function getPaymentReceiptNumbers({
   }
 }
 
-async function getPaymentReceiptNumbersTask(options, page, parentTask) {
-  const childTask = new Task(`Get payment receipt numbers from page ${page + 1}`, parentTask.id);
-  // TODO: set child tasks to be indeterminate. Haven't yet because of the way
-  // parent task progress is calculated
-  childTask.progress = 0;
-  childTask.progressMax = 1;
+async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
+  const childTask = createTask(store, {
+    title: `Get payment receipt numbers from page ${page + 1}`,
+    parent: parentTaskId,
+    // TODO: set child tasks to be indeterminate. Haven't yet because of the way
+    // parent task progress is calculated
+    progress: 0,
+    progressMax: 1,
+  });
   try {
     const result = await getPaymentReceiptNumbers(Object.assign(options, { page: page + 1 }));
     // Remove header row
@@ -117,25 +125,28 @@ async function getPaymentReceiptNumbersTask(options, page, parentTask) {
 /**
  * Gets payment receipt numbers from all pages.
  * @param {GetAllPaymentReceiptNumbersOptions} options
- * @param {Task} parentTask
+ * @param {number} parentTaskId
  */
-function getAllPaymentReceiptNumbers(options, parentTask) {
-  const task = new Task('Get payment receipt numbers', parentTask.id);
-  task.sequential = false;
-  task.unknownMaxProgress = false;
-  // this is overwritten once we know the number of pages
-  task.progressMax = 1;
+function getAllPaymentReceiptNumbers(options, parentTaskId) {
+  const task = createTask(store, {
+    title: 'Get payment receipt numbers',
+    parent: parentTaskId,
+    sequential: false,
+    unknownMaxProgress: false,
+    // this is overwritten once we know the number of pages
+    progressMax: 1,
+  });
 
   return new Promise(async (resolve, reject) => {
     try {
       const promises = [];
-      const result = await getPaymentReceiptNumbersTask(options, 0, task);
+      const result = await getPaymentReceiptNumbersTask(options, 0, task.id);
       if (result.numPages > 1) {
         task.progressMax = result.numPages;
       }
       for (let page = 1; page < result.numPages; page++) {
         promises.push(new Promise((resolve) => {
-          getPaymentReceiptNumbersTask(options, page, task)
+          getPaymentReceiptNumbersTask(options, page, task.id)
             .then(resolve)
             .catch(resolve);
         }));
@@ -148,7 +159,7 @@ function getAllPaymentReceiptNumbers(options, parentTask) {
         // Ignore all the payment registrations
         records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
         task.complete = true;
-        task.state = task.getStateFromChildren();
+        task.setStateBasedOnChildren();
         resolve(records);
       });
     } catch (error) {
@@ -206,9 +217,9 @@ function getQuarterFromPeriod(from, to) {
  * @param {Object} options
  * @param {Client} options.client
  * @param {PaymentReceipt} options.receipt
- * @param {Task} options.parentTask
+ * @param {number} options.parentTaskId
  */
-function downloadPaymentReceipt({ client, receipt, parentTask }) {
+function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
   const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
 
   return downloadReceipt({
@@ -254,7 +265,7 @@ function downloadPaymentReceipt({ client, receipt, parentTask }) {
       });
     },
     taskTitle: `Download receipt ${refNo}`,
-    parentTask,
+    parentTaskId,
     createTabPostOptions: {
       url: 'https://www.zra.org.zm/ePaymentController.htm',
       data: {
@@ -272,24 +283,25 @@ function downloadPaymentReceipt({ client, receipt, parentTask }) {
  * @param {Object} options
  * @param {Client} options.client
  * @param {PaymentReceipt[]} options.receipts
- * @param {Task} options.parentTask
+ * @param {number} options.parentTaskId
  */
-function downloadPaymentReceipts({ client, receipts, parentTask }) {
+function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   return parallelTaskMap({
     list: receipts,
-    task: new Task('Download payment receipts', parentTask.id),
-    func(receipt, parentTask) {
-      return downloadPaymentReceipt({ client, receipt, parentTask });
+    task: createTask(store, { title: 'Download payment receipts', parent: parentTaskId }),
+    func(receipt, parentTaskId) {
+      return downloadPaymentReceipt({ client, receipt, parentTaskId });
     },
   });
 }
 
-export default new ClientAction('Get payment history', 'get_all_payments',
+export default new ClientAction(
+  'Get payment history', 'get_all_payments',
   /**
    * @param {Client} client
    * @param {Task} parentTask
    */
-  ((client, parentTask) => new Promise(async (resolve, reject) => {
+  (client, parentTask) => new Promise(async (resolve, reject) => {
     const options = {
       fromDate: '01/10/2013',
       toDate: moment().format('DD/MM/YYYY'),
@@ -299,10 +311,10 @@ export default new ClientAction('Get payment history', 'get_all_payments',
     parentTask.progressMax = 2;
 
     try {
-      const receipts = await getAllPaymentReceiptNumbers(options, parentTask);
+      const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
       const initialMaxOpenTabs = config.maxOpenTabs;
       config.maxOpenTabs = config.paymentHistory.maxOpenTabsWhenDownloading;
-      await downloadPaymentReceipts({ client, receipts, parentTask });
+      await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
       config.maxOpenTabs = initialMaxOpenTabs;
       resolve();
     } catch (error) {
@@ -310,6 +322,7 @@ export default new ClientAction('Get payment history', 'get_all_payments',
       reject(error);
     } finally {
       parentTask.complete = true;
-      parentTask.state = parentTask.getStateFromChildren();
+      parentTask.setStateBasedOnChildren();
     }
-  })));
+  }),
+);

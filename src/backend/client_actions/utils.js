@@ -1,8 +1,10 @@
-import { Task, taskStates } from '../tasks';
-import {
-  createTabPost, saveAsMHTML, tabLoaded, waitForDownloadToComplete, executeScript, sendMessage,
-} from '../utils';
+import store from '@/store';
+import { taskStates } from '@/store/modules/tasks';
+import createTask from '@/transitional/tasks';
 import { InvalidReceiptError } from '../errors';
+import { createTabPost, executeScript, saveAsMHTML, sendMessage, tabLoaded, waitForDownloadToComplete } from '../utils';
+
+/** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
 /**
  * Downloads a receipt
@@ -16,15 +18,18 @@ import { InvalidReceiptError } from '../errors';
  * If a function is provided, it must return a string or array. It will be called with
  * an object containing information about the receipt such as reference number.
  * @param {string} options.taskTitle
- * @param {Task} options.parentTask
+ * @param {number} options.parentTaskId
  * @param {import('../utils').CreateTabPostOptions} options.createTabPostOptions
  */
 export async function downloadReceipt({
-  type, filename, taskTitle, parentTask, createTabPostOptions,
+  type, filename, taskTitle, parentTaskId, createTabPostOptions,
 }) {
-  const task = new Task(taskTitle, parentTask.id);
-  task.progressMax = 4;
-  task.status = 'Opening receipt tab';
+  const task = createTask(store, {
+    title: taskTitle,
+    parent: parentTaskId,
+    progressMax: 4,
+    status: 'Opening receipt tab',
+  });
   try {
     const tab = await createTabPost(createTabPostOptions);
     try {
@@ -101,8 +106,8 @@ export async function downloadReceipt({
  * Set this to false to disable the parent task's state from being automatically
  * set when all the async functions have completed.
  *
- * If this is true, the state will be set to `task.getStateFromChildren()` and the
- * promise will be rejected if the state evaluates to error.
+ * If this is true, the state will be set based on the task's children by `task.setStateBasedOnChildren()`
+ * and the promise will be rejected if the state evaluates to error.
  */
 export function parallelTaskMap({
   list,
@@ -125,7 +130,7 @@ export function parallelTaskMap({
     Promise.all(promises).then((values) => {
       task.complete = true;
       if (autoCalculateTaskState) {
-        task.state = task.getStateFromChildren();
+        task.setStateBasedOnChildren();
         if (task.state === taskStates.ERROR) {
           reject();
         } else {
