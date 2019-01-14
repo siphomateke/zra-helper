@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import { getClientsFromFile } from '@/backend/client_file_reader';
+import getClientsFromFile from '@/backend/client_file_reader';
 
 // TODO: Move CSV file validation from client_file_reader.js to this component
 

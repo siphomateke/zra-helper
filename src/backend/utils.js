@@ -1,10 +1,9 @@
 import axios from 'axios';
 import store from '@/store';
 import { getZraError } from './content_scripts/helpers/zra';
-import {
-  errorFromJson, ExecuteScriptError, SendMessageError, TabError,
-} from './errors';
-const config = store.state.config;
+import { errorFromJson, ExecuteScriptError, SendMessageError, TabError } from './errors';
+
+const { config } = store.state;
 
 class TabCreator {
   constructor() {
@@ -83,6 +82,53 @@ class TabCreator {
 }
 
 export const tabCreator = new TabCreator();
+
+/**
+ * Waits for a tab with a specific ID to load
+ *
+ * @param {number} desiredTabId
+ * @param {number} [timeout]
+ * The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in config.
+ * @returns {Promise}
+ * @throws {TabError} Throws an error if the tab is closed before it loads
+ */
+export function tabLoaded(desiredTabId, timeout = null) {
+  if (timeout === null) timeout = config.tabLoadTimeout;
+
+  return new Promise((resolve, reject) => {
+    let removeListeners;
+    function updatedListener(tabId, changeInfo) {
+      if (tabId === desiredTabId && changeInfo.status === 'complete') {
+        removeListeners();
+        resolve();
+      }
+    }
+    function removedListener(tabId) {
+      if (tabId === desiredTabId) {
+        removeListeners();
+        reject(new TabError(
+          `Tab with ID ${tabId} was closed before it could finish loading.`,
+          'Closed',
+          { tabId },
+        ));
+      }
+    }
+    removeListeners = function removeListeners() {
+      browser.tabs.onUpdated.removeListener(updatedListener);
+      browser.tabs.onRemoved.removeListener(removedListener);
+    };
+
+    browser.tabs.onUpdated.addListener(updatedListener);
+    browser.tabs.onRemoved.addListener(removedListener);
+
+    setTimeout(() => {
+      removeListeners();
+      reject(new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut', {
+        tabId: desiredTabId,
+      }));
+    }, timeout);
+  });
+}
 
 /**
  * Creates a new tab.
@@ -188,53 +234,6 @@ export async function executeScript(tabId, details, vendor = false) {
 // TODO: Make sure this is used
 export function closeTab(tabId) {
   return browser.tabs.remove(tabId);
-}
-
-/**
- * Waits for a tab with a specific ID to load
- *
- * @param {number} desiredTabId
- * @param {number} [timeout]
- * The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in config.
- * @returns {Promise}
- * @throws {TabError} Throws an error if the tab is closed before it loads
- */
-export function tabLoaded(desiredTabId, timeout = null) {
-  if (timeout === null) timeout = config.tabLoadTimeout;
-
-  return new Promise((resolve, reject) => {
-    let removeListeners;
-    function updatedListener(tabId, changeInfo) {
-      if (tabId === desiredTabId && changeInfo.status === 'complete') {
-        removeListeners();
-        resolve();
-      }
-    }
-    function removedListener(tabId) {
-      if (tabId === desiredTabId) {
-        removeListeners();
-        reject(new TabError(
-          `Tab with ID ${tabId} was closed before it could finish loading.`,
-          'Closed',
-          { tabId },
-        ));
-      }
-    }
-    removeListeners = function removeListeners() {
-      browser.tabs.onUpdated.removeListener(updatedListener);
-      browser.tabs.onRemoved.removeListener(removedListener);
-    };
-
-    browser.tabs.onUpdated.addListener(updatedListener);
-    browser.tabs.onRemoved.addListener(removedListener);
-
-    setTimeout(() => {
-      removeListeners();
-      reject(new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut', {
-        tabId: desiredTabId,
-      }));
-    }, timeout);
-  });
 }
 
 /**

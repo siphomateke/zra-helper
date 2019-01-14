@@ -102,7 +102,8 @@ function getClientsFromCsv(csvString, config = {}) {
 
   // Output all the row errors
   for (const row of Object.keys(rowErrors)) {
-    log.showError(rowErrors[row].map(error => `CSV parse error in row ${toLineNumber(error.row)}: ${error.message}`).join(', '));
+    const errors = rowErrors[row].map(error => `CSV parse error in row ${toLineNumber(error.row)}: ${error.message}`);
+    log.showError(errors.join(', '));
   }
 
   log.log('Finished parsing CSV');
@@ -110,7 +111,7 @@ function getClientsFromCsv(csvString, config = {}) {
   // Only attempt to parse clients if the number of row errors is less than
   // the number of parsed rows.
   if (Object.keys(rowErrors).length < parsed.data.length) {
-    const fields = parsed.meta.fields;
+    const { fields } = parsed.meta;
     if (Object.keys(rowErrors).length) {
       log.log("Attempting to parse clients in rows that don't have CSV parsing errors");
     } else {
@@ -171,7 +172,7 @@ function getExtension(filename) {
  * @returns {Promise.<Client[]>}
  * @throws Will throw an error if the file fails to load
  */
-export function getClientsFromFile(file) {
+export default function getClientsFromFile(file) {
   return new Promise((resolve, reject) => {
     const ext = getExtension(file.name);
     if (ext === 'csv') {
