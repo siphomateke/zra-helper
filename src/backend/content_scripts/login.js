@@ -2,6 +2,8 @@ import { errorToJson, CaptchaLoadError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 import { getElements, getElement } from './helpers/elements';
 
+/* global OCRAD */
+
 /**
  * Creates a canvas from a HTML image element
  *
@@ -51,7 +53,10 @@ function getCaptcha(imageElement, scale = 2) {
  * @throws {import('../errors').ElementNotFoundError}
  */
 function refreshCaptcha() {
-  const refreshCaptchaButton = getElement('#loginForm a[href="javaScript:refreshCaptchaImage()"]', 'refresh captcha button');
+  const refreshCaptchaButton = getElement(
+    '#loginForm a[href="javaScript:refreshCaptchaImage()"]',
+    'refresh captcha button',
+  );
   refreshCaptchaButton.click();
 }
 

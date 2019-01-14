@@ -26,7 +26,10 @@ function listener(message) {
           if (document.querySelector('#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow')) {
             const totals = [];
             for (let i = message.startColumn; i < message.startColumn + message.numTotals; i++) {
-              let cellValue = getElement(`#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow>td:nth-child(${i})`, `column ${i} in grand total row`).innerText;
+              let cellValue = getElement(
+                `#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow>td:nth-child(${i})`,
+                `column ${i} in grand total row`,
+              ).innerText;
               cellValue = cellValue.replace(/\n\n/g, '');
               totals.push(cellValue);
             }

@@ -17,10 +17,25 @@ function listener(message) {
         } else if (message.type === 'return') {
           column = '3';
         }
-        const mainTable = getElement('form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody', 'main table');
-        const infoTable = getElementFromDocument(mainTable, `tr:nth-child(5)>td:nth-child(${column})>table>tbody`, 'info table');
-        const registrationDate = getElementFromDocument(infoTable, 'tr:nth-child(2)>td:nth-child(3)', 'registration date').innerText;
-        const referenceNumber = getElementFromDocument(infoTable, 'tr:nth-child(3)>td:nth-child(3)', 'reference number').innerText;
+        const mainTable = getElement(
+          'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
+          'main table',
+        );
+        const infoTable = getElementFromDocument(
+          mainTable,
+          `tr:nth-child(5)>td:nth-child(${column})>table>tbody`,
+          'info table',
+        );
+        const registrationDate = getElementFromDocument(
+          infoTable,
+          'tr:nth-child(2)>td:nth-child(3)',
+          'registration date',
+        ).innerText;
+        const referenceNumber = getElementFromDocument(
+          infoTable,
+          'tr:nth-child(3)>td:nth-child(3)',
+          'reference number',
+        ).innerText;
 
         const data = {
           registrationDate,
@@ -34,7 +49,11 @@ function listener(message) {
             paymentType: 7,
           };
           for (const name of Object.keys(rows)) {
-            data[name] = getElementFromDocument(infoTable, `tr:nth-child(${rows[name]})>td:nth-child(3)`, name).innerText;
+            data[name] = getElementFromDocument(
+              infoTable,
+              `tr:nth-child(${rows[name]})>td:nth-child(3)`,
+              name,
+            ).innerText;
           }
 
           const paymentTable = getElement('#pmt_dtl', 'payment table');

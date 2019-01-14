@@ -5,7 +5,8 @@ import { getZraError } from './helpers/zra';
 /**
  * @param {Object} message
  * @param {string} message.command
- * @param {import('../utils').IgnoreZraError} message.ignoreZraErrors Whether errors from the ZRA website should be ignored.
+ * @param {import('../utils').IgnoreZraError} message.ignoreZraErrors
+ * Whether errors from the ZRA website should be ignored.
  * @param {string} message.selector The selector of the element.
  * @param {string} message.name A descriptive name of the element used when generating errors.
  * For example, "generate report button".
