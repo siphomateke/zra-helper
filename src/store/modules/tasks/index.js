@@ -79,7 +79,7 @@ export default {
       parent: ({ getters, task }) => getters.getTaskById(task.parent),
       hasChildren: ({ task }) => task.children.length > 0,
       children: ({ getters, task }) => task.children.map(childId => getters.getTaskById(childId)),
-      childStates: ({ getters, id }) => {
+      childStateCounts: ({ getters, id }) => {
         const stateCounts = {};
         for (const task of getters.children(id)) {
           if (task.state) {
@@ -91,9 +91,9 @@ export default {
       },
       childStateString: ({ getters, id }) => {
         const stateStrings = [];
-        const childStates = getters.childStates(id);
-        for (const state of Object.keys(childStates)) {
-          const count = childStates[state];
+        const childStateCounts = getters.childStateCounts(id);
+        for (const state of Object.keys(childStateCounts)) {
+          const count = childStateCounts[state];
           stateStrings.push(`${count} ${state}(s)`);
         }
         return stateStrings.join(', ');

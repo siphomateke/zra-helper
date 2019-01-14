@@ -12,7 +12,7 @@
           :title="childStateString"
           class="subtasks-info">
           <span
-            v-for="(count, state) in childStates"
+            v-for="(count, state) in childStateCounts"
             :key="state"
             :class="state"
             class="item">
@@ -83,7 +83,7 @@ export default {
   },
   computed: {
     ...mapGettersById('tasks', [
-      'childStates',
+      'childStateCounts',
       'childStateString',
       'hasParent',
       'hasChildren',
