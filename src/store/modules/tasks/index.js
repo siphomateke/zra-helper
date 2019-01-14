@@ -1,12 +1,23 @@
 import Vue from 'vue';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
 
+let lastTaskId = 0;
+
+/** @typedef {string} TaskState */
+
+/** @enum {TaskState} */
+export const taskStates = {
+  ERROR: 'error',
+  SUCCESS: 'success',
+  WARNING: 'warning',
+};
+
 /**
- * @typedef {Object} TaskState
+ * @typedef {Object} TaskVuexState
  * @property {string} [title='']
  * @property {number} [id=lastTaskId]
  * @property {string} [status='']
- * @property {string} [state=null]
+ * @property {TaskState} [state=null]
  * @property {number} [progress=-1]
  * @property {number} [progressMax=100]
  * @property {number[]} [children=[]] Child IDs
@@ -27,14 +38,6 @@ import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
  * @property {boolean} [autoUpdateParent=true]
  * Whether this task will automatically update it's parent progress and status.
  */
-
-let lastTaskId = 0;
-
-export const taskStates = {
-  ERROR: 'error',
-  SUCCESS: 'success',
-  WARNING: 'warning',
-};
 
 function getChildProgress(type, { getters, task, id }) {
   let result = 0;
@@ -174,7 +177,7 @@ export default {
   actions: {
     /**
      * @param {import('vuex').Store} store
-     * @param {TaskState} task
+     * @param {TaskVuexState} data
      */
     create({ commit }, data = {}) {
       const task = Object.assign({
