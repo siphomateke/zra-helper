@@ -15,8 +15,23 @@ const { config } = store.state;
  * @typedef {import('../constants').Client} Client
  * @typedef {import('./base').Output} Output
  * @typedef {import('@/transitional/tasks').TaskObject} Task
+ * @typedef {string} TPIN
+ * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
+ * @typedef {import('../constants').Date} Date
+ * @typedef {import('../constants').ReferenceNumber} ReferenceNumber
  */
 
+/**
+ * @typedef {string} ExciseType
+ * Excise type name. For example, 'airtime' and 'electricalEnergy'.
+ */
+
+/**
+ * @typedef {string} ExciseTypeCode
+ * Excise type numerical code. For example, '20025012' (airtime) and '20025007' (electricalEnergy).
+ */
+
+/** @type {Object.<ExciseType, ExciseTypeCode>} */
 const exciseTypes = {
   airtime: '20025012',
   electricalEnergy: '20025007',
@@ -43,6 +58,18 @@ const recordHeaders = [
 
 // TODO: Document functions
 
+/**
+ * Gets return history reference numbers that match the given criteria.
+ * @param {Object} options
+ * @param {TPIN} options.tpin
+ * @param {TaxTypeNumericalCode} options.taxType
+ * @param {Date} options.fromDate
+ * @param {Date} options.toDate
+ * @param {number} options.page
+ * @param {ExciseTypeCode} options.exciseType
+ * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
+ * @throws {TaxTypeNotFoundError}
+ */
 async function getReturnHistoryReferenceNumbers({
   tpin, taxType, fromDate, toDate, page, exciseType,
 }) {
@@ -81,6 +108,17 @@ async function getReturnHistoryReferenceNumbers({
   }
 }
 
+/**
+ * Gets return history reference numbers from all the pages that match the given criteria.
+ * @param {Object} options
+ * @param {TPIN} options.tpin
+ * @param {TaxTypeNumericalCode} options.taxType
+ * @param {Date} options.fromDate
+ * @param {Date} options.toDate
+ * @param {ExciseTypeCode} options.exciseType
+ * @param {number} options.parentTaskId
+ * @returns {Promise.<ReferenceNumber[]>}
+ */
 async function getAllReturnHistoryReferenceNumbers({
   tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
 }) {
@@ -92,6 +130,7 @@ async function getAllReturnHistoryReferenceNumbers({
   });
 
   let numPages = 1;
+  /** @type {ReferenceNumber[]} */
   const referenceNumbers = [];
   try {
     // TODO: Consider doing this in parallel
@@ -135,6 +174,14 @@ async function getAllReturnHistoryReferenceNumbers({
   return referenceNumbers;
 }
 
+/**
+ * Downloads the return history receipt that has the provided reference number.
+ * @param {Object} options
+ * @param {Client} options.client
+ * @param {TaxTypeNumericalCode} options.taxType
+ * @param {ReferenceNumber} options.referenceNumber
+ * @param {number} options.parentTaskId
+ */
 function downloadReturnHistoryReceipt({
   client, taxType, referenceNumber, parentTaskId,
 }) {
@@ -164,6 +211,14 @@ function downloadReturnHistoryReceipt({
   });
 }
 
+/**
+ * Downloads all the return history receipts that have the provided reference numbers.
+ * @param {Object} options
+ * @param {Client} options.client
+ * @param {TaxTypeNumericalCode} options.taxType
+ * @param {ReferenceNumber[]} options.referenceNumbers
+ * @param {number} options.parentTaskId
+ */
 function downloadReceipts({
   client, taxType, referenceNumbers, parentTaskId,
 }) {

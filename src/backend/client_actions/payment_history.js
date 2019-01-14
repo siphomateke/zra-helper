@@ -10,19 +10,19 @@ import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
 
 const { config } = store.state;
 
-/** @typedef {import('@/transitional/tasks').TaskObject} Task */
-
 /**
+ * @typedef {import('@/transitional/tasks').TaskObject} Task
+ * @typedef {import('../constants').Date} Date
  * @typedef {import('../constants').Client} Client
  * @typedef {import('./base').Output} Output
  */
 
 /**
  * @typedef GetAllPaymentReceiptNumbersOptions
- * @property {string} fromDate
- * @property {string} toDate
+ * @property {Date} fromDate
+ * @property {Date} toDate
  * @property {string} [receiptNumber]
- * @property {string} [referenceNumber]
+ * @property {import('../constants').ReferenceNumber} [referenceNumber]
  */
 
 /**
@@ -47,8 +47,8 @@ const { config } = store.state;
  * payementHistory('123456789','123456789','ABC')
  * @property {string} amount Amount in Kwacha
  * @property {string} status
- * @property {string} prnDate
- * @property {string} paymentDate
+ * @property {Date} prnDate
+ * @property {Date} paymentDate
  * @property {string} type Payment type. E.g. 'Electronic'
  */
 
@@ -177,9 +177,16 @@ function getAllPaymentReceiptNumbers(options, parentTaskId) {
 }
 
 /**
+ * @typedef {Object} Payment
+ * @property {import('@/backend/constants').TaxTypeName} taxType Tax type name
+ * @property {string} periodFrom
+ * @property {string} periodTo
+ */
+
+/**
  * Checks if two payments are different.
- * @param {Object} payment1
- * @param {Object} payment2
+ * @param {Payment} payment1
+ * @param {Payment} payment2
  */
 function paymentsDifferent(payment1, payment2) {
   const mustBeEqual = [

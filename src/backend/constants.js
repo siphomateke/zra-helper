@@ -5,6 +5,26 @@
  * @property {string} password
  */
 
+/**
+ * @typedef {string} Date Date in the format 'DD/MM/YYYY'
+ * @typedef {string} ReferenceNumber
+ */
+
+// #region Tax Types
+/**
+ * @typedef {string} TaxTypeCode
+ * Abbreviated tax type name. For example, 'ITX' (income tax) and 'WHT' (withholding tax).
+ */
+
+/**
+ * @typedef {string} TaxTypeNumericalCode
+ * Two-digit tax type code. For example, '01' (income tax) and '02' (value added tax).
+ */
+
+/**
+ * Enum for tax type codes.
+ * @type {Object.<TaxTypeNumericalCode, TaxTypeCode>}
+ */
 export const taxTypes = {
   '01': 'ITX',
   '02': 'VAT',
@@ -16,6 +36,10 @@ export const taxTypes = {
   '09': 'TLEVY',
 };
 
+/**
+ * Enum for numerical tax type codes.
+ * @type {Object.<TaxTypeCode, TaxTypeNumericalCode>}
+ */
 export const taxTypeNumericalCodes = {
   ITX: '01',
   VAT: '02',
@@ -27,6 +51,16 @@ export const taxTypeNumericalCodes = {
   TLEVY: '09',
 };
 
+/**
+ * @typedef {string} TaxTypeName
+ * Human readable tax type name. For example, 'withholding tax' and 'medical levy tax'.
+ */
+
+/**
+ * Maps tax type names to their corresponding numerical codes.
+ * This is primarily used when parsing payment history receipts.
+ * @type {Object.<TaxTypeName, TaxTypeNumericalCode>}
+ */
 export const taxTypeNames = {
   'income tax': taxTypeNumericalCodes.ITX,
   'value added tax': taxTypeNumericalCodes.VAT,
@@ -37,3 +71,4 @@ export const taxTypeNames = {
   'mineral royalty': taxTypeNumericalCodes.MINROY,
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
+// #endregion
