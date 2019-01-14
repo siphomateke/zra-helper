@@ -34,16 +34,17 @@ function taskFromId(store, id) {
  * @property {boolean} hasParent
  * @property {TaskObject} parent
  * @property {boolean} hasChildren
- * @property {number[]} children
+ * @property {TaskObject[]} children
  * @property {Object.<TaskState, number>} childStateCounts Total number of child states per state type
  * @property {string} childStateString
- * @property {string} getStatusFromError
  * @property {boolean} complete
  * @property {number} progress
  * @property {number} progressMax
  *
  * @property {Task.setError} setError
  * @property {Task.addStep} addStep
+ * @property {function} setStateBasedOnChildren
+ * @property {function} setErrorAsStatus
  */
 
 /**

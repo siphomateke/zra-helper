@@ -101,12 +101,6 @@ export default {
         }
         return stateStrings.join(', ');
       },
-      getStatusFromError: ({ task }) => {
-        if (task.error) {
-          return task.error.message ? task.error.message : task.error.toString();
-        }
-        return null;
-      },
       complete: ({ getters, id, task }) => {
         if (getters.hasChildren(id)) {
           let complete = true;
@@ -210,16 +204,41 @@ export default {
     /**
      * Sets this task's error, state and status.
      */
-    setError({ commit, getters }, { id, error }) {
+    setError({ commit, dispatch }, { id, error }) {
       commit('setError', { id, value: error });
       commit('setState', { id, value: taskStates.ERROR });
-      commit('setStatus', { id, value: getters.getStatusFromError(id) });
+      dispatch('setErrorAsStatus', { id });
     },
     /**
      * Increments progress and sets status.
      */
     addStep({ commit, getters }, { id, status, increment = 1 }) {
       commit('setProgress', { id, value: getters.progress(id) + increment });
+      commit('setStatus', { id, value: status });
+    },
+    // TODO: Decide if this should be done automatically
+    setStateBasedOnChildren({ commit, getters }, { id }) {
+      const childStateCounts = getters.childStateCounts(id);
+      const children = getters.children(id);
+      let state;
+      if (childStateCounts[taskStates.ERROR] === children.length) {
+        state = taskStates.ERROR;
+      } else if (
+        childStateCounts[taskStates.ERROR] > 0
+        || childStateCounts[taskStates.WARNING] > 0
+      ) {
+        state = taskStates.WARNING;
+      } else {
+        state = taskStates.SUCCESS;
+      }
+      commit('setState', { id, value: state });
+    },
+    setErrorAsStatus: ({ commit, getters }, { id }) => {
+      const task = getters.getTaskById(id);
+      let status = null;
+      if (task.error) {
+        status = task.error.message ? task.error.message : task.error.toString();
+      }
       commit('setStatus', { id, value: status });
     },
     /**
