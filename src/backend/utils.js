@@ -199,7 +199,7 @@ export function saveAsMHTML(options) {
 export async function executeScript(tabId, details, vendor = false) {
   if (details.file) {
     if (!vendor) {
-      details.file = `js/content_scripts/${details.file}`;
+      details.file = `content_scripts/${details.file}`;
     } else {
       details.file = `vendor/${details.file}`;
     }
