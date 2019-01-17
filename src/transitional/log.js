@@ -1,18 +1,18 @@
 import { getScopedDispatch } from './utils';
 
-/** Log dispatch */
-const logDispatch = getScopedDispatch('log');
+const dispatch = getScopedDispatch('log');
 
+// TODO: Document my functions
 export default {
   setCategory(category) {
-    logDispatch('setCategory', category);
+    dispatch('setCategory', category);
   },
 
   log(content, type) {
-    logDispatch('addLine', { content, type, category: '' });
+    dispatch('addLine', { content, type, category: '' });
   },
 
   showError(error, warning = false) {
-    logDispatch('addErrorLine', { error, warning });
+    dispatch('addErrorLine', { error, warning });
   },
 };
