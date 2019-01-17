@@ -1,4 +1,5 @@
-export default {
+/** @type {import('vuex').Module} */
+const module = {
   state: {
     debug: false,
     /**
@@ -23,3 +24,4 @@ export default {
     },
   },
 };
+export default module;

@@ -6,6 +6,7 @@ import log from './modules/log';
 
 Vue.use(Vuex);
 
+/** @type {import('vuex').StoreOptions} */
 export const storeOptions = {
   modules: {
     config,

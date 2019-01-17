@@ -2,7 +2,8 @@ import moment from 'moment';
 import { ExtendedError } from '@/backend/errors';
 
 // TODO: Add documentation
-export default {
+/** @type {import('vuex').Module} */
+const module = {
   namespaced: true,
   state: {
     lines: [],
@@ -91,3 +92,4 @@ export default {
     },
   },
 };
+export default module;

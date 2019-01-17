@@ -69,7 +69,8 @@ function getChildProgress(type, { getters, task, id }) {
 
 const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');
 
-export default {
+/** @type {import('vuex').Module} */
+const module = {
   namespaced: true,
   state: {
     all: [],
@@ -282,3 +283,4 @@ export default {
     }, */
   },
 };
+export default module;
