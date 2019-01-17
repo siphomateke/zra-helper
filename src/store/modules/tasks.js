@@ -171,7 +171,7 @@ const module = {
   },
   actions: {
     /**
-     * @param {import('vuex').Store} store
+     * @param {import('vuex').ActionContext} store
      * @param {TaskVuexState} data
      */
     create({ commit }, data = {}) {
