@@ -40,7 +40,7 @@ export class Output {
  * @throws {import('./errors').ExtendedError}
  */
 async function login(client, parentTaskId) {
-  const task = createTask(store, {
+  const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
     progressMax: 7,
@@ -104,7 +104,7 @@ async function login(client, parentTaskId) {
  * @returns {Promise}
  */
 async function logout(parentTaskId) {
-  const task = createTask(store, {
+  const task = await createTask(store, {
     title: 'Logout',
     parent: parentTaskId,
     progressMax: 3,
@@ -143,7 +143,7 @@ async function logout(parentTaskId) {
  * @param {number} [maxAttempts=2]
  */
 async function robustLogin(client, parentTaskId, maxAttempts = 2) {
-  const task = createTask(store, {
+  const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
     progress: -2,
@@ -199,14 +199,14 @@ export class ClientAction {
   }
 
   async run(client) {
-    this.mainTask = createTask(store, { title: `${client.name}: ${this.taskName}` });
+    this.mainTask = await createTask(store, { title: `${client.name}: ${this.taskName}` });
     try {
       this.mainTask.status = 'Logging in';
       await robustLogin(client, this.mainTask.id);
 
       if (this.action) {
-        this.mainTask.status = this.taskName;
-        const task = createTask(store, { title: this.taskName, parent: this.mainTask.id });
+          this.mainTask.status = this.taskName;
+          const task = await createTask(store, { title: this.name, parent: this.mainTask.id });
         log.setCategory(this.id);
         await this.action(client, task, this.output);
         if (task.state === taskStates.ERROR) {

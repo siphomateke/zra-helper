@@ -42,7 +42,7 @@ export default new ClientAction(
     for (const taxTypeId of Object.keys(taxTypes)) {
       promises.push(new Promise(async (resolve) => {
         const taxType = taxTypes[taxTypeId];
-        const task = createTask(store, {
+        const task = await createTask(store, {
           title: `Get ${taxType} totals`,
           parent: parentTask.id,
           progressMax: 4,

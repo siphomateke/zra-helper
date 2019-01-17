@@ -106,7 +106,7 @@ async function getPaymentReceiptNumbers({
  * @param {number} parentTaskId
  */
 async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
-  const childTask = createTask(store, {
+  const childTask = await createTask(store, {
     title: `Get payment receipt numbers from page ${page + 1}`,
     parent: parentTaskId,
     // TODO: set child tasks to be indeterminate. Haven't yet because of the way
@@ -133,17 +133,17 @@ async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
  * @param {GetAllPaymentReceiptNumbersOptions} options
  * @param {number} parentTaskId
  */
+// TODO: Test this
 function getAllPaymentReceiptNumbers(options, parentTaskId) {
-  const task = createTask(store, {
-    title: 'Get payment receipt numbers',
-    parent: parentTaskId,
-    sequential: false,
-    unknownMaxProgress: false,
-    // this is overwritten once we know the number of pages
-    progressMax: 1,
-  });
-
   return new Promise(async (resolve, reject) => {
+    const task = await createTask(store, {
+      title: 'Get payment receipt numbers',
+      parent: parentTaskId,
+      sequential: false,
+      unknownMaxProgress: false,
+      // this is overwritten once we know the number of pages
+      progressMax: 1,
+    });
     try {
       const promises = [];
       const result = await getPaymentReceiptNumbersTask(options, 0, task.id);
@@ -298,10 +298,11 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
  * @param {PaymentReceipt[]} options.receipts
  * @param {number} options.parentTaskId
  */
-function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
+// TODO: Test this
+async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   return parallelTaskMap({
     list: receipts,
-    task: createTask(store, { title: 'Download payment receipts', parent: parentTaskId }),
+    task: await createTask(store, { title: 'Download payment receipts', parent: parentTaskId }),
     func(receipt, parentTaskId) {
       return downloadPaymentReceipt({ client, receipt, parentTaskId });
     },

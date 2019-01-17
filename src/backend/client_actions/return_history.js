@@ -122,7 +122,7 @@ async function getReturnHistoryReferenceNumbers({
 async function getAllReturnHistoryReferenceNumbers({
   tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
 }) {
-  const task = createTask(store, {
+  const task = await createTask(store, {
     title: 'Get reference numbers',
     parent: parentTaskId,
     progressMax: 1,
@@ -219,12 +219,13 @@ function downloadReturnHistoryReceipt({
  * @param {ReferenceNumber[]} options.referenceNumbers
  * @param {number} options.parentTaskId
  */
-function downloadReceipts({
+// TODO: Test this
+async function downloadReceipts({
   client, taxType, referenceNumbers, parentTaskId,
 }) {
   return parallelTaskMap({
     list: referenceNumbers,
-    task: createTask(store, { title: 'Download receipts', parent: parentTaskId }),
+    task: await createTask(store, { title: 'Download receipts', parent: parentTaskId }),
     func(referenceNumber, parentTaskId) {
       return downloadReturnHistoryReceipt({
         client, taxType, referenceNumber, parentTaskId,
@@ -250,7 +251,7 @@ export default new ClientAction(
       async func(taxTypeId, parentTask) {
         const taxType = taxTypes[taxTypeId];
 
-        const task = createTask(store, {
+        const task = await createTask(store, {
           title: `Get ${taxType} receipts`,
           parent: parentTask.id,
           unknownMaxProgress: false,

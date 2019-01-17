@@ -57,15 +57,17 @@ function taskFromId(store, id) {
  */
 
 class Task {
+  constructor() {
+    this.listStoreTask = null;
+  }
   /**
    * Creates a new task.
    * @param {VuexStore} store
    * @param {TaskVuexState} data
    */
-  constructor(store, data) {
-    store.dispatch('tasks/create', data).then((id) => {
-      this.listStoreTask = taskFromId(store, id);
-    });
+  async init(store, data) {
+    const id = await store.dispatch('tasks/create', data);
+    this.listStoreTask = taskFromId(store, id);
   }
 
   setError(error) {
@@ -85,10 +87,11 @@ class Task {
  * TODO: Document this
  * @param {VuexStore} store
  * @param {TaskVuexState} data
- * @return {TaskObject}
+ * @returns {Promise.<TaskObject>}
  */
-export default function createTask(store, data) {
-  const task = new Task(store, data);
+export default async function createTask(store, data) {
+  const task = new Task();
+  await task.init(store, data);
   return new Proxy(task, {
     /**
      * @param {Task} obj

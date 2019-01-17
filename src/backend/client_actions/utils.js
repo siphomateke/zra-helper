@@ -24,7 +24,7 @@ import { createTabPost, executeScript, saveAsMHTML, sendMessage, tabLoaded, wait
 export async function downloadReceipt({
   type, filename, taskTitle, parentTaskId, createTabPostOptions,
 }) {
-  const task = createTask(store, {
+  const task = await createTask(store, {
     title: taskTitle,
     parent: parentTaskId,
     progressMax: 4,
