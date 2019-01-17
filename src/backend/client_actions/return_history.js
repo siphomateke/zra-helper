@@ -235,7 +235,7 @@ async function downloadReceipts({
 }
 
 export default new ClientAction(
-  'Get all returns', 'get_all_returns',
+  'Get all returns', 'getAllReturns',
   /**
    * @param {Client} client
    * @param {Task} parentTask

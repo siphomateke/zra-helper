@@ -25,7 +25,7 @@ async function getTotals(tabId, numTotals) {
 }
 
 export default new ClientAction(
-  'Get all pending liabilities', 'pending_liabilities',
+  'Get all pending liabilities', 'getAllPendingLiabilities',
   /**
    * @param {Client} client
    * @param {Task} parentTask

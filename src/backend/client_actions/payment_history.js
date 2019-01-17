@@ -310,7 +310,7 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
 }
 
 export default new ClientAction(
-  'Get payment history', 'get_all_payments',
+  'Get payment history', 'getPaymentHistory',
   /**
    * @param {Client} client
    * @param {Task} parentTask
