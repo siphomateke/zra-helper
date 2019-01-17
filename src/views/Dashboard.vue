@@ -54,6 +54,8 @@
           <h1 class="title is-4">Output</h1>
           <textarea
             id="output"
+            :value="output"
+            readonly
             rows="7"/>
         </section>
       </div>
@@ -85,6 +87,7 @@ export default {
     ...mapState({
       tasks: state => state.tasks.all,
     }),
+    ...mapGetters('output', { output: 'content' }),
   },
   methods: {
     updateClients(clients) {
