@@ -19,3 +19,7 @@ $taskColors: (
 
 $taskBorderWidth: 1px;
 $taskBorderRadius: 3px;
+
+$progress-bar-transition-duration: 0.4;
+$progress-bar-complete-animation-delay: $progress-bar-transition-duration + 0.6;
+$progress-bar-complete-animation-duration: 0.6;

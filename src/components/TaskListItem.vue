@@ -28,10 +28,13 @@
       <div
         v-show="status"
         class="status">{{ status }}</div>
-      <progress
+      <Progress
         v-if="progress !== -2"
         :value="progress"
-        :max="progressMax"/>
+        :max="progressMax"
+        :complete="complete"
+        :hide-on-complete="true"
+        type="is-info"/>
       <button
         v-if="hasChildren"
         type="button"
@@ -54,6 +57,7 @@
 import { mapGettersById, mapProperties } from '@/store/helpers';
 import { taskStates } from '@/store/modules/tasks';
 import TaskList from './TaskList.vue';
+import Progress from './BaseProgress.vue';
 
 export const stateIcons = {
   [taskStates.ERROR]: 'fa-exclamation-circle',
@@ -69,6 +73,7 @@ export default {
   name: 'TaskListItem',
   components: {
     TaskList,
+    Progress,
   },
   props: {
     id: {
