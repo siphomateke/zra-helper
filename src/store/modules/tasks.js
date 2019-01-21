@@ -202,6 +202,10 @@ const module = {
 
       return id;
     },
+    markAsComplete({ commit, getters }, { id }) {
+      commit('setComplete', { id, value: true });
+      commit('setProgress', { id, value: getters.progressMax(id) });
+    },
     /**
      * Sets this task's error, state and status.
      */

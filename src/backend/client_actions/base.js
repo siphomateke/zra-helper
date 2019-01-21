@@ -93,7 +93,7 @@ async function login(client, parentTaskId) {
     task.setError(error);
     throw error;
   } finally {
-    task.complete = true;
+    task.markAsComplete();
   }
 }
 
@@ -132,7 +132,7 @@ async function logout(parentTaskId) {
     task.setError(error);
     throw error;
   } finally {
-    task.complete = true;
+    task.markAsComplete();
   }
 }
 
@@ -179,7 +179,7 @@ async function robustLogin(client, parentTaskId, maxAttempts = 2) {
     task.setError(error);
     throw error;
   } finally {
-    task.complete = true;
+    task.markAsComplete();
   }
 }
 
@@ -230,7 +230,7 @@ export class ClientAction {
       log.showError(error);
       this.mainTask.setError(error);
     } finally {
-      this.mainTask.complete = true;
+      this.mainTask.markAsComplete();
     }
   }
 }

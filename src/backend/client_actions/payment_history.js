@@ -124,7 +124,7 @@ async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
     childTask.setError(error);
     throw error;
   } finally {
-    childTask.complete = true;
+    childTask.markAsComplete();
   }
 }
 
@@ -164,12 +164,12 @@ function getAllPaymentReceiptNumbers(options, parentTaskId) {
         }
         // Ignore all the payment registrations
         records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
-        task.complete = true;
+        task.markAsComplete();
         task.setStateBasedOnChildren();
         resolve(records);
       });
     } catch (error) {
-      task.complete = true;
+      task.markAsComplete();
       task.setError(error);
       reject(error);
     }
@@ -335,7 +335,7 @@ export default new ClientAction(
       parentTask.setError(error);
       reject(error);
     } finally {
-      parentTask.complete = true;
+      parentTask.markAsComplete();
       parentTask.setStateBasedOnChildren();
     }
   }),

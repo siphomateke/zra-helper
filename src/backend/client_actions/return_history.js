@@ -169,7 +169,7 @@ async function getAllReturnHistoryReferenceNumbers({
     task.setError(error);
     throw error;
   } finally {
-    task.complete = true;
+    task.markAsComplete();
   }
   return referenceNumbers;
 }
@@ -277,7 +277,7 @@ export default new ClientAction(
         } catch (error) {
           task.setError(error);
         } finally {
-          task.complete = true;
+          task.markAsComplete();
         }
       },
     });

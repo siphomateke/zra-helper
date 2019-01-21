@@ -41,6 +41,7 @@ function taskFromId(store, id) {
  * @property {number} progress
  * @property {number} progressMax
  *
+ * @property {function} markAsComplete
  * @property {Task.setError} setError
  * @property {Task.addStep} addStep
  * @property {function} setStateBasedOnChildren

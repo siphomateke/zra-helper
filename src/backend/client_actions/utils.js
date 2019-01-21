@@ -91,7 +91,7 @@ export async function downloadReceipt({
     task.setError(error);
     throw error;
   } finally {
-    task.complete = true;
+    task.markAsComplete();
   }
 }
 
@@ -128,7 +128,7 @@ export function parallelTaskMap({
       }));
     }
     Promise.all(promises).then((values) => {
-      task.complete = true;
+      task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
         if (task.state === taskStates.ERROR) {

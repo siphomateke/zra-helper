@@ -108,7 +108,7 @@ export default new ClientAction(
               // If we fail to close the tab then it's probably already closed
             }
           }
-          task.complete = true;
+          task.markAsComplete();
         }
       }));
     }
@@ -155,7 +155,7 @@ export default new ClientAction(
       output.addRow(Papa.unparse(rows, {
         quotes: true,
       }));
-      parentTask.complete = true;
+      parentTask.markAsComplete();
       resolve();
     });
   }),
