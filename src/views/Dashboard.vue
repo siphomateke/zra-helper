@@ -15,9 +15,7 @@
     <section class="section">
       <div class="dashboard container">
         <section class="dashboard-section">
-          <form
-            id="action-form"
-            @submit.prevent="submit">
+          <form @submit.prevent="submit">
             <div>
               <div class="field">
                 <label class="label">Client list</label>
@@ -30,9 +28,7 @@
                 :clients="clients"/>
             </div>
             <br>
-            <div
-              id="actions-field"
-              class="field">
+            <div class="field">
               <label class="label">Select actions</label>
               <div
                 v-for="action in clientActions"
@@ -51,9 +47,7 @@
               type="submit">Run selected action(s)</button>
           </form>
         </section>
-        <section
-          id="log-wrapper"
-          class="dashboard-section">
+        <section class="dashboard-section">
           <h1 class="title is-4">Log</h1>
           <log/>
         </section>
