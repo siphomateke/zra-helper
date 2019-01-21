@@ -65,11 +65,7 @@
         </section>
         <section class="dashboard-section">
           <h1 class="title is-4">Output</h1>
-          <textarea
-            id="output"
-            :value="output"
-            readonly
-            rows="7"/>
+          <ClientActionOutput/>
         </section>
       </div>
     </section>
@@ -81,7 +77,8 @@ import ClientListFileUpload from '@/components/ClientList/ClientListFileUpload.v
 import ClientList from '@/components/ClientList/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/Log.vue';
-import { mapState, mapGetters } from 'vuex';
+import ClientActionOutput from '@/components/ClientActionOutput.vue';
+import { mapState } from 'vuex';
 
 export default {
   name: 'Dashboard',
@@ -90,6 +87,7 @@ export default {
     ClientList,
     TaskList,
     Log,
+    ClientActionOutput,
   },
   data() {
     return {
@@ -102,7 +100,6 @@ export default {
       tasks: state => state.tasks.all,
       clientActionsObject: state => state.clientActions.all,
     }),
-    ...mapGetters('output', { output: 'content' }),
     clientActions() {
       return Object.keys(this.clientActionsObject).map(id => this.clientActionsObject[id]);
     },
