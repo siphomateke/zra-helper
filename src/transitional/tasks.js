@@ -1,4 +1,5 @@
 import { getListItemStore } from '@/store/helpers/list_store';
+import log from '@/transitional/log';
 
 /** @typedef {import('vuex').Store} VuexStore */
 
@@ -118,7 +119,12 @@ class Task {
  * @returns {Promise.<TaskObject>}
  */
 export default async function createTask(store, data) {
-  const task = new Task();
-  const taskProxy = await task.init(store, data);
-  return taskProxy;
+  try {
+    const task = new Task();
+    const taskProxy = await task.init(store, data);
+    return taskProxy;
+  } catch (error) {
+    log.showError(error);
+    throw error;
+  }
 }
