@@ -122,7 +122,7 @@ export function parallelTaskMap({
     const promises = [];
     for (const item of list) {
       promises.push(new Promise((resolve) => {
-        func(item, task)
+        func(item, task.id)
           .then(resolve)
           .catch(resolve);
       }));
