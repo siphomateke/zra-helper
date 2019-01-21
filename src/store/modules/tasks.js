@@ -49,33 +49,34 @@ export const taskStates = {
  * @param {TaskVuexState} param.task The the task whose progress we would like to determine.
  * @param {number} param.id The ID of the task whose progress we would like to determine.
  */
-// TODO: Optimise by checking conditions before looping
 function getChildProgress(type, { getters, task, id }) {
   let result = 0;
   let hasAutoUpdateChildren = false;
-  for (const childId of task.children) {
-    /** @type {TaskVuexState} */
-    const childTask = getters.getTaskById(childId);
-    if (childTask.autoUpdateParent) {
-      hasAutoUpdateChildren = true;
-      const childTaskProgress = getters[type](childId);
-      if (task.unknownMaxProgress) {
-        // If task execution is not sequential, change this tasks maximum
-        // and total progress on the fly.
-        if (!task.sequential) {
-          result += childTaskProgress;
-        // Otherwise, use the first uncompleted task as the current task.
-        } else if (!getters.complete(childTask.id)) {
-          result = childTaskProgress;
-          break;
+  if (!getters.complete(id) && (type === 'progress' || task.unknownMaxProgress)) {
+    for (const childId of task.children) {
+      /** @type {TaskVuexState} */
+      const childTask = getters.getTaskById(childId);
+      if (childTask.autoUpdateParent) {
+        hasAutoUpdateChildren = true;
+        const childTaskProgress = getters[type](childId);
+        if (task.unknownMaxProgress) {
+          // If task execution is not sequential, change this tasks maximum
+          // and total progress on the fly.
+          if (!task.sequential) {
+            result += childTaskProgress;
+          // Otherwise, use the first uncompleted task as the current task.
+          } else if (!getters.complete(childTask.id)) {
+            result = childTaskProgress;
+            break;
+          }
+        } else if (type === 'progress') {
+          result += childTaskProgress / getters.progressMax(childId);
         }
-      } else if (type === 'progress') {
-        result += childTaskProgress / getters.progressMax(childId);
       }
     }
-  }
-  if (hasAutoUpdateChildren && !getters.complete(id)) {
-    return result;
+    if (hasAutoUpdateChildren) {
+      return result;
+    }
   }
   return null;
 }
@@ -234,7 +235,6 @@ const module = {
       commit('setProgress', { id, value: getters.progress(id) + increment });
       commit('setStatus', { id, value: status });
     },
-    // TODO: Decide if this should be done automatically
     setStateBasedOnChildren({ commit, getters }, { id }) {
       const childStateCounts = getters.childStateCounts(id);
       const children = getters.children(id);
