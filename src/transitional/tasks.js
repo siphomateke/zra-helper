@@ -75,7 +75,13 @@ class Task {
        * @param {string} prop
        */
       get(obj, prop) {
-        if (typeof prop === 'string') {
+        // TODO: Find a less hacky way to prevent the Proxy from overriding actual properties and methods.
+        if (
+          typeof prop === 'string'
+          && prop !== 'addStep'
+          && prop !== 'setError'
+          && prop !== 'listStoreTask'
+        ) {
           return obj.listStoreTask[prop];
         }
         return Reflect.get(...arguments); // eslint-disable-line prefer-rest-params
