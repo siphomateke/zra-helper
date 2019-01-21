@@ -49,11 +49,11 @@
         </section>
         <section class="dashboard-section">
           <h1 class="title is-4">Log</h1>
-          <log/>
+          <Log/>
         </section>
         <section class="dashboard-section">
           <h1 class="title is-4">Tasks</h1>
-          <task-list
+          <TaskList
             :tasks="tasks"
             :is-root="true"/>
         </section>

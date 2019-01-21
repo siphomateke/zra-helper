@@ -1,6 +1,6 @@
 <template>
   <div :class="[isRoot ? 'tasks' : 'sub-tasks']">
-    <task-list-item
+    <TaskListItem
       v-for="id in tasks"
       :key="id"
       :id="id"/>

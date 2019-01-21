@@ -47,7 +47,7 @@
         Details
       </button>
     </div>
-    <task-list
+    <TaskList
       v-if="hasChildren"
       :tasks="children"/>
   </div>
