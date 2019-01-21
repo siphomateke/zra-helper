@@ -2,12 +2,11 @@ import moment from 'moment';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
+import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap } from './utils';
 import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
-
-const { config } = store.state;
 
 /**
  * @typedef {import('../constants').Date} Date

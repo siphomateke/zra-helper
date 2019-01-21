@@ -1,9 +1,7 @@
 import axios from 'axios';
-import store from '@/store';
+import config from '@/transitional/config';
 import { getZraError } from './content_scripts/helpers/zra';
 import { errorFromJson, ExecuteScriptError, SendMessageError, TabError } from './errors';
-
-const { config } = store.state;
 
 class TabCreator {
   constructor() {

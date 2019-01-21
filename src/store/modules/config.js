@@ -42,6 +42,9 @@ const module = {
     setDebugMode(state, mode) {
       state.debug = mode;
     },
+    setConfigProperty(state, { prop, value }) {
+      state[prop] = value;
+    },
   },
 };
 export default module;
