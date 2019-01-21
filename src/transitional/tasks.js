@@ -69,6 +69,27 @@ class Task {
   async init(store, data) {
     const id = await store.dispatch('tasks/create', data);
     this.listStoreTask = taskFromId(store, id);
+    return new Proxy(this, {
+      /**
+       * @param {Task} obj
+       * @param {string} prop
+       */
+      get(obj, prop) {
+        if (typeof prop === 'string') {
+          return obj.listStoreTask[prop];
+        }
+        return Reflect.get(...arguments); // eslint-disable-line prefer-rest-params
+      },
+      /**
+       * @param {Task} obj
+       * @param {string} prop
+       * @param {*} value
+       */
+      set(obj, prop, value) {
+        obj.listStoreTask[prop] = value;
+        return true;
+      },
+    });
   }
 
   setError(error) {
@@ -92,26 +113,6 @@ class Task {
  */
 export default async function createTask(store, data) {
   const task = new Task();
-  await task.init(store, data);
-  return new Proxy(task, {
-    /**
-     * @param {Task} obj
-     * @param {string} prop
-     */
-    get(obj, prop) {
-      if (typeof prop === 'string') {
-        return obj.listStoreTask[prop];
-      }
-      return Reflect.get(...arguments); // eslint-disable-line prefer-rest-params
-    },
-    /**
-     * @param {Task} obj
-     * @param {string} prop
-     * @param {*} value
-     */
-    set(obj, prop, value) {
-      obj.listStoreTask[prop] = value;
-      return true;
-    },
-  });
+  const taskProxy = await task.init(store, data);
+  return taskProxy;
 }
