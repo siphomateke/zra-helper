@@ -41,7 +41,7 @@ export const typeIcons = {
 };
 
 export default {
-  name: 'Log',
+  name: 'TheLog',
   data() {
     return {
       lines: [],
