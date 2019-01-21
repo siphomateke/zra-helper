@@ -18,8 +18,8 @@ export const taskStates = {
  * @property {number} [id=lastTaskId]
  * @property {string} [status='']
  * @property {TaskState} [state=null]
- * @property {number} [progress=-1]
- * @property {number} [progressMax=100]
+ * @property {number} [progress=0]
+ * @property {number} [progressMax=1]
  * @property {number[]} [children=[]] Child IDs
  * @property {boolean} [complete=false]
  * @property {Error} [error=null]
@@ -39,25 +39,38 @@ export const taskStates = {
  * Whether this task will automatically update it's parent progress and status.
  */
 
+// TODO: Document this module. Especially the getters.
+
+/**
+ * Calculates a task's progress or maximum progress based on its children.
+ * @param {'progress'|'progressMax'} type The type of progress to get.
+ * @param {Object} param
+ * @param {any} param.getters
+ * @param {TaskVuexState} param.task The the task whose progress we would like to determine.
+ * @param {number} param.id The ID of the task whose progress we would like to determine.
+ */
+// TODO: Optimise by checking conditions before looping
 function getChildProgress(type, { getters, task, id }) {
   let result = 0;
   let hasAutoUpdateChildren = false;
   for (const childId of task.children) {
+    /** @type {TaskVuexState} */
     const childTask = getters.getTaskById(childId);
     if (childTask.autoUpdateParent) {
       hasAutoUpdateChildren = true;
+      const childTaskProgress = getters[type](childId);
       if (task.unknownMaxProgress) {
-        // If task execution sequential, change this tasks maximum
+        // If task execution is not sequential, change this tasks maximum
         // and total progress on the fly.
         if (!task.sequential) {
-          result += getters[type](childId);
-          // Otherwise, use the first uncompleted task as the current task.
+          result += childTaskProgress;
+        // Otherwise, use the first uncompleted task as the current task.
         } else if (!getters.complete(childTask.id)) {
-          result = getters[type](childId);
+          result = childTaskProgress;
           break;
         }
-      } else {
-        result += getters[type](childId);
+      } else if (type === 'progress') {
+        result += childTaskProgress / getters.progressMax(childId);
       }
     }
   }
@@ -131,9 +144,9 @@ const module = {
         return task.progress;
       },
       progressMax: ({ getters, id, task }) => {
-        if (getters.hasChildren(id)) {
+        if (getters.hasChildren(id) && task.unknownMaxProgress) {
           const progressMax = getChildProgress('progressMax', { getters, task, id });
-          if (progressMax !== null && task.unknownMaxProgress) {
+          if (progressMax !== null) {
             return progressMax;
           }
         }
@@ -180,8 +193,8 @@ const module = {
         title: '',
         status: '',
         state: null,
-        progress: -1,
-        progressMax: 100,
+        progress: 0,
+        progressMax: 1,
         children: [],
         complete: false,
         error: null,
@@ -246,45 +259,6 @@ const module = {
       }
       commit('setStatus', { id, value: status });
     },
-    /**
-     * Refresh progress based on children.
-     */
-    /* refresh({ commit, getters }, { id }) {
-      const task = getters.getTaskById(id);
-
-      let progress = 0;
-      let progressMax = 0;
-      let complete = true;
-      for (const childTask of getters.children(id)) {
-        if (!childTask.complete) {
-          complete = false;
-        }
-        if (task.unknownMaxProgress) {
-          // If task execution sequential, change this tasks maximum
-          // and total progress on the fly.
-          if (!task.sequential) {
-            progress += childTask.progress;
-            progressMax += childTask.progressMax;
-            // Otherwise, use the first uncompleted task as the current task.
-          } else if (!childTask.complete) {
-            progress = childTask.progress;
-            progressMax = childTask.progressMax;
-            break;
-          }
-        } else {
-          progress += childTask.progress;
-        }
-      }
-      if (!complete) {
-        if (task.unknownMaxProgress) {
-          commit('setProgressMax', { id, value: progressMax });
-        }
-        commit('setProgress', { id, value: progress });
-      }
-      if (complete !== task.complete) {
-        commit('setComplete', { id, value: complete });
-      }
-    }, */
   },
 };
 export default module;
