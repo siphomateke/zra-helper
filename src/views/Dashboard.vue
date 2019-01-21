@@ -15,7 +15,9 @@
     <section class="section">
       <div class="dashboard container">
         <section class="dashboard-section">
-          <form id="action-form">
+          <form
+            id="action-form"
+            @submit.prevent="submit">
             <div>
               <div class="field">
                 <label class="label">Client list</label>
@@ -32,6 +34,17 @@
               id="actions-field"
               class="field">
               <label class="label">Select actions</label>
+              <div
+                v-for="action in clientActions"
+                :key="action.id"
+                class="control">
+                <b-checkbox
+                  v-model="selectedClientActions"
+                  :native-value="action.id"
+                  name="actions">
+                  {{ action.name }}
+                </b-checkbox>
+              </div>
             </div>
             <button
               class="button is-primary"
@@ -68,7 +81,7 @@ import ClientListFileUpload from '@/components/ClientList/ClientListFileUpload.v
 import ClientList from '@/components/ClientList/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/Log.vue';
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 
 export default {
   name: 'Dashboard',
@@ -80,16 +93,27 @@ export default {
   },
   data() {
     return {
+      selectedClientActions: [],
       clients: [],
     };
   },
   computed: {
     ...mapState({
       tasks: state => state.tasks.all,
+      clientActionsObject: state => state.clientActions.all,
     }),
     ...mapGetters('output', { output: 'content' }),
+    clientActions() {
+      return Object.keys(this.clientActionsObject).map(id => this.clientActionsObject[id]);
+    },
   },
   methods: {
+    submit() {
+      this.$store.dispatch('clientActions/runAll', {
+        actions: this.selectedClientActions,
+        clients: this.clients,
+      });
+    },
     updateClients(clients) {
       this.clients = clients;
     },

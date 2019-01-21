@@ -1,3 +1,6 @@
-import { ClientAction } from './base';
-
-export default new ClientAction('Test login', 'testLogin');
+/** @type {import('./base').ClientActionObject} */
+const clientAction = {
+  id: 'testLogin',
+  name: 'Test login',
+};
+export default clientAction;

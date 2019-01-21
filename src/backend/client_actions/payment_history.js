@@ -2,7 +2,6 @@ import moment from 'moment';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { ClientAction } from './base';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap } from './utils';
@@ -11,10 +10,8 @@ import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
 const { config } = store.state;
 
 /**
- * @typedef {import('@/transitional/tasks').TaskObject} Task
  * @typedef {import('../constants').Date} Date
  * @typedef {import('../constants').Client} Client
- * @typedef {import('./base').Output} Output
  */
 
 /**
@@ -309,34 +306,35 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   });
 }
 
-export default new ClientAction(
-  'Get payment history', 'getPaymentHistory',
-  /**
-   * @param {Client} client
-   * @param {Task} parentTask
-   */
-  (client, parentTask) => new Promise(async (resolve, reject) => {
-    const options = {
-      fromDate: '01/10/2013',
-      toDate: moment().format('DD/MM/YYYY'),
-    };
+/** @type {import('./base').ClientActionObject} */
+const clientAction = {
+  id: 'getPaymentHistory',
+  name: 'Get payment history',
+  func({ client, parentTask, clientActionConfig }) {
+    return new Promise(async (resolve, reject) => {
+      const options = {
+        fromDate: '01/10/2013',
+        toDate: moment().format('DD/MM/YYYY'),
+      };
 
-    parentTask.unknownMaxProgress = false;
-    parentTask.progressMax = 2;
+      parentTask.unknownMaxProgress = false;
+      parentTask.progressMax = 2;
 
-    try {
-      const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
-      const initialMaxOpenTabs = config.maxOpenTabs;
-      config.maxOpenTabs = config.paymentHistory.maxOpenTabsWhenDownloading;
-      await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
-      config.maxOpenTabs = initialMaxOpenTabs;
-      resolve();
-    } catch (error) {
-      parentTask.setError(error);
-      reject(error);
-    } finally {
-      parentTask.markAsComplete();
-      parentTask.setStateBasedOnChildren();
-    }
-  }),
-);
+      try {
+        const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
+        const initialMaxOpenTabs = config.maxOpenTabs;
+        config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
+        await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
+        config.maxOpenTabs = initialMaxOpenTabs;
+        resolve();
+      } catch (error) {
+        parentTask.setError(error);
+        reject(error);
+      } finally {
+        parentTask.markAsComplete();
+        parentTask.setStateBasedOnChildren();
+      }
+    });
+  },
+};
+export default clientAction;

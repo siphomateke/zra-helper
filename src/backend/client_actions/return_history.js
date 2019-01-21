@@ -5,7 +5,6 @@ import { taskStates } from '@/store/modules/tasks';
 import { taxTypes, taxTypeNumericalCodes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { getDocumentByAjax } from '../utils';
-import { ClientAction } from './base';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap } from './utils';
 
@@ -13,8 +12,6 @@ const { config } = store.state;
 
 /**
  * @typedef {import('../constants').Client} Client
- * @typedef {import('./base').Output} Output
- * @typedef {import('@/transitional/tasks').TaskObject} Task
  * @typedef {string} TPIN
  * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
  * @typedef {import('../constants').Date} Date
@@ -234,15 +231,13 @@ async function downloadReceipts({
   });
 }
 
-export default new ClientAction(
-  'Get all returns', 'getAllReturns',
-  /**
-   * @param {Client} client
-   * @param {Task} parentTask
-   */
-  async (client, parentTask) => {
+/** @type {import('./base').ClientActionObject} */
+const clientAction = {
+  id: 'getAllReturns',
+  name: 'Get all returns',
+  async func({ client, parentTask, clientActionConfig }) {
     const initialMaxOpenTabs = config.maxOpenTabs;
-    config.maxOpenTabs = config.returnHistory.maxOpenTabsWhenDownloading;
+    config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
 
     await parallelTaskMap({
       list: Object.keys(taxTypes),
@@ -307,4 +302,5 @@ export default new ClientAction(
       parentTask.state = taskStates.SUCCESS;
     }
   },
-);
+};
+export default clientAction;

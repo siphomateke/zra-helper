@@ -27,6 +27,16 @@ const module = {
      * @type {number}
      */
     tabOpenDelay: 0,
+    actions: {
+      getAllReturns: {
+        /** The maximum number of tabs that can be opened when downloading return receipts. */
+        maxOpenTabsWhenDownloading: 3,
+      },
+      getPaymentHistory: {
+        /** The maximum number of tabs that can be opened when downloading payment receipts. */
+        maxOpenTabsWhenDownloading: 3,
+      },
+    },
   },
   mutations: {
     setDebugMode(state, mode) {

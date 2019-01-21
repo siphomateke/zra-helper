@@ -5,6 +5,7 @@ import Buefy from 'buefy';
 import App from './App.vue';
 import router from './router';
 import store from './store';
+import initClientActions from './store/modules/client_actions/init';
 
 if (process.env.NODE_ENV === 'development') {
   devtools.connect();
@@ -15,6 +16,8 @@ Vue.config.productionTip = false;
 Vue.use(Buefy, {
   defaultIconPack: 'fas',
 });
+
+initClientActions();
 
 new Vue({
   router,

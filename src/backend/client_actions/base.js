@@ -6,31 +6,6 @@ import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '
 
 /** @typedef {import('../constants').Client} Client */
 
-export class Output {
-  constructor() {
-    // TODO: Support multiple outputs
-    // FIXME: Re-implement output
-    // this.el = $('#output');
-    this.el = {};
-  }
-
-  set value(value) {
-    this.el.val(value);
-  }
-
-  get value() {
-    return this.el.val();
-  }
-
-  addRow(row) {
-    this.value = `${this.value}${row}\n`;
-  }
-
-  clear() {
-    this.value = '';
-  }
-}
-
 /**
  * Creates a new tab, logs in and then closes the tab
  *
@@ -39,7 +14,7 @@ export class Output {
  * @returns {Promise}
  * @throws {import('./errors').ExtendedError}
  */
-async function login(client, parentTaskId) {
+export async function login(client, parentTaskId) {
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
@@ -103,7 +78,7 @@ async function login(client, parentTaskId) {
  * @param {number} parentTaskId
  * @returns {Promise}
  */
-async function logout(parentTaskId) {
+export async function logout(parentTaskId) {
   const task = await createTask(store, {
     title: 'Logout',
     parent: parentTaskId,
@@ -142,7 +117,7 @@ async function logout(parentTaskId) {
  * @param {number} parentTaskId
  * @param {number} [maxAttempts=2]
  */
-async function robustLogin(client, parentTaskId, maxAttempts = 2) {
+export async function robustLogin(client, parentTaskId, maxAttempts = 2) {
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
@@ -183,74 +158,22 @@ async function robustLogin(client, parentTaskId, maxAttempts = 2) {
   }
 }
 
-export class ClientAction {
-  constructor(taskName, id, action = null) {
-    this.mainTask = null;
-    this.taskName = taskName;
-    this.id = id;
-    this.logCategory = id;
-    this.action = action;
-
-    this.output = new Output();
-
-    // FIXME: Display client actions to user
-    /* const field = $(`<div class="control"><label class="checkbox"><input type="checkbox" name="actions" value="${id}"> ${taskName}</label></div>`);
-    $('#actions-field').append(field); */
-  }
-
-  async run(client) {
-    this.mainTask = await createTask(store, { title: `${client.name}: ${this.taskName}` });
-    try {
-      this.mainTask.status = 'Logging in';
-      await robustLogin(client, this.mainTask.id);
-
-      if (this.action) {
-          this.mainTask.status = this.taskName;
-          const task = await createTask(store, { title: this.name, parent: this.mainTask.id });
-        log.setCategory(this.id);
-        await this.action(client, task, this.output);
-        if (task.state === taskStates.ERROR) {
-          this.mainTask.state = taskStates.ERROR;
-        }
-      }
-
-      this.mainTask.status = 'Logging out';
-      await logout(this.mainTask.id);
-
-      if (this.mainTask.state !== taskStates.ERROR) {
-        if (this.mainTask.childStateCounts[taskStates.WARNING] > 0) {
-          this.mainTask.state = taskStates.WARNING;
-        } else {
-          this.mainTask.state = taskStates.SUCCESS;
-        }
-      }
-      this.mainTask.status = '';
-    } catch (error) {
-      log.setCategory(this.logCategory);
-      log.showError(error);
-      this.mainTask.setError(error);
-    } finally {
-      this.mainTask.markAsComplete();
-    }
-  }
-}
+/**
+ * @typedef {Object} ClientActionFunctionParam
+ * @property {Client} client
+ * @property {import('@/transitional/tasks').TaskObject} parentTask
+ * @property {import('@/transitional/output').default} output
+ * @property {Object} clientActionConfig this client action's config
+ */
 
 /**
- * Runs a client action on all the clients
- *
- * @param {Client[]} clientList
- * @param {ClientAction} action
+ * @callback ClientActionFunction
+ * @param {ClientActionFunctionParam} param
  */
-export async function allClientsAction(clientList, action) {
-  if (clientList.length > 0) {
-    for (let i = 0; i < clientList.length; i++) {
-      const client = clientList[i];
-      // TODO: Consider checking if a tab has been closed prematurely all the time.
-      // Currently, only tabLoaded checks for this.
-      await action.run(client);
-    }
-  } else {
-    log.setCategory('client_action');
-    log.showError('No clients found');
-  }
-}
+
+/**
+ * @typedef ClientActionObject
+ * @property {string} id A unique camelCase ID to identify this client action.
+ * @property {string} name The human-readable name of this client action
+ * @property {ClientActionFunction} [func]
+ */
