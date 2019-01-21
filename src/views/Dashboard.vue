@@ -70,8 +70,8 @@
 import ClientListFileUpload from '@/components/ClientList/ClientListFileUpload.vue';
 import ClientList from '@/components/ClientList/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
-import Log from '@/components/Log.vue';
-import ClientActionOutput from '@/components/ClientActionOutput.vue';
+import Log from '@/components/TheLog.vue';
+import ClientActionOutput from '@/components/TheClientActionOutput.vue';
 import { mapState } from 'vuex';
 
 export default {

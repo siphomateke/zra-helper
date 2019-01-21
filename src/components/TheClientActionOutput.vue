@@ -10,7 +10,7 @@
 import { mapGetters } from 'vuex';
 
 export default {
-  name: 'ClientActionOutput',
+  name: 'TheClientActionOutput',
   computed: {
     ...mapGetters('output', { output: 'content' }),
   },
