@@ -219,13 +219,13 @@ function downloadReturnHistoryReceipt({
  * @param {ReferenceNumber[]} options.referenceNumbers
  * @param {number} options.parentTaskId
  */
-// TODO: Test this
 async function downloadReceipts({
   client, taxType, referenceNumbers, parentTaskId,
 }) {
+  const task = await createTask(store, { title: 'Download receipts', parent: parentTaskId });
   return parallelTaskMap({
     list: referenceNumbers,
-    task: await createTask(store, { title: 'Download receipts', parent: parentTaskId }),
+    task,
     func(referenceNumber, parentTaskId) {
       return downloadReturnHistoryReceipt({
         client, taxType, referenceNumber, parentTaskId,
