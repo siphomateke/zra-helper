@@ -1,6 +1,11 @@
 <template>
   <div
-    :class="[type, size, complete ? 'complete' : '', hideOnComplete ? 'hide-on-complete' : '']"
+    :class="[
+      type,
+      size,
+      complete ? 'complete' : '',
+      hideOnComplete && !debug ? 'hide-on-complete' : ''
+    ]"
     class="progress">
     <div
       :aria-valuenow="value"
@@ -9,7 +14,7 @@
       :style="{width: `${percentageValue}%`}"
       class="progress-bar"
       role="progressbar">
-      <span class="text">{{ percentageString }}</span>
+      <span class="text">{{ progressText }}</span>
     </div>
   </div>
 </template>
@@ -56,6 +61,15 @@ export default {
     },
     percentageString() {
       return `${Math.round(this.percentageValue)}%`;
+    },
+    debug() {
+      return this.$store.state.config.debug.progressBars;
+    },
+    progressText() {
+      if (this.debug) {
+        return `${this.value} / ${this.max} = ${this.percentageString}`;
+      }
+      return this.percentageString;
     },
   },
 };

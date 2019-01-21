@@ -6,6 +6,11 @@ const module = {
       logToConsole: false,
       /** Show detailed information about errors if available. */
       errors: false,
+      /**
+       * Show raw progress bar values such as current value and max value.
+       * Additionally keeps progress bars visible even after they are complete.
+       */
+      progressBars: false,
     },
     /**
      * The amount of time to wait for a tab to load (in milliseconds).
