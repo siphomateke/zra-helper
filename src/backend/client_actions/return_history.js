@@ -248,12 +248,12 @@ export default new ClientAction(
       list: Object.keys(taxTypes),
       task: parentTask,
       autoCalculateTaskState: false,
-      async func(taxTypeId, parentTask) {
+      async func(taxTypeId, parentTaskId) {
         const taxType = taxTypes[taxTypeId];
 
         const task = await createTask(store, {
           title: `Get ${taxType} receipts`,
-          parent: parentTask.id,
+          parent: parentTaskId,
           unknownMaxProgress: false,
           progressMax: 2,
         });
