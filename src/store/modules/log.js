@@ -29,7 +29,7 @@ const module = {
     addLine({ commit, state, rootState }, payload) {
       commit('addLine', payload);
 
-      if (rootState.config.debug) {
+      if (rootState.config.debug.logToConsole) {
         const text = `${payload.category || state.currentCategory}: ${payload.content}`;
         switch (payload.type) {
           case 'error':
@@ -64,7 +64,7 @@ const module = {
         type: warning ? 'warning' : 'error',
       });
 
-      if (rootState.config.debug) {
+      if (rootState.config.debug.errors) {
         if (error instanceof ExtendedError) {
           console.groupCollapsed(`${error.type} Details`);
           console.log(error.error.stack);
