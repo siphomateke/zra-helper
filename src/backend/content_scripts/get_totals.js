@@ -4,8 +4,8 @@ import { getElement } from './helpers/elements';
 /**
  * @param {Object} message
  * @param {string} message.command
- * @param {number} message.numTotals The number of totals to get.
- * @param {number} message.startColumn The first column with a pending liability.
+ * @param {number} message.startColumn The first column containing a total.
+ * @param {number} message.numTotals The number of columns containing totals.
  */
 function listener(message) {
   return new Promise((resolve) => {

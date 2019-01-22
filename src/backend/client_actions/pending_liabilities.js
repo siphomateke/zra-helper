@@ -6,7 +6,19 @@ import { taskStates } from '@/store/modules/tasks';
 import { taxTypes } from '../constants';
 import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '../utils';
 
-// TODO: Document me
+/**
+ * @typedef {Object} getTotalsResponse
+ * @property {number} numberOfPages The total discovered number of pages.
+ * @property {number[]} totals Array of totals whose length is equal to `numTotals`.
+ * @see getTotals for more on numTotals.
+ */
+
+/**
+ * Gets totals such as 'principal', 'interest', 'penalty' and 'total'.
+ * @param {number} tabId The ID of the tab containing the report to get totals from.
+ * @param {number} numTotals Total number of pending liabilities including the grand total.
+ * @returns {Promise.<getTotalsResponse>}
+ */
 async function getTotals(tabId, numTotals) {
   await executeScript(tabId, { file: 'get_totals.js' });
   const totalsResponse = await sendMessage(tabId, {
