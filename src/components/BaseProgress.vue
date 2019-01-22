@@ -79,7 +79,7 @@ export default {
   animation-timing-function: ease;
   animation-fill-mode: forwards;
   animation-play-state: paused;
-  animation-delay: #{$progress-bar-complete-animation-duration}s;
+  animation-delay: #{$progress-bar-complete-animation-delay}s;
 }
 
 @keyframes collapse {
