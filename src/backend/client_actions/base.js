@@ -121,7 +121,6 @@ export async function robustLogin(client, parentTaskId, maxAttempts = 2) {
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
-    progress: -2,
   });
   let attempts = 0;
   let run = true;

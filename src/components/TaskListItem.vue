@@ -29,7 +29,6 @@
         v-show="status"
         class="status">{{ status }}</div>
       <Progress
-        v-if="progress !== -2"
         :value="progress"
         :max="progressMax"
         :complete="complete"
