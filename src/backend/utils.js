@@ -309,6 +309,49 @@ export async function clickElement(tabId, selector, name = null, ignoreZraErrors
 }
 
 /**
+ * @callback monitorDownloadProgressCallback
+ * @param {number} downloadProgress
+ * The normalized progress of the download. -1 if progress cannot be determined.
+ */
+
+/**
+ * Checks a download's progress every once in a while and passes the progress to the provided callback.
+ * Once the download is complete, the promise resolves.
+ * @param {number} downloadId The ID of the download whose progress we wish to monitor.
+ * @param {monitorDownloadProgressCallback} callback
+ * @param {number} pollFrequency How frequently to check the download's progress.
+ */
+export async function monitorDownloadProgress(downloadId, callback, pollFrequency = 1000) {
+  return new Promise((resolve, reject) => {
+    browser.downloads.search({ id: downloadId }).then(([item]) => {
+      if (item.state === 'complete' || item.state === 'interrupted') {
+        if (item.state === 'interrupted') {
+          reject(new DownloadError(`Download with ID ${downloadId} was interrupted: ${item.error}`, item.error, {
+            downloadItem: item,
+          }));
+        } else {
+          resolve();
+        }
+      } else {
+        let downloadProgress = null;
+        if (item.totalBytes > 0) {
+          downloadProgress = item.bytesReceived / item.totalBytes;
+        } else {
+          downloadProgress = -1;
+        }
+        callback(downloadProgress);
+
+        setTimeout(() => {
+          monitorDownloadProgress(downloadId, callback)
+            .then(resolve)
+            .catch(reject);
+        }, pollFrequency);
+      }
+    }).catch(reject);
+  });
+}
+
+/**
  * Wait's for a download with the specified ID to finish
  * @param {number} id Download ID
  */

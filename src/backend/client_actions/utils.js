@@ -8,7 +8,7 @@ import {
   saveAsMHTML,
   sendMessage,
   tabLoaded,
-  waitForDownloadToComplete,
+  monitorDownloadProgress,
   closeTab,
 } from '../utils';
 
@@ -71,6 +71,7 @@ export async function downloadReceipt({
       } else {
         generatedFilenames = generatedFilename;
       }
+      const taskProgressBeforeDownload = task.progress;
       if (Array.isArray(generatedFilenames)) {
         const promises = [];
         for (const generatedFilename of generatedFilenames) {
@@ -79,8 +80,12 @@ export async function downloadReceipt({
               url,
               filename: generatedFilename,
             });
-            // TODO: Show download progress
-            await waitForDownloadToComplete(downloadId);
+            // FIXME: Catch and handle download errors
+            await monitorDownloadProgress(downloadId, (downloadProgress) => {
+              if (downloadProgress !== -1) {
+                task.progress = taskProgressBeforeDownload + downloadProgress;
+              }
+            });
             resolve();
           }));
         }
