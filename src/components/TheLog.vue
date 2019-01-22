@@ -13,6 +13,7 @@
           <i
             v-if="getTypeIcon(line.type)"
             :class="[getTypeIcon(line.type)]"
+            :title="getTypeTooltip(line.type)"
             class="fas"
             aria-hidden="true"/>
         </span>
@@ -32,12 +33,23 @@ import { createNamespacedHelpers } from 'vuex';
 
 const { mapState, mapGetters } = createNamespacedHelpers('log');
 
+/**
+ * @typedef {import('@/store/modules/log').LogType} LogType
+ */
+
 // TODO: Consider merging this with `TaskListItem`'s `stateIcons`
 export const typeIcons = {
   success: 'fa-check-circle',
   error: 'fa-exclamation-circle',
   warning: 'fa-exclamation-triangle',
   info: 'fa-info-circle',
+};
+
+export const typeTooltips = {
+  success: 'Success',
+  error: 'Error',
+  warning: 'Warning',
+  info: 'Information',
 };
 
 export default {
@@ -58,10 +70,18 @@ export default {
   },
   methods: {
     /**
-     * @param {import('@/store/modules/log').LogType} type
+     * @param {LogType} type
+     * @returns {string} Icon name
      */
     getTypeIcon(type) {
       return typeIcons[type];
+    },
+    /**
+     * @param {LogType} type
+     * @returns {string} Tooltip
+     */
+    getTypeTooltip(type) {
+      return typeTooltips[type];
     },
     updateLines(value) {
       // Output log and keep scroll at bottom if already scrolled to bottom
