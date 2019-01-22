@@ -167,10 +167,23 @@ const module = {
         state.tasks[id].children.push(child);
       }
     },
+    /**
+     * Sets a task's state.
+     * @param {any} state
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {TaskState} payload.value The task state
+     */
+    setState(state, { id, value }) {
+      if (Object.values(taskStates).includes(value)) {
+        Vue.set(state.tasks[id], 'state', value);
+      } else {
+        const validStates = `['${Object.values(taskStates).join("', '")}']`;
+        throw new Error(`Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`);
+      }
+    },
     ...listStoreHelper.itemMutations([
       'title',
-      // TODO: Make sure state is a taskState when set
-      'state',
       'status',
       'progress',
       'progressMax',
