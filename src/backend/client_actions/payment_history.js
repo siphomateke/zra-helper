@@ -126,7 +126,6 @@ async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
  * @param {GetAllPaymentReceiptNumbersOptions} options
  * @param {number} parentTaskId
  */
-// TODO: Test this
 function getAllPaymentReceiptNumbers(options, parentTaskId) {
   return new Promise(async (resolve, reject) => {
     const task = await createTask(store, {
