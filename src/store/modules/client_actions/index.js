@@ -9,6 +9,15 @@ import { logout, robustLogin } from '@/backend/client_actions/base';
  * @typedef {import('@/backend/client_actions/base').ClientActionObject} ClientActionObject
  */
 
+/**
+ * @typedef {Object} ClientActionState.Temp
+ * @property {string} logCategory
+ */
+
+/**
+ * @typedef {ClientActionObject & ClientActionState.Temp} ClientActionState
+ */
+
 // TODO: Document state and actions
 /** @type {import('vuex').Module} */
 const module = {
@@ -36,7 +45,7 @@ const module = {
       commit('add', { id, name, func });
     },
     async runActionOnClient({ rootState, getters }, { actionId, client }) {
-      /** @type {ClientActionObject} */
+      /** @type {ClientActionState} */
       const clientAction = getters.getActionById(actionId);
       const clientActionConfig = rootState.config.actions[actionId];
 
