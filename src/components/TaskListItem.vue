@@ -34,6 +34,7 @@
         :max="progressMax"
         :complete="complete"
         :hide-on-complete="true"
+        :indeterminate="indeterminate"
         type="is-info"/>
       <button
         v-if="hasChildren"
@@ -66,9 +67,6 @@ export const stateIcons = {
 };
 
 // TODO: Improve details button
-// FIXME: Make indeterminate progress bar. Can't at the moment due
-// to vue.js not having a way to remove attributes
-// TODO: Interpolate progress
 export default {
   name: 'TaskListItem',
   components: {
@@ -105,6 +103,7 @@ export default {
       'title',
       'status',
       'children',
+      'indeterminate',
     ]),
     taskStates: () => taskStates,
   },

@@ -20,6 +20,7 @@ export const taskStates = {
  * @property {TaskState} [state=null]
  * @property {number} [progress=0]
  * @property {number} [progressMax=1]
+ * @property {Boolean} [indeterminate=false]
  * @property {number[]} [children=[]] Child IDs
  * @property {boolean} [complete=false]
  * @property {Error} [error=null]
@@ -194,6 +195,7 @@ const module = {
       'unknownMaxProgress',
       'sequential',
       'autoUpdateParent',
+      'indeterminate',
     ]),
   },
   actions: {
@@ -209,6 +211,7 @@ const module = {
         state: null,
         progress: 0,
         progressMax: 1,
+        indeterminate: false,
         children: [],
         complete: false,
         error: null,

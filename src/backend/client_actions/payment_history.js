@@ -105,10 +105,7 @@ async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
   const childTask = await createTask(store, {
     title: `Get payment receipt numbers from page ${page + 1}`,
     parent: parentTaskId,
-    // TODO: set child tasks to be indeterminate. Haven't yet because of the way
-    // parent task progress is calculated
-    progress: 0,
-    progressMax: 1,
+    indeterminate: true,
   });
   try {
     const result = await getPaymentReceiptNumbers(Object.assign(options, { page: page + 1 }));

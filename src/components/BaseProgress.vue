@@ -4,16 +4,19 @@
       type,
       size,
       complete ? 'complete' : '',
-      hideOnComplete && !debug ? 'hide-on-complete' : ''
+      hideOnComplete && !debug ? 'hide-on-complete' : '',
+      indeterminate && !complete ? 'indeterminate' : '',
     ]"
     class="progress">
     <div
       :aria-valuenow="value"
       :aria-valuemax="max"
-      :style="{width: `${percentageValue}%`}"
+      :style="{width: !indeterminate ? `${percentageValue}%` : ''}"
       class="progress-bar"
       role="progressbar">
-      <span class="text">{{ progressText }}</span>
+      <span
+        v-if="!indeterminate"
+        class="text">{{ progressText }}</span>
     </div>
   </div>
 </template>
@@ -29,6 +32,10 @@ export default {
     size: {
       type: String,
       default: '',
+    },
+    indeterminate: {
+      type: Boolean,
+      default: false,
     },
     value: {
       type: Number,
@@ -95,6 +102,15 @@ export default {
   }
 }
 
+@keyframes moveIndeterminate {
+  from {
+    left: -50%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
 .progress {
   display: flex;
   overflow: hidden;
@@ -102,7 +118,7 @@ export default {
   background-color: $progress-bar-background-color;
 
   .progress-bar {
-    display: -ms-flexbox;
+    width: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -143,6 +159,19 @@ export default {
       .progress-bar .text {
         animation-play-state: running;
       }
+    }
+  }
+
+  &.indeterminate {
+    position: relative;
+    .progress-bar {
+      width: 30%;
+      height: 100%;
+      position: absolute;
+      animation-duration: 1.5s;
+      animation-iteration-count: infinite;
+      animation-name: moveIndeterminate;
+      animation-timing-function: linear;
     }
   }
 }
