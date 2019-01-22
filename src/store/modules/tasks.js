@@ -41,6 +41,7 @@ export const taskStates = {
  */
 
 // TODO: Document this module. Especially the getters.
+// TODO: Figure out how to use function documentation in transitional tasks module.
 
 /**
  * Calculates a task's progress or maximum progress based on its children.
@@ -88,7 +89,15 @@ const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');
 const module = {
   namespaced: true,
   state: {
+    /**
+     * Top-level list of tasks.
+     * @type {number[]}
+     */
     all: [],
+    /**
+     * Object containing tasks as values and their corresponding IDs as keys.
+     * @type {Object.<string, TaskVuexState>}
+     */
     tasks: {},
   },
   getters: {
@@ -157,12 +166,33 @@ const module = {
     }),
   },
   mutations: {
+    /**
+     * Adds a task object to the state.
+     * @param {any} state
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {TaskVuexState} payload.task
+     */
     create(state, { id, task }) {
       Vue.set(state.tasks, id, task);
     },
-    addToList(state, { name = 'all', id }) {
+    /**
+     * Adds a particular task to a certain list. Mainly used for the top-level list of tasks.
+     * @param {any} state
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {string} payload.name The name of the list to add this task to.
+     */
+    addToList(state, { id, name = 'all' }) {
       state[name].push(id);
     },
+    /**
+     * Adds several child tasks to a task.
+     * @param {any} state
+     * @param {Object} payload
+     * @param {number} payload.id The ID of the task to add child tasks to.
+     * @param {number[]} payload.children The IDs of the child tasks to add.
+     */
     addChildren(state, { id, children }) {
       for (const child of children) {
         state.tasks[id].children.push(child);
@@ -200,8 +230,10 @@ const module = {
   },
   actions: {
     /**
+     * Creates a new task and returns its ID.
      * @param {import('vuex').ActionContext} store
      * @param {TaskVuexState} data
+     * @returns {number} The newly-created task's ID.
      */
     create({ commit }, data = {}) {
       const task = Object.assign({
@@ -232,12 +264,22 @@ const module = {
 
       return id;
     },
+    /**
+     * Marks this task as complete and sets its progress to the maximum value.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     */
     markAsComplete({ commit, getters }, { id }) {
       commit('setComplete', { id, value: true });
       commit('setProgress', { id, value: getters.progressMax(id) });
     },
     /**
-     * Sets this task's error, state and status.
+     * Sets this task's error to the provided one, its state to ERROR and its status to one based on the error.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {any} payload.error
      */
     setError({ commit, dispatch }, { id, error }) {
       commit('setError', { id, value: error });
@@ -246,11 +288,25 @@ const module = {
     },
     /**
      * Increments progress and sets status.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {TaskState} payload.status
+     * @param {number} [payload.increment=1] The amount to increment progress by.
      */
     addStep({ commit, getters }, { id, status, increment = 1 }) {
       commit('setProgress', { id, value: getters.progress(id) + increment });
       commit('setStatus', { id, value: status });
     },
+    /**
+     * Sets this task's state based on its children.
+     * - all children error then error
+     * - any child error then warning
+     * - else success
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     */
     setStateBasedOnChildren({ commit, getters }, { id }) {
       const childStateCounts = getters.childStateCounts(id);
       const children = getters.children(id);
@@ -267,6 +323,12 @@ const module = {
       }
       commit('setState', { id, value: state });
     },
+    /**
+     * Sets this task's status to be its error message.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     */
     setErrorAsStatus: ({ commit, getters }, { id }) => {
       const task = getters.getTaskById(id);
       let status = null;
