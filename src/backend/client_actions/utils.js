@@ -2,7 +2,15 @@ import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
 import createTask from '@/transitional/tasks';
 import { InvalidReceiptError } from '../errors';
-import { createTabPost, executeScript, saveAsMHTML, sendMessage, tabLoaded, waitForDownloadToComplete } from '../utils';
+import {
+  createTabPost,
+  executeScript,
+  saveAsMHTML,
+  sendMessage,
+  tabLoaded,
+  waitForDownloadToComplete,
+  closeTab,
+} from '../utils';
 
 /** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
@@ -85,7 +93,7 @@ export async function downloadReceipt({
     } finally {
       // Don't need to wait for the tab to close to carry out logged in actions
       // TODO: Catch tab close errors
-      browser.tabs.remove(tab.id);
+      closeTab(tab.id);
     }
   } catch (error) {
     task.setError(error);

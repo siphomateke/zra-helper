@@ -2,7 +2,7 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '../utils';
+import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '../utils';
 
 /** @typedef {import('../constants').Client} Client */
 
@@ -62,7 +62,7 @@ export async function login(client, parentTaskId) {
     } finally {
       // Don't need to wait for the tab to close to carry out logged in actions
       // TODO: Catch tab close errors
-      browser.tabs.remove(tab.id);
+      closeTab(tab.id);
     }
   } catch (error) {
     task.setError(error);
@@ -101,7 +101,7 @@ export async function logout(parentTaskId) {
     } finally {
       // Note: The tab automatically closes after pressing logout
       // TODO: Catch tab close errors
-      browser.tabs.remove(tab.id);
+      closeTab(tab.id);
     }
   } catch (error) {
     task.setError(error);

@@ -229,7 +229,6 @@ export async function executeScript(tabId, details, vendor = false) {
  * Closes the tab with the specified ID
  * @param {number} tabId
  */
-// TODO: Make sure this is used
 export function closeTab(tabId) {
   return browser.tabs.remove(tabId);
 }

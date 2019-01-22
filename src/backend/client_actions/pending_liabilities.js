@@ -4,7 +4,7 @@ import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { taxTypes } from '../constants';
-import { clickElement, createTab, executeScript, sendMessage, tabLoaded } from '../utils';
+import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '../utils';
 
 /**
  * @typedef {Object} getTotalsResponse
@@ -107,7 +107,7 @@ const clientAction = {
           } finally {
             if (tab) {
               try {
-                await browser.tabs.remove(tab.id);
+                await closeTab(tab.id);
               } catch (error) {
               // If we fail to close the tab then it's probably already closed
               }
