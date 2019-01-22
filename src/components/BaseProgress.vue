@@ -9,7 +9,6 @@
     class="progress">
     <div
       :aria-valuenow="value"
-      :aria-valuemin="min"
       :aria-valuemax="max"
       :style="{width: `${percentageValue}%`}"
       class="progress-bar"
@@ -35,10 +34,6 @@ export default {
       type: Number,
       default: 0,
     },
-    min: {
-      type: Number,
-      default: 0,
-    },
     max: {
       type: Number,
       default: 1,
@@ -53,11 +48,8 @@ export default {
     },
   },
   computed: {
-    range() {
-      return this.max - this.min;
-    },
     percentageValue() {
-      return ((this.value - this.min) / this.range) * 100;
+      return (this.value / this.max) * 100;
     },
     percentageString() {
       return `${Math.round(this.percentageValue)}%`;
