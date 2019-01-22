@@ -101,7 +101,7 @@ const commonIncorrectCharacters = [
 /**
  * Logs into a particular client's account
  *
- * @param {import('../dashboard').Client} client The client whose account to login to
+ * @param {import('../constants').Client} client The client whose account to login to
  * @param {MaxCaptchaRefreshes} maxCaptchaRefreshes
  * @throws {import('../errors').ElementsNotFoundError}
  */
