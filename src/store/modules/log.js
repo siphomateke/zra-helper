@@ -1,7 +1,17 @@
 import moment from 'moment';
 import { ExtendedError } from '@/backend/errors';
 
-// TODO: Add documentation
+/** @typedef {string} LogType */
+
+/** @enum {LogType} */
+export const logTypes = {
+  SUCCESS: 'success',
+  ERROR: 'error',
+  WARNING: 'warning',
+  INFO: 'info',
+};
+
+// TODO: Add more documentation
 /** @type {import('vuex').Module} */
 const module = {
   namespaced: true,
@@ -16,6 +26,14 @@ const module = {
     setCategory(state, category) {
       state.currentCategory = category;
     },
+    /**
+     * Adds a new line to the log.
+     * @param {any} state
+     * @param {Object} payload
+     * @param {string} payload.content The actual message in the log.
+     * @param {LogType} payload.type
+     * @param {string} payload.category
+     */
     addLine(state, { content, type, category }) {
       state.lines.push({
         content,
@@ -26,6 +44,14 @@ const module = {
     },
   },
   actions: {
+    /**
+     * Adds a new line to the log.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {string} payload.content The actual message in the log.
+     * @param {LogType} payload.type
+     * @param {string} payload.category
+     */
     addLine({ commit, state, rootState }, payload) {
       commit('addLine', payload);
 

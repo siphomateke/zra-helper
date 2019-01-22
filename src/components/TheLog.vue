@@ -57,7 +57,12 @@ export default {
     this.$watch('linesInStore', this.updateLines);
   },
   methods: {
-    getTypeIcon: type => typeIcons[type],
+    /**
+     * @param {import('@/store/modules/log').LogType} type
+     */
+    getTypeIcon(type) {
+      return typeIcons[type];
+    },
     updateLines(value) {
       // Output log and keep scroll at bottom if already scrolled to bottom
       const el = this.$el;
