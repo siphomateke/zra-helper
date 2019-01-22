@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "ZRA Helper",
+  "version": "0.5.0",
+  "description": "Automates various aspects of the ZRA website.",
+  "homepage_url": "https://github.com/nextgensparx/zra-helper/",
+  "icons": {
+    "48": "icons/48.png"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "pageCapture",
+    "downloads",
+    "tabs",
+    "https://www.zra.org.zm/*"
+  ],
+  "browser_action": {
+    "default_icon": "icons/32.png",
+    "default_title": "ZRA Helper"
+  }
+}

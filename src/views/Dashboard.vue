@@ -1,0 +1,113 @@
+<template>
+  <div id="dashboard">
+    <section class="hero is-primary is-bold is-small">
+      <div class="hero-body">
+        <div class="container">
+          <h1 class="title">
+            ZRA Helper
+          </h1>
+          <h2 class="subtitle">
+            Dashboard
+          </h2>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="dashboard container">
+        <section class="dashboard-section">
+          <form @submit.prevent="submit">
+            <div>
+              <div class="field">
+                <label class="label">Client list</label>
+                <div class="control">
+                  <ClientListFileUpload @input="updateClients"/>
+                </div>
+              </div>
+              <ClientList
+                v-if="clients.length > 0"
+                :clients="clients"/>
+            </div>
+            <br>
+            <div class="field">
+              <label class="label">Select actions</label>
+              <div
+                v-for="action in clientActions"
+                :key="action.id"
+                class="control">
+                <b-checkbox
+                  v-model="selectedClientActions"
+                  :native-value="action.id"
+                  name="actions">
+                  {{ action.name }}
+                </b-checkbox>
+              </div>
+            </div>
+            <button
+              class="button is-primary"
+              type="submit">Run selected action(s)</button>
+          </form>
+        </section>
+        <section class="dashboard-section">
+          <h1 class="title is-4">Log</h1>
+          <Log/>
+        </section>
+        <section class="dashboard-section">
+          <h1 class="title is-4">Tasks</h1>
+          <TaskList
+            :tasks="tasks"
+            :is-root="true"/>
+        </section>
+        <section class="dashboard-section">
+          <h1 class="title is-4">Output</h1>
+          <ClientActionOutput/>
+        </section>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script>
+import ClientListFileUpload from '@/components/ClientList/ClientListFileUpload.vue';
+import ClientList from '@/components/ClientList/ClientList.vue';
+import TaskList from '@/components/TaskList.vue';
+import Log from '@/components/TheLog.vue';
+import ClientActionOutput from '@/components/TheClientActionOutput.vue';
+import { mapState } from 'vuex';
+
+export default {
+  name: 'Dashboard',
+  components: {
+    ClientListFileUpload,
+    ClientList,
+    TaskList,
+    Log,
+    ClientActionOutput,
+  },
+  data() {
+    return {
+      selectedClientActions: [],
+      clients: [],
+    };
+  },
+  computed: {
+    ...mapState({
+      tasks: state => state.tasks.all,
+      clientActionsObject: state => state.clientActions.all,
+    }),
+    clientActions() {
+      return Object.keys(this.clientActionsObject).map(id => this.clientActionsObject[id]);
+    },
+  },
+  methods: {
+    submit() {
+      this.$store.dispatch('clientActions/runAll', {
+        actions: this.selectedClientActions,
+        clients: this.clients,
+      });
+    },
+    updateClients(clients) {
+      this.clients = clients;
+    },
+  },
+};
+</script>
