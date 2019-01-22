@@ -103,7 +103,7 @@ const module = {
           dispatch('runAction', { actionId, clients });
         }
       } else {
-        log.setCategory('client_action');
+        log.setCategory('clientAction');
         log.showError('No clients found');
       }
     },

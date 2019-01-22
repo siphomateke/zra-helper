@@ -62,7 +62,7 @@ function validateClient(client) {
 function getClientsFromCsv(csvString, config = {}) {
   const list = [];
 
-  log.setCategory('get_client_list');
+  log.setCategory('getClientList');
   log.log('Parsing CSV');
   const parseConfig = Object.assign({
     header: true,
@@ -186,20 +186,20 @@ export default function getClientsFromFile(file) {
       // TODO: Add file load progress
       fileReader.onload = async function onload(fileLoadedEvent) {
         const text = fileLoadedEvent.target.result;
-        log.setCategory('load_client_list_file');
+        log.setCategory('loadClientListFile');
         log.log(`Successfully loaded client list file "${file.name}"`);
         resolve(getClientsFromCsv(text));
       };
       fileReader.onerror = function onerror(event) {
-        log.setCategory('load_client_list_file');
+        log.setCategory('loadClientListFile');
         log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
         reject(new Error(event.target.error));
       };
-      log.setCategory('load_client_list_file');
+      log.setCategory('loadClientListFile');
       log.log(`Loading client list file "${file.name}"`);
       fileReader.readAsText(file, 'UTF-8');
     } else {
-      log.setCategory('load_client_list_file');
+      log.setCategory('loadClientListFile');
       log.showError(`Client list file's extension must be '.csv' not '.${ext}'.`);
     }
   });
