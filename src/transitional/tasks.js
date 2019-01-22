@@ -31,7 +31,7 @@ function taskFromId(store, id) {
  */
 
 /**
- * @typedef TaskObjectType
+ * @typedef TaskObject.Temp
  * @property {boolean} hasParent
  * @property {TaskObject} parent
  * @property {boolean} hasChildren
@@ -54,7 +54,7 @@ function taskFromId(store, id) {
  */
 
 /**
- * @typedef {TaskVuexState & TaskObjectType} TaskObject
+ * @typedef {TaskVuexState & TaskObject.Temp} TaskObject
  * Wrapper around the task Vuex module to make it compatible with legacy code.
  */
 
