@@ -12,20 +12,11 @@ const module = {
        */
       progressBars: false,
     },
-    /**
-     * The amount of time to wait for a tab to load (in milliseconds).
-     * @type {number}
-     */
+    /** The amount of time to wait for a tab to load (in milliseconds). */
     tabLoadTimeout: 20000,
-    /**
-     * The maximum number of tabs that can be opened. Set to 0 to disable.
-     * @type {number}
-     */
+    /** The maximum number of tabs that can be opened. Set to 0 to disable. */
     maxOpenTabs: 8,
-    /**
-     * The time to wait after creating a tab before creating another one (in milliseconds).
-     * @type {number}
-     */
+    /** The time to wait after creating a tab before creating another one (in milliseconds). */
     tabOpenDelay: 0,
     actions: {
       getAllReturns: {
