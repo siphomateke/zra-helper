@@ -2,6 +2,8 @@
 const module = {
   state: {
     debug: {
+      /** Whether the app should communicate with devtools */
+      devtools: false,
       /** Show all user-side logs in the console. */
       logToConsole: false,
       /** Show detailed information about errors if available. */

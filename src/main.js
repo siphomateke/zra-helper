@@ -7,7 +7,7 @@ import router from './router';
 import store from './store';
 import initClientActions from './store/modules/client_actions/init';
 
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development' && store.state.config.debug.devtools) {
   devtools.connect();
 }
 
