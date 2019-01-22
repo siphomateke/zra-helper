@@ -180,6 +180,16 @@ export class InvalidReceiptError extends ExtendedError {
     this.setType('InvalidReceiptError');
   }
 }
+export class DownloadError extends ExtendedError {
+  /**
+   * @param {Object} props
+   * @param {Object} props.downloadItem
+   */
+  constructor(message, code = null, props = { downloadItem: null }) {
+    super(message, code, props);
+    this.setType('DownloadError');
+  }
+}
 
 /**
  * @typedef JsonError

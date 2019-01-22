@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from '@/transitional/config';
 import { getZraError } from './content_scripts/helpers/zra';
-import { errorFromJson, ExecuteScriptError, SendMessageError, TabError } from './errors';
+import { errorFromJson, ExecuteScriptError, SendMessageError, TabError, DownloadError } from './errors';
 
 class TabCreator {
   constructor() {
@@ -321,9 +321,10 @@ export function waitForDownloadToComplete(id) {
           resolve();
         }
         if (state === 'interrupted') {
-          const downloads = await browser.downloads.search({ id });
-          // TODO: Handle download errors better
-          reject(downloads[0].error);
+          const [download] = await browser.downloads.search({ id });
+          reject(new DownloadError(`Download with ID ${id} was interrupted: ${download.error}`, download.error, {
+            downloadItem: download,
+          }));
         }
       }
     });
