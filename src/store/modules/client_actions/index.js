@@ -57,7 +57,7 @@ const module = {
         if (clientAction.func) {
           mainTask.status = clientAction.name;
           const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
-          log.setCategory(clientAction.id);
+          log.setCategory(clientAction.logCategory);
 
           await clientAction.func({
             client,
