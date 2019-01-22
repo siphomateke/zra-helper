@@ -39,9 +39,15 @@ function listener(message) {
             });
           } else if (document.querySelector('#rsltTableHtml>table>tbody>tr:nth-child(2)>td>center.Label3')) {
             // Check if the element that contains "No data found" exists
+
+            // Generate an array of totals that are all zero.
+            const totals = [];
+            for (let i = 0; i < message.numTotals; i++) {
+              totals.push(0);
+            }
             resolve({
               numberOfPages,
-              totals: [0, 0, 0, 0],
+              totals,
             });
           } else {
             resolve({
