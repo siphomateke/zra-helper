@@ -160,6 +160,12 @@ function getClientsFromCsv(csvString, config = {}) {
   return list;
 }
 
+/**
+ * Extracts a filenames extension.
+ *
+ * @param {string} filename
+ * @returns {string} The extension
+ */
 function getExtension(filename) {
   const split = filename.split('.');
   return split[split.length - 1];
