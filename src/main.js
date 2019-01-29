@@ -2,6 +2,7 @@
 import devtools from '@vue/devtools'; // eslint-disable-line import/no-extraneous-dependencies
 import Vue from 'vue';
 import Buefy from 'buefy';
+import VueClipboard from 'vue-clipboard2';
 import App from './App.vue';
 import router from './router';
 import store from './store';
@@ -16,6 +17,8 @@ Vue.config.productionTip = false;
 Vue.use(Buefy, {
   defaultIconPack: 'fas',
 });
+
+Vue.use(VueClipboard);
 
 initClientActions();
 

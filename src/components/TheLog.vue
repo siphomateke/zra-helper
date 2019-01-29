@@ -1,34 +1,42 @@
 <template>
-  <div
-    v-if="!empty"
-    class="log">
-    <div class="log-inner">
-      <span
-        v-for="(line, index) in lines"
-        :key="index"
-        :class="[line.type]"
-        class="line">
-        <span class="cell timestamp">{{ line.timestamp }}</span>
-        <span class="cell icon">
-          <i
-            v-if="getTypeIcon(line.type)"
-            :class="[getTypeIcon(line.type)]"
-            :title="getTypeTooltip(line.type)"
-            class="fas"
-            aria-hidden="true"/>
-        </span>
+  <div v-if="!empty">
+    <div class="log">
+      <div class="log-inner">
         <span
-          v-if="line.category"
-          class="cell category">
-          <span class="log-tag">{{ line.category }}</span>
+          v-for="(line, index) in lines"
+          :key="index"
+          :class="[line.type]"
+          class="line">
+          <span class="cell timestamp">{{ line.timestamp }}</span>
+          <span class="cell icon">
+            <i
+              v-if="getTypeIcon(line.type)"
+              :class="[getTypeIcon(line.type)]"
+              :title="getTypeTooltip(line.type)"
+              class="fas"
+              aria-hidden="true"/>
+          </span>
+          <span
+            v-if="line.category"
+            class="cell category">
+            <span class="log-tag">{{ line.category }}</span>
+          </span>
+          <span class="cell content">{{ line.content }}</span>
         </span>
-        <span class="cell content">{{ line.content }}</span>
-      </span>
+      </div>
     </div>
+    <ExportButtons
+      :raw="() => getCachedLogString('raw')"
+      :csv="() => getCachedLogString('csv')"
+      :json="() => getCachedLogString('json')"
+      :disabled="lines.length === 0"
+      filename="log"/>
   </div>
 </template>
 
 <script>
+import ExportButtons from '@/components/ExportData/ExportButtons.vue';
+import { writeCsv, writeJson } from '@/backend/file_utils';
 import { createNamespacedHelpers } from 'vuex';
 
 const { mapState, mapGetters } = createNamespacedHelpers('log');
@@ -52,11 +60,33 @@ export const typeTooltips = {
   info: 'Information',
 };
 
+/**
+ * @typedef {string} ExportType
+ */
+
+/** @type {ExportType[]} */
+const exportTypes = ['raw', 'csv', 'json'];
+
 export default {
   name: 'TheLog',
+  components: {
+    ExportButtons,
+  },
   data() {
     return {
       lines: [],
+      showCopyTooltip: false,
+      /**
+       * TODO: Document me better
+       * Object map containing whether the log has changed since the corresponding export type was queried.
+       * @type {Object.<ExportType, Boolean>}
+       */
+      logChanged: {},
+      /**
+       * Cached log strings stored by export type.
+       * @type {Object.<ExportType, String>}
+       */
+      cachedLog: {},
     };
   },
   computed: {
@@ -64,6 +94,19 @@ export default {
       linesInStore: 'lines',
     }),
     ...mapGetters(['empty']),
+  },
+  watch: {
+    lines() {
+      for (const key of Object.keys(this.logChanged)) {
+        this.logChanged[key] = true;
+      }
+    },
+  },
+  created() {
+    for (const exportType of exportTypes) {
+      this.logChanged[exportType] = false;
+      this.cachedLog[exportType] = '';
+    }
   },
   mounted() {
     this.$watch('linesInStore', this.updateLines);
@@ -95,6 +138,51 @@ export default {
         el.scrollTop = el.scrollHeight;
       }
     },
+    getLogString(type) {
+      if (type === 'raw') {
+        const longest = {
+          type: 0,
+          category: 0,
+        };
+        for (const line of this.lines) {
+          if (line.type && line.type.length > longest.type) {
+            longest.type = line.type.length;
+          }
+          if (line.category && line.category.length > longest.category) {
+            longest.category = line.category.length;
+          }
+        }
+
+        return this.lines.map((line) => {
+          let lineString = `${line.timestamp} `;
+          let lineTypeString = '';
+          if (line.type) {
+            lineTypeString = this.getTypeTooltip(line.type);
+          }
+          lineString += `${lineTypeString.padEnd(longest.type)} `;
+          lineString += `${line.category.padEnd(longest.category)} `;
+          lineString += line.content;
+          return lineString;
+        }).join('\n');
+      } else if (type === 'csv') {
+        return writeCsv(this.lines.map(line => ({
+          timestamp: line.timestamp,
+          type: line.type,
+          category: line.category,
+          content: line.content,
+        })));
+      } else if (type === 'json') {
+        return writeJson(this.lines);
+      }
+      return null;
+    },
+    getCachedLogString(type) {
+      if (this.logChanged[type]) {
+        this.cachedLog[type] = this.getLogString(type);
+        this.logChanged[type] = false;
+      }
+      return this.cachedLog[type];
+    },
   },
 };
 </script>
@@ -123,6 +211,7 @@ export default {
   border-radius: 3px;
   font-size: 11px;
   font-family: dejavu sans mono, monospace;
+  margin-bottom: 1em;
 
   .log-inner {
     border-collapse: collapse;

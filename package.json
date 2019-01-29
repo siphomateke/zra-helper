@@ -27,6 +27,7 @@
     "ocrad.js": "0.0.1",
     "papaparse": "^4.5.0",
     "vue": "^2.5.17",
+    "vue-clipboard2": "^0.2.1",
     "vue-router": "^3.0.1",
     "vuex": "^3.0.1",
     "webextension-polyfill": "^0.2.1"
