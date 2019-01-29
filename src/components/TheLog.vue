@@ -75,7 +75,6 @@ export default {
   data() {
     return {
       lines: [],
-      showCopyTooltip: false,
       /**
        * TODO: Document me better
        * Object map containing whether the log has changed since the corresponding export type was queried.
