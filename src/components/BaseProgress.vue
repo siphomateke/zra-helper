@@ -3,9 +3,9 @@
     :class="[
       type,
       size,
-      complete ? 'complete' : '',
-      hideOnComplete && !debug ? 'hide-on-complete' : '',
-      indeterminate && !complete ? 'indeterminate' : '',
+      {'complete': complete},
+      {'hide-on-complete': hideOnComplete && !debug},
+      {'indeterminate': indeterminate && !complete},
     ]"
     class="progress">
     <div

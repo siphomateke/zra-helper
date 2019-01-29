@@ -2,9 +2,9 @@
   <div
     :class="[
       state,
-      open ? 'open' : '',
+      {'open': open},
       hasParent ? 'task sub-task' : 'task',
-      complete ? 'complete' : '']">
+      {'complete': complete}]">
     <div class="task-content">
       <div class="header">
         <div class="title is-6">{{ title }}</div>
