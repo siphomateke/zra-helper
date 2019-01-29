@@ -35,11 +35,13 @@ const module = {
      * @param {string} payload.category
      */
     addLine(state, { content, type, category }) {
+      const time = moment();
       state.lines.push({
         content,
         type,
         category: category || state.currentCategory,
-        timestamp: moment().format('DD/MM/YY HH:mm:ss.SS'),
+        timestamp: time.format('DD/MM/YY HH:mm:ss.SS'),
+        timestampNoDate: time.format('HH:mm:ss.SS'),
       });
     },
   },

@@ -30,6 +30,9 @@ const module = {
         maxOpenTabsWhenDownloading: 3,
       },
     },
+    log: {
+      showDateInTimestamp: true,
+    },
     export: {
       /** Whether 'save as' dialogs should be shown when exporting various things in formats such as CSV and JSON. */
       showSaveAsDialog: true,

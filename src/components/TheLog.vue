@@ -7,7 +7,9 @@
           :key="index"
           :class="[line.type]"
           class="line">
-          <span class="cell timestamp">{{ line.timestamp }}</span>
+          <span class="cell timestamp">
+            {{ showDateInTimestamp ? line.timestamp : line.timestampNoDate }}
+          </span>
           <span class="cell icon">
             <i
               v-if="getTypeIcon(line.type)"
@@ -93,6 +95,9 @@ export default {
       linesInStore: 'lines',
     }),
     ...mapGetters(['empty']),
+    showDateInTimestamp() {
+      return this.$store.state.config.log.showDateInTimestamp;
+    },
   },
   watch: {
     lines() {
