@@ -199,10 +199,6 @@ export default {
 <style lang="scss">
 @import "styles/variables.scss";
 
-/********************
-        Logs
-*********************/
-
 @mixin logColoredLine($color, $backgroundColor, $borderColor, $iconColor) {
   color: $color;
   background-color: $backgroundColor;
@@ -220,7 +216,7 @@ export default {
   border-radius: 3px;
   font-size: 11px;
   font-family: dejavu sans mono, monospace;
-  margin-bottom: 1em;
+  margin-bottom: $export-buttons-margin;
 
   .log-inner {
     border-collapse: collapse;
