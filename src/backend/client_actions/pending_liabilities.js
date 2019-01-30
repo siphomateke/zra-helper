@@ -16,19 +16,27 @@ import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTa
 /**
  * Gets totals such as 'principal', 'interest', 'penalty' and 'total'.
  * @param {number} tabId The ID of the tab containing the report to get totals from.
- * @param {number} numTotals Total number of pending liabilities including the grand total.
+ * @param {string[]} columns The columns that contain the totals we wish to retrieve
  * @returns {Promise.<getTotalsResponse>}
  */
-async function getTotals(tabId, numTotals) {
+async function getTotals(tabId, columns) {
   await executeScript(tabId, { file: 'get_totals.js' });
   const totalsResponse = await sendMessage(tabId, {
     command: 'getTotals',
-    numTotals,
+    columns,
     /** The first column with a pending liability */
     startColumn: 5,
   });
   return totalsResponse;
 }
+
+/** Columns to get from the pending liabilities table */
+const totalsColumns = [
+  'principal',
+  'interest',
+  'penalty',
+  'total',
+];
 
 /** @type {import('./base').ClientActionObject} */
 const clientAction = {
@@ -37,8 +45,6 @@ const clientAction = {
   func({ client, parentTask, output }) {
     return new Promise((resolve) => {
       const promises = [];
-      /** Total number of pending liabilities including the grand total */
-      const numTotals = 4;
       const totals = {};
       parentTask.sequential = false;
       parentTask.unknownMaxProgress = false;
@@ -76,11 +82,11 @@ const clientAction = {
 
               task.addStep('Getting totals');
 
-              let totalsResponse = await getTotals(tab.id, numTotals);
+              let totalsResponse = await getTotals(tab.id, totalsColumns);
               if (totalsResponse.numberOfPages > 1) {
               // Set the current page to be the last one by clicking the "last page" button.
                 await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
-                totalsResponse = await getTotals(tab.id, numTotals);
+                totalsResponse = await getTotals(tab.id, totalsColumns);
               }
               totals[taxType] = totalsResponse.totals;
               task.state = taskStates.SUCCESS;
@@ -137,17 +143,23 @@ const clientAction = {
         }
 
         const rows = [];
+        const columnOrder = totalsColumns;
         let i = 0;
         for (const taxType of Object.values(taxTypes)) {
+          const totalsObject = value[taxType];
           let firstCol = '';
           if (i === 0) {
             firstCol = client.name;
           }
-          if (totals[taxType]) {
-            rows.push([firstCol, taxType, ...totals[taxType]]);
+          if (totalsObject) {
+            const totals = [];
+            for (const column of columnOrder) {
+              totals.push(totalsObject[column]);
+            }
+            rows.push([firstCol, taxType, ...totals]);
           } else {
             const cols = [firstCol, taxType];
-            for (let j = 0; j < numTotals; j++) {
+            for (let j = 0; j < columnOrder.length; j++) {
               cols.push('');
             }
             rows.push(cols);

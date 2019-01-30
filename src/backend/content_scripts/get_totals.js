@@ -1,11 +1,36 @@
 import { errorToJson } from '../errors';
 import { getElement } from './helpers/elements';
+import { parseTable } from './helpers/zra';
+
+const recordHeaders = [
+  'srNo',
+  'accountName',
+  'periodFrom',
+  'periodTo',
+  'principal',
+  'interest',
+  'penalty',
+  'total',
+];
+
+/**
+ * Generates an object with totals that are all one value.
+ * @param {string[]} columns
+ * @param {any} value
+ * @returns {Object.<string, any>}
+ */
+function generateTotals(columns, value) {
+  const totals = {};
+  for (const column of columns) {
+    totals[column] = value;
+  }
+  return totals;
+}
 
 /**
  * @param {Object} message
  * @param {string} message.command
- * @param {number} message.startColumn The first column containing a total.
- * @param {number} message.numTotals The number of columns containing totals.
+ * @param {string[]} message.columns
  */
 function listener(message) {
   return new Promise((resolve) => {
@@ -24,14 +49,16 @@ function listener(message) {
 
           // Check if grand total row exists
           if (document.querySelector('#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow')) {
-            const totals = [];
-            for (let i = message.startColumn; i < message.startColumn + message.numTotals; i++) {
-              let cellValue = getElement(
-                `#rprtDataTable>tbody>tr.rprtDataTableGrandTotalRow>td:nth-child(${i})`,
-                `column ${i} in grand total row`,
-              ).innerText;
-              cellValue = cellValue.replace(/\n\n/g, '');
-              totals.push(cellValue);
+            const pendingLiabilitiesTable = getElement('#rprtDataTable', 'totals table');
+            const pendingLiabilities = parseTable({
+              root: pendingLiabilitiesTable,
+              headers: recordHeaders,
+              recordSelector: 'tbody>tr.rprtDataTableGrandTotalRow,tbody>tr.TablerowBG1',
+            });
+            const totalsRow = pendingLiabilities[pendingLiabilities.length - 1];
+            const totals = {};
+            for (const column of message.columns) {
+              totals[column] = totalsRow[column].replace(/\n\n/g, '');
             }
             resolve({
               numberOfPages,
@@ -40,19 +67,14 @@ function listener(message) {
           } else if (document.querySelector('#rsltTableHtml>table>tbody>tr:nth-child(2)>td>center.Label3')) {
             // Check if the element that contains "No data found" exists
 
-            // Generate an array of totals that are all zero.
-            const totals = [];
-            for (let i = 0; i < message.numTotals; i++) {
-              totals.push(0);
-            }
             resolve({
               numberOfPages,
-              totals,
+              totals: generateTotals(message.columns, 0),
             });
           } else {
             resolve({
               numberOfPages,
-              totals: [],
+              totals: generateTotals(message.columns, null),
             });
           }
         } else {
