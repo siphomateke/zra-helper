@@ -52,7 +52,7 @@ const module = {
       const mainTask = await createTask(store, { title: `${client.name}: ${clientAction.name}` });
       try {
         mainTask.status = 'Logging in';
-        await robustLogin(client, mainTask.id);
+        await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
 
         if (clientAction.func) {
           mainTask.status = clientAction.name;

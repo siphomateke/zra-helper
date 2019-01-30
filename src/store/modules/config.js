@@ -20,6 +20,8 @@ const module = {
     maxOpenTabs: 8,
     /** The time to wait after creating a tab before creating another one (in milliseconds). */
     tabOpenDelay: 0,
+    /** The maximum number of times an attempt should be made to login to a client.  */
+    maxLoginAttempts: 3,
     actions: {
       getAllReturns: {
         /** The maximum number of tabs that can be opened when downloading return receipts. */
