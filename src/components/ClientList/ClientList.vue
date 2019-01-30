@@ -35,14 +35,9 @@
           <section
             v-else
             class="section">
-            <div class="content has-text-grey has-text-centered">
-              <p>
-                <b-icon
-                  icon="frown"
-                  size="is-large"/>
-              </p>
-              <p>No clients found that match your query</p>
-            </div>
+            <EmptyMessage
+              icon="frown"
+              message="No clients found that match your query"/>
           </section>
         </section>
         <footer class="modal-card-foot">
@@ -58,6 +53,7 @@
 <script>
 import ClientListTable from './ClientListTable.vue';
 import ShowPasswordsButton from './ClientListShowPasswordsButton.vue';
+import EmptyMessage from '@/components/EmptyMessage.vue';
 
 // FIXME: Get rid of lag when opening and closing modal.
 // The lag is due to the modal being re-created every time it is opened.
@@ -66,6 +62,7 @@ export default {
   components: {
     ClientListTable,
     ShowPasswordsButton,
+    EmptyMessage,
   },
   props: {
     clients: {

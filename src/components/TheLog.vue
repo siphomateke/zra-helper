@@ -34,10 +34,14 @@
       :disabled="lines.length === 0"
       filename="log"/>
   </div>
+  <EmptySection
+    v-else
+    message="Nothing has been logged yet"/>
 </template>
 
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
+import EmptySection from '@/components/EmptySection.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
 import { createNamespacedHelpers } from 'vuex';
 
@@ -73,6 +77,7 @@ export default {
   name: 'TheLog',
   components: {
     ExportButtons,
+    EmptySection,
   },
   data() {
     return {
@@ -211,7 +216,7 @@ export default {
 .log {
   max-height: 300px;
   overflow-y: scroll;
-  border: 1px solid #b7b7b7;
+  border: 1px solid $region-outline-color;
   border-radius: 3px;
   font-size: 11px;
   font-family: dejavu sans mono, monospace;
