@@ -48,17 +48,17 @@
           </form>
         </section>
         <section class="dashboard-section">
-          <h1 class="title is-4">Log</h1>
+          <h3 class="title is-4">Log</h3>
           <Log/>
         </section>
         <section class="dashboard-section">
-          <h1 class="title is-4">Tasks</h1>
+          <h3 class="title is-4">Tasks</h3>
           <TaskList
             :tasks="tasks"
             :is-root="true"/>
         </section>
         <section class="dashboard-section">
-          <h1 class="title is-4">Output</h1>
+          <h3 class="title is-4">Output</h3>
           <ClientActionOutput/>
         </section>
       </div>
