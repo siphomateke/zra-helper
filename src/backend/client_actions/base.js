@@ -115,12 +115,18 @@ export async function logout(parentTaskId) {
  * Logs in a client and retries if already logged in as another client
  * @param {Client} client
  * @param {number} parentTaskId
- * @param {number} [maxAttempts=2]
+ * @param {number} [maxAttempts=3] The maximum number of times an attempt should be made to login to a client.
  */
-export async function robustLogin(client, parentTaskId, maxAttempts = 2) {
+export async function robustLogin(client, parentTaskId, maxAttempts = 3) {
+  console.log(maxAttempts);
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
+    unknownMaxProgress: false,
+    // After every login attempt except the last one, we logout.
+    // So if the maximum number of login attempts is 3, we login 3 times but only logout 2 times.
+    // Thus the total number of tasks would be 3 + (3-1) = 5
+    progressMax: maxAttempts + (maxAttempts - 1),
   });
   let attempts = 0;
   let run = true;
@@ -135,7 +141,7 @@ export async function robustLogin(client, parentTaskId, maxAttempts = 2) {
         await login(client, task.id);
         run = false;
       } catch (error) {
-        if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts < maxAttempts) {
+        if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts + 1 < maxAttempts) {
           log.setCategory('login');
           log.showError(error, true);
           task.status = 'Logging out';
