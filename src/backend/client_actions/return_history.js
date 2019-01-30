@@ -66,7 +66,7 @@ const recordHeaders = [
  * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
  * @throws {TaxTypeNotFoundError}
  */
-async function getReturnHistoryReferenceNumbers({
+async function getAcknowledgementReceiptsReferenceNumbers({
   tpin, taxType, fromDate, toDate, page, exciseType,
 }) {
   const doc = await getDocumentByAjax({
@@ -115,11 +115,11 @@ async function getReturnHistoryReferenceNumbers({
  * @param {number} options.parentTaskId
  * @returns {Promise.<ReferenceNumber[]>}
  */
-async function getAllReturnHistoryReferenceNumbers({
+async function getAllAcknowledgementReceiptsReferenceNumbers({
   tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
 }) {
   const task = await createTask(store, {
-    title: 'Get reference numbers',
+    title: "Get acknowledgement receipts' reference numbers",
     parent: parentTaskId,
     progressMax: 1,
     status: 'Getting reference numbers from first page',
@@ -131,7 +131,7 @@ async function getAllReturnHistoryReferenceNumbers({
   try {
     // TODO: Consider doing this in parallel
     for (let page = 0; page < numPages; page++) {
-      const result = await getReturnHistoryReferenceNumbers({
+      const result = await getAcknowledgementReceiptsReferenceNumbers({
         tpin,
         taxType,
         fromDate,
@@ -178,7 +178,7 @@ async function getAllReturnHistoryReferenceNumbers({
  * @param {ReferenceNumber} options.referenceNumber
  * @param {number} options.parentTaskId
  */
-function downloadReturnHistoryReceipt({
+function downloadAcknowledgementReceipt({
   client, taxType, referenceNumber, parentTaskId,
 }) {
   return downloadReceipt({
@@ -193,7 +193,7 @@ function downloadReturnHistoryReceipt({
       }
       return `receipt-${client.username}-${taxTypes[taxType]}-${dateString}-${referenceNumber}.mhtml`;
     },
-    taskTitle: `Download receipt ${referenceNumber}`,
+    taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
     createTabPostOptions: {
       url: 'https://www.zra.org.zm/retHist.htm',
@@ -215,15 +215,15 @@ function downloadReturnHistoryReceipt({
  * @param {ReferenceNumber[]} options.referenceNumbers
  * @param {number} options.parentTaskId
  */
-async function downloadReceipts({
+async function downloadAcknowledgementReceipts({
   client, taxType, referenceNumbers, parentTaskId,
 }) {
-  const task = await createTask(store, { title: 'Download receipts', parent: parentTaskId });
+  const task = await createTask(store, { title: 'Download acknowledgement receipts', parent: parentTaskId });
   return parallelTaskMap({
     list: referenceNumbers,
     task,
     func(referenceNumber, parentTaskId) {
-      return downloadReturnHistoryReceipt({
+      return downloadAcknowledgementReceipt({
         client, taxType, referenceNumber, parentTaskId,
       });
     },
@@ -232,10 +232,11 @@ async function downloadReceipts({
 
 /** @type {import('./base').ClientActionObject} */
 const clientAction = {
-  id: 'getAllReturns',
-  name: 'Get all returns',
+  id: 'getAcknowledgementsOfReturns',
+  name: 'Get acknowledgements of returns',
   async func({ client, parentTask, clientActionConfig }) {
     const initialMaxOpenTabs = config.maxOpenTabs;
+    console.log(clientActionConfig);
     config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
 
     await parallelTaskMap({
@@ -246,13 +247,13 @@ const clientAction = {
         const taxType = taxTypes[taxTypeId];
 
         const task = await createTask(store, {
-          title: `Get ${taxType} receipts`,
+          title: `Get ${taxType} acknowledgement receipts`,
           parent: parentTaskId,
           unknownMaxProgress: false,
           progressMax: 2,
         });
         try {
-          const referenceNumbers = await getAllReturnHistoryReferenceNumbers({
+          const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
             tpin: client.username,
             taxType: taxTypeId,
             fromDate: '01/01/2013',
@@ -260,7 +261,7 @@ const clientAction = {
             exciseType: exciseTypes.airtime,
             parentTaskId: task.id,
           });
-          await downloadReceipts({
+          await downloadAcknowledgementReceipts({
             taxType: taxTypeId,
             referenceNumbers,
             parentTaskId: task.id,

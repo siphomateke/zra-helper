@@ -23,7 +23,7 @@ const module = {
     /** The maximum number of times an attempt should be made to login to a client.  */
     maxLoginAttempts: 3,
     actions: {
-      getAllReturns: {
+      getAcknowledgementsOfReturns: {
         /** The maximum number of tabs that can be opened when downloading return receipts. */
         maxOpenTabsWhenDownloading: 3,
       },
