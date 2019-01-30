@@ -53,15 +53,15 @@ export default {
     },
     raw: {
       type: Function,
-      default: () => '',
+      default: null,
     },
     csv: {
       type: Function,
-      default: () => '',
+      default: null,
     },
     json: {
       type: Function,
-      default: () => '',
+      default: null,
     },
   },
 };
