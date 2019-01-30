@@ -118,7 +118,6 @@ export async function logout(parentTaskId) {
  * @param {number} maxAttempts The maximum number of times an attempt should be made to login to a client.
  */
 export async function robustLogin(client, parentTaskId, maxAttempts) {
-  console.log(maxAttempts);
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
