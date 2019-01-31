@@ -29,7 +29,7 @@ import EmptySection from '@/components/EmptySection.vue';
 import { mapState } from 'vuex';
 
 export default {
-  name: 'TheClientActionOutput',
+  name: 'ClientActionOutput',
   components: {
     ExportButtons,
     EmptySection,
