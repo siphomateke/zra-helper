@@ -57,9 +57,15 @@
             :tasks="tasks"
             :is-root="true"/>
         </section>
-        <section class="dashboard-section">
-          <h3 class="title is-4">Output</h3>
-          <ClientActionOutput/>
+        <section
+          v-if="clientActionsWithOutputs.length > 0"
+          class="dashboard-section">
+          <h3 class="title is-4">Outputs</h3>
+          <ClientActionOutput
+            v-for="actionId in clientActionsWithOutputs"
+            :key="actionId"
+            :action-id="actionId"
+            :clients="clients"/>
         </section>
       </div>
     </section>
@@ -94,14 +100,20 @@ export default {
       tasks: state => state.tasks.all,
       clientActionsObject: state => state.clientActions.all,
     }),
+    clientActionIds() {
+      return Object.keys(this.clientActionsObject);
+    },
     clientActions() {
-      return Object.keys(this.clientActionsObject).map(id => this.clientActionsObject[id]);
+      return this.clientActionIds.map(id => this.clientActionsObject[id]);
+    },
+    clientActionsWithOutputs() {
+      return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
     },
   },
   methods: {
     submit() {
       this.$store.dispatch('clientActions/runAll', {
-        actions: this.selectedClientActions,
+        actionIds: this.selectedClientActions,
         clients: this.clients,
       });
     },

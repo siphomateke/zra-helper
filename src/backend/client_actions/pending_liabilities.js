@@ -5,6 +5,7 @@ import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { taxTypes } from '../constants';
 import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '../utils';
+import { writeJson } from '../file_utils';
 
 /**
  * @typedef {Object} getTotalsResponse
@@ -42,7 +43,7 @@ const totalsColumns = [
 const clientAction = {
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
-  func({ client, parentTask, output }) {
+  func({ parentTask }) {
     return new Promise((resolve) => {
       const promises = [];
       const totals = {};
@@ -142,8 +143,23 @@ const clientAction = {
           parentTask.state = taskStates.SUCCESS;
         }
 
-        const rows = [];
-        const columnOrder = totalsColumns;
+
+        parentTask.markAsComplete();
+        const output = {};
+        for (const taxType of Object.values(taxTypes)) {
+          output[taxType] = totals[taxType];
+        }
+        resolve(output);
+      });
+    });
+  },
+  hasOutput: true,
+  defaultOutputFormat: 'csv',
+  outputFormatter(data, format) {
+    if (format === 'csv') {
+      const rows = [];
+      const columnOrder = totalsColumns;
+      for (const { client, value } of data) {
         let i = 0;
         for (const taxType of Object.values(taxTypes)) {
           const totalsObject = value[taxType];
@@ -166,14 +182,13 @@ const clientAction = {
           }
           i++;
         }
-        // TODO: Make output options configurable by user
-        output.addRow(Papa.unparse(rows, {
-          quotes: true,
-        }));
-        parentTask.markAsComplete();
-        resolve();
+      }
+      // TODO: Make output options configurable by user
+      return Papa.unparse(rows, {
+        quotes: true,
       });
-    });
+    }
+    return writeJson(data);
   },
 };
 export default clientAction;

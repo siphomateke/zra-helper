@@ -1,19 +1,20 @@
 <template>
   <div class="client-action-output">
     <div class="field">
-      <div v-if="output">
+      <label class="label">{{ action.name }} output</label>
+      <div v-if="hasAnyFilledOutputs">
         <div class="control client-action-output-control">
           <textarea
-            :value="output"
+            :value="defaultOutput"
             class="textarea"
             readonly
             rows="7"/>
         </div>
         <ExportButtons
-          :raw="() => output"
-          :csv="() => output"
-          :disabled="output.length === 0"
-          filename="output"/>
+          :raw="() => defaultOutput"
+          :csv="() => formatOutput('csv')"
+          :json="() => formatOutput('json')"
+          :filename="`${action.id}Output`"/>
       </div>
       <EmptySection
         v-else
@@ -25,7 +26,7 @@
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptySection from '@/components/EmptySection.vue';
-import { mapGetters } from 'vuex';
+import { mapState } from 'vuex';
 
 export default {
   name: 'TheClientActionOutput',
@@ -33,14 +34,87 @@ export default {
     ExportButtons,
     EmptySection,
   },
+  props: {
+    actionId: {
+      type: String,
+      default: '',
+    },
+    clients: {
+      type: Array,
+      default: () => [],
+    },
+  },
   computed: {
-    ...mapGetters('output', { output: 'content' }),
+    ...mapState('clientActions', {
+      allActions: 'all',
+      outputs: 'outputs',
+    }),
+    action() {
+      return this.allActions[this.actionId];
+    },
+    /**
+     * Gets the outputs of all this action's clients.
+     * @returns {import('@/backend/client_actions/base').ClientActionOutputFormatterDataItem}
+     */
+    clientOutputs() {
+      const results = [];
+      for (const outputId of this.action.outputs) {
+        const output = this.outputs[outputId];
+        const client = this.clientFromId(output.clientId);
+        results.push({
+          client: {
+            name: client.name,
+            username: client.username,
+          },
+          value: output.value,
+        });
+      }
+      return results;
+    },
+    hasAnyFilledOutputs() {
+      for (const outputId of this.action.outputs) {
+        const { value } = this.outputs[outputId];
+        if (value) {
+          return true;
+        }
+      }
+      return false;
+    },
+    defaultFormat() {
+      return this.action.defaultOutputFormat;
+    },
+    defaultOutput() {
+      return this.formatOutput(this.defaultFormat);
+    },
+  },
+  methods: {
+    /**
+     * Gets a client that has a certain ID.
+     * @param {string} id The ID of the client we wish to retreive.
+     * @returns {import('@/backend/constants').Client}
+     */
+    clientFromId(id) {
+      return this.clients.find(client => client.username === id);
+    },
+    /**
+     * @param {import('@/backend/client_actions/base').ClientActionOutputFormat} format
+     */
+    formatOutput(format) {
+      return this.action.outputFormatter(this.clientOutputs, format);
+    },
   },
 };
 </script>
 
 <style lang="scss">
+@import "styles/variables.scss";
+
 .client-action-output {
   width: 100%;
+  margin-bottom: 0.5em;
+
+  .client-action-output-control {
+    margin-bottom: $export-buttons-margin;
+  }
 }
 </style>

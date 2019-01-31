@@ -166,18 +166,38 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
  * @typedef {Object} ClientActionFunctionParam
  * @property {Client} client
  * @property {import('@/transitional/tasks').TaskObject} parentTask
- * @property {import('@/transitional/output').default} output
  * @property {Object} clientActionConfig this client action's config
  */
 
 /**
  * @callback ClientActionFunction
  * @param {ClientActionFunctionParam} param
+ * @returns {Promise.<Object>}
+ */
+
+/**
+ * @typedef {Object} ClientActionOutputFormatterDataItem
+ * @property {Client} client
+ * @property {any} value
+ */
+
+/**
+ * @typedef {'csv'|'json'} ClientActionOutputFormat
+ */
+
+/**
+ * @callback ClientActionOutputFormatter
+ * @param {ClientActionOutputFormatterDataItem[]} data
+ * @param {ClientActionOutputFormat} format
+ * @returns {any}
  */
 
 /**
  * @typedef ClientActionObject
  * @property {string} id A unique camelCase ID to identify this client action.
- * @property {string} name The human-readable name of this client action
+ * @property {string} name The human-readable name of this client action.
  * @property {ClientActionFunction} [func]
+ * @property {boolean} hasOutput Whether this client action returns an output.
+ * @property {ClientActionOutputFormat} defaultOutputFormat
+ * @property {ClientActionOutputFormatter} outputFormatter Function that formats the output into different formats such as CSV and JSON.
  */

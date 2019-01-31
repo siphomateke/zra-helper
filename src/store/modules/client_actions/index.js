@@ -1,21 +1,31 @@
+import Vue from 'vue';
 import store from '@/store';
 import log from '@/transitional/log';
-import output from '@/transitional/output';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { logout, robustLogin } from '@/backend/client_actions/base';
+import { writeJson } from '@/backend/file_utils';
 
 /**
+ * @typedef {import('vuex').ActionContext} ActionContext
+ * @typedef {import('@/backend/constants').Client} Client
  * @typedef {import('@/backend/client_actions/base').ClientActionObject} ClientActionObject
  */
 
 /**
  * @typedef {Object} ClientActionState.Temp
- * @property {string} logCategory
+ * @property {string} logCategory The log category to use when logging anything in this action.
+ * @property {boolean} hasOutput Whether this task's function returns an output.
+ * @property {string[]} outputs IDs of this action's outputs.
  */
 
 /**
  * @typedef {ClientActionObject & ClientActionState.Temp} ClientActionState
+ *
+ * @typedef {string} ClientUsername
+ * @typedef {Object} ClientActionOutput
+ * @typedef {string} ClientActionId
+ * @typedef {Object.<ClientActionId, Object.<ClientUsername, ClientActionOutput>>} ClientActionOutputs
  */
 
 // TODO: Document state and actions
@@ -23,28 +33,68 @@ import { logout, robustLogin } from '@/backend/client_actions/base';
 const module = {
   namespaced: true,
   state: {
-    all: [],
+    /** @type {Object.<ClientActionId, ClientActionState>} */
+    all: {},
+    /** @type {ClientActionOutputs} */
+    outputs: {},
   },
   getters: {
     getActionById: state => id => state.all[id],
   },
   mutations: {
-    add(state, { id, name, func }) {
-      state.all[id] = {
+    /**
+     * Adds a new client action.
+     * @param {any} state
+     * @param {ClientActionObject} payload
+     */
+    add(state, {
+      id,
+      name,
+      func,
+      hasOutput = false,
+      defaultOutputFormat,
+      outputFormatter = data => writeJson(data),
+    }) {
+      Vue.set(state.all, id, {
         id,
         name,
         func,
+        hasOutput,
+        defaultOutputFormat,
+        outputFormatter,
         // TODO: Consider letting this be set by a parameter
         logCategory: id,
-      };
+        outputs: [],
+      });
+    },
+    setOutput(state, { id, clientId, value }) {
+      const outputId = id + clientId;
+      Vue.set(state.outputs, outputId, {
+        actionId: id,
+        clientId,
+        value,
+      });
+      state.all[id].outputs.push(outputId);
     },
   },
   actions: {
     // TODO: Refer to action IDs as the same thing throughout
-    async add({ commit }, { id, name, func }) {
-      commit('add', { id, name, func });
+    /**
+     * Adds a new client action.
+     * @param {ActionContext} context
+     * @param {ClientActionObject} payload
+     */
+    async add({ commit }, payload) {
+      commit('add', payload);
     },
-    async runActionOnClient({ rootState, getters }, { actionId, client }) {
+    /**
+     * Runs an action on a single client.
+     * @param {ActionContext} context
+     * @param {Object} payload
+     * @param {ClientActionId} actionId
+     * @param {Client} client
+     */
+    async runActionOnClient({ rootState, getters, dispatch }, { actionId, client }) {
       /** @type {ClientActionState} */
       const clientAction = getters.getActionById(actionId);
       const clientActionConfig = rootState.config.actions[actionId];
@@ -59,12 +109,12 @@ const module = {
           const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
           log.setCategory(clientAction.logCategory);
 
-          await clientAction.func({
+          const output = await clientAction.func({
             client,
             parentTask: task,
-            output,
             clientActionConfig,
           });
+          dispatch('setOutput', { actionId, client, value: output });
 
           if (task.state === taskStates.ERROR) {
             mainTask.state = taskStates.ERROR;
@@ -90,12 +140,26 @@ const module = {
         mainTask.markAsComplete();
       }
     },
-    async runAction({ dispatch }, { actionId, clients }) {
+    /**
+     * Runs an action on a list of clients.
+     * @param {ActionContext} context
+     * @param {Object} payload
+     * @param {ClientActionId} actionId
+     * @param {Client[]} clients
+     */
+    async runAction({ dispatch, commit }, { actionId, clients }) {
       for (const client of clients) {
         await dispatch('runActionOnClient', { actionId, client });
       }
     },
-    async runAll({ dispatch }, { actions: actionIds, clients }) {
+    /**
+     * Runs each client action on each client.
+     * @param {ActionContext} context
+     * @param {Object} payload
+     * @param {ClientActionId[]} actionIds
+     * @param {Client[]} clients
+     */
+    async runAll({ dispatch }, { actionIds, clients }) {
       if (clients.length > 0) {
         for (const actionId of actionIds) {
           // TODO: Consider checking if a tab has been closed prematurely all the time.
@@ -106,6 +170,17 @@ const module = {
         log.setCategory('clientAction');
         log.showError('No clients found');
       }
+    },
+    /**
+     * Sets the output for a single client in an action.
+     * @param {ActionContext} context
+     * @param {Object} payload
+     * @param {ClientActionId} payload.actionId
+     * @param {Client} payload.client
+     * @param {Object} payload.value
+     */
+    setOutput({ commit }, { actionId, client, value }) {
+      commit('setOutput', { id: actionId, clientId: client.username, value });
     },
   },
 };
