@@ -12,7 +12,8 @@
     </button>
     <b-modal
       :active.sync="showClientTableModal"
-      has-modal-card>
+      has-modal-card
+      width="100%">
       <div class="modal-card">
         <header class="modal-card-head">
           <p class="modal-card-title">Clients ({{ clients.length }})</p>
@@ -29,8 +30,7 @@
               <br>
             </template>
             <ClientListTable
-              :clients="shownClients"
-              :show-passwords="showPasswords"/>
+              :clients="shownClients"/>
           </template>
           <section
             v-else
@@ -40,20 +40,14 @@
               message="No clients found that match your query"/>
           </section>
         </section>
-        <footer class="modal-card-foot">
-          <ShowPasswordsButton
-            v-model="showPasswords"
-            :disabled="shownClients.length === 0"/>
-        </footer>
       </div>
     </b-modal>
   </div>
 </template>
 
 <script>
-import ClientListTable from './ClientListTable.vue';
-import ShowPasswordsButton from './ClientListShowPasswordsButton.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
+import ClientListTable from './ClientListTable.vue';
 
 // FIXME: Get rid of lag when opening and closing modal.
 // The lag is due to the modal being re-created every time it is opened.
@@ -61,7 +55,6 @@ export default {
   name: 'ClientList',
   components: {
     ClientListTable,
-    ShowPasswordsButton,
     EmptyMessage,
   },
   props: {
@@ -79,7 +72,6 @@ export default {
     return {
       internalSearch: '',
       showClientTableModal: false,
-      showPasswords: false,
     };
   },
   computed: {

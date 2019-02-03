@@ -76,8 +76,6 @@ export default {
 
 <style lang="scss">
 @import 'styles/variables.scss';
-@import 'styles/variable-overrides.scss';
-@import '~bulma/sass/utilities/_all';
 @import '~bulma/sass/elements/progress';
 
 @mixin complete-animation($animation-name) {

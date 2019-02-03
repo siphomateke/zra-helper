@@ -6,8 +6,6 @@
 import getClientsFromFile from '@/backend/client_file_reader';
 import FileUpload from '@/components/BaseFileUpload.vue';
 
-// TODO: Move CSV file validation from client_file_reader.js to this component
-
 export default {
   name: 'ClientListFileUpload',
   components: {

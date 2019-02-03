@@ -1,7 +1,22 @@
 @import './main';
 @import '~buefy/src/scss/buefy';
-@import './variables.scss'; 
+@import '~bulma-tooltip/src/sass/index.sass';
 
 .dashboard-section {
     margin-bottom: 0.75rem;
 }
+
+// #region Reduce padding
+.table.is-narrow td {
+  padding: 0 0.5em;
+}
+
+.modal {
+  .animation-content {
+    max-width: 100%;
+  }
+  .modal-card {
+    width: 100%;
+  }
+}
+// #endregion

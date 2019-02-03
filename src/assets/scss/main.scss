@@ -27,7 +27,7 @@ $fontPath: '~@/assets/fonts/';
          url($fontPath + 'nunito-v9-latin-700.svg#Nunito') format('svg'); /* Legacy iOS */
 }
 
-@import './variable-overrides.scss';
+@import './variables.scss'; 
 
 @import '~bulma';
 
