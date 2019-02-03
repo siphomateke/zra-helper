@@ -162,12 +162,12 @@ const clientAction = {
       for (const { client, value } of data) {
         let i = 0;
         for (const taxType of Object.values(taxTypes)) {
-          const totalsObject = value[taxType];
           let firstCol = '';
           if (i === 0) {
             firstCol = client.name;
           }
-          if (totalsObject) {
+          if (value && value[taxType]) {
+            const totalsObject = value[taxType];
             const totals = [];
             for (const column of columnOrder) {
               totals.push(totalsObject[column]);

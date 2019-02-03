@@ -95,49 +95,53 @@ const module = {
      * @param {Client} client
      */
     async runActionOnClient({ rootState, getters, dispatch }, { actionId, client }) {
-      /** @type {ClientActionState} */
-      const clientAction = getters.getActionById(actionId);
-      const clientActionConfig = rootState.config.actions[actionId];
+      if (client.valid) {
+        /** @type {ClientActionState} */
+        const clientAction = getters.getActionById(actionId);
+        const clientActionConfig = rootState.config.actions[actionId];
 
-      const mainTask = await createTask(store, { title: `${client.name}: ${clientAction.name}` });
-      try {
-        mainTask.status = 'Logging in';
-        await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
+        const mainTask = await createTask(store, { title: `${client.name}: ${clientAction.name}` });
+        try {
+          mainTask.status = 'Logging in';
+          await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
 
-        if (clientAction.func) {
-          mainTask.status = clientAction.name;
-          const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
+          if (clientAction.func) {
+            mainTask.status = clientAction.name;
+            const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
+            log.setCategory(clientAction.logCategory);
+
+            const output = await clientAction.func({
+              client,
+              parentTask: task,
+              clientActionConfig,
+            });
+            dispatch('setOutput', { actionId, clientId: client.id, value: output });
+
+            if (task.state === taskStates.ERROR) {
+              mainTask.state = taskStates.ERROR;
+            }
+          }
+
+          mainTask.status = 'Logging out';
+          await logout(mainTask.id);
+
+          if (mainTask.state !== taskStates.ERROR) {
+            if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
+              mainTask.state = taskStates.WARNING;
+            } else {
+              mainTask.state = taskStates.SUCCESS;
+            }
+          }
+          mainTask.status = '';
+        } catch (error) {
           log.setCategory(clientAction.logCategory);
-
-          const output = await clientAction.func({
-            client,
-            parentTask: task,
-            clientActionConfig,
-          });
-          dispatch('setOutput', { actionId, client, value: output });
-
-          if (task.state === taskStates.ERROR) {
-            mainTask.state = taskStates.ERROR;
-          }
+          log.showError(error);
+          mainTask.setError(error);
+        } finally {
+          mainTask.markAsComplete();
         }
-
-        mainTask.status = 'Logging out';
-        await logout(mainTask.id);
-
-        if (mainTask.state !== taskStates.ERROR) {
-          if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
-            mainTask.state = taskStates.WARNING;
-          } else {
-            mainTask.state = taskStates.SUCCESS;
-          }
-        }
-        mainTask.status = '';
-      } catch (error) {
-        log.setCategory(clientAction.logCategory);
-        log.showError(error);
-        mainTask.setError(error);
-      } finally {
-        mainTask.markAsComplete();
+      } else {
+        dispatch('setOutput', { actionId, clientId: client.id });
       }
     },
     /**
@@ -147,7 +151,7 @@ const module = {
      * @param {ClientActionId} actionId
      * @param {Client[]} clients
      */
-    async runAction({ dispatch, commit }, { actionId, clients }) {
+    async runAction({ dispatch }, { actionId, clients }) {
       for (const client of clients) {
         await dispatch('runActionOnClient', { actionId, client });
       }
@@ -176,11 +180,11 @@ const module = {
      * @param {ActionContext} context
      * @param {Object} payload
      * @param {ClientActionId} payload.actionId
-     * @param {Client} payload.client
+     * @param {string} payload.clientId
      * @param {Object} payload.value
      */
-    setOutput({ commit }, { actionId, client, value }) {
-      commit('setOutput', { id: actionId, clientId: client.username, value });
+    setOutput({ commit }, { actionId, clientId, value }) {
+      commit('setOutput', { id: actionId, clientId, value });
     },
   },
 };

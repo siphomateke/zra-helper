@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p>Parsed {{ clients.length }} valid client(s)</p>
+    <p>Parsed {{ clients.length }} client(s)</p>
     <button
       class="button"
       type="button"

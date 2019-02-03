@@ -1,14 +1,42 @@
+// #region Clients
+/**
+ * @typedef {string} ClientValidationError
+ */
+
+/** @enum {ClientValidationError} */
+export const clientPropValidationErrors = {
+  MISSING: 'MISSING',
+  TPIN_SHORT: 'TPIN_SHORT',
+  PASSWORD_SHORT: 'PASSWORD_SHORT',
+};
+
+/**
+ * Human-readable versions of the client property validation error codes.
+ * @type {Object.<ClientValidationError, string>}
+ */
+export const clientPropValidationErrorMessages = {
+  [clientPropValidationErrors.MISSING]: 'Field must not be blank',
+  [clientPropValidationErrors.TPIN_SHORT]: 'TPIN (username) must be a 10 digit number',
+  [clientPropValidationErrors.PASSWORD_SHORT]: 'Password must be at least 8 characters long',
+};
+
 /**
  * @typedef Client
+ * @property {number} id
  * @property {string} name
  * @property {string} username
  * @property {string} password
+ * @property {boolean} valid
+ * @property {string[]} [errors] An array of errors that will be set when the client is invalid
+ * @property {Object.<string, ClientValidationError[]>} [propErrors]
+ * List of validation errors per property
  */
 
 /**
  * @typedef {string} Date Date in the format 'DD/MM/YYYY'
  * @typedef {string} ReferenceNumber
  */
+// #endregion
 
 // #region Tax Types
 /**

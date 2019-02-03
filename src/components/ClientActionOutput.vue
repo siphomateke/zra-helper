@@ -1,8 +1,8 @@
 <template>
   <div class="client-action-output">
     <div class="field">
-      <label class="label">{{ action.name }} output</label>
-      <div v-if="hasAnyFilledOutputs">
+      <div v-if="defaultOutput">
+        <label class="label">{{ action.name }} output</label>
         <div class="control client-action-output-control">
           <textarea
             :value="defaultOutput"
@@ -40,8 +40,8 @@ export default {
       default: '',
     },
     clients: {
-      type: Array,
-      default: () => [],
+      type: Object,
+      default: () => {},
     },
   },
   computed: {
@@ -71,15 +71,6 @@ export default {
       }
       return results;
     },
-    hasAnyFilledOutputs() {
-      for (const outputId of this.action.outputs) {
-        const { value } = this.outputs[outputId];
-        if (value) {
-          return true;
-        }
-      }
-      return false;
-    },
     defaultFormat() {
       return this.action.defaultOutputFormat;
     },
@@ -94,7 +85,7 @@ export default {
      * @returns {import('@/backend/constants').Client}
      */
     clientFromId(id) {
-      return this.clients.find(client => client.username === id);
+      return this.clients[id];
     },
     /**
      * @param {import('@/backend/client_actions/base').ClientActionOutputFormat} format

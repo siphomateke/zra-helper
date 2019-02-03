@@ -65,7 +65,7 @@
             v-for="actionId in clientActionsWithOutputs"
             :key="actionId"
             :action-id="actionId"
-            :clients="clients"/>
+            :clients="clientsObj"/>
         </section>
       </div>
     </section>
@@ -92,14 +92,17 @@ export default {
   data() {
     return {
       selectedClientActions: [],
-      clients: [],
     };
   },
   computed: {
     ...mapState({
       tasks: state => state.tasks.all,
       clientActionsObject: state => state.clientActions.all,
+      clientsObj: state => state.clients.all,
     }),
+    clients() {
+      return Object.values(this.clientsObj);
+    },
     clientActionIds() {
       return Object.keys(this.clientActionsObject);
     },
@@ -118,7 +121,7 @@ export default {
       });
     },
     updateClients(clients) {
-      this.clients = clients;
+      this.$store.dispatch('clients/update', clients);
     },
   },
 };

@@ -1,12 +1,24 @@
 import Papa from 'papaparse';
 import log from '@/transitional/log';
+import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@/backend/constants';
 
-/** @typedef {import('./constants').Client} Client */
+/**
+ * @typedef {Object} LoadedClient
+ * @property {string} name
+ * @property {string} username
+ * @property {string} password
+ */
+
+/**
+ * @typedef {import('@/backend/constants').Client} Client
+ * @typedef {import('@/backend/constants').ClientValidationError} ClientValidationError
+ */
 
 /**
  * @typedef ClientValidationResult
  * @property {boolean} valid True if the client is valid
  * @property {string[]} [errors] An array of errors that will be set when the client is invalid
+ * @property {Object.<string, ClientValidationError[]>} [propErrors] List of errors per property.
  */
 
 /**
@@ -17,16 +29,19 @@ import log from '@/transitional/log';
  * - username is a 10 digit number
  * - password is at least 8 characters long
  *
- * @param {Client} client The client to validate
+ * @param {LoadedClient} client The client to validate
  * @returns {ClientValidationResult}
  */
 function validateClient(client) {
   /** Properties that must exist on each client */
   const requiredProps = ['name', 'username', 'password'];
+  const propErrors = {};
   const missingProps = [];
   for (const prop of requiredProps) {
+    propErrors[prop] = [];
     if (!client[prop]) {
       missingProps.push(prop);
+      propErrors[prop].push(clientPropValidationErrors.MISSING);
     }
   }
   const validationErrors = [];
@@ -37,16 +52,19 @@ function validateClient(client) {
   if (!missingProps.includes('username')) {
     const tpin = client.username;
     if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
-      validationErrors.push('TPIN (username) must be a 10 digit number');
+      validationErrors.push(clientPropValidationErrorMessages.TPIN_SHORT);
+      propErrors.username.push(clientPropValidationErrors.TPIN_SHORT);
     }
   }
   if (!missingProps.includes('password') && client.password.length < 8) {
-    validationErrors.push('Password must be at least 8 characters long');
+    validationErrors.push(clientPropValidationErrorMessages.PASSWORD_SHORT);
+    propErrors.password.push(clientPropValidationErrors.PASSWORD_SHORT);
   }
   if (validationErrors.length > 0) {
     return {
       valid: false,
       errors: validationErrors,
+      propErrors,
     };
   }
   return { valid: true };
@@ -128,13 +146,14 @@ function getClientsFromCsv(csvString, config = {}) {
           password: row[fields[2]],
         };
         const validationResult = validateClient(client);
+        Object.assign(client, validationResult);
         if (validationResult.valid) {
           log.log(`Parsed valid client "${client.name}"`);
-          list.push(client);
         } else {
           const errors = validationResult.errors.join(', ');
           log.showError(`Row ${toLineNumber(i)} is not a valid client: ${errors}`);
         }
+        list.push(client);
       }
     }
   } else if (parsed.data.length > 0) {
