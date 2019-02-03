@@ -7,5 +7,9 @@
       "url": "http://json.schemastore.org/webextension"
     },
   ],
-  "javascript.preferences.quoteStyle": "single"
+  "javascript.preferences.quoteStyle": "single",
+  "files.watcherExclude": {
+    "**/dist-zip/**": true,
+    "**/dist/**": true
+  }
 }
