@@ -89,6 +89,7 @@ export default {
         return this.getCellErrorMessages(errors);
       }
       return '';
+    },
   },
 };
 </script>
