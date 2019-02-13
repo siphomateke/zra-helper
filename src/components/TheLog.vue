@@ -1,6 +1,8 @@
 <template>
   <div v-if="!empty">
-    <div class="log">
+    <div
+      ref="scrollRegion"
+      class="log">
       <div class="log-inner">
         <span
           v-for="(line, index) in lines"
@@ -137,15 +139,21 @@ export default {
     },
     updateLines(value) {
       // Output log and keep scroll at bottom if already scrolled to bottom
-      const el = this.$el;
-      // FIXME: isScrolledToBottom is never true
+      const el = this.$refs.scrollRegion;
       const isScrolledToBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 1;
 
-      this.lines = value;
-
-      if (isScrolledToBottom) {
-        el.scrollTop = el.scrollHeight;
+      // copy value to lines by value
+      this.lines = [];
+      for (let i = 0; i < value.length; i++) {
+        this.lines[i] = value[i];
       }
+
+      // Wait until the new lines have been added before we scroll to the bottom
+      this.$nextTick().then(() => {
+        if (isScrolledToBottom) {
+          el.scrollTop = el.scrollHeight;
+        }
+      });
     },
     getLogString(type) {
       if (type === 'raw') {
