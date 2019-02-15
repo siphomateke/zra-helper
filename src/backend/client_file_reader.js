@@ -60,14 +60,11 @@ function validateClient(client) {
     validationErrors.push(clientPropValidationErrorMessages.PASSWORD_SHORT);
     propErrors.password.push(clientPropValidationErrors.PASSWORD_SHORT);
   }
-  if (validationErrors.length > 0) {
-    return {
-      valid: false,
-      errors: validationErrors,
-      propErrors,
-    };
-  }
-  return { valid: true };
+  return {
+    valid: validationErrors.length === 0,
+    errors: validationErrors,
+    propErrors,
+  };
 }
 
 /**
