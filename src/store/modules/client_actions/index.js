@@ -5,6 +5,7 @@ import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { logout, robustLogin } from '@/backend/client_actions/base';
 import { writeJson } from '@/backend/file_utils';
+import { InvalidClientError } from '@/backend/errors';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
@@ -19,11 +20,19 @@ import { writeJson } from '@/backend/file_utils';
  * @property {string[]} outputs IDs of this action's outputs.
  */
 
+/** @typedef {ClientActionObject & ClientActionState.Temp} ClientActionState */
+
 /**
- * @typedef {ClientActionObject & ClientActionState.Temp} ClientActionState
- *
- * @typedef {string} ClientUsername
  * @typedef {Object} ClientActionOutput
+ * @property {ClientActionId} actionId
+ * @property {string} clientId
+ * @property {Client} client
+ * @property {Object} value
+ * @property {Error|null} error If there was an error when getting the client's output, this will bet set.
+ */
+
+/**
+ * @typedef {string} ClientUsername
  * @typedef {string} ClientActionId
  * @typedef {Object.<ClientActionId, Object.<ClientUsername, ClientActionOutput>>} ClientActionOutputs
  */
@@ -53,7 +62,7 @@ const module = {
       func,
       hasOutput = false,
       defaultOutputFormat,
-      outputFormatter = data => writeJson(data),
+      outputFormatter,
     }) {
       Vue.set(state.all, id, {
         id,
@@ -67,14 +76,22 @@ const module = {
         outputs: [],
       });
     },
-    setOutput(state, { id, clientId, value }) {
-      const outputId = id + clientId;
+    /**
+     * Sets the output of a client of a client action.
+     * @param {any} state
+     * @param {ClientActionOutput} payload
+     */
+    setOutput(state, {
+      actionId, clientId, value, error = null,
+    }) {
+      const outputId = actionId + clientId;
       Vue.set(state.outputs, outputId, {
-        actionId: id,
+        actionId,
         clientId,
         value,
+        error,
       });
-      state.all[id].outputs.push(outputId);
+      state.all[actionId].outputs.push(outputId);
     },
   },
   actions: {
@@ -84,8 +101,29 @@ const module = {
      * @param {ActionContext} context
      * @param {ClientActionObject} payload
      */
-    async add({ commit }, payload) {
-      commit('add', payload);
+    async add({ commit, rootGetters }, payload) {
+      // Add write to JSON as default output formatter
+      if (!('outputFormatter' in payload && typeof payload.outputFormatter === 'function')) {
+        payload.outputFormatter = data => writeJson(data);
+      }
+
+      // FIXME: Fix outputFormatter initial JSDOC. It doesn't have client objects in
+      // the output until the following lines
+
+      // Use client IDs to get client objects and add them to the output
+      const payloadCopy = Object.assign({}, payload);
+      payloadCopy.outputFormatter = (outputs, format) => {
+        const outputsCopy = [];
+        for (let i = 0; i < outputs.length; i++) {
+          const output = outputs[i];
+          outputsCopy[i] = Object.assign({
+            client: rootGetters['clients/getClientById'](output.clientId),
+          }, output);
+        }
+        return payload.outputFormatter(outputsCopy, format);
+      };
+
+      commit('add', payloadCopy);
     },
     /**
      * Runs an action on a single client.
@@ -94,7 +132,7 @@ const module = {
      * @param {ClientActionId} actionId
      * @param {Client} client
      */
-    async runActionOnClient({ rootState, getters, dispatch }, { actionId, client }) {
+    async runActionOnClient({ rootState, getters, commit }, { actionId, client }) {
       if (client.valid) {
         /** @type {ClientActionState} */
         const clientAction = getters.getActionById(actionId);
@@ -115,7 +153,7 @@ const module = {
               parentTask: task,
               clientActionConfig,
             });
-            dispatch('setOutput', { actionId, clientId: client.id, value: output });
+            commit('setOutput', { actionId, clientId: client.id, value: output });
 
             if (task.state === taskStates.ERROR) {
               mainTask.state = taskStates.ERROR;
@@ -137,11 +175,16 @@ const module = {
           log.setCategory(clientAction.logCategory);
           log.showError(error);
           mainTask.setError(error);
+          commit('setOutput', { actionId, clientId: client.id, error });
         } finally {
           mainTask.markAsComplete();
         }
       } else {
-        dispatch('setOutput', { actionId, clientId: client.id });
+        commit('setOutput', {
+          actionId,
+          clientId: client.id,
+          error: new InvalidClientError('Client is invalid', null, client),
+        });
       }
     },
     /**
@@ -174,17 +217,6 @@ const module = {
         log.setCategory('clientAction');
         log.showError('No clients found');
       }
-    },
-    /**
-     * Sets the output for a single client in an action.
-     * @param {ActionContext} context
-     * @param {Object} payload
-     * @param {ClientActionId} payload.actionId
-     * @param {string} payload.clientId
-     * @param {Object} payload.value
-     */
-    setOutput({ commit }, { actionId, clientId, value }) {
-      commit('setOutput', { id: actionId, clientId, value });
     },
   },
 };

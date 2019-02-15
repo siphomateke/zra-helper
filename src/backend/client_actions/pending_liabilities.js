@@ -155,11 +155,11 @@ const clientAction = {
   },
   hasOutput: true,
   defaultOutputFormat: 'csv',
-  outputFormatter(data, format) {
+  outputFormatter(clientOutputs, format) {
     if (format === 'csv') {
       const rows = [];
       const columnOrder = totalsColumns;
-      for (const { client, value } of data) {
+      for (const { client, value } of clientOutputs) {
         let i = 0;
         for (const taxType of Object.values(taxTypes)) {
           let firstCol = '';
@@ -188,7 +188,7 @@ const clientAction = {
         quotes: true,
       });
     }
-    return writeJson(data);
+    return writeJson(clientOutputs);
   },
 };
 export default clientAction;

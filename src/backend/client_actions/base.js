@@ -176,18 +176,12 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
  */
 
 /**
- * @typedef {Object} ClientActionOutputFormatterDataItem
- * @property {Client} client
- * @property {any} value
- */
-
-/**
  * @typedef {'csv'|'json'} ClientActionOutputFormat
  */
 
 /**
  * @callback ClientActionOutputFormatter
- * @param {ClientActionOutputFormatterDataItem[]} data
+ * @param {import('@/store/modules/client_actions/index').ClientActionOutput[]} outputs
  * @param {ClientActionOutputFormat} format
  * @returns {any}
  */

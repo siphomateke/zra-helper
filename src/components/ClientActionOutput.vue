@@ -60,14 +60,7 @@ export default {
       const results = [];
       for (const outputId of this.action.outputs) {
         const output = this.outputs[outputId];
-        const client = this.clientFromId(output.clientId);
-        results.push({
-          client: {
-            name: client.name,
-            username: client.username,
-          },
-          value: output.value,
-        });
+        results.push(output);
       }
       return results;
     },
