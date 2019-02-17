@@ -1,0 +1,158 @@
+<template>
+  <div>
+    <form @submit.prevent="submit">
+      <div class="columns">
+        <!-- Debug -->
+        <div class="field column">
+          <label class="label">Debug options</label>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.devtools"
+              title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect.">Devtools</b-checkbox>
+          </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.logToConsole"
+              title="Show all user-side logs in the console.">Mirror log to developer console</b-checkbox>
+          </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.errors"
+              title="Show detailed information about errors if available.">Detailed error information</b-checkbox>
+          </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.progressBars"
+              :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`">Progress bars</b-checkbox>
+          </div>
+        </div>
+
+        <!-- Log -->
+        <div class="field column">
+          <label class="label">Log</label>
+          <div class="control">
+            <b-checkbox v-model="config.log.showDateInTimestamp">Show date in timestamp</b-checkbox>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="field column">
+          <label class="label">Export</label>
+          <div class="control">
+            <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="columns">
+        <b-field
+          label="Tab load timeout"
+          title="The amount of time to wait for a tab to load (in milliseconds)."
+          class="column">
+          <b-input
+            v-model="config.tabLoadTimeout"
+            type="number"/>
+        </b-field>
+        <b-field
+          label="Maximum open tabs"
+          title="The maximum number of tabs that can be opened. Set to 0 to disable."
+          class="column">
+          <b-input
+            v-model="config.maxOpenTabs"
+            type="number"/>
+        </b-field>
+        <b-field
+          label="Tab open delay"
+          title="The time to wait after creating a tab before creating another one (in milliseconds)."
+          class="column">
+          <b-input
+            v-model="config.tabOpenDelay"
+            type="number"/>
+        </b-field>
+      </div>
+
+      <b-field
+        label="Max login attempts"
+        title="The maximum number of times an attempt should be made to login to a client.">
+        <b-input
+          v-model="config.maxLoginAttempts"
+          type="number"/>
+      </b-field>
+
+      <div class="field is-grouped">
+        <span class="control">
+          <button
+            class="button is-primary"
+            type="submit">Save changes</button>
+        </span>
+        <span class="control">
+          <button
+            class="button"
+            type="button"
+            @click="clearChanges">Cancel</button>
+        </span>
+        <span class="control">
+          <button
+            class="button"
+            type="button"
+            @click="resetToDefaults">Reset to defaults</button>
+        </span>
+      </div>
+    </form>
+  </div>
+</template>
+
+<script>
+import { deepReactiveClone } from '@/utils';
+
+export default {
+  name: 'Settings',
+  data() {
+    return {
+      config: {},
+    };
+  },
+  created() {
+    this.pullConfigFromStore();
+  },
+  methods: {
+    pullConfigFromStore() {
+      // deep clone so vuex doesn't complain
+      deepReactiveClone(this.$store.state.config, this.config);
+    },
+    async submit() {
+      try {
+        await this.$store.dispatch('config/set', this.config);
+        this.$toast.open({
+          type: 'is-success',
+          message: 'Successfully saved settings',
+        });
+      } catch (e) {
+        this.$toast.open({
+          type: 'is-danger',
+          message: `Error saving settings: ${e}`,
+        });
+      }
+    },
+    async clearChanges() {
+      this.pullConfigFromStore();
+    },
+    async resetToDefaults() {
+      try {
+        await this.$store.dispatch('config/resetToDefaults');
+        this.pullConfigFromStore();
+        this.$toast.open({
+          type: 'is-success',
+          message: 'Reset settings to their default values',
+        });
+      } catch (e) {
+        this.$toast.open({
+          type: 'is-danger',
+          message: `Error loading default settings: ${e}`,
+        });
+      }
+    },
+  },
+};
+</script>

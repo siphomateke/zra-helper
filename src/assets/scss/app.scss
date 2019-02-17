@@ -2,6 +2,11 @@
 @import '~buefy/src/scss/buefy';
 @import '~bulma-tooltip/src/sass/index.sass';
 
+.page-content {
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
 .dashboard-section {
     margin-bottom: 0.75rem;
 }

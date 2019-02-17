@@ -8,7 +8,7 @@ const configHelper = new Proxy({}, {
     return config[prop];
   },
   set(obj, prop, value) {
-    store.commit('setConfigProperty', { prop, value });
+    store.commit('config/setProp', { prop, value });
     return true;
   },
 });
