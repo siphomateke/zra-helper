@@ -152,6 +152,7 @@ export async function createTabPost({ url, data, active = false }) {
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = url;
+  form.id = 'zra-helper-post-form';
   for (const key of Object.keys(data)) {
     const input = document.createElement('textarea');
     input.setAttribute('name', key);
@@ -159,13 +160,30 @@ export async function createTabPost({ url, data, active = false }) {
     form.appendChild(input);
   }
 
-  let generatedUrl = 'data:text/html;charset=utf8,';
-  generatedUrl += encodeURIComponent(form.outerHTML);
-  generatedUrl += encodeURIComponent('<script>document.forms[0].submit();</script>');
+  let formHtml = form.outerHTML;
 
-  const tab = await createTab(generatedUrl, active);
-  // wait for form to load
-  await tabLoaded(tab.id);
+  const isFirefox = process.env.BROWSER === 'firefox';
+
+  let tab = null;
+  if (isFirefox) {
+    // Firefox doesn't allow executing data URLs from extensions so we need a workaround.
+    // The current solution is to open a page on the ZRA website, inject a form and then submit it.
+    // We open manageUpload.htm because it's a nice blank page.
+    tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
+    await tabLoaded(tab.id);
+    // Insert the form into the page.
+    await executeScript(tab.id, { file: 'inject_form.js' });
+    await sendMessage(tab.id, {
+      command: 'injectForm',
+      html: formHtml,
+    });
+  } else {
+    formHtml += '<script>document.forms[0].submit();</script>';
+    const generatedUrl = `data:text/html;charset=utf8,${encodeURIComponent(formHtml)}`;
+    tab = await createTab(generatedUrl, active);
+    // wait for form to load
+    await tabLoaded(tab.id);
+  }
   return tab;
 }
 

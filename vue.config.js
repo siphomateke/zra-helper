@@ -36,6 +36,13 @@ module.exports = {
       .plugin('copy')
       .tap(([paths]) => [paths.concat(copy)]);
     config.resolve.alias.set('styles', path.resolve(__dirname, './src/assets/scss'));
+
+    config
+      .plugin('define')
+      .tap((args) => {
+        args[0]['process.env'].BROWSER = `"${process.env.BROWSER ? process.env.BROWSER : 'chrome'}"`;
+        return args;
+      });
   },
   pages: {
     dashboard: {
