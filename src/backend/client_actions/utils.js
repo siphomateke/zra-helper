@@ -1,6 +1,7 @@
 import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
 import createTask from '@/transitional/tasks';
+import config from '@/transitional/config';
 import { InvalidReceiptError } from '../errors';
 import {
   createTabPost,
@@ -76,9 +77,13 @@ export async function downloadReceipt({
         const promises = [];
         for (const generatedFilename of generatedFilenames) {
           promises.push(new Promise(async (resolve) => {
+            let downloadFilename = generatedFilename;
+            if (!config.export.removeMhtmlExtension) {
+              downloadFilename += '.mhtml';
+            }
             const downloadId = await browser.downloads.download({
               url,
-              filename: generatedFilename,
+              filename: downloadFilename,
             });
             // FIXME: Catch and handle download errors
             await monitorDownloadProgress(downloadId, (downloadProgress) => {

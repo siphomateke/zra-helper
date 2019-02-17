@@ -41,6 +41,13 @@
           <div class="control">
             <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
           </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.export.removeMhtmlExtension"
+              title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.">
+              Remove '.mhtml' extension from downloaded receipts
+            </b-checkbox>
+          </div>
         </div>
       </div>
 

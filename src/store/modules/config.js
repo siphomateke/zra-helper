@@ -38,6 +38,11 @@ const defaultConfig = {
   export: {
     /** Whether 'save as' dialogs should be shown when exporting various things in formats such as CSV and JSON. */
     showSaveAsDialog: true,
+    /**
+     * Removes the .mhtml file extension from all downloaded receipts.
+     * Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.
+     */
+    removeMhtmlExtension: true,
   },
 };
 

@@ -265,7 +265,7 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
         } else {
           filename += `-${periodTo.format('YYYY')}-${periodTo.format('MM')}`;
         }
-        filename += `-${receiptData.prn}.mhtml`;
+        filename += `-${receiptData.prn}`;
         return filename;
       });
     },

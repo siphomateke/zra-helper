@@ -191,7 +191,7 @@ function downloadAcknowledgementReceipt({
       } else {
         dateString = date.format('YYYY-MM');
       }
-      return `receipt-${client.username}-${taxTypes[taxType]}-${dateString}-${referenceNumber}.mhtml`;
+      return `receipt-${client.username}-${taxTypes[taxType]}-${dateString}-${referenceNumber}`;
     },
     taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
@@ -236,7 +236,6 @@ const clientAction = {
   name: 'Get acknowledgements of returns',
   async func({ client, parentTask, clientActionConfig }) {
     const initialMaxOpenTabs = config.maxOpenTabs;
-    console.log(clientActionConfig);
     config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
 
     await parallelTaskMap({
