@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <form @submit.prevent="submit">
+  <div id="settings">
+    <form @submit.prevent="save">
       <div class="columns">
         <!-- Debug -->
         <div class="field column">
@@ -100,6 +100,9 @@
         </span>
       </div>
     </form>
+    <b-loading
+      :active="isLoading"
+      :is-full-page="false"/>
   </div>
 </template>
 
@@ -111,19 +114,38 @@ export default {
   data() {
     return {
       config: {},
+      isLoading: false,
     };
   },
   created() {
     this.pullConfigFromStore();
+    this.loadConfig();
   },
   methods: {
+    async loadConfig() {
+      this.isLoading = true;
+      try {
+        await this.$store.dispatch('config/load');
+        this.pullConfigFromStore();
+      } catch (e) {
+        this.$dialog.alert({
+          title: 'Error loading settings',
+          message: e.toString(),
+          type: 'is-danger',
+          hasIcon: true,
+        });
+      } finally {
+        this.isLoading = false;
+      }
+    },
     pullConfigFromStore() {
       // deep clone so vuex doesn't complain
       deepReactiveClone(this.$store.state.config, this.config);
     },
-    async submit() {
+    async save() {
       try {
         await this.$store.dispatch('config/set', this.config);
+        await this.$store.dispatch('config/save');
         this.$toast.open({
           type: 'is-success',
           message: 'Successfully saved settings',
@@ -137,6 +159,7 @@ export default {
     },
     async clearChanges() {
       this.pullConfigFromStore();
+      this.$emit('cancel');
     },
     async resetToDefaults() {
       try {
@@ -156,3 +179,9 @@ export default {
   },
 };
 </script>
+
+<style>
+#settings {
+  position: relative;
+}
+</style>

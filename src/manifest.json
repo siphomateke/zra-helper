@@ -11,10 +11,14 @@
   "background": {
     "scripts": ["background.js"]
   },
+  "options_ui": {
+    "page": "options.html"
+  },
   "permissions": [
     "pageCapture",
     "downloads",
     "tabs",
+    "storage",
     "https://www.zra.org.zm/*"
   ],
   "browser_action": {

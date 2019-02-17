@@ -60,6 +60,15 @@ const module = {
     async resetToDefaults({ dispatch }) {
       await dispatch('set', defaultConfig);
     },
+    async load({ dispatch }) {
+      const items = await browser.storage.sync.get('config');
+      if ('config' in items) {
+        await dispatch('set', items.config);
+      }
+    },
+    async save({ state }) {
+      await browser.storage.sync.set({ config: state });
+    },
   },
 };
 export default module;

@@ -50,12 +50,18 @@ module.exports = {
       filename: 'app.html',
       title: 'ZRA Helper',
     },
+    options: {
+      entry: 'src/options/options.js',
+      filename: 'options.html',
+      title: 'Options',
+    },
   },
   pluginOptions: {
     browserExtension: {
       components: {
         background: true,
         contentScripts: true,
+        options: true,
       },
       api: 'browser',
       usePolyfill: true,
