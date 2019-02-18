@@ -95,7 +95,7 @@ export default {
       return Object.keys(this.clientActionsObject);
     },
     clientActions() {
-      return this.clientActionIds.map(id => this.clientActionsObject[id]);
+      return Object.values(this.clientActionsObject);
     },
     clientActionsWithOutputs() {
       return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
