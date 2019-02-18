@@ -1,31 +1,45 @@
 <template>
   <div
-    :class="[
-      type,
-      size,
-      {'complete': complete},
-      {'hide-on-complete': hideOnComplete && !debug},
-      {'indeterminate': indeterminate && !complete},
-    ]"
-    class="progress">
-    <div
-      :aria-valuenow="value"
-      :aria-valuemax="max"
-      :style="{width: !indeterminate ? `${percentageValue}%` : ''}"
-      class="progress-bar"
-      role="progressbar">
-      <span
-        v-if="!indeterminate"
-        class="text">{{ progressText }}</span>
+    v-show="visible"
+    class="progress-wrapper">
+    <span class="progress-label">
+      <template v-if="!complete && !indeterminate">{{ progressText }}</template>
+      <template v-if="complete">
+        <b-icon
+          :icon="icon"
+          :type="type"
+          size="is-small"/>
+      </template>
+    </span>
+    <div class="progress-bar-wrapper">
+      <div
+        :class="[
+          type,
+          size,
+          {'complete': complete},
+          {'indeterminate': indeterminate && !complete},
+        ]"
+        class="progress">
+        <div
+          :aria-valuenow="value"
+          :aria-valuemax="max"
+          :style="{width: !indeterminate ? `${percentageValue}%` : ''}"
+          class="progress-bar"
+          role="progressbar"/>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import { stateIcons } from '@/components/TaskListItem.vue';
+import { taskStates } from '@/store/modules/tasks';
+
+// TODO: Make this less tightly linked to tasks
 export default {
   name: 'BaseProgress',
   props: {
-    type: {
+    state: {
       type: String,
       default: '',
     },
@@ -54,6 +68,11 @@ export default {
       default: false,
     },
   },
+  data() {
+    return {
+      visible: true,
+    };
+  },
   computed: {
     percentageValue() {
       return (this.value / this.max) * 100;
@@ -70,6 +89,34 @@ export default {
       }
       return this.percentageString;
     },
+    icon() {
+      return stateIcons[this.state];
+    },
+    type() {
+      if (this.state === taskStates.SUCCESS) {
+        return 'is-success';
+      } else if (this.state === taskStates.WARNING) {
+        return 'is-warning';
+      } else if (this.state === taskStates.ERROR) {
+        return 'is-danger';
+      }
+      return 'is-info';
+    },
+  },
+  watch: {
+    complete(value) {
+      if (value) {
+        if (this.hideOnComplete && !this.debug) {
+          setTimeout(() => {
+            if (this.complete) {
+              this.visible = false;
+            }
+          }, 1000);
+        }
+      } else {
+        this.visible = true;
+      }
+    },
   },
 };
 </script>
@@ -77,28 +124,6 @@ export default {
 <style lang="scss">
 @import 'styles/variables.scss';
 @import '~bulma/sass/elements/progress';
-
-@mixin complete-animation($animation-name) {
-  animation-name: $animation-name;
-  animation-duration: #{$progress-bar-complete-animation-duration}s;
-  animation-timing-function: ease;
-  animation-fill-mode: forwards;
-  animation-play-state: paused;
-  animation-delay: #{$progress-bar-complete-animation-delay}s;
-}
-
-@keyframes collapse {
-  100% {
-    height: 0;
-    margin-bottom: 0;
-  }
-}
-
-@keyframes shrink {
-  100% {
-    transform: scale(0);
-  }
-}
 
 @keyframes moveIndeterminate {
   from {
@@ -109,68 +134,66 @@ export default {
   }
 }
 
-.progress {
+.progress-wrapper {
   display: flex;
-  overflow: hidden;
-  font-size: .75rem;
-  background-color: $progress-bar-background-color;
+  align-items: center;
 
-  .progress-bar {
+  .progress-bar-wrapper {
     width: 100%;
+    margin-left: -40px;
+    padding-left: 40px;
+  }
+
+  .progress, .progress:not(:last-child) {
+    margin-bottom: 0;
+  }
+
+  .progress {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    color: #fff;
-    text-align: center;
-    white-space: nowrap;
-    transition: width #{$progress-bar-transition-duration}s ease;
-    background-color: $progress-value-background-color;
+    overflow: hidden;
+    font-size: .75rem;
+    background-color: $progress-bar-background-color;
 
-    .text {
-      padding-left: 0.5rem;
-      padding-right: 0.5rem;
-    }
-  }
-
-  @each $name, $pair in $colors {
-    $color: nth($pair, 1);
-    &.is-#{$name} .progress-bar {
-      background-color: $color;
-    }
-  }
-
-  &:not(:last-child) {
-    margin-bottom: 0.5rem;
-  }
-
-  &.hide-on-complete {
-    @include complete-animation(collapse);
-
-    .progress-bar .text {
-      transform: scale(1);
-      @include complete-animation(shrink);
+    .progress-bar {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: #fff;
+      text-align: center;
+      white-space: nowrap;
+      transition: width #{$progress-bar-transition-duration}s ease;
+      background-color: $progress-value-background-color;
     }
 
-    &.complete {
-      animation-play-state: running;
-
-      .progress-bar .text {
-        animation-play-state: running;
+    @each $name, $pair in $colors {
+      $color: nth($pair, 1);
+      &.is-#{$name} .progress-bar {
+        background-color: $color;
       }
     }
+
+    &.indeterminate {
+      position: relative;
+      .progress-bar {
+        width: 30%;
+        height: 100%;
+        position: absolute;
+        animation-duration: 1.5s;
+        animation-iteration-count: infinite;
+        animation-name: moveIndeterminate;
+        animation-timing-function: linear;
+      }
+    }
+
+    &.is-small {
+      height: 0.6em;
+    }
   }
 
-  &.indeterminate {
-    position: relative;
-    .progress-bar {
-      width: 30%;
-      height: 100%;
-      position: absolute;
-      animation-duration: 1.5s;
-      animation-iteration-count: infinite;
-      animation-name: moveIndeterminate;
-      animation-timing-function: linear;
-    }
+  .progress-label {
+    padding-right: 0.5em;
+    font-size: 0.8em;
   }
 }
 </style>

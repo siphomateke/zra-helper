@@ -16,11 +16,9 @@
             :key="state"
             :class="state"
             class="item">
-            <span class="icon">
-              <i
-                :class="getStateIcon(state)"
-                class="fas"/>
-            </span>
+            <b-icon
+              :icon="getStateIcon(state)"
+              size="is-small"/>
             <span class="count">{{ count }}</span>
           </span>
         </div>
@@ -34,7 +32,8 @@
         :complete="complete"
         :hide-on-complete="true"
         :indeterminate="indeterminate"
-        type="is-info"/>
+        :state="state"
+        size="is-small"/>
       <button
         v-if="hasChildren"
         type="button"
@@ -60,9 +59,9 @@ import TaskList from './TaskList.vue';
 import Progress from './BaseProgress.vue';
 
 export const stateIcons = {
-  [taskStates.ERROR]: 'fa-exclamation-circle',
-  [taskStates.WARNING]: 'fa-exclamation-triangle',
-  [taskStates.SUCCESS]: 'fa-check-circle',
+  [taskStates.ERROR]: 'exclamation-circle',
+  [taskStates.WARNING]: 'exclamation-triangle',
+  [taskStates.SUCCESS]: 'check-circle',
 };
 
 // TODO: Improve details button
@@ -141,6 +140,9 @@ export default {
                 margin-left: auto;
                 display: flex;
                 white-space: nowrap;
+                .item .count {
+                  padding-left: 0.2em;
+                }
                 .item:not(:last-child) {
                     padding-right: 1em;
                 }
