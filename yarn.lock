@@ -663,6 +663,11 @@
   dependencies:
     any-observable "^0.3.0"
 
+"@types/firefox-webext-browser@^65.0.0":
+  version "65.0.0"
+  resolved "https://registry.yarnpkg.com/@types/firefox-webext-browser/-/firefox-webext-browser-65.0.0.tgz#ff2c8a1993cee3643ffab455bdaf176b3a3a8f94"
+  integrity sha512-J/hNOwMft/nVk++fywknSJJhwU8vJsmD6fVQRbqtD8BnxBaGCCkNGIUV2pWuD/K4jeTH1R8+pBvIEC+JKvjR/w==
+
 "@types/node@^7.0.18":
   version "7.0.69"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-7.0.69.tgz#709629340708ec0e1845559bf5c0c88d26d31dca"
@@ -1536,9 +1541,9 @@ browserslist@^4.0.0:
     node-releases "^1.0.0-alpha.11"
 
 buefy@^0.7.2:
-  version "0.7.1"
-  resolved "https://registry.yarnpkg.com/buefy/-/buefy-0.7.1.tgz#84ad090c4300b1e808db5e35d3e48fad76027d8c"
-  integrity sha512-Pq7T5ASuSjpBMFPQfnkDLCKtQxz8ciftTwYkzix7DMWvZHjtcZh1dF34ve8StjXqknEKYxFruCyioE3LdPmqqQ==
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/buefy/-/buefy-0.7.2.tgz#966b540b75d10dd0aba4d4921f0670430d6e5518"
+  integrity sha512-5nj7mJeJE81Ai86Zx1YwADugTJcH3w+iY6WDKiMqDohxXWDSE1Mxzfvn5SJqYb4ofc45lU8yTSTYpOMaZCpR/A==
   dependencies:
     bulma "0.7.2"
 
@@ -4313,7 +4318,7 @@ is-windows@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/is-windows/-/is-windows-0.2.0.tgz#de1aa6d63ea29dd248737b69f1ff8b8002d2108c"
 
-is-windows@^1.0.2:
+is-windows@^1.0.0, is-windows@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/is-windows/-/is-windows-1.0.2.tgz#d1850eb9791ecd18e6182ce12a30f396634bb19d"
 

@@ -37,6 +37,7 @@
     "webextension-polyfill": "^0.2.1"
   },
   "devDependencies": {
+    "@types/firefox-webext-browser": "^65.0.0",
     "@vue/cli-plugin-babel": "^3.0.0-rc.11",
     "@vue/cli-plugin-eslint": "^3.0.0-rc.11",
     "@vue/cli-service": "^3.0.0-rc.11",
