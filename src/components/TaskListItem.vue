@@ -4,10 +4,17 @@
       state,
       {'open': open},
       hasParent ? 'task sub-task' : 'task',
-      {'complete': complete}]">
-    <div class="task-content">
+      {'complete': complete},
+      {'has-children': hasChildren}]">
+    <div
+      class="task-content"
+      @click="showChildren()">
       <div class="header">
-        <div class="title is-6">{{ title }}</div>
+        <div class="title is-6">
+          <b-icon
+            v-if="hasChildren"
+            :icon="open ? 'caret-down' : 'caret-right'"
+            size="is-small"/>{{ title }}</div>
         <div
           :title="childStateString"
           class="subtasks-info">
@@ -34,17 +41,6 @@
         :indeterminate="indeterminate"
         :state="state"
         size="is-small"/>
-      <button
-        v-if="hasChildren"
-        type="button"
-        class="button open-details"
-        @click="showChildren()">
-        <span class="icon">
-          <i class="fas fa-caret-right closed-icon"/>
-          <i class="fas fa-caret-down open-icon"/>
-        </span>
-        Details
-      </button>
     </div>
     <TaskList
       v-if="hasChildren"
@@ -110,7 +106,9 @@ export default {
       return stateIcons[state];
     },
     showChildren() {
-      this.open = !this.open;
+      if (this.hasChildren) {
+        this.open = !this.open;
+      }
     },
   },
 };
@@ -124,6 +122,10 @@ export default {
         margin-bottom: 1em;
     }
 
+    &.has-children > .task-content {
+      cursor: pointer;
+    }
+
     & > .task-content {
         background: rgb(245, 245, 245);
         border: $taskBorderWidth solid rgb(139, 139, 139);
@@ -132,8 +134,9 @@ export default {
         padding: 0.5em;
         .header {
             display: flex;
+            align-items: center;
             .title {
-                margin-bottom: 0.2em;
+                margin-bottom: 0;
             }
 
             .subtasks-info {
@@ -156,17 +159,6 @@ export default {
 
         progress {
             width: 100%;
-        }
-
-        .open-details .icon {
-            white-space: nowrap;
-            padding-right: 0.5em;
-            .closed-icon {
-                display: inline-block;
-            }
-            .open-icon {
-                display: none;
-            }
         }
     }
 
@@ -198,15 +190,6 @@ export default {
             border-bottom-width: 0;
             border-bottom-left-radius: 0;
             border-bottom-right-radius: 0;
-
-            .open-details .icon {
-                .closed-icon {
-                    display: none;
-                }
-                .open-icon {
-                    display: inline-block;
-                }
-            }
         }
 
         & > .sub-tasks {
