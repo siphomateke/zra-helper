@@ -1,5 +1,6 @@
 import { errorToJson, LoginError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
+import { getElementText } from './helpers/elements';
 
 /**
  * @param {Object} message
@@ -15,9 +16,9 @@ function listener(message) {
       if (expiredPasswordErrorEl || errorEl) {
         let errorString;
         if (expiredPasswordErrorEl) {
-          errorString = expiredPasswordErrorEl.innerText;
+          errorString = getElementText(expiredPasswordErrorEl);
         } else {
-          errorString = errorEl.innerText;
+          errorString = getElementText(errorEl);
         }
         if (errorString) {
           let error;

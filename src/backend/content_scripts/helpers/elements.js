@@ -88,3 +88,16 @@ export function getElements(selectors, customErrorMessage = null) {
 export function getElement(selector, name = null) {
   return getElementFromDocument(document, selector, name);
 }
+
+/**
+ * Gets the text within an element. It first tries innerText and then textContent.
+ * @param {Element} el
+ * @returns {string}
+ */
+export function getElementText(el) {
+  let text = el.innerText;
+  if (!text) {
+    text = el.textContent;
+  }
+  return text;
+}
