@@ -156,10 +156,6 @@ export default {
                 }
             }
         }
-
-        progress {
-            width: 100%;
-        }
     }
 
     @mixin taskState($color) {
@@ -172,10 +168,6 @@ export default {
         &.#{$state} > .task-content {
             @include taskState($color);
         }
-    }
-
-    &.complete > .task-content progress {
-        display: none;
     }
 
     & > .sub-tasks {
