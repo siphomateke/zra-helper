@@ -82,6 +82,7 @@ export async function logout(parentTaskId) {
   const task = await createTask(store, {
     title: 'Logout',
     parent: parentTaskId,
+    unknownMaxProgress: false,
     progressMax: 3,
     status: 'Opening tab',
   });
