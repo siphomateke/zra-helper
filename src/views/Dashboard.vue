@@ -29,6 +29,8 @@
           </div>
         </div>
         <button
+          :disabled="runActionsButtonDisabled"
+          :title="runActionsButtonDisabledReason"
           class="button is-primary"
           type="submit">Run selected action(s)</button>
       </form>
@@ -97,6 +99,18 @@ export default {
     },
     clientActionsWithOutputs() {
       return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
+    },
+    noActionsSelected() {
+      return this.selectedClientActions.length === 0;
+    },
+    runActionsButtonDisabled() {
+      return this.noActionsSelected;
+    },
+    runActionsButtonDisabledReason() {
+      if (this.runActionsButtonDisabled) {
+        return 'Please select some actions to run on the clients first.';
+      }
+      return '';
     },
   },
   created() {
