@@ -63,6 +63,7 @@ import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
 import { mapState } from 'vuex';
+import configMixin from '@/mixins/config';
 
 export default {
   name: 'Dashboard',
@@ -73,6 +74,7 @@ export default {
     Log,
     ClientActionOutput,
   },
+  mixins: [configMixin],
   data() {
     return {
       selectedClientActions: [],
@@ -96,6 +98,9 @@ export default {
     clientActionsWithOutputs() {
       return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
     },
+  },
+  created() {
+    this.loadConfig();
   },
   methods: {
     submit() {

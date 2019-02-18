@@ -115,9 +115,11 @@
 
 <script>
 import { deepReactiveClone } from '@/utils';
+import configMixin from '@/mixins/config';
 
 export default {
   name: 'Settings',
+  mixins: [configMixin],
   data() {
     return {
       config: {},
@@ -126,24 +128,12 @@ export default {
   },
   created() {
     this.pullConfigFromStore();
-    this.loadConfig();
+    this.load();
   },
   methods: {
-    async loadConfig() {
-      this.isLoading = true;
-      try {
-        await this.$store.dispatch('config/load');
-        this.pullConfigFromStore();
-      } catch (e) {
-        this.$dialog.alert({
-          title: 'Error loading settings',
-          message: e.toString(),
-          type: 'is-danger',
-          hasIcon: true,
-        });
-      } finally {
-        this.isLoading = false;
-      }
+    async load() {
+      await this.loadConfig();
+      this.pullConfigFromStore();
     },
     pullConfigFromStore() {
       // deep clone so vuex doesn't complain
