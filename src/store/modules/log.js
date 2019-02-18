@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { ExtendedError } from '@/backend/errors';
+import { ExtendedError, errorToString } from '@/backend/errors';
 
 /** @typedef {string} LogType */
 
@@ -76,16 +76,7 @@ const module = {
       }
     },
     addErrorLine({ dispatch, rootState }, { error, warning = false }) {
-      let errorString = '';
-      if (!(error instanceof Error) && error.message) {
-        errorString = error.message;
-      } else if (error instanceof ExtendedError) {
-        errorString = `${error.type}: ${error.message}`;
-      } else if (typeof error !== 'string') {
-        errorString = error.toString();
-      } else {
-        errorString = `Error: ${error}`;
-      }
+      const errorString = errorToString(error);
 
       dispatch('addLine', {
         content: errorString,

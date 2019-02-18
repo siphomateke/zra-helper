@@ -256,3 +256,22 @@ export function errorFromJson(json) {
   }
   return output;
 }
+
+/**
+ * Converts any error type to a string.
+ * @param {*} error
+ * @returns {string}
+ */
+export function errorToString(error) {
+  let errorString = '';
+  if (!(error instanceof Error) && error.message) {
+    errorString = error.message;
+  } else if (error instanceof ExtendedError) {
+    errorString = `${error.type}: ${error.message}`;
+  } else if (typeof error !== 'string') {
+    errorString = error.toString();
+  } else {
+    errorString = `Error: ${error}`;
+  }
+  return errorString;
+}
