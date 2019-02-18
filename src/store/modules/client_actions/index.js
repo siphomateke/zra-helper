@@ -129,23 +129,22 @@ const module = {
      * Runs an action on a single client.
      * @param {ActionContext} context
      * @param {Object} payload
-     * @param {ClientActionId} actionId
-     * @param {Client} client
+     * @param {ClientActionId} payload.actionId
+     * @param {Client} payload.client
+     * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
+     * @param {boolean} payload.isSingleAction Whether this is the only action running on this client
      */
-    async runActionOnClient({ rootState, getters, commit }, { actionId, client }) {
+    async runActionOnClient({ rootState, getters, commit }, {
+      actionId, client, mainTask, isSingleAction,
+    }) {
       if (client.valid) {
         /** @type {ClientActionState} */
         const clientAction = getters.getActionById(actionId);
         const clientActionConfig = rootState.config.actions[actionId];
 
-        const mainTask = await createTask(store, { title: `${client.name}: ${clientAction.name}` });
+        const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
         try {
-          mainTask.status = 'Logging in';
-          await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
-
           if (clientAction.func) {
-            mainTask.status = clientAction.name;
-            const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
             log.setCategory(clientAction.logCategory);
 
             const output = await clientAction.func({
@@ -154,30 +153,24 @@ const module = {
               clientActionConfig,
             });
             commit('setOutput', { actionId, clientId: client.id, value: output });
-
-            if (task.state === taskStates.ERROR) {
-              mainTask.state = taskStates.ERROR;
-            }
+          } else {
+            task.state = taskStates.SUCCESS;
           }
-
-          mainTask.status = 'Logging out';
-          await logout(mainTask.id);
-
-          if (mainTask.state !== taskStates.ERROR) {
-            if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
-              mainTask.state = taskStates.WARNING;
-            } else {
-              mainTask.state = taskStates.SUCCESS;
-            }
-          }
-          mainTask.status = '';
         } catch (error) {
           log.setCategory(clientAction.logCategory);
           log.showError(error);
-          mainTask.setError(error);
+          task.setError(error);
+          // If this is the only action being run on this client,
+          // show any errors produced by it on the main task.
+          if (isSingleAction) {
+            mainTask.setError(error);
+          } else {
+            // Show a warning on the main task to indicate that one of the actions failed.
+            mainTask.state = taskStates.WARNING;
+          }
           commit('setOutput', { actionId, clientId: client.id, error });
         } finally {
-          mainTask.markAsComplete();
+          task.markAsComplete();
         }
       } else {
         commit('setOutput', {
@@ -188,30 +181,96 @@ const module = {
       }
     },
     /**
-     * Runs an action on a list of clients.
+     * Runs several actions in parallel on a single client.
      * @param {ActionContext} context
      * @param {Object} payload
-     * @param {ClientActionId} actionId
-     * @param {Client[]} clients
+     * @param {Client} payload.client
+     * @param {ClientActionId[]} payload.actionIds
      */
-    async runAction({ dispatch }, { actionId, clients }) {
-      for (const client of clients) {
-        await dispatch('runActionOnClient', { actionId, client });
+    async runActionsOnClient({ rootState, getters, dispatch }, { client, actionIds }) {
+      const isSingleAction = actionIds.length === 1;
+      let singleAction = null;
+      let taskTitle = client.name;
+      // If there is only one action, include it's name in the task's name.
+      if (isSingleAction) {
+        singleAction = getters.getActionById(actionIds[0]);
+        taskTitle = `${client.name}: ${singleAction.name}`;
+      }
+      const mainTask = await createTask(store, {
+        title: taskTitle,
+        unknownMaxProgress: false,
+        progressMax: 2 + actionIds.length,
+        sequential: singleAction,
+      });
+      try {
+        let loggedIn = false;
+        if (client.valid) {
+          mainTask.status = 'Logging in';
+          await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
+          loggedIn = true;
+        }
+
+        // Run actions in parallel
+        if (!isSingleAction) {
+          mainTask.status = 'Running actions';
+        } else {
+          mainTask.status = singleAction.name;
+        }
+        const promises = [];
+        for (const actionId of actionIds) {
+          promises.push(dispatch('runActionOnClient', {
+            actionId,
+            client,
+            mainTask,
+            isSingleAction,
+          }));
+        }
+        await Promise.all(promises);
+
+        if (loggedIn) {
+          // If an error message was set, don't overwrite it
+          // TODO: Update me when task's status can be separate from error messages [task status]
+          if (mainTask.state !== taskStates.ERROR) {
+            mainTask.status = 'Logging out';
+          }
+          await logout(mainTask.id);
+        }
+
+        // TODO: Update me when task's status can be separate from error messages [task status]
+        if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
+          if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
+            mainTask.state = taskStates.WARNING;
+          } else {
+            mainTask.state = taskStates.SUCCESS;
+          }
+        }
+
+        // only clear status if the last status was not an error message
+        // TODO: Update me when task's status can be separate from error messages [task status]
+        if (mainTask.state !== taskStates.ERROR) {
+          mainTask.status = '';
+        }
+      } catch (error) {
+        log.setCategory(client.name);
+        log.showError(error);
+        mainTask.setError(error);
+      } finally {
+        mainTask.markAsComplete();
       }
     },
     /**
      * Runs each client action on each client.
      * @param {ActionContext} context
      * @param {Object} payload
-     * @param {ClientActionId[]} actionIds
-     * @param {Client[]} clients
+     * @param {ClientActionId[]} payload.actionIds
+     * @param {Client[]} payload.clients
      */
     async runAll({ dispatch }, { actionIds, clients }) {
       if (clients.length > 0) {
-        for (const actionId of actionIds) {
+        for (const client of clients) {
           // TODO: Consider checking if a tab has been closed prematurely all the time.
           // Currently, only tabLoaded checks for this.
-          dispatch('runAction', { actionId, clients });
+          await dispatch('runActionsOnClient', { client, actionIds });
         }
       } else {
         log.setCategory('clientAction');
