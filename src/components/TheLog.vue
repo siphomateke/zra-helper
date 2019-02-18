@@ -46,6 +46,7 @@ import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptySection from '@/components/EmptySection.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
 import { createNamespacedHelpers } from 'vuex';
+import renderTable from 'text-table';
 
 const { mapState, mapGetters } = createNamespacedHelpers('log');
 
@@ -157,30 +158,19 @@ export default {
     },
     getLogString(type) {
       if (type === 'raw') {
-        const longest = {
-          type: 0,
-          category: 0,
-        };
-        for (const line of this.lines) {
-          if (line.type && line.type.length > longest.type) {
-            longest.type = line.type.length;
-          }
-          if (line.category && line.category.length > longest.category) {
-            longest.category = line.category.length;
-          }
-        }
-
-        return this.lines.map((line) => {
-          let lineString = `${line.timestamp} `;
+        const table = this.lines.map((line) => {
+          const row = [];
+          row.push(line.timestamp);
           let lineTypeString = '';
           if (line.type) {
             lineTypeString = this.getTypeTooltip(line.type);
           }
-          lineString += `${lineTypeString.padEnd(longest.type)} `;
-          lineString += `${line.category.padEnd(longest.category)} `;
-          lineString += line.content;
-          return lineString;
-        }).join('\n');
+          row.push(lineTypeString);
+          row.push(line.category);
+          row.push(line.content);
+          return row;
+        });
+        return renderTable(table);
       } else if (type === 'csv') {
         return writeCsv(this.lines.map(line => ({
           timestamp: line.timestamp,
