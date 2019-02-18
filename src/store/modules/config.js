@@ -13,6 +13,13 @@ const defaultConfig = {
      * Additionally keeps progress bars visible even after they are complete.
      */
     progressBars: false,
+    /**
+     * Whether these settings should be sent to content scripts.
+     * This will be removed if we ever need the config in the content scripts for more than debugging.
+     */
+    sendConfigToContentScripts: true,
+    /** Wether to collect extra information about missing elements. */
+    missingElementInfo: true,
   },
   /** The amount of time to wait for a tab to load (in milliseconds). */
   tabLoadTimeout: 20000,

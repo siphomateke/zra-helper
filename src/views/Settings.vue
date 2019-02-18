@@ -25,6 +25,20 @@
               v-model="config.debug.progressBars"
               :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`">Progress bars</b-checkbox>
           </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.sendConfigToContentScripts"
+              title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging.">
+              Send settings to content scripts
+            </b-checkbox>
+          </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.missingElementInfo"
+              :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`">
+              Collect extra information about missing element errors
+            </b-checkbox>
+          </div>
         </div>
 
         <!-- Log -->
@@ -125,6 +139,18 @@ export default {
       config: {},
       isLoading: false,
     };
+  },
+  watch: {
+    'config.debug.missingElementInfo': function missingElementInfo(value) {
+      if (value && !this.config.debug.sendConfigToContentScripts) {
+        this.config.debug.sendConfigToContentScripts = true;
+      }
+    },
+    'config.debug.sendConfigToContentScripts': function sendConfigToContentScripts(value) {
+      if (!value && this.config.debug.missingElementInfo) {
+        this.config.debug.missingElementInfo = false;
+      }
+    },
   },
   created() {
     this.pullConfigFromStore();

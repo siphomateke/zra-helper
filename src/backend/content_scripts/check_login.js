@@ -1,6 +1,6 @@
 import { errorToJson, LoginError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
-import { getElementText } from './helpers/elements';
+import { getElementText, getHtmlFromNode } from './helpers/elements';
 
 /**
  * @param {Object} message
@@ -83,6 +83,7 @@ function listener(message) {
       resolve({
         error: errorToJson(new LoginError('Unknown error logging in', null, {
           clientName: message.client.username,
+          documentString: getHtmlFromNode(document),
         })),
       });
     }

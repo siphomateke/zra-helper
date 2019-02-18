@@ -90,8 +90,9 @@ export class ElementsNotFoundError extends ExtendedError {
   /**
    * @param {Object} props
    * @param {string[]} props.selectors Selectors of the elements that were not found.
+   * @param {string} [props.html] HTML of Node which we are searching for elements in.
    */
-  constructor(message, code = null, props = { selectors: null }) {
+  constructor(message, code = null, props = { selectors: null, html: null }) {
     super(message, code, props);
     this.setType('ElementsNotFoundError');
   }
@@ -100,10 +101,12 @@ export class ElementNotFoundError extends ElementsNotFoundError {
   /**
    * @param {Object} props
    * @param {string} props.selector Selector of the element that was not found.
+   * @param {string} [props.html] HTML of Node which we are searching for elements in.
    */
-  constructor(message, code = null, props = { selector: null }) {
+  constructor(message, code = null, props = { selector: null, html: null }) {
     super(message, code, {
       selectors: [props.selector],
+      html: props.html,
     });
     this.setType('ElementNotFoundError');
   }
@@ -137,8 +140,14 @@ export class LoginError extends ExtendedError {
    * @param {string} [props.loggedInClient] Information about the client that is currently logged in.
    * @param {string} [props.attemptsRemaining]
    * The number of login attempts remaining before the client's account is locked.
+   * @param {string} [props.documentString] Entire document string. Only thrown when the login error is unknown.
    */
-  constructor(message, code = null, props = { clientName: null, loggedInClient: null, attemptsRemaining: null }) {
+  constructor(message, code = null, props = {
+    clientName: null,
+    loggedInClient: null,
+    attemptsRemaining: null,
+    documentString: null,
+  }) {
     super(message, code, props);
     this.setType('LoginError');
   }

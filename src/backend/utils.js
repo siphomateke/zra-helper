@@ -1,5 +1,6 @@
 import axios from 'axios';
 import config from '@/transitional/config';
+import store from '@/store';
 import { getZraError } from './content_scripts/helpers/zra';
 import { errorFromJson, ExecuteScriptError, SendMessageError, TabError, DownloadError } from './errors';
 
@@ -222,6 +223,22 @@ export async function executeScript(tabId, details, vendor = false) {
   }
   try {
     await browser.tabs.executeScript(tabId, details);
+    if (config.debug.contentScripts) {
+      try {
+        await sendMessage(tabId, {
+          command: 'receiveConfig',
+          config: store.state.config,
+        });
+      } catch (e) {
+        // Don't worry if the message isn't received.
+        if (!(
+          e.type === 'SendMessageError'
+          && e.message.toLowerCase().includes('receiving end does not exist')
+        )) {
+          throw e;
+        }
+      }
+    }
   } catch (error) {
     const errorString = error.message ? error.message : error.toString();
     // If the extension does not have permission to execute a script on this tab,

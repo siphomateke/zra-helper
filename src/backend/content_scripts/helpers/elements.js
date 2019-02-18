@@ -1,4 +1,20 @@
 import { ElementNotFoundError, ElementsNotFoundError } from '../../errors';
+import getConfig from './config';
+
+/**
+ * Used when debugging to generate an HTML string from a Node (document or element).
+ * @param {Node} node
+ */
+export function getHtmlFromNode(node) {
+  if (getConfig().debug.missingElementInfo) {
+    if (node instanceof HTMLElement) {
+      return node.innerHTML;
+    } else if (node instanceof Document) {
+      return node.documentElement.innerHTML;
+    }
+  }
+  return null;
+}
 
 /**
  * From an object of selectors, generates an object of elements with the same keys as the selectors object
@@ -38,6 +54,7 @@ export function getElementsFromDocument(document, selectors, customErrorMessage 
     errorMessage = errorMessage.replace('$2', `["${missingSelectors.join('", "')}"]`);
     throw new ElementsNotFoundError(errorMessage, null, {
       selectors: missingSelectors,
+      html: getHtmlFromNode(document),
     });
   } else {
     return els;
@@ -56,7 +73,10 @@ export function getElementFromDocument(document, selector, name = null) {
   const element = document.querySelector(selector);
   if (!element) {
     if (name === null) name = selector;
-    throw new ElementNotFoundError(`Element "${name}" not found.`, null, { selector });
+    throw new ElementNotFoundError(`Element "${name}" not found.`, null, {
+      selector,
+      html: getHtmlFromNode(document),
+    });
   } else {
     return element;
   }
