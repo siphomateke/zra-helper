@@ -176,7 +176,7 @@ const module = {
         commit('setOutput', {
           actionId,
           clientId: client.id,
-          error: new InvalidClientError('Client is invalid', null, client),
+          error: new InvalidClientError('Client is invalid', null, { client }),
         });
       }
     },
