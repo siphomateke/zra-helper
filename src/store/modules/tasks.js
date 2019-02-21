@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
+import { errorToString } from '@/backend/errors';
 
 let lastTaskId = 0;
 
@@ -24,6 +25,7 @@ export const taskStates = {
  * @property {number[]} [children=[]] Child IDs
  * @property {boolean} [complete=false]
  * @property {Error} [error=null]
+ * @property {string} [errorString='']
  * @property {number} [parent=null] Parent ID
  * @property {boolean} [unknownMaxProgress=true]
  * Whether the maximum progress of this task can be determined.
@@ -213,6 +215,17 @@ const module = {
         throw new Error(`Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`);
       }
     },
+    /**
+     * Sets a task's error and human readable version of that error.
+     * @param {any} state
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {Error} payload.value The error
+     */
+    setError(state, { id, value }) {
+      Vue.set(state.tasks[id], 'error', value);
+      Vue.set(state.tasks[id], 'errorString', errorToString(value));
+    },
     ...listStoreHelper.itemMutations([
       'title',
       'status',
@@ -220,7 +233,7 @@ const module = {
       'progressMax',
       'children',
       'complete',
-      'error',
+      'errorString',
       'parent',
       'unknownMaxProgress',
       'sequential',
@@ -247,6 +260,7 @@ const module = {
         children: [],
         complete: false,
         error: null,
+        errorString: '',
         parent: null,
         unknownMaxProgress: true,
         sequential: true,
@@ -273,6 +287,7 @@ const module = {
     markAsComplete({ commit, getters }, { id }) {
       commit('setComplete', { id, value: true });
       commit('setProgress', { id, value: getters.progressMax(id) });
+      commit('setStatus', { id, value: '' });
     },
     /**
      * Sets this task's error to the provided one, its state to ERROR and its status to one based on the error.
@@ -281,10 +296,9 @@ const module = {
      * @param {number} payload.id
      * @param {any} payload.error
      */
-    setError({ commit, dispatch }, { id, error }) {
+    setError({ commit }, { id, error }) {
       commit('setError', { id, value: error });
       commit('setState', { id, value: taskStates.ERROR });
-      dispatch('setErrorAsStatus', { id });
     },
     /**
      * Increments progress and sets status.
@@ -322,20 +336,6 @@ const module = {
         state = taskStates.SUCCESS;
       }
       commit('setState', { id, value: state });
-    },
-    /**
-     * Sets this task's status to be its error message.
-     * @param {import('vuex').ActionContext} context
-     * @param {Object} payload
-     * @param {number} payload.id
-     */
-    setErrorAsStatus: ({ commit, getters }, { id }) => {
-      const task = getters.getTaskById(id);
-      let status = null;
-      if (task.error) {
-        status = task.error.message ? task.error.message : task.error.toString();
-      }
-      commit('setStatus', { id, value: status });
     },
   },
 };

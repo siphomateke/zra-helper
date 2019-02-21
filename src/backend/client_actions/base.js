@@ -57,7 +57,6 @@ export async function login(client, parentTaskId) {
         client,
       });
       task.state = taskStates.SUCCESS;
-      task.status = '';
       log.log(`Done logging in "${client.name}"`);
     } finally {
       // Don't need to wait for the tab to close to carry out logged in actions
@@ -97,7 +96,6 @@ export async function logout(parentTaskId) {
       await clickElement(tab.id, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
       task.addStep('Waiting to finish logging out');
       task.state = taskStates.SUCCESS;
-      task.status = '';
       log.log('Done logging out');
     } finally {
       // Note: The tab automatically closes after pressing logout
@@ -154,7 +152,6 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
       attempts++;
     }
     task.state = taskStates.SUCCESS;
-    task.status = '';
   } catch (error) {
     task.setError(error);
     throw error;

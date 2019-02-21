@@ -99,7 +99,6 @@ export async function downloadReceipt({
         throw new Error('Invalid filename attribute; filename must be a string, array or function.');
       }
       task.state = taskStates.SUCCESS;
-      task.status = '';
     } finally {
       // Don't need to wait for the tab to close to carry out logged in actions
       // TODO: Catch tab close errors

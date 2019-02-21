@@ -160,7 +160,6 @@ async function getAllAcknowledgementReceiptsReferenceNumbers({
       }
     }
     task.state = taskStates.SUCCESS;
-    task.status = '';
   } catch (error) {
     task.setError(error);
     throw error;
@@ -266,7 +265,6 @@ const clientAction = {
             parentTaskId: task.id,
             client,
           });
-          task.status = '';
           task.setStateBasedOnChildren();
         } catch (error) {
           task.setError(error);
@@ -294,7 +292,7 @@ const clientAction = {
     } else if (parentTask.children.length > 0 && taxTypeErrorCount === parentTask.children.length) {
       // If all sub tasks don't have a tax type, something probably went wrong
       parentTask.state = taskStates.WARNING;
-      parentTask.status = 'No tax types found.';
+      parentTask.errorString = 'No tax types found.';
     } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
       parentTask.state = taskStates.WARNING;
     } else {

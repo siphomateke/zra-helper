@@ -4,7 +4,6 @@
       state,
       {'open': open},
       hasParent ? 'task sub-task' : 'task',
-      {'complete': complete},
       {'has-children': hasChildren}]">
     <div
       class="task-content"
@@ -31,8 +30,8 @@
         </div>
       </div>
       <div
-        v-show="status"
-        class="status">{{ status }}</div>
+        v-show="messages"
+        class="messages">{{ messages }}</div>
       <Progress
         :value="progress"
         :max="progressMax"
@@ -96,10 +95,14 @@ export default {
       'state',
       'title',
       'status',
+      'errorString',
       'children',
       'indeterminate',
     ]),
     taskStates: () => taskStates,
+    messages() {
+      return this.errorString ? this.errorString : this.status;
+    },
   },
   methods: {
     getStateIcon(state) {

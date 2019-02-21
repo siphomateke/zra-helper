@@ -228,27 +228,16 @@ const module = {
         await Promise.all(promises);
 
         if (loggedIn) {
-          // If an error message was set, don't overwrite it
-          // TODO: Update me when task's status can be separate from error messages [task status]
-          if (mainTask.state !== taskStates.ERROR) {
-            mainTask.status = 'Logging out';
-          }
+          mainTask.status = 'Logging out';
           await logout(mainTask.id);
         }
 
-        // TODO: Update me when task's status can be separate from error messages [task status]
         if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
           if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
             mainTask.state = taskStates.WARNING;
           } else {
             mainTask.state = taskStates.SUCCESS;
           }
-        }
-
-        // only clear status if the last status was not an error message
-        // TODO: Update me when task's status can be separate from error messages [task status]
-        if (mainTask.state !== taskStates.ERROR) {
-          mainTask.status = '';
         }
       } catch (error) {
         log.setCategory(client.name);
