@@ -92,11 +92,11 @@ export default {
       if (state === 'success') {
         return '✔';
       } else if (state === 'error') {
-        return '❌';
+        return 'X';
       } else if (state === 'warning') {
-        return '⚠';
+        return '!';
       }
-      return '⏳';
+      return '?';
     },
     getRawExportMetadata(tasks, indent = 0) {
       const rows = [];
