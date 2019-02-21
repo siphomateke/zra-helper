@@ -143,6 +143,7 @@ const module = {
         const clientActionConfig = rootState.config.actions[actionId];
 
         const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
+        let taskHasError = false;
         try {
           if (clientAction.func) {
             log.setCategory(clientAction.logCategory);
@@ -153,6 +154,9 @@ const module = {
               clientActionConfig,
             });
             commit('setOutput', { actionId, clientId: client.id, value: output });
+            if (task.state === taskStates.ERROR) {
+              taskHasError = true;
+            }
           } else {
             task.state = taskStates.SUCCESS;
           }
@@ -160,17 +164,26 @@ const module = {
           log.setCategory(clientAction.logCategory);
           log.showError(error);
           task.setError(error);
-          // If this is the only action being run on this client,
-          // show any errors produced by it on the main task.
           if (isSingleAction) {
+            // If this is the only action being run on this client,
+            // show any errors produced by it on the main task.
             mainTask.setError(error);
           } else {
-            // Show a warning on the main task to indicate that one of the actions failed.
-            mainTask.state = taskStates.WARNING;
+            taskHasError = true;
           }
           commit('setOutput', { actionId, clientId: client.id, error });
         } finally {
           task.markAsComplete();
+          if (taskHasError) {
+            if (isSingleAction) {
+              // If this is the only action being run on this client,
+              // show any errors produced by it on the main task.
+              mainTask.state = taskStates.ERROR;
+            } else {
+              // Show a warning on the main task to indicate that one of the actions failed.
+              mainTask.state = taskStates.WARNING;
+            }
+          }
         }
       } else {
         commit('setOutput', {
@@ -256,11 +269,13 @@ const module = {
      */
     async runAll({ dispatch }, { actionIds, clients }) {
       if (clients.length > 0) {
+        /* eslint-disable no-await-in-loop */
         for (const client of clients) {
           // TODO: Consider checking if a tab has been closed prematurely all the time.
           // Currently, only tabLoaded checks for this.
           await dispatch('runActionsOnClient', { client, actionIds });
         }
+        /* eslint-enable no-await-in-loop */
       } else {
         log.setCategory('clientAction');
         log.showError('No clients found');
