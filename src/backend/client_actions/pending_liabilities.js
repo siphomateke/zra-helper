@@ -96,8 +96,6 @@ const clientAction = {
               log.log(`Finished generating ${taxType} report`);
             }
           } catch (error) {
-            resolve();
-            task.state = taskStates.ERROR;
             task.setError(error);
             if (error.type === 'TaxTypeNotFoundError') {
             // By default the `TaxTypeNotFoundError` contains the tax type.
@@ -106,6 +104,7 @@ const clientAction = {
               task.errorString = 'Tax type not found';
             }
             log.showError(error);
+            resolve();
           } finally {
             if (tab) {
               try {
