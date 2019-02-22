@@ -197,11 +197,12 @@ const module = {
     }, { client, actionIds }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
-      let taskTitle = client.name;
+      const clientIdentifier = client.name ? client.name : `Client ${client.id}`;
+      let taskTitle = clientIdentifier;
       // If there is only one action, include it's name in the task's name.
       if (isSingleAction) {
         singleAction = getters.getActionById(actionIds[0]);
-        taskTitle = `${client.name}: ${singleAction.name}`;
+        taskTitle = `${clientIdentifier}: ${singleAction.name}`;
       }
       const mainTask = await createTask(store, {
         title: taskTitle,
@@ -245,7 +246,7 @@ const module = {
           throw new InvalidClientError('Client is invalid', null, { client });
         }
       } catch (error) {
-        log.setCategory(client.name);
+        log.setCategory(clientIdentifier);
         log.showError(error);
         mainTask.setError(error);
         for (const actionId of actionIds) {
