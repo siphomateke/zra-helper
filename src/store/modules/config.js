@@ -7,7 +7,7 @@ const defaultConfig = {
     /** Show all user-side logs in the console. */
     logToConsole: false,
     /** Show detailed information about errors if available. */
-    errors: false,
+    errors: true,
     /**
      * Show raw progress bar values such as current value and max value.
      * Additionally keeps progress bars visible even after they are complete.
