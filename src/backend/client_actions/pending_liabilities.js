@@ -91,7 +91,6 @@ const clientAction = {
               }
               totals[taxType] = totalsResponse.totals;
               task.state = taskStates.SUCCESS;
-              task.status = '';
               resolve();
             } finally {
               log.log(`Finished generating ${taxType} report`);
@@ -99,14 +98,12 @@ const clientAction = {
           } catch (error) {
             resolve();
             task.state = taskStates.ERROR;
-            task.error = error;
+            task.setError(error);
             if (error.type === 'TaxTypeNotFoundError') {
             // By default the `TaxTypeNotFoundError` contains the tax type.
             // We don't need to show the tax type in the status since it's under
             // a task which already has the tax type in it's title.
-              task.status = 'Tax type not found';
-            } else {
-              task.setErrorAsStatus();
+              task.errorString = 'Tax type not found';
             }
             log.showError(error);
           } finally {
