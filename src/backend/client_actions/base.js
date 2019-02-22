@@ -33,6 +33,7 @@ export async function login(client, parentTaskId) {
       // Navigate to login page
       await clickElement(
         tab.id,
+        // eslint-disable-next-line max-len
         '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a',
         'go to login button',
       );
@@ -129,6 +130,7 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
   let attempts = 0;
   let run = true;
   try {
+    /* eslint-disable no-await-in-loop */
     while (run) {
       try {
         if (attempts > 0) {
@@ -151,6 +153,7 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
       }
       attempts++;
     }
+    /* eslint-enable no-await-in-loop */
     task.state = taskStates.SUCCESS;
   } catch (error) {
     task.setError(error);
@@ -191,5 +194,6 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
  * @property {ClientActionFunction} [func]
  * @property {boolean} hasOutput Whether this client action returns an output.
  * @property {ClientActionOutputFormat} defaultOutputFormat
- * @property {ClientActionOutputFormatter} outputFormatter Function that formats the output into different formats such as CSV and JSON.
+ * @property {ClientActionOutputFormatter} outputFormatter
+ * Function that formats the output into different formats such as CSV and JSON.
  */

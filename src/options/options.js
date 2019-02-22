@@ -1,7 +1,7 @@
 import '@/vue_init';
 import Vue from 'vue';
-import Options from './Options.vue';
 import store from '@/store';
+import Options from './Options.vue';
 
 new Vue({
   store,

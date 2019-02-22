@@ -25,6 +25,7 @@ function listener(message) {
             });
           }
         }
+        // eslint-disable-next-line max-len
         const generateButtonSelector = 'body>table>tbody>tr:nth-child(2)>td>table>tbody>tr>td>form>table>tbody>tr>td>table>tbody>tr:nth-child(2)>td>input:nth-child(1)';
         /** @type {HTMLButtonElement} */
         const generateButton = getElement(generateButtonSelector, 'generate report button');

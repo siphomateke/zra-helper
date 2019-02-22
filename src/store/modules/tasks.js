@@ -212,6 +212,7 @@ const module = {
         Vue.set(state.tasks[id], 'state', value);
       } else {
         const validStates = `['${Object.values(taskStates).join("', '")}']`;
+        // eslint-disable-next-line max-len
         throw new Error(`Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`);
       }
     },

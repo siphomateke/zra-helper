@@ -47,6 +47,7 @@ function listener(message) {
                   if (numAttempts > 5) {
                     errorMessage += `. You have ${numAttempts} attempt(s) left.`;
                   } else {
+                    // eslint-disable-next-line max-len
                     errorMessage += `. WARNING: You only have ${numAttempts} attempt(s) left. This client's account will be locked after ${numAttempts} attempt(s).`;
                   }
                 } else {

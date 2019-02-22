@@ -40,6 +40,7 @@ function getCaptcha(imageElement, scale = 2) {
     image.onerror = function onerror(event) {
       let src = null;
       if (event.path && event.path[0] && event.path[0].src) {
+        // eslint-disable-next-line prefer-destructuring
         src = event.path[0].src;
       }
       reject(new CaptchaLoadError('Error loading captcha.', null, { src }));
@@ -73,15 +74,13 @@ function refreshCaptcha() {
  */
 function solveCaptcha(text) {
   const captchaArithmetic = text.replace(/\s/g, '').replace(/\?/g, '');
-  const numbers = captchaArithmetic.split(/\+|-/).map(str => parseInt(str, 10));
+  let numbers = captchaArithmetic.split(/\+|-/).map(str => parseInt(str, 10));
+  numbers = numbers.map(number => Number(number)); // convert to actual numbers
   const operator = captchaArithmetic[captchaArithmetic.search(/\+|-/)];
-  let answer = null;
   if (operator === '+') {
-    answer = numbers[0] + numbers[1];
-  } else {
-    answer = numbers[0] - numbers[1];
+    return numbers[0] + numbers[1];
   }
-  return answer;
+  return numbers[0] - numbers[1];
 }
 
 /**
@@ -124,6 +123,7 @@ async function login(client, maxCaptchaRefreshes) {
   // Solve captcha
   let answer = null;
   let refreshes = 0;
+  /* eslint-disable no-await-in-loop */
   while (refreshes < maxCaptchaRefreshes) {
     const captcha = await getCaptcha(els.captchaImage);
     const captchaText = OCRAD(captcha);
@@ -131,7 +131,7 @@ async function login(client, maxCaptchaRefreshes) {
 
     // If captcha reading failed, try again with common recognition errors fixed.
     let newText = '';
-    if (isNaN(answer)) {
+    if (Number.isNaN(answer)) {
       newText = captchaText;
       for (const error of commonIncorrectCharacters) {
         newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
@@ -140,13 +140,14 @@ async function login(client, maxCaptchaRefreshes) {
     }
 
     // If captcha reading still failed, try again with a new one.
-    if (isNaN(answer)) {
+    if (Number.isNaN(answer)) {
       refreshCaptcha();
       refreshes++;
     } else {
       break;
     }
   }
+  /* eslint-enable no-await-in-loop */
   els.captchaInput.value = answer;
 
   els.submitButton.click();

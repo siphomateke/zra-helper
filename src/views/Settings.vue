@@ -1,5 +1,6 @@
 <template>
   <div id="settings">
+    <!-- eslint-disable max-len -->
     <form @submit.prevent="save">
       <div class="columns">
         <!-- Debug -->
@@ -121,6 +122,7 @@
         </span>
       </div>
     </form>
+    <!-- eslint-enable max-len -->
     <b-loading
       :active="isLoading"
       :is-full-page="false"/>

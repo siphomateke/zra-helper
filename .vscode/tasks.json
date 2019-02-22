@@ -21,7 +21,9 @@
       {
         "type": "npm",
         "script": "lint",
-        "problemMatcher": []
+        "problemMatcher": [
+          "$eslint-stylish"
+        ]
       }
     ]
   }

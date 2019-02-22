@@ -78,10 +78,10 @@ function listener(message) {
           }
           data.payments = payments;
         } else if (message.type === 'return') {
+          // eslint-disable-next-line max-len
           const periodInfo = getElement('#ReturnHistoryForm>table>tbody>tr:nth-child(2)>td:nth-child(2)>table>tbody>tr:nth-child(11)>td:nth-child(4)').innerText;
           const periodDateMatches = periodInfo.match(/Period\s+:\s+(.+)\s+to\s+(.+)/);
-          data.periodFrom = periodDateMatches[1];
-          data.periodTo = periodDateMatches[2];
+          [, data.periodFrom, data.periodTo] = periodDateMatches;
         }
 
         resolve(data);

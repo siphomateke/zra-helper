@@ -1,9 +1,9 @@
-let config;
+let config = null;
 
 function listener(message) {
   return new Promise((resolve) => {
     if (message.command === 'receiveConfig') {
-      config = message.config;
+      ({ config } = message);
       resolve({
         received: config,
       });

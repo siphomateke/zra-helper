@@ -7,6 +7,7 @@ import { getElementFromDocument } from './elements';
  * @returns {ZraError|null}
  */
 export function getZraError(document) {
+  // eslint-disable-next-line max-len
   const errorTable = document.querySelector('#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>div>table>tbody>tr>td>table');
   if (errorTable !== null) {
     const errorTableHeader = errorTable.querySelector('tbody>tr.tdborder>td');
