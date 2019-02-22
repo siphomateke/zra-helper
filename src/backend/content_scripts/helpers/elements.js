@@ -6,7 +6,8 @@ import getConfig from './config';
  * @param {Node} node
  */
 export function getHtmlFromNode(node) {
-  if (getConfig().debug.missingElementInfo) {
+  const config = getConfig();
+  if (config && config.debug.missingElementInfo) {
     if (node instanceof HTMLElement) {
       return node.innerHTML;
     } else if (node instanceof Document) {
