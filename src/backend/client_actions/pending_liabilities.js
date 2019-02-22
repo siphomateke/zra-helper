@@ -169,7 +169,7 @@ const clientAction = {
         for (const taxType of Object.values(taxTypes)) {
           let firstCol = '';
           if (i === 0) {
-            firstCol = client.name;
+            firstCol = client.name ? client.name : `Client ${client.id}`;
           }
           const row = [firstCol, taxType];
           if (value && totalsObjects[taxType]) {
