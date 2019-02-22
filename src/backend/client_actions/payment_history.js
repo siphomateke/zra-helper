@@ -1,11 +1,10 @@
 import moment from 'moment';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
-import { taskStates } from '@/store/modules/tasks';
 import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
-import { downloadReceipt, parallelTaskMap } from './utils';
+import { downloadReceipt, parallelTaskMap, getPagedData } from './utils';
 import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
 
 /**
@@ -96,76 +95,43 @@ async function getPaymentReceiptNumbers({
 }
 
 /**
- * Creates a task to get payment receipt numbers from a single page.
- * @param {GetAllPaymentReceiptNumbersOptions} options
- * @param {number} page
- * @param {number} parentTaskId
- */
-async function getPaymentReceiptNumbersTask(options, page, parentTaskId) {
-  const childTask = await createTask(store, {
-    title: `Get payment receipt numbers from page ${page + 1}`,
-    parent: parentTaskId,
-    indeterminate: true,
-  });
-  try {
-    const result = await getPaymentReceiptNumbers(Object.assign(options, { page: page + 1 }));
-    // Remove header row
-    result.records.shift();
-    childTask.state = taskStates.SUCCESS;
-    return result;
-  } catch (error) {
-    childTask.setError(error);
-    throw error;
-  } finally {
-    childTask.markAsComplete();
-  }
-}
-
-/**
  * Gets payment receipt numbers from all pages.
  * @param {GetAllPaymentReceiptNumbersOptions} options
  * @param {number} parentTaskId
  */
-function getAllPaymentReceiptNumbers(options, parentTaskId) {
-  return new Promise(async (resolve, reject) => {
-    const task = await createTask(store, {
-      title: 'Get payment receipt numbers',
-      parent: parentTaskId,
-      sequential: false,
-      unknownMaxProgress: false,
-      // this is overwritten once we know the number of pages
-      progressMax: 1,
-    });
-    try {
-      const promises = [];
-      const result = await getPaymentReceiptNumbersTask(options, 0, task.id);
-      if (result.numPages > 1) {
-        task.progressMax = result.numPages;
-      }
-      for (let page = 1; page < result.numPages; page++) {
-        promises.push(new Promise((resolve) => {
-          getPaymentReceiptNumbersTask(options, page, task.id)
-            .then(resolve)
-            .catch(resolve);
-        }));
-      }
-      Promise.all(promises).then((results) => {
-        let records = [];
-        for (const result of results) {
-          records = records.concat(result.records);
-        }
-        // Ignore all the payment registrations
-        records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
-        task.markAsComplete();
-        task.setStateBasedOnChildren();
-        resolve(records);
-      });
-    } catch (error) {
-      task.markAsComplete();
-      task.setError(error);
-      reject(error);
-    }
+async function getAllPaymentReceiptNumbers(options, parentTaskId) {
+  const task = await createTask(store, {
+    title: 'Get payment receipt numbers',
+    parent: parentTaskId,
   });
+
+  const getPageSubTask = (page, subTaskParentId) => ({
+    title: `Get payment receipt numbers from page ${page + 1}`,
+    parent: subTaskParentId,
+    indeterminate: true,
+  });
+
+  const results = await getPagedData({
+    task,
+    getPageSubTask,
+    getDataFunction: (page) => {
+      const optionsWithPage = Object.assign({ page }, options);
+      return getPaymentReceiptNumbers(optionsWithPage);
+    },
+  });
+
+  const records = [];
+  for (const result of results) {
+    // Remove header rows
+    result.records.shift();
+    for (const record of result.records) {
+      // Ignore all the payment registrations
+      if (record.status.toLowerCase() !== 'prn generated') {
+        records.push(record);
+      }
+    }
+  }
+  return records;
 }
 
 /**
