@@ -7,7 +7,7 @@ import { taxTypes, taxTypeNumericalCodes } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
-import { downloadReceipt, parallelTaskMap } from './utils';
+import { downloadReceipt, parallelTaskMap, getPagedData } from './utils';
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -118,53 +118,41 @@ async function getAcknowledgementReceiptsReferenceNumbers({
 async function getAllAcknowledgementReceiptsReferenceNumbers({
   tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
 }) {
+  const options = {
+    tpin,
+    taxType,
+    fromDate,
+    toDate,
+    exciseType,
+  };
+
   const task = await createTask(store, {
     title: "Get acknowledgement receipts' reference numbers",
     parent: parentTaskId,
-    progressMax: 1,
-    status: 'Getting reference numbers from first page',
   });
 
-  let numPages = 1;
-  /** @type {ReferenceNumber[]} */
+  const getPageSubTask = (page, subTaskParentId) => ({
+    title: `Getting reference numbers from page ${page + 1}`,
+    parent: subTaskParentId,
+    indeterminate: true,
+  });
+
+  const results = await getPagedData({
+    task,
+    getPageSubTask,
+    getDataFunction: (page) => {
+      const optionsWithPage = Object.assign({ page }, options);
+      return getAcknowledgementReceiptsReferenceNumbers(optionsWithPage);
+    },
+  });
+
   const referenceNumbers = [];
-  try {
-    // TODO: Consider doing this in parallel
-    for (let page = 0; page < numPages; page++) {
-      const result = await getAcknowledgementReceiptsReferenceNumbers({
-        tpin,
-        taxType,
-        fromDate,
-        toDate,
-        page: page + 1,
-        exciseType,
-      });
-
-      if (page > 0) {
-        task.addStep(`Getting reference numbers from page ${(page + 1)}/${numPages}`);
-      } else {
-        task.progress++;
-      }
-
-      for (const record of result.records) {
-        if (record.appliedThrough.toLowerCase() === 'online') {
-          referenceNumbers.push(record.referenceNo);
-        }
-      }
-
-      if (result.numPages <= 1) {
-        break;
-      } else {
-        numPages = result.numPages;
-        task.progressMax = numPages;
+  for (const result of results) {
+    for (const record of result.records) {
+      if (record.appliedThrough.toLowerCase() === 'online') {
+        referenceNumbers.push(record.referenceNo);
       }
     }
-    task.state = taskStates.SUCCESS;
-  } catch (error) {
-    task.setError(error);
-    throw error;
-  } finally {
-    task.markAsComplete();
   }
   return referenceNumbers;
 }

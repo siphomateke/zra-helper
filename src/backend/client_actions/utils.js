@@ -113,12 +113,23 @@ export async function downloadReceipt({
 }
 
 /**
- * Loops through a list and runs a provided function asynchronously on each item in the list.
+ * @callback ParallelTaskMapFunction
+ * @param {Object|number} item
+ * This can either be an item from the list if one is provided, or an index if count is provided.
+ * @param {number} parentTaskId
+ */
+
+/**
+ * Loops through a list or `count` number of times and runs a provided function asynchronously on each item
+ * in the list or index.
+ *
  * The provided parent task will be automatically configured.
  * @param {Object} options
- * @param {Array} options.list The list to loop through
+ * @param {Array} [options.list] The list to loop through
+ * @param {number} [options.startIndex] Optional index to start looping from
+ * @param {number} [options.count] The number of times to run. This is can be provided instead of a list.
  * @param {Task} options.task The parent task
- * @param {Function} options.func The function to run on each list item
+ * @param {ParallelTaskMapFunction} options.func The function to run on each list item
  * @param {boolean} [options.autoCalculateTaskState=true]
  * Set this to false to disable the parent task's state from being automatically
  * set when all the async functions have completed.
@@ -127,7 +138,9 @@ export async function downloadReceipt({
  * and the promise will be rejected if the state evaluates to error.
  */
 export function parallelTaskMap({
-  list,
+  list = null,
+  startIndex = 0,
+  count = null,
   task,
   func,
   autoCalculateTaskState = true,
@@ -135,9 +148,24 @@ export function parallelTaskMap({
   return new Promise((resolve, reject) => {
     task.sequential = false;
     task.unknownMaxProgress = false;
-    task.progressMax = list.length;
+
+    let listMode = true;
+    let loopCount = null;
+    if (list !== null) {
+      loopCount = list.length;
+    } else if (count !== null) {
+      loopCount = count;
+      listMode = false;
+    } else {
+      // eslint-disable-next-line max-len
+      throw new Error("Invalid parameters: Please provide either a 'list' to loop over or a 'count' as the number of times to loop.");
+    }
+
+    task.progressMax = loopCount;
     const promises = [];
-    for (const item of list) {
+    for (let i = startIndex; i < loopCount; i++) {
+      // if not in list mode, item is the index
+      const item = listMode ? list[i] : i;
       promises.push(new Promise((resolve) => {
         func(item, task.id)
           .then(resolve)
@@ -158,4 +186,106 @@ export function parallelTaskMap({
       }
     });
   });
+}
+
+/**
+ * @callback GetTaskData
+ * @param {number} page
+ * @param {number} parentTaskId
+ * @returns {import('@/store/modules/tasks').TaskVuexState}
+ */
+
+/**
+ * @typedef {Object} GetDataFromPageFunctionReturn
+ * @property {number} numPages
+ */
+
+/**
+ * @callback GetDataFromPageFunction
+ * @param {number} page
+ * @returns {Promise.<GetDataFromPageFunctionReturn>}
+ */
+
+/**
+ * Creates a task to get data from a single page.
+ * This is mainly used by getPageData
+ * @see getPagedData
+ * @param {Object} options
+ * @param {GetTaskData} options.getTaskData
+ * Function that generates a task's options given a page number and a parent task ID.
+ * @param {GetDataFromPageFunction} options.getDataFunction
+ * A function that when given a page number will return the data from that page including the total number of pages.
+ * @param {number} options.parentTaskId
+ * @param {number} options.page The page to get data from.
+ * @param {number} [options.firstPage=1] The index of the first page.
+ * @returns {Promise.<GetDataFromPageFunctionReturn>}
+ */
+export async function getDataFromPageTask({
+  getTaskData,
+  getDataFunction,
+  parentTaskId,
+  page,
+  firstPage = 1,
+}) {
+  const childTask = await createTask(store, getTaskData(page, parentTaskId));
+  try {
+    const result = await getDataFunction(page + firstPage);
+    childTask.state = taskStates.SUCCESS;
+    return result;
+  } catch (error) {
+    childTask.setError(error);
+    throw error;
+  } finally {
+    childTask.markAsComplete();
+  }
+}
+
+/**
+ * Gets data from several pages in parallel.
+ * @param {Object} options
+ * @param {import('@/transitional/tasks').TaskObject} options.task
+ * The task to use to contain all the subtasks that get data from multiple pages.
+ * @param {GetTaskData} options.getPageSubTask
+ * @param {GetDataFromPageFunction} options.getDataFunction
+ * A function that when given a page number will return the data from that page including the total number of pages.
+ * @param {number} [options.firstPage] The index of the first page.
+ */
+// TODO: Use me in more places such has payment history
+export async function getPagedData({
+  task,
+  getPageSubTask,
+  getDataFunction,
+  firstPage = 1,
+}) {
+  const options = {
+    getTaskData: getPageSubTask,
+    getDataFunction,
+    firstPage,
+  };
+
+  const allResults = [];
+
+  // Get data from the first page so we know the total number of pages
+  // NOTE: The settings set by parallel task map aren't set when this runs
+  const result = await getDataFromPageTask(Object.assign({
+    page: 0,
+    parentTaskId: task.id,
+  }, options));
+  allResults.push(result);
+
+  // Then get the rest of the pages in parallel
+  const results = await parallelTaskMap({
+    startIndex: 1,
+    count: result.numPages,
+    task,
+    func(page, parentTaskId) {
+      return getDataFromPageTask(Object.assign({
+        page,
+        parentTaskId,
+      }, options));
+    },
+  });
+  allResults.push(...results);
+
+  return allResults;
 }
