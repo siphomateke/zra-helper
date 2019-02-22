@@ -38,7 +38,6 @@ export async function sendMessage(tabId, message) {
     throw new SendMessageError(`Failed to send message to tab with ID ${tabId}: "${errorString}"`);
   }
   if (response.error) {
-    console.log(response);
     throw errorFromJson(response.error);
   }
   return response;
