@@ -257,35 +257,43 @@ export async function getPagedData({
   getDataFunction,
   firstPage = 1,
 }) {
-  const options = {
-    getTaskData: getPageSubTask,
-    getDataFunction,
-    firstPage,
-  };
+  try {
+    const options = {
+      getTaskData: getPageSubTask,
+      getDataFunction,
+      firstPage,
+    };
 
-  const allResults = [];
+    const allResults = [];
 
-  // Get data from the first page so we know the total number of pages
-  // NOTE: The settings set by parallel task map aren't set when this runs
-  const result = await getDataFromPageTask(Object.assign({
-    page: 0,
-    parentTaskId: task.id,
-  }, options));
-  allResults.push(result);
+    // Get data from the first page so we know the total number of pages
+    // NOTE: The settings set by parallel task map aren't set when this runs
+    const result = await getDataFromPageTask(Object.assign({
+      page: 0,
+      parentTaskId: task.id,
+    }, options));
+    allResults.push(result);
 
-  // Then get the rest of the pages in parallel
-  const results = await parallelTaskMap({
-    startIndex: 1,
-    count: result.numPages,
-    task,
-    func(page, parentTaskId) {
-      return getDataFromPageTask(Object.assign({
-        page,
-        parentTaskId,
-      }, options));
-    },
-  });
-  allResults.push(...results);
+    // Then get the rest of the pages in parallel
+    const results = await parallelTaskMap({
+      startIndex: 1,
+      count: result.numPages,
+      task,
+      func(page, parentTaskId) {
+        return getDataFromPageTask(Object.assign({
+          page,
+          parentTaskId,
+        }, options));
+      },
+    });
+    allResults.push(...results);
 
-  return allResults;
+    return allResults;
+  } catch (error) {
+    task.setError(error);
+    throw error;
+  } finally {
+    // TODO: This shouldn't be called if it has already been called in parallelTaskMap
+    task.markAsComplete();
+  }
 }
