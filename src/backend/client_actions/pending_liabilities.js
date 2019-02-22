@@ -47,6 +47,7 @@ const clientAction = {
     return new Promise((resolve) => {
       const promises = [];
       const totals = {};
+      const retrievalErrors = {};
       parentTask.sequential = false;
       parentTask.unknownMaxProgress = false;
       parentTask.progressMax = Object.keys(taxTypes).length;
@@ -98,10 +99,12 @@ const clientAction = {
           } catch (error) {
             task.setError(error);
             if (error.type === 'TaxTypeNotFoundError') {
-            // By default the `TaxTypeNotFoundError` contains the tax type.
-            // We don't need to show the tax type in the status since it's under
-            // a task which already has the tax type in it's title.
+              // By default the `TaxTypeNotFoundError` contains the tax type.
+              // We don't need to show the tax type in the status since it's under
+              // a task which already has the tax type in it's title.
               task.errorString = 'Tax type not found';
+            } else {
+              retrievalErrors[taxType] = error;
             }
             log.showError(error);
             resolve();
@@ -141,9 +144,12 @@ const clientAction = {
 
 
         parentTask.markAsComplete();
-        const output = {};
+        const output = {
+          totals: {},
+          retrievalErrors,
+        };
         for (const taxType of Object.values(taxTypes)) {
-          output[taxType] = totals[taxType];
+          output.totals[taxType] = totals[taxType];
         }
         resolve(output);
       });
@@ -155,27 +161,38 @@ const clientAction = {
     if (format === 'csv') {
       const rows = [];
       const columnOrder = totalsColumns;
+      // Columns are: client identifier, ...totals, error
+      const numberOfColumns = 2 + totalsColumns.length + 1;
       for (const { client, value } of clientOutputs) {
+        const totalsObjects = value ? value.totals : null;
         let i = 0;
         for (const taxType of Object.values(taxTypes)) {
           let firstCol = '';
           if (i === 0) {
             firstCol = client.name;
           }
-          if (value && value[taxType]) {
-            const totalsObject = value[taxType];
+          const row = [firstCol, taxType];
+          if (value && totalsObjects[taxType]) {
+            const totalsObject = totalsObjects[taxType];
             const totals = [];
             for (const column of columnOrder) {
               totals.push(totalsObject[column]);
             }
-            rows.push([firstCol, taxType, ...totals]);
+            row.push(...totals);
           } else {
-            const cols = [firstCol, taxType];
             for (let j = 0; j < columnOrder.length; j++) {
-              cols.push('');
+              row.push('');
             }
-            rows.push(cols);
+            // Indicate that this tax type had an error
+            if (value && (taxType in value.retrievalErrors)) {
+              row.push('!');
+            }
           }
+          // Fill empty columns
+          while (row.length < numberOfColumns) {
+            row.push('');
+          }
+          rows.push(row);
           i++;
         }
       }
