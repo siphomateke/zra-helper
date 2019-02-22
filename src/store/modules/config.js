@@ -34,7 +34,7 @@ const defaultConfig = {
       /** The maximum number of tabs that can be opened when downloading return receipts. */
       maxOpenTabsWhenDownloading: 3,
     },
-    getPaymentHistory: {
+    getPaymentReceipts: {
       /** The maximum number of tabs that can be opened when downloading payment receipts. */
       maxOpenTabsWhenDownloading: 3,
     },

@@ -269,8 +269,8 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
 
 /** @type {import('./base').ClientActionObject} */
 const clientAction = {
-  id: 'getPaymentHistory',
-  name: 'Get payment history',
+  id: 'getPaymentReceipts',
+  name: 'Get payment receipts',
   func({ client, parentTask, clientActionConfig }) {
     return new Promise(async (resolve, reject) => {
       const options = {
