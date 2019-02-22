@@ -137,60 +137,52 @@ const module = {
     async runActionOnClient({ rootState, getters, commit }, {
       actionId, client, mainTask, isSingleAction,
     }) {
-      if (client.valid) {
-        /** @type {ClientActionState} */
-        const clientAction = getters.getActionById(actionId);
-        const clientActionConfig = rootState.config.actions[actionId];
+      /** @type {ClientActionState} */
+      const clientAction = getters.getActionById(actionId);
+      const clientActionConfig = rootState.config.actions[actionId];
 
-        const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
-        let taskHasError = false;
-        try {
-          if (clientAction.func) {
-            log.setCategory(clientAction.logCategory);
-
-            const output = await clientAction.func({
-              client,
-              parentTask: task,
-              clientActionConfig,
-            });
-            commit('setOutput', { actionId, clientId: client.id, value: output });
-            if (task.state === taskStates.ERROR) {
-              taskHasError = true;
-            }
-          } else {
-            task.state = taskStates.SUCCESS;
-          }
-        } catch (error) {
+      const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
+      let taskHasError = false;
+      try {
+        if (clientAction.func) {
           log.setCategory(clientAction.logCategory);
-          log.showError(error);
-          task.setError(error);
+
+          const output = await clientAction.func({
+            client,
+            parentTask: task,
+            clientActionConfig,
+          });
+          commit('setOutput', { actionId, clientId: client.id, value: output });
+          if (task.state === taskStates.ERROR) {
+            taskHasError = true;
+          }
+        } else {
+          task.state = taskStates.SUCCESS;
+        }
+      } catch (error) {
+        log.setCategory(clientAction.logCategory);
+        log.showError(error);
+        task.setError(error);
+        if (isSingleAction) {
+          // If this is the only action being run on this client,
+          // show any errors produced by it on the main task.
+          mainTask.setError(error);
+        } else {
+          taskHasError = true;
+        }
+        commit('setOutput', { actionId, clientId: client.id, error });
+      } finally {
+        task.markAsComplete();
+        if (taskHasError) {
           if (isSingleAction) {
             // If this is the only action being run on this client,
             // show any errors produced by it on the main task.
-            mainTask.setError(error);
+            mainTask.state = taskStates.ERROR;
           } else {
-            taskHasError = true;
-          }
-          commit('setOutput', { actionId, clientId: client.id, error });
-        } finally {
-          task.markAsComplete();
-          if (taskHasError) {
-            if (isSingleAction) {
-              // If this is the only action being run on this client,
-              // show any errors produced by it on the main task.
-              mainTask.state = taskStates.ERROR;
-            } else {
-              // Show a warning on the main task to indicate that one of the actions failed.
-              mainTask.state = taskStates.WARNING;
-            }
+            // Show a warning on the main task to indicate that one of the actions failed.
+            mainTask.state = taskStates.WARNING;
           }
         }
-      } else {
-        commit('setOutput', {
-          actionId,
-          clientId: client.id,
-          error: new InvalidClientError('Client is invalid', null, { client }),
-        });
       }
     },
     /**
@@ -200,7 +192,9 @@ const module = {
      * @param {Client} payload.client
      * @param {ClientActionId[]} payload.actionIds
      */
-    async runActionsOnClient({ rootState, getters, dispatch }, { client, actionIds }) {
+    async runActionsOnClient({
+      rootState, commit, getters, dispatch,
+    }, { client, actionIds }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
       let taskTitle = client.name;
@@ -216,46 +210,47 @@ const module = {
         sequential: singleAction,
       });
       try {
-        let loggedIn = false;
         if (client.valid) {
           mainTask.status = 'Logging in';
           await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
-          loggedIn = true;
-        }
 
-        // Run actions in parallel
-        if (!isSingleAction) {
-          mainTask.status = 'Running actions';
-        } else {
-          mainTask.status = singleAction.name;
-        }
-        const promises = [];
-        for (const actionId of actionIds) {
-          promises.push(dispatch('runActionOnClient', {
-            actionId,
-            client,
-            mainTask,
-            isSingleAction,
-          }));
-        }
-        await Promise.all(promises);
+          // Run actions in parallel
+          if (!isSingleAction) {
+            mainTask.status = 'Running actions';
+          } else {
+            mainTask.status = singleAction.name;
+          }
+          const promises = [];
+          for (const actionId of actionIds) {
+            promises.push(dispatch('runActionOnClient', {
+              actionId,
+              client,
+              mainTask,
+              isSingleAction,
+            }));
+          }
+          await Promise.all(promises);
 
-        if (loggedIn) {
           mainTask.status = 'Logging out';
           await logout(mainTask.id);
-        }
 
-        if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
-          if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
-            mainTask.state = taskStates.WARNING;
-          } else {
-            mainTask.state = taskStates.SUCCESS;
+          if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
+            if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
+              mainTask.state = taskStates.WARNING;
+            } else {
+              mainTask.state = taskStates.SUCCESS;
+            }
           }
+        } else {
+          throw new InvalidClientError('Client is invalid', null, { client });
         }
       } catch (error) {
         log.setCategory(client.name);
         log.showError(error);
         mainTask.setError(error);
+        for (const actionId of actionIds) {
+          commit('setOutput', { actionId, clientId: client.id, error });
+        }
       } finally {
         mainTask.markAsComplete();
       }
