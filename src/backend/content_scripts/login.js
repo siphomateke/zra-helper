@@ -174,6 +174,8 @@ function listener(message) {
         }
         login(message.client, message.maxCaptchaRefreshes).then(() => {
           resolve({});
+        }).catch((error) => {
+          throw error;
         });
       } catch (error) {
         resolve({ error: errorToJson(error) });
