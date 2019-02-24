@@ -432,11 +432,11 @@ export async function getDocumentByAjax({ url, method = 'get', data = {} }) {
   if (method === 'get') {
     axiosOptions.params = data;
   } else {
-    const formData = new FormData();
+    const params = new URLSearchParams();
     for (const key of Object.keys(data)) {
-      formData.set(key, data[key]);
+      params.append(key, data[key]);
     }
-    axiosOptions.data = formData;
+    axiosOptions.data = params;
     axiosOptions.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
   }
   const response = await axios(axiosOptions);
