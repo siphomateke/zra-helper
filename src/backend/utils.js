@@ -3,6 +3,8 @@ import config from '@/transitional/config';
 import store from '@/store';
 import { getZraError } from './content_scripts/helpers/zra';
 import { errorFromJson, ExecuteScriptError, SendMessageError, TabError, DownloadError } from './errors';
+import { getCurrentBrowser } from '@/utils';
+import { browserCodes } from './constants';
 
 /**
  * Waits for a specific message.
@@ -257,7 +259,7 @@ export async function createTabPost({ url, data, active = false }) {
 
   let formHtml = form.outerHTML;
 
-  const isFirefox = process.env.BROWSER === 'firefox';
+  const isFirefox = getCurrentBrowser() === browserCodes.FIREFOX;
 
   let tab = null;
   if (isFirefox) {
@@ -288,7 +290,7 @@ export async function createTabPost({ url, data, active = false }) {
  */
 export function saveAsMHTML(options) {
   return new Promise((resolve, reject) => {
-    if (process.env.BROWSER === 'chrome') {
+    if (getCurrentBrowser() === browserCodes.CHROME) {
       chrome.pageCapture.saveAsMHTML(options, (blob) => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);

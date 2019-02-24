@@ -49,3 +49,10 @@ export function deepReactiveClone(toCopy, copyTo) {
   }
 }
 
+/**
+ * Gets the browser code of the current browser.
+ * @returns {import('./backend/constants').BrowserCode}
+ */
+export function getCurrentBrowser() {
+  return process.env.BROWSER;
+}

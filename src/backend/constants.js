@@ -1,3 +1,15 @@
+// #region Browser
+/**
+ * @typedef {string} BrowserCode
+ *
+ * @enum {BrowserCode}
+ */
+export const browserCodes = {
+  CHROME: 'chrome',
+  FIREFOX: 'firefox',
+};
+// #endregion
+
 // #region Clients
 /**
  * @typedef {string} ClientValidationError
