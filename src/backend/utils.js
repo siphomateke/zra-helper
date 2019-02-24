@@ -288,14 +288,17 @@ export async function createTabPost({ url, data, active = false }) {
  */
 export function saveAsMHTML(options) {
   return new Promise((resolve, reject) => {
-    // FIXME: Handle browser not being Chrome
-    chrome.pageCapture.saveAsMHTML(options, (blob) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve(blob);
-      }
-    });
+    if (process.env.BROWSER === 'chrome') {
+      chrome.pageCapture.saveAsMHTML(options, (blob) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(blob);
+        }
+      });
+    } else {
+      reject(new Error('Downloading pages as MHTMLs is only supported in chrome.'));
+    }
   });
 }
 
