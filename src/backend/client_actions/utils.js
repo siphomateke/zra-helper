@@ -11,7 +11,9 @@ import {
   tabLoaded,
   monitorDownloadProgress,
   closeTab,
+  clickElement,
 } from '../utils';
+import { taxTypeNames } from '../constants';
 
 /** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
@@ -294,6 +296,56 @@ export async function getPagedData({
     throw error;
   } finally {
     // TODO: This shouldn't be called if it has already been called in parallelTaskMap
+    task.markAsComplete();
+  }
+}
+
+/**
+ * Gets the registered tax types of a client.
+ * @param {Object} options
+ * @param {import('vuex').Store} options.store
+ * @param {number} options.parentTaskId
+ * @param {number} options.loggedInTabId
+ * The ID of a tab in which the client you wish to get tax types for has been logged into.
+ * @returns {Promise.<import('@/backend/constants').TaxTypeNumericalCode[]>}
+ */
+export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
+  const task = await createTask(store, {
+    title: 'Get registered tax types',
+    parent: parentTaskId,
+    progressMax: 4,
+  });
+
+  try {
+    task.addStep('Navigating to taxpayer profile');
+    await clickElement(
+      loggedInTabId,
+      // eslint-disable-next-line max-len
+      '#leftMainDiv .leftMenuAccordion div.submenu:nth-child(8)>ul:nth-child(1)>li:nth-child(1)>div:nth-child(1)>a:nth-child(1)',
+      'go to taxpayer profile button',
+    );
+
+    task.addStep('Waiting for taxpayer profile to load');
+    await tabLoaded(loggedInTabId);
+
+    task.addStep('Extracting tax types');
+    await executeScript(loggedInTabId, { file: 'get_registration_details.js' });
+    const { registrationDetails } = await sendMessage(loggedInTabId, { command: 'getRegistrationDetails' });
+
+    // Get only registered tax types
+    const registeredTaxTypes = [];
+    for (const { status, taxType } of registrationDetails) {
+      if (status.toLowerCase() === 'registered') {
+        const taxTypeId = taxTypeNames[taxType.toLowerCase()];
+        registeredTaxTypes.push(taxTypeId);
+      }
+    }
+    task.state = taskStates.SUCCESS;
+    return registeredTaxTypes;
+  } catch (error) {
+    task.setError(error);
+    return null;
+  } finally {
     task.markAsComplete();
   }
 }

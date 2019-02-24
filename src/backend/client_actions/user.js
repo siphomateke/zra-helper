@@ -2,19 +2,20 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '../utils';
+import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '@/backend/utils';
 
-/** @typedef {import('../constants').Client} Client */
+/** @typedef {import('@/backend/constants').Client} Client */
 
 /**
  * Creates a new tab, logs in and then closes the tab
- *
- * @param {Client} client
- * @param {number} parentTaskId
- * @returns {Promise}
- * @throws {import('./errors').ExtendedError}
+ * @param {Object} payload
+ * @param {Client} payload.client
+ * @param {number} payload.parentTaskId
+ * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open after logging in.
+ * @returns {Promise.<number>} The ID of the logged in tab.
+ * @throws {import('@/backend/errors').ExtendedError}
  */
-export async function login(client, parentTaskId) {
+export async function login({ client, parentTaskId, keepTabOpen = false }) {
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
@@ -59,10 +60,13 @@ export async function login(client, parentTaskId) {
       });
       task.state = taskStates.SUCCESS;
       log.log(`Done logging in "${client.name}"`);
+      return tab.id;
     } finally {
-      // Don't need to wait for the tab to close to carry out logged in actions
-      // TODO: Catch tab close errors
-      closeTab(tab.id);
+      if (!keepTabOpen) {
+        // Don't need to wait for the tab to close to carry out logged in actions
+        // TODO: Catch tab close errors
+        closeTab(tab.id);
+      }
     }
   } catch (error) {
     task.setError(error);
@@ -74,11 +78,12 @@ export async function login(client, parentTaskId) {
 
 /**
  * Creates a new tab, logs out and then closes the tab
- *
- * @param {number} parentTaskId
+ * @param {Object} payload
+ * @param {number} payload.parentTaskId
+ * @param {number} [payload.loggedInTabId]
  * @returns {Promise}
  */
-export async function logout(parentTaskId) {
+export async function logout({ parentTaskId, loggedInTabId = null }) {
   const task = await createTask(store, {
     title: 'Logout',
     parent: parentTaskId,
@@ -90,18 +95,22 @@ export async function logout(parentTaskId) {
   log.setCategory('logout');
   log.log('Logging out');
   try {
-    const tab = await createTab('https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick');
+    let tabId = loggedInTabId;
+    if (loggedInTabId === null) {
+      const tab = await createTab('https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick');
+      tabId = tab.id;
+    }
     try {
       task.addStep('Initiating logout');
       // Click logout button
-      await clickElement(tab.id, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
+      await clickElement(tabId, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
       task.addStep('Waiting to finish logging out');
       task.state = taskStates.SUCCESS;
       log.log('Done logging out');
     } finally {
       // Note: The tab automatically closes after pressing logout
       // TODO: Catch tab close errors
-      closeTab(tab.id);
+      closeTab(tabId);
     }
   } catch (error) {
     task.setError(error);
@@ -113,11 +122,16 @@ export async function logout(parentTaskId) {
 
 /**
  * Logs in a client and retries if already logged in as another client
- * @param {Client} client
- * @param {number} parentTaskId
- * @param {number} maxAttempts The maximum number of times an attempt should be made to login to a client.
+ * @param {Object} payload
+ * @param {Client} payload.client
+ * @param {number} payload.parentTaskId
+ * @param {number} payload.maxAttempts The maximum number of times an attempt should be made to login to a client.
+ * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open.
+ * @returns {Promise.<number>} The ID of the logged in tab.
  */
-export async function robustLogin(client, parentTaskId, maxAttempts) {
+export async function robustLogin({
+  client, parentTaskId, maxAttempts, keepTabOpen = false,
+}) {
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
@@ -130,6 +144,7 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
   let attempts = 0;
   let run = true;
   try {
+    let loggedInTabId = null;
     /* eslint-disable no-await-in-loop */
     while (run) {
       try {
@@ -138,14 +153,14 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
         } else {
           task.status = 'Logging in';
         }
-        await login(client, task.id);
+        loggedInTabId = await login({ client, parentTaskId: task.id, keepTabOpen });
         run = false;
       } catch (error) {
         if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts + 1 < maxAttempts) {
           log.setCategory('login');
           log.showError(error, true);
           task.status = 'Logging out';
-          await logout(task.id);
+          await logout({ parentTaskId: task.id });
           run = true;
         } else {
           throw error;
@@ -155,6 +170,7 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
     }
     /* eslint-enable no-await-in-loop */
     task.state = taskStates.SUCCESS;
+    return loggedInTabId;
   } catch (error) {
     task.setError(error);
     throw error;
@@ -162,38 +178,3 @@ export async function robustLogin(client, parentTaskId, maxAttempts) {
     task.markAsComplete();
   }
 }
-
-/**
- * @typedef {Object} ClientActionFunctionParam
- * @property {Client} client
- * @property {import('@/transitional/tasks').TaskObject} parentTask
- * @property {Object} clientActionConfig this client action's config
- */
-
-/**
- * @callback ClientActionFunction
- * @param {ClientActionFunctionParam} param
- * @returns {Promise.<Object>}
- */
-
-/**
- * @typedef {'csv'|'json'} ClientActionOutputFormat
- */
-
-/**
- * @callback ClientActionOutputFormatter
- * @param {import('@/store/modules/client_actions/index').ClientActionOutput[]} outputs
- * @param {ClientActionOutputFormat} format
- * @returns {any}
- */
-
-/**
- * @typedef ClientActionObject
- * @property {string} id A unique camelCase ID to identify this client action.
- * @property {string} name The human-readable name of this client action.
- * @property {ClientActionFunction} [func]
- * @property {boolean} hasOutput Whether this client action returns an output.
- * @property {ClientActionOutputFormat} defaultOutputFormat
- * @property {ClientActionOutputFormatter} outputFormatter
- * Function that formats the output into different formats such as CSV and JSON.
- */

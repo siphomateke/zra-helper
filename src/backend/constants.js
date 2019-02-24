@@ -21,7 +21,7 @@ export const clientPropValidationErrorMessages = {
 };
 
 /**
- * @typedef Client
+ * @typedef ParsedClient
  * @property {number} id
  * @property {string} name
  * @property {string} username
@@ -30,6 +30,51 @@ export const clientPropValidationErrorMessages = {
  * @property {string[]} [errors] An array of errors that will be set when the client is invalid
  * @property {Object.<string, ClientValidationError[]>} [propErrors]
  * List of validation errors per property
+ *
+ * @typedef {Object} ClientState
+ * @property {TaxTypeNumericalCode[]|null} taxTypes List of numerical tax type codes that this client has registered.
+ *
+ * @typedef {ParsedClient & ClientState} Client
+ */
+
+/**
+ * @typedef {Object} ClientActionFunctionParam
+ * @property {Client} client
+ * @property {import('@/transitional/tasks').TaskObject} parentTask
+ * @property {Object} clientActionConfig this client action's config
+ * @property {number} loggedInTabId ID of the logged in tab.
+ */
+
+/**
+ * @callback ClientActionFunction
+ * @param {ClientActionFunctionParam} param
+ * @returns {Promise.<Object>}
+ */
+
+/**
+ * @typedef {'csv'|'json'} ClientActionOutputFormat
+ */
+
+/**
+ * @callback ClientActionOutputFormatter
+ * @param {import('@/store/modules/client_actions/index').ClientActionOutput[]} outputs
+ * @param {ClientActionOutputFormat} format
+ * @returns {any}
+ */
+
+/**
+ * @typedef ClientActionObject
+ * @property {string} id A unique camelCase ID to identify this client action.
+ * @property {string} name The human-readable name of this client action.
+ * @property {ClientActionFunction} [func]
+ * @property {boolean} [hasOutput] Whether this client action returns an output.
+ * @property {boolean} [usesLoggedInTab] Whether this action needs to open a page from a logged in tab.
+ * If this is enabled, the page that is opened after logging in will not be closed until the user is
+ * about to be logged out.
+ * @property {boolean} [requiresTaskTypes]
+ * @property {ClientActionOutputFormat} [defaultOutputFormat]
+ * @property {ClientActionOutputFormatter} [outputFormatter]
+ * Function that formats the output into different formats such as CSV and JSON.
  */
 
 /**

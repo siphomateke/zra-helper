@@ -33,7 +33,7 @@ export function getZraError(document) {
  * @param {Object} options
  * @param {Document|Element} options.root Document to get records from
  * @param {string[]} options.headers Column headers
- * @param {string} options.recordSelector Selector of a single table row
+ * @param {string} options.recordSelector Selector of a single table data row. This shouldn't match any header rows.
  * @returns {ParsedTableRecord[]}
  */
 export function parseTable({ root, headers, recordSelector }) {
@@ -76,7 +76,7 @@ export function parseTable({ root, headers, recordSelector }) {
  * @param {string[]} options.headers Column headers
  * @param {string} options.tableInfoSelector
  * Selector of the element that contains information about the table such as the current page.
- * @param {string} options.recordSelector Selector of a single table row
+ * @param {string} options.recordSelector Selector of a single table data row. This shouldn't match header rows.
  * @param {string} options.noRecordsString String that will exist when there are no records
  * @returns {Promise.<ParsedTable>}
  */

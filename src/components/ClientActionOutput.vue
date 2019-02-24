@@ -54,7 +54,7 @@ export default {
     },
     /**
      * Gets the outputs of all this action's clients.
-     * @returns {import('@/backend/client_actions/base').ClientActionOutputFormatterDataItem}
+     * @returns {import('@/backend/constants').ClientActionOutputFormatterDataItem}
      */
     clientOutputs() {
       const results = [];
@@ -81,7 +81,7 @@ export default {
       return this.clients[id];
     },
     /**
-     * @param {import('@/backend/client_actions/base').ClientActionOutputFormat} format
+     * @param {import('@/backend/constants').ClientActionOutputFormat} format
      */
     formatOutput(format) {
       return this.action.outputFormatter(this.clientOutputs, format);

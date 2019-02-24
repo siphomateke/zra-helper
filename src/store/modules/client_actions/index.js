@@ -3,20 +3,19 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { logout, robustLogin } from '@/backend/client_actions/base';
 import { writeJson } from '@/backend/file_utils';
-import { InvalidClientError } from '@/backend/errors';
+import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
+import { robustLogin, logout } from '@/backend/client_actions/user';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
  * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('@/backend/client_actions/base').ClientActionObject} ClientActionObject
+ * @typedef {import('@/backend/constants').ClientActionObject} ClientActionObject
  */
 
 /**
  * @typedef {Object} ClientActionState.Temp
  * @property {string} logCategory The log category to use when logging anything in this action.
- * @property {boolean} hasOutput Whether this task's function returns an output.
  * @property {string[]} outputs IDs of this action's outputs.
  */
 
@@ -56,25 +55,20 @@ const module = {
      * @param {any} state
      * @param {ClientActionObject} payload
      */
-    add(state, {
-      id,
-      name,
-      func,
-      hasOutput = false,
-      defaultOutputFormat,
-      outputFormatter,
-    }) {
-      Vue.set(state.all, id, {
-        id,
-        name,
-        func,
-        hasOutput,
-        defaultOutputFormat,
-        outputFormatter,
+    add(state, payload) {
+      const actualPayload = Object.assign({
+        hasOutput: false,
+        usesLoggedInTab: false,
+        requiresTaskTypes: false,
         // TODO: Consider letting this be set by a parameter
-        logCategory: id,
+        logCategory: payload.id,
         outputs: [],
-      });
+      }, payload);
+      if (actualPayload.requiresTaskTypes) {
+        // A logged in tab is required to get task types
+        actualPayload.usesLoggedInTab = true;
+      }
+      Vue.set(state.all, payload.id, actualPayload);
     },
     /**
      * Sets the output of a client of a client action.
@@ -125,6 +119,7 @@ const module = {
 
       commit('add', payloadCopy);
     },
+
     /**
      * Runs an action on a single client.
      * @param {ActionContext} context
@@ -133,9 +128,10 @@ const module = {
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction Whether this is the only action running on this client
+     * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
     async runActionOnClient({ rootState, getters, commit }, {
-      actionId, client, mainTask, isSingleAction,
+      actionId, client, mainTask, isSingleAction, loggedInTabId,
     }) {
       /** @type {ClientActionState} */
       const clientAction = getters.getActionById(actionId);
@@ -144,20 +140,25 @@ const module = {
       const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
       let taskHasError = false;
       try {
-        if (clientAction.func) {
-          log.setCategory(clientAction.logCategory);
+        if (!(clientAction.requiresTaskTypes && client.taxTypes === null)) {
+          if (clientAction.func) {
+            log.setCategory(clientAction.logCategory);
 
-          const output = await clientAction.func({
-            client,
-            parentTask: task,
-            clientActionConfig,
-          });
-          commit('setOutput', { actionId, clientId: client.id, value: output });
-          if (task.state === taskStates.ERROR) {
-            taskHasError = true;
+            const output = await clientAction.func({
+              client,
+              parentTask: task,
+              clientActionConfig,
+              loggedInTabId,
+            });
+            commit('setOutput', { actionId, clientId: client.id, value: output });
+            if (task.state === taskStates.ERROR) {
+              taskHasError = true;
+            }
+          } else {
+            task.state = taskStates.SUCCESS;
           }
         } else {
-          task.state = taskStates.SUCCESS;
+          throw new MissingTaxTypesError('Missing tax types. This was probably due to an error when retrieving them from the taxpayer profile.');
         }
       } catch (error) {
         log.setCategory(clientAction.logCategory);
@@ -212,8 +213,55 @@ const module = {
       });
       try {
         if (client.valid) {
+          // Check if any of the actions require something
+          const actionsThatRequire = {
+            loggedInTab: [],
+            taskTypes: [],
+          };
+          for (const actionId of actionIds) {
+            const clientAction = getters.getActionById(actionId);
+            if (clientAction.usesLoggedInTab) {
+              actionsThatRequire.loggedInTab.push(actionId);
+            }
+            if (clientAction.requiresTaskTypes) {
+              actionsThatRequire.taskTypes.push(actionId);
+            }
+          }
+
+          const anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
+          const anyActionsRequireTaskTypes = actionsThatRequire.taskTypes.length > 0;
+
+          // If any actions require task types, an extra task will be added to retrieve them.
+          if (anyActionsRequireTaskTypes) {
+            mainTask.progressMax += 1;
+          }
+
           mainTask.status = 'Logging in';
-          await robustLogin(client, mainTask.id, rootState.config.maxLoginAttempts);
+          const loggedInTabId = await robustLogin({
+            client,
+            parentTaskId: mainTask.id,
+            maxAttempts: rootState.config.maxLoginAttempts,
+            keepTabOpen: anyActionsNeedLoggedInTab,
+          });
+
+          // Get tax types if any actions require them
+          if (anyActionsRequireTaskTypes) {
+            mainTask.status = 'Getting tax types';
+            try {
+              await dispatch('clients/getTaxTypes', {
+                id: client.id,
+                parentTaskId: mainTask.id,
+                loggedInTabId,
+              }, { root: true });
+            } catch (error) {
+              const allActionsRequireTaskTypes = actionsThatRequire.taskTypes.length === actionIds.length;
+              if (allActionsRequireTaskTypes) {
+                throw error;
+              } else {
+                // Ignore error if not all tasks require tax types
+              }
+            }
+          }
 
           // Run actions in parallel
           if (!isSingleAction) {
@@ -228,12 +276,16 @@ const module = {
               client,
               mainTask,
               isSingleAction,
+              loggedInTabId,
             }));
           }
           await Promise.all(promises);
 
           mainTask.status = 'Logging out';
-          await logout(mainTask.id);
+          await logout({
+            parentTaskId: mainTask.id,
+            loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
+          });
 
           if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
             if (mainTask.childStateCounts[taskStates.WARNING] > 0) {

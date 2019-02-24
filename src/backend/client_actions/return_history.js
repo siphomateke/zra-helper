@@ -217,16 +217,17 @@ async function downloadAcknowledgementReceipts({
   });
 }
 
-/** @type {import('./base').ClientActionObject} */
+/** @type {import('@/backend/constants').ClientActionObject} */
 const clientAction = {
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',
+  requiresTaskTypes: true,
   async func({ client, parentTask, clientActionConfig }) {
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
 
     await parallelTaskMap({
-      list: Object.keys(taxTypes),
+      list: client.taxTypes,
       task: parentTask,
       autoCalculateTaskState: false,
       async func(taxTypeId, parentTaskId) {
