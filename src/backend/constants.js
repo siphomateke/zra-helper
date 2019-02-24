@@ -61,9 +61,9 @@ export const clientPropValidationErrorMessages = {
  * @property {string} id A unique camelCase ID to identify this client action.
  * @property {string} name The human-readable name of this client action.
  * @property {ClientActionFunction} [func]
- * @property {boolean} hasOutput Whether this client action returns an output.
- * @property {ClientActionOutputFormat} defaultOutputFormat
- * @property {ClientActionOutputFormatter} outputFormatter
+ * @property {boolean} [hasOutput] Whether this client action returns an output.
+ * @property {ClientActionOutputFormat} [defaultOutputFormat]
+ * @property {ClientActionOutputFormatter} [outputFormatter]
  * Function that formats the output into different formats such as CSV and JSON.
  */
 
