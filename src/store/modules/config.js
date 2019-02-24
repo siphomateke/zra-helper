@@ -1,5 +1,6 @@
 import { deepClone, deepReactiveClone } from '@/utils';
 
+/* eslint-disable max-len */
 const defaultConfig = {
   debug: {
     /** Whether the app should communicate with devtools. Extension must be reloaded for this to take effect. */
@@ -52,6 +53,7 @@ const defaultConfig = {
     removeMhtmlExtension: true,
   },
 };
+/* eslint-enable max-len */
 
 /** @type {import('vuex').Module} */
 const module = {
