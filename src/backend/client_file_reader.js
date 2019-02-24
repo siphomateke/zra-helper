@@ -10,7 +10,7 @@ import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@
  */
 
 /**
- * @typedef {import('@/backend/constants').Client} Client
+ * @typedef {import('@/backend/constants').ParsedClient} ParsedClient
  * @typedef {import('@/backend/constants').ClientValidationError} ClientValidationError
  */
 
@@ -72,7 +72,7 @@ function validateClient(client) {
  *
  * @param {string} csvString The CSV to parse as a string
  * @param {Papa.ParseConfig} config CSV parsing config
- * @returns {Client[]}
+ * @returns {ParsedClient[]}
  */
 function getClientsFromCsv(csvString, config = {}) {
   const list = [];
@@ -191,7 +191,7 @@ function getExtension(filename) {
  * Gets clients from a CSV file.
  *
  * @param {File} file The CSV file to get clients from
- * @returns {Promise.<Client[]>}
+ * @returns {Promise.<ParsedClient[]>}
  * @throws Will throw an error if the file fails to load
  */
 export default function getClientsFromFile(file) {

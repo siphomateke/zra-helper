@@ -210,6 +210,12 @@ export class InvalidClientError extends ExtendedError {
     this.setType('InvalidClientError');
   }
 }
+export class MissingTaxTypesError extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('MissingTaxTypes');
+  }
+}
 
 /**
  * @typedef JsonError

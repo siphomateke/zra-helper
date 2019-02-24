@@ -4,8 +4,7 @@ import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { writeJson } from '@/backend/file_utils';
-import { InvalidClientError } from '@/backend/errors';
-import { closeTab } from '@/backend/utils';
+import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
 
 /**
@@ -60,10 +59,15 @@ const module = {
       const actualPayload = Object.assign({
         hasOutput: false,
         usesLoggedInTab: false,
+        requiresTaskTypes: false,
         // TODO: Consider letting this be set by a parameter
         logCategory: payload.id,
         outputs: [],
       }, payload);
+      if (actualPayload.requiresTaskTypes) {
+        // A logged in tab is required to get task types
+        actualPayload.usesLoggedInTab = true;
+      }
       Vue.set(state.all, payload.id, actualPayload);
     },
     /**
@@ -136,21 +140,25 @@ const module = {
       const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
       let taskHasError = false;
       try {
-        if (clientAction.func) {
-          log.setCategory(clientAction.logCategory);
+        if (!(clientAction.requiresTaskTypes && client.taxTypes === null)) {
+          if (clientAction.func) {
+            log.setCategory(clientAction.logCategory);
 
-          const output = await clientAction.func({
-            client,
-            parentTask: task,
-            clientActionConfig,
-            loggedInTabId,
-          });
-          commit('setOutput', { actionId, clientId: client.id, value: output });
-          if (task.state === taskStates.ERROR) {
-            taskHasError = true;
+            const output = await clientAction.func({
+              client,
+              parentTask: task,
+              clientActionConfig,
+              loggedInTabId,
+            });
+            commit('setOutput', { actionId, clientId: client.id, value: output });
+            if (task.state === taskStates.ERROR) {
+              taskHasError = true;
+            }
+          } else {
+            task.state = taskStates.SUCCESS;
           }
         } else {
-          task.state = taskStates.SUCCESS;
+          throw new MissingTaxTypesError('Missing tax types. This was probably due to an error when retrieving them from the taxpayer profile.');
         }
       } catch (error) {
         log.setCategory(clientAction.logCategory);
@@ -205,14 +213,27 @@ const module = {
       });
       try {
         if (client.valid) {
-          // Check if any of the actions need a logged in tab to be open
-          let anyActionsNeedLoggedInTab = false;
+          // Check if any of the actions require something
+          const actionsThatRequire = {
+            loggedInTab: [],
+            taskTypes: [],
+          };
           for (const actionId of actionIds) {
             const clientAction = getters.getActionById(actionId);
             if (clientAction.usesLoggedInTab) {
-              anyActionsNeedLoggedInTab = true;
-              break;
+              actionsThatRequire.loggedInTab.push(actionId);
             }
+            if (clientAction.requiresTaskTypes) {
+              actionsThatRequire.taskTypes.push(actionId);
+            }
+          }
+
+          const anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
+          const anyActionsRequireTaskTypes = actionsThatRequire.taskTypes.length > 0;
+
+          // If any actions require task types, an extra task will be added to retrieve them.
+          if (anyActionsRequireTaskTypes) {
+            mainTask.progressMax += 1;
           }
 
           mainTask.status = 'Logging in';
@@ -222,6 +243,25 @@ const module = {
             maxAttempts: rootState.config.maxLoginAttempts,
             keepTabOpen: anyActionsNeedLoggedInTab,
           });
+
+          // Get tax types if any actions require them
+          if (anyActionsRequireTaskTypes) {
+            mainTask.status = 'Getting tax types';
+            try {
+              await dispatch('clients/getTaxTypes', {
+                id: client.id,
+                parentTaskId: mainTask.id,
+                loggedInTabId,
+              }, { root: true });
+            } catch (error) {
+              const allActionsRequireTaskTypes = actionsThatRequire.taskTypes.length === actionIds.length;
+              if (allActionsRequireTaskTypes) {
+                throw error;
+              } else {
+                // Ignore error if not all tasks require tax types
+              }
+            }
+          }
 
           // Run actions in parallel
           if (!isSingleAction) {

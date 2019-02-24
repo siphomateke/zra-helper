@@ -43,15 +43,16 @@ const totalsColumns = [
 const clientAction = {
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
-  func({ parentTask }) {
+  requiresTaskTypes: true,
+  async func({ parentTask, client: { taxTypes: taxTypeIds } }) {
     return new Promise((resolve) => {
       const promises = [];
       const totals = {};
       const retrievalErrors = {};
       parentTask.sequential = false;
       parentTask.unknownMaxProgress = false;
-      parentTask.progressMax = Object.keys(taxTypes).length;
-      for (const taxTypeId of Object.keys(taxTypes)) {
+      parentTask.progressMax = taxTypeIds.length;
+      for (const taxTypeId of taxTypeIds) {
         promises.push(new Promise(async (resolve) => {
           const taxType = taxTypes[taxTypeId];
           const task = await createTask(store, {

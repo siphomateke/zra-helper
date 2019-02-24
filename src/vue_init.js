@@ -5,6 +5,7 @@ import Buefy from 'buefy';
 import VueClipboard from 'vue-clipboard2';
 import store from './store';
 import initClientActions from './store/modules/client_actions/init';
+import initClientsModule from './store/modules/clients/init';
 
 if (process.env.NODE_ENV === 'development' && store.state.config.debug.devtools) {
   devtools.connect();
@@ -18,4 +19,5 @@ Vue.use(Buefy, {
 
 Vue.use(VueClipboard);
 
+initClientsModule();
 initClientActions();
