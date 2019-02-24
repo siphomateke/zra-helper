@@ -5,7 +5,7 @@ import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { downloadReceipt, parallelTaskMap, getPagedData } from './utils';
-import { taxTypeNames, taxTypeNumericalCodes, taxTypes } from '../constants';
+import { taxTypeNames, taxTypeNumericalCodes, taxTypes, browserFeatures } from '../constants';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -271,6 +271,7 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
 const clientAction = {
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',
+  requiredFeatures: [browserFeatures.MHTML],
   func({ client, parentTask, clientActionConfig }) {
     return new Promise(async (resolve, reject) => {
       const options = {

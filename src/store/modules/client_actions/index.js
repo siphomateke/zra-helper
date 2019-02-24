@@ -6,6 +6,8 @@ import { taskStates } from '@/store/modules/tasks';
 import { writeJson } from '@/backend/file_utils';
 import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
+import { featuresSupportedByBrowsers, browserCodes } from '@/backend/constants';
+import { getCurrentBrowser } from '@/utils';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
@@ -48,6 +50,34 @@ const module = {
   },
   getters: {
     getActionById: state => id => state.all[id],
+    getBrowsersActionSupports: (_, getters) => (id) => {
+      const action = getters.getActionById(id);
+      const supportedBrowsers = [];
+      for (const browserCode of Object.values(browserCodes)) {
+        const featuresSupportedByBrowser = featuresSupportedByBrowsers[browserCode];
+        let allSupported = true;
+        for (const requiredFeature of action.requiredFeatures) {
+          if (!featuresSupportedByBrowser.includes(requiredFeature)) {
+            allSupported = false;
+            break;
+          }
+        }
+        if (allSupported) {
+          supportedBrowsers.push(browserCode);
+        }
+      }
+      return supportedBrowsers;
+    },
+    actionSupportsCurrentBrowser: (_, getters) => (id) => {
+      const action = getters.getActionById(id);
+      const featuresSupportedByCurrentBrowser = featuresSupportedByBrowsers[getCurrentBrowser()];
+      for (const requiredFeature of action.requiredFeatures) {
+        if (!featuresSupportedByCurrentBrowser.includes(requiredFeature)) {
+          return false;
+        }
+      }
+      return true;
+    },
   },
   mutations: {
     /**
@@ -63,6 +93,7 @@ const module = {
         // TODO: Consider letting this be set by a parameter
         logCategory: payload.id,
         outputs: [],
+        requiredFeatures: [],
       }, payload);
       if (actualPayload.requiresTaskTypes) {
         // A logged in tab is required to get task types

@@ -3,7 +3,7 @@ import store from '@/store';
 import config from '@/transitional/config';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { taxTypes, taxTypeNumericalCodes } from '../constants';
+import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
@@ -221,6 +221,7 @@ async function downloadAcknowledgementReceipts({
 const clientAction = {
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',
+  requiredFeatures: [browserFeatures.MHTML],
   requiresTaskTypes: true,
   async func({ client, parentTask, clientActionConfig }) {
     const initialMaxOpenTabs = config.maxOpenTabs;

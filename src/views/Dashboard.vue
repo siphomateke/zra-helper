@@ -23,6 +23,8 @@
             <b-checkbox
               v-model="selectedClientActions"
               :native-value="action.id"
+              :disabled="!actionSupportsCurrentBrowser(action.id)"
+              :title="!actionSupportsCurrentBrowser(action.id) ? getUnsupportedBrowserString(action.id) : ''"
               name="actions">
               {{ action.name }}
             </b-checkbox>
@@ -64,8 +66,9 @@ import ClientList from '@/components/ClientList/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
+import { browserNames } from '@/backend/constants';
 
 export default {
   name: 'Dashboard',
@@ -88,6 +91,10 @@ export default {
       clientActionsObject: state => state.clientActions.all,
       clientsObj: state => state.clients.all,
     }),
+    ...mapGetters('clientActions', [
+      'actionSupportsCurrentBrowser',
+      'getBrowsersActionSupports',
+    ]),
     clients() {
       return Object.values(this.clientsObj);
     },
@@ -125,6 +132,22 @@ export default {
     },
     updateClients(clients) {
       this.$store.dispatch('clients/update', clients);
+    },
+    getNamesOfBrowsersActionSupports(actionId) {
+      return this.getBrowsersActionSupports(actionId).map(browserCode => browserNames[browserCode]);
+    },
+    getUnsupportedBrowserString(actionId) {
+      const browsers = this.getNamesOfBrowsersActionSupports(actionId);
+      let supportedBrowsersString = '';
+      if (browsers.length > 1) {
+        supportedBrowsersString = `${browsers.slice(0, -1).join(', ')} or ${browsers.slice(-1)}`;
+      } else if (browsers.length > 0) {
+        [supportedBrowsersString] = browsers;
+      } else {
+        supportedBrowsersString = '';
+      }
+
+      return `This action can only be run in ${supportedBrowsersString}`;
     },
   },
 };

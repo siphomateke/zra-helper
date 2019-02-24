@@ -8,6 +8,30 @@ export const browserCodes = {
   CHROME: 'chrome',
   FIREFOX: 'firefox',
 };
+
+/**
+ * Human-readable names of browsers
+ * @type {Object.<BrowserCode, string>}
+ */
+export const browserNames = {
+  [browserCodes.CHROME]: 'Chrome',
+  [browserCodes.FIREFOX]: 'Firefox',
+};
+
+/**
+ * @typedef {string} BrowserFeature
+ *
+ * @enum {BrowserFeature}
+ */
+export const browserFeatures = {
+  MHTML: 'saveAsMhtml',
+};
+
+/** @type {Object.<BrowserCode, BrowserFeature[]>} */
+export const featuresSupportedByBrowsers = {
+  [browserCodes.CHROME]: [browserFeatures.MHTML],
+  [browserCodes.FIREFOX]: [],
+};
 // #endregion
 
 // #region Clients
@@ -80,6 +104,7 @@ export const clientPropValidationErrorMessages = {
  * @property {string} name The human-readable name of this client action.
  * @property {ClientActionFunction} [func]
  * @property {boolean} [hasOutput] Whether this client action returns an output.
+ * @property {BrowserFeature[]} [requiredFeatures],
  * @property {boolean} [usesLoggedInTab] Whether this action needs to open a page from a logged in tab.
  * If this is enabled, the page that is opened after logging in will not be closed until the user is
  * about to be logged out.
