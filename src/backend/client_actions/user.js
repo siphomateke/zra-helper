@@ -58,8 +58,6 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
         command: 'checkLogin',
         client,
       });
-      /* const tokenKey = await sendMessage(tab.id, { command: 'getSessionData' });
-      console.log('Token key: ', tokenKey); */
       task.state = taskStates.SUCCESS;
       log.log(`Done logging in "${client.name}"`);
       return tab.id;
