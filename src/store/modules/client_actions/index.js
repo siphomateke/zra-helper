@@ -5,6 +5,7 @@ import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { writeJson } from '@/backend/file_utils';
 import { InvalidClientError } from '@/backend/errors';
+import { closeTab } from '@/backend/utils';
 import { robustLogin, logout } from '@/backend/client_actions/user';
 
 /**
@@ -55,25 +56,15 @@ const module = {
      * @param {any} state
      * @param {ClientActionObject} payload
      */
-    add(state, {
-      id,
-      name,
-      func,
-      hasOutput = false,
-      defaultOutputFormat,
-      outputFormatter,
-    }) {
-      Vue.set(state.all, id, {
-        id,
-        name,
-        func,
-        hasOutput,
-        defaultOutputFormat,
-        outputFormatter,
+    add(state, payload) {
+      const actualPayload = Object.assign({
+        hasOutput: false,
+        usesLoggedInTab: false,
         // TODO: Consider letting this be set by a parameter
-        logCategory: id,
+        logCategory: payload.id,
         outputs: [],
-      });
+      }, payload);
+      Vue.set(state.all, payload.id, actualPayload);
     },
     /**
      * Sets the output of a client of a client action.
@@ -133,9 +124,10 @@ const module = {
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction Whether this is the only action running on this client
+     * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
     async runActionOnClient({ rootState, getters, commit }, {
-      actionId, client, mainTask, isSingleAction,
+      actionId, client, mainTask, isSingleAction, loggedInTabId,
     }) {
       /** @type {ClientActionState} */
       const clientAction = getters.getActionById(actionId);
@@ -151,6 +143,7 @@ const module = {
             client,
             parentTask: task,
             clientActionConfig,
+            loggedInTabId,
           });
           commit('setOutput', { actionId, clientId: client.id, value: output });
           if (task.state === taskStates.ERROR) {
@@ -212,11 +205,22 @@ const module = {
       });
       try {
         if (client.valid) {
+          // Check if any of the actions need a logged in tab to be open
+          let anyActionsNeedLoggedInTab = false;
+          for (const actionId of actionIds) {
+            const clientAction = getters.getActionById(actionId);
+            if (clientAction.usesLoggedInTab) {
+              anyActionsNeedLoggedInTab = true;
+              break;
+            }
+          }
+
           mainTask.status = 'Logging in';
           const loggedInTabId = await robustLogin({
             client,
             parentTaskId: mainTask.id,
             maxAttempts: rootState.config.maxLoginAttempts,
+            keepTabOpen: anyActionsNeedLoggedInTab,
           });
 
           // Run actions in parallel
@@ -232,12 +236,16 @@ const module = {
               client,
               mainTask,
               isSingleAction,
+              loggedInTabId,
             }));
           }
           await Promise.all(promises);
 
           mainTask.status = 'Logging out';
-          await logout({ parentTaskId: mainTask.id });
+          await logout({
+            parentTaskId: mainTask.id,
+            loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
+          });
 
           if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
             if (mainTask.childStateCounts[taskStates.WARNING] > 0) {

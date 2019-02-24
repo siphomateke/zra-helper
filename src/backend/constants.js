@@ -37,6 +37,7 @@ export const clientPropValidationErrorMessages = {
  * @property {Client} client
  * @property {import('@/transitional/tasks').TaskObject} parentTask
  * @property {Object} clientActionConfig this client action's config
+ * @property {number} loggedInTabId ID of the logged in tab.
  */
 
 /**
@@ -62,6 +63,9 @@ export const clientPropValidationErrorMessages = {
  * @property {string} name The human-readable name of this client action.
  * @property {ClientActionFunction} [func]
  * @property {boolean} [hasOutput] Whether this client action returns an output.
+ * @property {boolean} [usesLoggedInTab] Whether this action needs to open a page from a logged in tab.
+ * If this is enabled, the page that is opened after logging in will not be closed until the user is
+ * about to be logged out.
  * @property {ClientActionOutputFormat} [defaultOutputFormat]
  * @property {ClientActionOutputFormatter} [outputFormatter]
  * Function that formats the output into different formats such as CSV and JSON.
