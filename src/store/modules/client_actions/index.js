@@ -189,6 +189,7 @@ const module = {
             task.state = taskStates.SUCCESS;
           }
         } else {
+          // eslint-disable-next-line max-len
           throw new MissingTaxTypesError('Missing tax types. This was probably due to an error when retrieving them from the taxpayer profile.');
         }
       } catch (error) {

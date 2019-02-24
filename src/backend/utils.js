@@ -1,9 +1,9 @@
 import axios from 'axios';
 import config from '@/transitional/config';
 import store from '@/store';
+import { getCurrentBrowser } from '@/utils';
 import { getZraError } from './content_scripts/helpers/zra';
 import { errorFromJson, ExecuteScriptError, SendMessageError, TabError, DownloadError } from './errors';
-import { getCurrentBrowser } from '@/utils';
 import { browserCodes } from './constants';
 
 /**
