@@ -217,7 +217,7 @@ async function downloadAcknowledgementReceipts({
   });
 }
 
-/** @type {import('./base').ClientActionObject} */
+/** @type {import('@/backend/constants').ClientActionObject} */
 const clientAction = {
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',

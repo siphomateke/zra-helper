@@ -10,7 +10,7 @@ import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTa
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
  * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('@/backend/client_actions/base').ClientActionObject} ClientActionObject
+ * @typedef {import('@/backend/constants').ClientActionObject} ClientActionObject
  */
 
 /**

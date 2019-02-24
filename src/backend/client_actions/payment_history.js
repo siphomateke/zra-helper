@@ -267,7 +267,7 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   });
 }
 
-/** @type {import('./base').ClientActionObject} */
+/** @type {import('@/backend/constants').ClientActionObject} */
 const clientAction = {
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',

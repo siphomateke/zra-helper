@@ -39,7 +39,7 @@ const totalsColumns = [
   'total',
 ];
 
-/** @type {import('./base').ClientActionObject} */
+/** @type {import('@/backend/constants').ClientActionObject} */
 const clientAction = {
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',

@@ -1,4 +1,4 @@
-/** @type {import('./base').ClientActionObject} */
+/** @type {import('@/backend/constants').ClientActionObject} */
 const clientAction = {
   id: 'testLogin',
   name: 'Test login',
