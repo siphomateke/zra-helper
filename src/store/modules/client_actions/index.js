@@ -16,7 +16,6 @@ import { robustLogin, logout } from '@/backend/client_actions/user';
 /**
  * @typedef {Object} ClientActionState.Temp
  * @property {string} logCategory The log category to use when logging anything in this action.
- * @property {boolean} hasOutput Whether this task's function returns an output.
  * @property {string[]} outputs IDs of this action's outputs.
  */
 
