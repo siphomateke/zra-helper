@@ -9,9 +9,11 @@
   "description": "A browser extension that automates various aspects of the ZRA website.",
   "scripts": {
     "serve": "vue-cli-service build --mode development --watch",
-    "serve:firefox": "cross-env BROWSER=firefox vue-cli-service build --mode development --watch",
+    "serve:firefox": "cross-env BROWSER=firefox yarn run serve",
+    "serve:chrome": "cross-env BROWSER=chrome yarn run serve",
     "build": "vue-cli-service build",
-    "build:firefox": "cross-env BROWSER=firefox vue-cli-service build",
+    "build:firefox": "cross-env BROWSER=firefox yarn run build",
+    "build:chrome": "cross-env BROWSER=chrome yarn run build",
     "lint": "vue-cli-service lint --format stylish",
     "devtools": "vue-devtools"
   },

@@ -24,6 +24,16 @@
         "problemMatcher": [
           "$eslint-stylish"
         ]
+      },
+      {
+        "type": "npm",
+        "script": "serve:firefox",
+        "problemMatcher": []
+      },
+      {
+        "type": "npm",
+        "script": "build:firefox",
+        "problemMatcher": []
       }
     ]
   }
