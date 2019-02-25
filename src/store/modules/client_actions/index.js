@@ -273,10 +273,11 @@ const module = {
      * @param {Object} payload
      * @param {Client} payload.client
      * @param {ClientActionId[]} payload.actionIds
+     * @param {number} payload.parentTaskId
      */
     async runActionsOnClient({
       rootState, commit, getters, dispatch,
-    }, { client, actionIds }) {
+    }, { client, actionIds, parentTaskId }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
       const clientIdentifier = client.name ? client.name : `Client ${client.id}`;
@@ -291,6 +292,7 @@ const module = {
         unknownMaxProgress: false,
         progressMax: 2 + actionIds.length,
         sequential: isSingleAction,
+        parent: parentTaskId,
       });
       try {
         if (client.valid) {
@@ -398,13 +400,27 @@ const module = {
      */
     async runAll({ dispatch }, { actionIds, clients }) {
       if (clients.length > 0) {
-        /* eslint-disable no-await-in-loop */
-        for (const client of clients) {
-          // TODO: Consider checking if a tab has been closed prematurely all the time.
-          // Currently, only tabLoaded checks for this.
-          await dispatch('runActionsOnClient', { client, actionIds });
+        const rootTask = await createTask(store, {
+          title: 'Run actions on clients',
+          progressMax: clients.length,
+          unknownMaxProgress: false,
+          sequential: true,
+        });
+        try {
+          /* eslint-disable no-await-in-loop */
+          for (const client of clients) {
+            rootTask.status = client.name;
+            // TODO: Consider checking if a tab has been closed prematurely all the time.
+            // Currently, only tabLoaded checks for this.
+            await dispatch('runActionsOnClient', { client, actionIds, parentTaskId: rootTask.id });
+          }
+          /* eslint-enable no-await-in-loop */
+        } catch (error) {
+          rootTask.setError(error);
+        } finally {
+          rootTask.markAsComplete();
+          rootTask.setStateBasedOnChildren();
         }
-        /* eslint-enable no-await-in-loop */
       } else {
         log.setCategory('clientAction');
         log.showError('No clients found');

@@ -86,6 +86,7 @@ export default {
       'progress',
       'progressMax',
       'complete',
+      'isRoot',
     ]),
     ...mapGettersById('tasks', {
       model: 'getTaskById',
@@ -103,6 +104,12 @@ export default {
     messages() {
       return this.errorString ? this.errorString : this.status;
     },
+  },
+  created() {
+    // Expand the root task by default
+    if (this.isRoot) {
+      this.open = true;
+    }
   },
   methods: {
     getStateIcon(state) {

@@ -165,6 +165,7 @@ const module = {
         }
         return task.progressMax;
       },
+      isRoot: ({ task }) => task.id === 0,
     }),
   },
   mutations: {
