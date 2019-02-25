@@ -185,7 +185,7 @@ export default {
       }
       return null;
     },
-    getCachedLogString(type) {
+    async getCachedLogString(type) {
       if (this.logChanged[type]) {
         this.cachedLog[type] = this.getLogString(type);
         this.logChanged[type] = false;

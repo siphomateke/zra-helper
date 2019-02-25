@@ -89,7 +89,7 @@ export default {
     /**
      * @param {import('@/backend/constants').ExportFormatCode} format
      */
-    formatOutput(format) {
+    async formatOutput(format) {
       return this.action.outputFormatter(this.clientOutputs, format);
     },
   },

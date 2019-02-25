@@ -21,27 +21,12 @@
 </template>
 
 <script>
+import ExportButtonMixin from './export_button_mixin';
+
 // FIXME: Wrap tooltip around button without breaking .buttons.has-addons
 export default {
   name: 'CopyToClipboardButton',
-  props: {
-    content: {
-      type: Function,
-      default: () => '',
-    },
-    compact: {
-      type: Boolean,
-      default: false,
-    },
-    size: {
-      type: String,
-      default: '',
-    },
-    disabled: {
-      type: Boolean,
-      default: false,
-    },
-  },
+  mixins: [ExportButtonMixin],
   data() {
     return {
       showTooltip: false,
@@ -67,8 +52,9 @@ export default {
         this.showTooltipMessage('Failed to copy! Try pressing Ctrl+C');
       }
     },
-    copy() {
-      this.$copyText(this.content())
+    async copy() {
+      const data = await this.generateData();
+      this.$copyText(data)
         .then(() => {
           this.copyComplete(true);
         }).catch(() => {

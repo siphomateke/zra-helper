@@ -19,12 +19,12 @@
           :disabled="disabled">{{ getFormatName(format) }}</option>
       </b-select>
       <CopyToClipboardButton
-        :content="generator"
+        :generator="generator"
         :size="size"
         :compact="compact"
         :disabled="disabled"/>
       <DownloadButton
-        :content="generator"
+        :generator="generator"
         :size="size"
         :compact="compact"
         :disabled="disabled"
@@ -46,14 +46,14 @@
       </p>
       <p class="control">
         <CopyToClipboardButton
-          :content="getGeneratorFromFormat(format)"
+          :generator="getGeneratorFromFormat(format)"
           :size="size"
           :compact="true"
           :disabled="disabled"/>
       </p>
       <p class="control">
         <DownloadButton
-          :content="getGeneratorFromFormat(format)"
+          :generator="getGeneratorFromFormat(format)"
           :size="size"
           :compact="true"
           :disabled="disabled"

@@ -1,6 +1,6 @@
 <template>
   <button
-    :class="[{'is-loading': downloading}, size]"
+    :class="[{'is-loading': loading}, size]"
     :title="description"
     :disabled="disabled"
     class="button"
@@ -16,33 +16,19 @@
 <script>
 import { waitForDownloadToComplete } from '@/backend/utils';
 import { exportFormats } from '@/backend/constants';
+import ExportButtonMixin from './export_button_mixin';
 
 export default {
   name: 'DownloadButton',
+  mixins: [ExportButtonMixin],
   props: {
-    content: {
-      type: Function,
-      default: () => '',
-    },
     type: {
       type: String,
-      default: '',
+      required: true,
     },
     filename: {
       type: String,
       default: 'download',
-    },
-    compact: {
-      type: Boolean,
-      default: false,
-    },
-    size: {
-      type: String,
-      default: '',
-    },
-    disabled: {
-      type: Boolean,
-      default: false,
     },
   },
   data() {
@@ -61,10 +47,14 @@ export default {
     showSaveAsDialog() {
       return this.$store.state.config.export.showSaveAsDialog;
     },
+    loading() {
+      return this.generatingData || this.downloading;
+    },
   },
   methods: {
     async download() {
-      const blob = new Blob([this.content()], { type: `${this.downloadType.mime};charset=utf-8` });
+      const data = await this.generateData();
+      const blob = new Blob([data], { type: `${this.downloadType.mime};charset=utf-8` });
       const downloadId = await browser.downloads.download({
         url: URL.createObjectURL(blob),
         filename: `${this.filename}.${this.downloadType.extension}`,

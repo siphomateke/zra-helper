@@ -191,7 +191,7 @@ export default {
       ]);
       return Papa.unparse(table, { quotes: true });
     },
-    getExport(format) {
+    async getExport(format) {
       const tasksJson = this.tasksToJson(this.tasks);
       if (format === exportFormatCodes.TXT || format === exportFormatCodes.CSV) {
         const tasks = this.getTextExportMetadata(tasksJson);
