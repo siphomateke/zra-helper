@@ -13,7 +13,9 @@
           <b-icon
             v-if="hasChildren"
             :icon="open ? 'caret-down' : 'caret-right'"
-            size="is-small"/>{{ title }}</div>
+            size="is-small"/>
+          <span>{{ title }}</span>
+        </div>
         <div
           :title="childStateString"
           class="subtasks-info">
