@@ -105,6 +105,14 @@ export default {
   },
   watch: {
     complete(value) {
+      this.completeStateChanged(value);
+    },
+  },
+  created() {
+    this.completeStateChanged(this.complete);
+  },
+  methods: {
+    completeStateChanged(value) {
       if (value) {
         if (this.hideOnComplete && !this.debug) {
           setTimeout(() => {
