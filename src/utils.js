@@ -58,6 +58,22 @@ export function getCurrentBrowser() {
 }
 
 /**
+ * Checks which properties are missing from an object.
+ * @param {Object} obj
+ * @param {string[]} properties
+ * @return {string[]} The missing properties.
+ */
+export function objectHasProperties(obj, properties) {
+  const missing = [];
+  for (const property of properties) {
+    if (!(property in obj)) {
+      missing.push(property);
+    }
+  }
+  return missing;
+}
+
+/**
  * Standard array join except a different character can be provided for the last separator.
  * @param {Array} arr
  * @param {string} separator

@@ -6,8 +6,8 @@ import { taskStates } from '@/store/modules/tasks';
 import { writeJson } from '@/backend/file_utils';
 import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
-import { featuresSupportedByBrowsers, browserCodes } from '@/backend/constants';
-import { getCurrentBrowser } from '@/utils';
+import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
+import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
@@ -37,6 +37,52 @@ import { getCurrentBrowser } from '@/utils';
  * @typedef {string} ClientActionId
  * @typedef {Object.<ClientActionId, Object.<ClientUsername, ClientActionOutput>>} ClientActionOutputs
  */
+
+/**
+ * Validates a client action's options.
+ * @param {ClientActionObject} options
+ * @throws {Error}
+ */
+function validateActionOptions(options) {
+  const errors = [];
+  if (options.hasOutput) {
+    const validFormats = Object.values(exportFormatCodes);
+
+    const requiredProperties = ['defaultOutputFormat', 'outputFormats', 'outputFormatter'];
+    const missing = objectHasProperties(options, requiredProperties);
+    if (
+      !missing.includes('defaultOutputFormat')
+      && !validFormats.includes(options.defaultOutputFormat)
+    ) {
+      errors.push(`${JSON.stringify(options.defaultOutputFormat)} is not a valid default output format`);
+    }
+    if (!missing.includes('outputFormats')) {
+      if (!(Array.isArray(options.outputFormats))) {
+        errors.push("Property 'outputFormats' must be an array");
+      } else {
+        const invalid = [];
+        for (const format of options.outputFormats) {
+          if (!validFormats.includes(format)) {
+            invalid.push(format);
+          }
+        }
+        if (invalid.length > 0) {
+          errors.push(`Unknown output format types: ${JSON.stringify(invalid)}`);
+        }
+      }
+    }
+    if (!missing.includes('outputFormatter') && !(typeof options.outputFormatter === 'function')) {
+      errors.push('Output formatter must be a function');
+    }
+
+    if (missing.length > 0) {
+      errors.push(`If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(`InvalidClientActionOptions: ${errors.join(', ')}`);
+  }
+}
 
 // TODO: Document state and actions
 /** @type {import('vuex').Module} */
@@ -99,6 +145,9 @@ const module = {
         // A logged in tab is required to get task types
         actualPayload.usesLoggedInTab = true;
       }
+
+      validateActionOptions(actualPayload);
+
       Vue.set(state.all, payload.id, actualPayload);
     },
     /**
