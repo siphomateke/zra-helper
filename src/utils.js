@@ -91,3 +91,11 @@ export function joinSpecialLast(arr, separator, lastSeparator) {
   }
   return output;
 }
+
+/**
+ * Async setTimeout
+ * @param {number} timeout
+ */
+export async function delay(timeout) {
+  return new Promise(resolve => setTimeout(resolve, timeout));
+}
