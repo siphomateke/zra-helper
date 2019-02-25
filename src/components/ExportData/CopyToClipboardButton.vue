@@ -1,9 +1,10 @@
 <template>
   <button
     :class="[size]"
-    :title="compact ? longDescription : ''"
+    :title="description"
     :disabled="disabled"
     class="button"
+    type="button"
     @click="copy">
     <b-tooltip
       :active="showTooltip"
@@ -14,7 +15,7 @@
       <b-icon
         icon="clipboard"
         size="is-small"/>
-      <span>{{ compact ? shortDescription: longDescription }}</span>
+      <span v-if="!compact">{{ label }}</span>
     </b-tooltip>
   </button>
 </template>
@@ -46,8 +47,8 @@ export default {
       showTooltip: false,
       tooltip: '',
       tooltipTimeout: 3000,
-      longDescription: 'Copy to clipboard',
-      shortDescription: 'Copy',
+      description: 'Copy to clipboard',
+      label: 'Copy',
     };
   },
   methods: {

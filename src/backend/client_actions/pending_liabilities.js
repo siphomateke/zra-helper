@@ -3,7 +3,7 @@ import log from '@/transitional/log';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { taxTypes } from '../constants';
+import { taxTypes, exportFormatCodes } from '../constants';
 import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '../utils';
 import { writeJson } from '../file_utils';
 
@@ -157,9 +157,10 @@ const clientAction = {
     });
   },
   hasOutput: true,
-  defaultOutputFormat: 'csv',
+  defaultOutputFormat: exportFormatCodes.CSV,
+  outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
   outputFormatter(clientOutputs, format) {
-    if (format === 'csv') {
+    if (format === exportFormatCodes.CSV) {
       const rows = [];
       const columnOrder = totalsColumns;
       // Columns are: client identifier, ...totals, error

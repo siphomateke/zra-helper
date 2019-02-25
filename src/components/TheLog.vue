@@ -30,9 +30,7 @@
       </div>
     </div>
     <ExportButtons
-      :raw="() => getCachedLogString('raw')"
-      :csv="() => getCachedLogString('csv')"
-      :json="() => getCachedLogString('json')"
+      :generators="exportGenerators"
       :disabled="lines.length === 0"
       filename="log"/>
   </div>
@@ -47,6 +45,7 @@ import EmptySection from '@/components/EmptySection.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
 import { createNamespacedHelpers } from 'vuex';
 import renderTable from 'text-table';
+import { exportFormatCodes } from '@/backend/constants';
 
 const { mapState, mapGetters } = createNamespacedHelpers('log');
 
@@ -69,12 +68,8 @@ export const typeTooltips = {
   info: 'Information',
 };
 
-/**
- * @typedef {string} ExportType
- */
-
-/** @type {ExportType[]} */
-const exportTypes = ['raw', 'csv', 'json'];
+/** @type {import('@/backend/constants').ExportFormatCode[]} */
+const exportTypes = [exportFormatCodes.TXT, exportFormatCodes.CSV, exportFormatCodes.JSON];
 
 export default {
   name: 'TheLog',
@@ -105,6 +100,13 @@ export default {
     ...mapGetters(['empty']),
     showDateInTimestamp() {
       return this.$store.state.config.log.showDateInTimestamp;
+    },
+    exportGenerators() {
+      const generators = {};
+      for (const type of exportTypes) {
+        generators[type] = () => this.getCachedLogString(type);
+      }
+      return generators;
     },
   },
   watch: {
@@ -157,7 +159,7 @@ export default {
       });
     },
     getLogString(type) {
-      if (type === 'raw') {
+      if (type === exportFormatCodes.TXT) {
         const table = this.lines.map((line) => {
           const row = [];
           row.push(line.timestamp);
@@ -171,14 +173,14 @@ export default {
           return row;
         });
         return renderTable(table);
-      } else if (type === 'csv') {
+      } else if (type === exportFormatCodes.CSV) {
         return writeCsv(this.lines.map(line => ({
           timestamp: line.timestamp,
           type: line.type,
           category: line.category,
           content: line.content,
         })));
-      } else if (type === 'json') {
+      } else if (type === exportFormatCodes.JSON) {
         return writeJson(this.lines);
       }
       return null;

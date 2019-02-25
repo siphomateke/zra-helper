@@ -15,9 +15,7 @@
         Only export root tasks
       </b-checkbox>
       <ExportButtons
-        :raw="() => getExport('raw')"
-        :csv="() => getExport('csv')"
-        :json="() => getExport('json')"
+        :generators="exportGenerators"
         :disabled="tasks.length === 0"
         filename="tasks"/>
     </div>
@@ -32,11 +30,15 @@ import { errorToString } from '@/backend/errors';
 import { taskStates } from '@/store/modules/tasks';
 import renderTable from 'text-table';
 import Papa from 'papaparse';
+import { exportFormatCodes } from '@/backend/constants';
 
 function objectWithoutKey(obj, key) {
   const { [key]: deletedKey, ...otherKeys } = obj;
   return otherKeys;
 }
+
+/** @type {import('@/backend/constants').ExportFormatCode[]} */
+const exportFormats = [exportFormatCodes.TXT, exportFormatCodes.CSV, exportFormatCodes.JSON];
 
 // FIXME: Cache export values
 export default {
@@ -61,6 +63,15 @@ export default {
     return {
       onlyExportTopLevel: true,
     };
+  },
+  computed: {
+    exportGenerators() {
+      const generators = {};
+      for (const format of exportFormats) {
+        generators[format] = () => this.getExport(format);
+      }
+      return generators;
+    },
   },
   beforeCreate() {
     // TODO: Use async import instead of require
@@ -98,7 +109,7 @@ export default {
       }
       return '?';
     },
-    getRawExportMetadata(tasks, indent = 0) {
+    getTextExportMetadata(tasks, indent = 0) {
       const rows = [];
       for (const task of tasks) {
         let childStates = '';
@@ -124,7 +135,7 @@ export default {
           row.error = errorToString(task.error);
         }
         if (!this.onlyExportTopLevel && task.children) {
-          row.children = this.getRawExportMetadata(task.children, indent + 1);
+          row.children = this.getTextExportMetadata(task.children, indent + 1);
         }
         rows.push(row);
       }
@@ -142,11 +153,11 @@ export default {
       }
       return table;
     },
-    getRawExportTopLevel(tasks) {
+    getTextExportTopLevel(tasks) {
       const table = this.getExportTable(tasks);
       return renderTable(table);
     },
-    getRawExportAllLevels(tasks) {
+    getTextExportAllLevels(tasks) {
       let string = '';
       for (const task of tasks) {
         for (let i = 0; i < task.indent; i++) {
@@ -158,16 +169,16 @@ export default {
         }
         string += '\n';
         if (task.children.length > 0) {
-          string += this.getRawExportAllLevels(task.children);
+          string += this.getTextExportAllLevels(task.children);
         }
       }
       return string;
     },
-    getRawExport(tasks) {
+    getTextExport(tasks) {
       if (this.onlyExportTopLevel) {
-        return this.getRawExportTopLevel(tasks);
+        return this.getTextExportTopLevel(tasks);
       }
-      return this.getRawExportAllLevels(tasks);
+      return this.getTextExportAllLevels(tasks);
     },
     getCsvExport(tasks) {
       const table = this.getExportTable(tasks);
@@ -182,11 +193,11 @@ export default {
     },
     getExport(format) {
       const tasksJson = this.tasksToJson(this.tasks);
-      if (format === 'raw' || format === 'csv') {
-        const tasks = this.getRawExportMetadata(tasksJson);
-        if (format === 'raw') {
-          return this.getRawExport(tasks);
-        } else if (format === 'csv') {
+      if (format === exportFormatCodes.TXT || format === exportFormatCodes.CSV) {
+        const tasks = this.getTextExportMetadata(tasksJson);
+        if (format === exportFormatCodes.TXT) {
+          return this.getTextExport(tasks);
+        } else if (format === exportFormatCodes.CSV) {
           return this.getCsvExport(tasks);
         }
       }

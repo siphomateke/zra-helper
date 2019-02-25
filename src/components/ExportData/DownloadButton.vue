@@ -1,40 +1,21 @@
 <template>
   <button
     :class="[{'is-loading': downloading}, size]"
-    :title="compact ? longDescription : ''"
+    :title="description"
     :disabled="disabled"
     class="button"
+    type="button"
     @click="download">
     <b-icon
       icon="download"
       size="is-small"/>
-    <span>{{ compact ? downloadType.name : longDescription }}</span>
+    <span v-if="!compact">{{ label }}</span>
   </button>
 </template>
 
 <script>
 import { waitForDownloadToComplete } from '@/backend/utils';
-
-/**
- * @typedef DownloadType
- * @property {string} name
- * @property {string} extension
- * @property {string} mime
- */
-
-/** @type {Object.<string, DownloadType>} */
-const downloadTypes = {
-  json: {
-    name: 'JSON',
-    extension: 'json',
-    mime: 'text/json',
-  },
-  csv: {
-    name: 'CSV',
-    extension: 'csv',
-    mime: 'text/csv',
-  },
-};
+import { exportFormats } from '@/backend/constants';
 
 export default {
   name: 'DownloadButton',
@@ -67,13 +48,14 @@ export default {
   data() {
     return {
       downloading: false,
+      label: 'Download',
     };
   },
   computed: {
     downloadType() {
-      return downloadTypes[this.type];
+      return exportFormats[this.type];
     },
-    longDescription() {
+    description() {
       return `Download as ${this.downloadType.name}`;
     },
     showSaveAsDialog() {

@@ -11,9 +11,8 @@
             rows="7"/>
         </div>
         <ExportButtons
-          :raw="() => defaultOutput"
-          :csv="() => formatOutput('csv')"
-          :json="() => formatOutput('json')"
+          :generators="generators"
+          :default-format="defaultFormat"
           :filename="`${action.id}Output`"/>
       </div>
       <EmptySection
@@ -70,6 +69,13 @@ export default {
     defaultOutput() {
       return this.formatOutput(this.defaultFormat);
     },
+    generators() {
+      const generators = {};
+      for (const format of this.action.outputFormats) {
+        generators[format] = () => this.formatOutput(format);
+      }
+      return generators;
+    },
   },
   methods: {
     /**
@@ -81,7 +87,7 @@ export default {
       return this.clients[id];
     },
     /**
-     * @param {import('@/backend/constants').ClientActionOutputFormat} format
+     * @param {import('@/backend/constants').ExportFormatCode} format
      */
     formatOutput(format) {
       return this.action.outputFormatter(this.clientOutputs, format);

@@ -88,13 +88,9 @@ export const clientPropValidationErrorMessages = {
  */
 
 /**
- * @typedef {'csv'|'json'} ClientActionOutputFormat
- */
-
-/**
  * @callback ClientActionOutputFormatter
  * @param {import('@/store/modules/client_actions/index').ClientActionOutput[]} outputs
- * @param {ClientActionOutputFormat} format
+ * @param {ExportFormatCode} format
  * @returns {any}
  */
 
@@ -103,13 +99,15 @@ export const clientPropValidationErrorMessages = {
  * @property {string} id A unique camelCase ID to identify this client action.
  * @property {string} name The human-readable name of this client action.
  * @property {ClientActionFunction} [func]
- * @property {boolean} [hasOutput] Whether this client action returns an output.
  * @property {BrowserFeature[]} [requiredFeatures],
  * @property {boolean} [usesLoggedInTab] Whether this action needs to open a page from a logged in tab.
  * If this is enabled, the page that is opened after logging in will not be closed until the user is
  * about to be logged out.
  * @property {boolean} [requiresTaskTypes]
- * @property {ClientActionOutputFormat} [defaultOutputFormat]
+ * @property {boolean} [hasOutput] Whether this client action returns an output.
+ * @property {ExportFormatCode} [defaultOutputFormat]
+ * @property {ExportFormatCode[]} [outputFormats]
+ * The export formats this client action can output. Must be set if `hasOutput` is set.
  * @property {ClientActionOutputFormatter} [outputFormatter]
  * Function that formats the output into different formats such as CSV and JSON.
  */
@@ -180,5 +178,44 @@ export const taxTypeNames = {
   'property transfer tax': taxTypeNumericalCodes.PTT,
   'mineral royalty': taxTypeNumericalCodes.MINROY,
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
+};
+// #endregion
+
+// #region Export
+/**
+ * @typedef {string} ExportFormatCode
+ *
+ * @enum {ExportFormatCode}
+ */
+export const exportFormatCodes = {
+  TXT: 'txt',
+  CSV: 'csv',
+  JSON: 'json',
+};
+
+/**
+ * @typedef ExportFormat
+ * @property {string} name
+ * @property {string} extension
+ * @property {string} mime
+ */
+
+/** @type {Object.<ExportFormatCode, ExportFormat>} */
+export const exportFormats = {
+  [exportFormatCodes.TXT]: {
+    name: 'Text',
+    extension: 'txt',
+    mime: 'text/plain',
+  },
+  [exportFormatCodes.JSON]: {
+    name: 'JSON',
+    extension: 'json',
+    mime: 'text/json',
+  },
+  [exportFormatCodes.CSV]: {
+    name: 'CSV',
+    extension: 'csv',
+    mime: 'text/csv',
+  },
 };
 // #endregion
