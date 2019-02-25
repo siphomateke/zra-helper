@@ -56,3 +56,22 @@ export function deepReactiveClone(toCopy, copyTo) {
 export function getCurrentBrowser() {
   return process.env.BROWSER;
 }
+
+/**
+ * Standard array join except a different character can be provided for the last separator.
+ * @param {Array} arr
+ * @param {string} separator
+ * @param {string} lastSeparator
+ * @returns {string}
+ */
+export function joinSpecialLast(arr, separator, lastSeparator) {
+  let output = '';
+  if (arr.length > 1) {
+    output = `${arr.slice(0, -1).join(separator)}${lastSeparator}${arr.slice(-1)}`;
+  } else if (arr.length > 0) {
+    [output] = arr;
+  } else {
+    output = '';
+  }
+  return output;
+}

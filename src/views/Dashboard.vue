@@ -69,6 +69,7 @@ import ClientActionOutput from '@/components/ClientActionOutput.vue';
 import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 import { browserNames } from '@/backend/constants';
+import { joinSpecialLast } from '@/utils';
 
 export default {
   name: 'Dashboard',
@@ -138,16 +139,7 @@ export default {
     },
     getUnsupportedBrowserString(actionId) {
       const browsers = this.getNamesOfBrowsersActionSupports(actionId);
-      let supportedBrowsersString = '';
-      if (browsers.length > 1) {
-        supportedBrowsersString = `${browsers.slice(0, -1).join(', ')} or ${browsers.slice(-1)}`;
-      } else if (browsers.length > 0) {
-        [supportedBrowsersString] = browsers;
-      } else {
-        supportedBrowsersString = '';
-      }
-
-      return `This action can only be run in ${supportedBrowsersString}`;
+      return `This action can only be run in ${joinSpecialLast(browsers, ', ', ' or ')}`;
     },
   },
 };
