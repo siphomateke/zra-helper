@@ -1,9 +1,9 @@
 {
   "name": "zra-helper",
-  "repository": "github:nextgensparx/zra-helper",
-  "homepage": "https://github.com/nextgensparx/zra-helper",
+  "repository": "github:siphomateke/zra-helper",
+  "homepage": "https://github.com/siphomateke/zra-helper",
   "bugs": {
-    "url": "https://github.com/nextgensparx/zra-helper/issues"
+    "url": "https://github.com/siphomateke/zra-helper/issues"
   },
   "version": "1.3.0",
   "description": "A browser extension that automates various aspects of the ZRA website.",
@@ -20,7 +20,7 @@
   },
   "contributors": [
     "rahensonzam",
-    "nextgensparx"
+    "siphomateke"
   ],
   "license": "MIT",
   "dependencies": {
