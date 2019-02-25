@@ -43,6 +43,11 @@ export default {
       default: () => {},
     },
   },
+  data() {
+    return {
+      defaultOutput: null,
+    };
+  },
   computed: {
     ...mapState('clientActions', {
       allActions: 'all',
@@ -66,9 +71,6 @@ export default {
     defaultFormat() {
       return this.action.defaultOutputFormat;
     },
-    defaultOutput() {
-      return this.formatOutput(this.defaultFormat);
-    },
     generators() {
       const generators = {};
       for (const format of this.action.outputFormats) {
@@ -76,6 +78,17 @@ export default {
       }
       return generators;
     },
+  },
+  watch: {
+    defaultOutputFormat() {
+      this.getDefaultOutput();
+    },
+    clientOutputs() {
+      this.getDefaultOutput();
+    },
+  },
+  created() {
+    this.getDefaultOutput();
   },
   methods: {
     /**
@@ -91,6 +104,9 @@ export default {
      */
     async formatOutput(format) {
       return this.action.outputFormatter(this.clientOutputs, format);
+    },
+    async getDefaultOutput() {
+      this.defaultOutput = await this.formatOutput(this.defaultFormat);
     },
   },
 };
