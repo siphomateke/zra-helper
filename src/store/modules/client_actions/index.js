@@ -124,6 +124,13 @@ const module = {
       }
       return true;
     },
+    running: (state, getters, rootState, rootGetters) => {
+      const rootTask = rootGetters['tasks/rootTask'];
+      if (rootTask) {
+        return !rootTask.complete;
+      }
+      return false;
+    },
   },
   mutations: {
     /**
@@ -406,6 +413,7 @@ const module = {
           unknownMaxProgress: false,
           sequential: true,
         });
+        await dispatch('tasks/setRootTask', rootTask.id, { root: true });
         try {
           /* eslint-disable no-await-in-loop */
           for (const client of clients) {

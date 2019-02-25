@@ -101,9 +101,11 @@ const module = {
      * @type {Object.<string, TaskVuexState>}
      */
     tasks: {},
+    rootTask: null,
   },
   getters: {
     getTaskById: state => id => state.tasks[id],
+    rootTask: state => state.tasks[state.rootTask],
     ...listStoreHelper.itemGetters({
       hasParent: ({ task }) => task.parent !== null,
       parent: ({ getters, task }) => getters.getTaskById(task.parent),
@@ -165,7 +167,7 @@ const module = {
         }
         return task.progressMax;
       },
-      isRoot: ({ task }) => task.id === 0,
+      isRoot: ({ state, task }) => state.rootTask === task.id,
     }),
   },
   mutations: {
@@ -242,6 +244,9 @@ const module = {
       'autoUpdateParent',
       'indeterminate',
     ]),
+    setRootTask(state, id) {
+      state.rootTask = id;
+    },
   },
   actions: {
     /**
@@ -338,6 +343,9 @@ const module = {
         state = taskStates.SUCCESS;
       }
       commit('setState', { id, value: state });
+    },
+    setRootTask({ commit }, id) {
+      commit('setRootTask', id);
     },
   },
 };
