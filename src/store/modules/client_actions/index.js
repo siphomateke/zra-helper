@@ -290,7 +290,7 @@ const module = {
         title: taskTitle,
         unknownMaxProgress: false,
         progressMax: 2 + actionIds.length,
-        sequential: singleAction,
+        sequential: isSingleAction,
       });
       try {
         if (client.valid) {
