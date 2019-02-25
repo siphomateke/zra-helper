@@ -15,7 +15,8 @@
     "build:firefox": "cross-env BROWSER=firefox yarn run build",
     "build:chrome": "cross-env BROWSER=chrome yarn run build",
     "lint": "vue-cli-service lint --format stylish",
-    "devtools": "vue-devtools"
+    "devtools": "vue-devtools",
+    "postversion": "git push --tags"
   },
   "contributors": [
     "rahensonzam",
