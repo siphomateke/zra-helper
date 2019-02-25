@@ -9,10 +9,10 @@
       message="No tasks are currently running"/>
     <div v-if="isRoot">
       <b-checkbox
-        v-model="onlyExportTopLevel"
+        v-model="onlyExportClientTasks"
         :disabled="tasks.length === 0"
-        title="Whether only the top level tasks should be included in the export.">
-        Only export root tasks
+        title="Whether only the top level client tasks should be included in the export.">
+        Only export client tasks
       </b-checkbox>
       <ExportButtons
         :generators="exportGenerators"
@@ -40,6 +40,16 @@ function objectWithoutKey(obj, key) {
 /** @type {import('@/backend/constants').ExportFormatCode[]} */
 const exportFormats = [exportFormatCodes.TXT, exportFormatCodes.CSV, exportFormatCodes.JSON];
 
+const taskGettersToExport = [
+  'hasParent',
+  'hasChildren',
+  'childStateCounts',
+  'complete',
+  'progress',
+  'progressMax',
+  'isRoot',
+];
+
 // FIXME: Cache export values
 export default {
   name: 'TaskList',
@@ -61,7 +71,7 @@ export default {
   },
   data() {
     return {
-      onlyExportTopLevel: true,
+      onlyExportClientTasks: true,
     };
   },
   computed: {
@@ -82,20 +92,32 @@ export default {
     getTaskById(id) {
       return this.$store.getters['tasks/getTaskById'](id);
     },
-    getChildStateCounts(id) {
-      return this.$store.getters['tasks/childStateCounts'](id);
-    },
     tasksToJson(ids) {
       const tasks = [];
       for (const id of ids) {
         const task = this.getTaskById(id);
-        const childStateCounts = this.getChildStateCounts(id);
-        const json = this.tasksToJson(task.children);
+
+        // Add various getters to the task JSON
         const taskCopy = objectWithoutKey(task, 'children');
-        taskCopy.children = json;
-        taskCopy.childrenIds = task.children;
-        taskCopy.childStateCounts = childStateCounts;
-        tasks.push(taskCopy);
+        for (const getter of taskGettersToExport) {
+          taskCopy[getter] = this.$store.getters[`tasks/${getter}`](id);
+        }
+
+        // Include children if not only exporting client tasks
+        // or, if we are exporting client tasks, only include children of the root task.
+        let childrenJson = null;
+        if (!this.onlyExportClientTasks || (this.onlyExportClientTasks && taskCopy.isRoot)) {
+          childrenJson = this.tasksToJson(task.children);
+          taskCopy.children = childrenJson;
+          taskCopy.childrenIds = task.children;
+        }
+
+        if (this.onlyExportClientTasks && taskCopy.isRoot) {
+          // If we are only exporting client tasks, ignore the root task
+          tasks.push(...childrenJson);
+        } else {
+          tasks.push(taskCopy);
+        }
       }
       return tasks;
     },
@@ -130,11 +152,12 @@ export default {
           childStates,
           error: null,
           children: [],
+          isRoot: task.isRoot,
         };
         if (task.error) {
           row.error = errorToString(task.error);
         }
-        if (!this.onlyExportTopLevel && task.children) {
+        if (!this.onlyExportClientTasks && task.children) {
           row.children = this.getTextExportMetadata(task.children, indent + 1);
         }
         rows.push(row);
@@ -175,7 +198,7 @@ export default {
       return string;
     },
     getTextExport(tasks) {
-      if (this.onlyExportTopLevel) {
+      if (this.onlyExportClientTasks) {
         return this.getTextExportTopLevel(tasks);
       }
       return this.getTextExportAllLevels(tasks);
