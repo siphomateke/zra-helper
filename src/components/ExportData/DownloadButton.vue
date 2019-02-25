@@ -55,9 +55,10 @@ export default {
     async download() {
       const data = await this.generateData();
       const blob = new Blob([data], { type: `${this.downloadType.mime};charset=utf-8` });
+      const fullFilename = `${this.filename}.${this.downloadType.extension}`;
       const downloadId = await browser.downloads.download({
         url: URL.createObjectURL(blob),
-        filename: `${this.filename}.${this.downloadType.extension}`,
+        filename: fullFilename,
         saveAs: this.showSaveAsDialog,
       });
       // Wait a little bit to see if the download finishes quickly before showing the
@@ -70,6 +71,10 @@ export default {
       }, 200);
       try {
         await waitForDownloadToComplete(downloadId);
+        this.$toast.open({
+          message: `Successfully downloaded '${fullFilename}'`,
+          type: 'is-success',
+        });
       } catch (error) {
         if (error.code !== 'USER_CANCELED') {
           this.$toast.open({
