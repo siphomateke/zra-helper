@@ -23,7 +23,7 @@
             <b-checkbox
               v-model="selectedClientActions"
               :native-value="action.id"
-              :disabled="!actionSupportsCurrentBrowser(action.id)"
+              :disabled="!actionSupportsCurrentBrowser(action.id) || selectActionsDisabled"
               :title="!actionSupportsCurrentBrowser(action.id) ? getUnsupportedBrowserString(action.id) : ''"
               name="actions">
               {{ action.name }}
@@ -112,13 +112,21 @@ export default {
       return this.selectedClientActions.length === 0;
     },
     runActionsButtonDisabled() {
-      return this.noActionsSelected;
+      return this.noActionsSelected || this.clientActionsRunning;
     },
     runActionsButtonDisabledReason() {
-      if (this.runActionsButtonDisabled) {
+      if (this.noActionsSelected) {
         return 'Please select some actions to run on the clients first.';
+      } else if (this.clientActionsRunning) {
+        return 'Some client actions are still running. Please wait for them to finish before running some more.';
       }
       return '';
+    },
+    clientActionsRunning() {
+      return this.$store.getters['clientActions/running'];
+    },
+    selectActionsDisabled() {
+      return this.clientActionsRunning;
     },
   },
   created() {
