@@ -30,3 +30,8 @@ $progress-bar-complete-animation-duration: 0.6;
 $region-outline-color: #b7b7b7;
 
 $export-buttons-margin: 0.25em;
+
+$draggable-list-border-width: 1px;
+$draggable-list-border-radius: 4px;
+$ghost-color: #C8EBFB;
+$ghost-border-color: darken($ghost-color, 40%);
