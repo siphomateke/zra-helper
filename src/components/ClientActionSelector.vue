@@ -36,6 +36,7 @@ import { joinSpecialLast } from '@/utils';
 import DraggableList from '@/components/DraggableList.vue';
 
 export default {
+  name: 'ClientActionSelector',
   components: {
     DraggableList,
   },
