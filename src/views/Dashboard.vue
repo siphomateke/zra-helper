@@ -14,12 +14,9 @@
             :clients="clients"/>
         </div>
         <br>
-        <div class="field">
-          <label class="label">Select actions</label>
-          <ClientActionSelector
-            v-model="selectedClientActions"
-            :disabled="selectActionsDisabled"/>
-        </div>
+        <ClientActionSelector
+          v-model="selectedClientActions"
+          :disabled="selectActionsDisabled"/>
         <button
           :disabled="runActionsButtonDisabled"
           :title="runActionsButtonDisabledReason"
