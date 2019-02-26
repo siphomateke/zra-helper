@@ -34,6 +34,11 @@
         "type": "npm",
         "script": "build:firefox",
         "problemMatcher": []
+      },
+      {
+        "type": "npm",
+        "script": "build:all",
+        "problemMatcher": []
       }
     ]
   }

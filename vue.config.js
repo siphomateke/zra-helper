@@ -28,6 +28,8 @@ const copy = [
   },
 ];
 
+const browser = process.env.BROWSER ? process.env.BROWSER : 'chrome';
+
 module.exports = {
   lintOnSave: false,
   productionSourceMap: false,
@@ -40,7 +42,7 @@ module.exports = {
     config
       .plugin('define')
       .tap((args) => {
-        args[0]['process.env'].BROWSER = `"${process.env.BROWSER ? process.env.BROWSER : 'chrome'}"`;
+        args[0]['process.env'].BROWSER = `"${browser}"`;
         return args;
       });
   },
@@ -75,6 +77,8 @@ module.exports = {
         },
       },
       manifestSync: ['version', 'description'],
+      outputDir: `dist/${browser}`,
     },
   },
+  outputDir: `dist/${browser}`,
 };
