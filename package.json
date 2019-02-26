@@ -14,7 +14,7 @@
     "build": "vue-cli-service build",
     "build:firefox": "cross-env BROWSER=firefox yarn run build",
     "build:chrome": "cross-env BROWSER=chrome yarn run build",
-    "lint": "vue-cli-service lint --format stylish",
+    "lint": "vue-cli-service lint --format stylish --mode production",
     "devtools": "vue-devtools",
     "postversion": "git push --tags"
   },
@@ -60,10 +60,10 @@
   },
   "lint-staged": {
     "*.js": [
-      "vue-cli-service lint"
+      "yarn run lint"
     ],
     "*.vue": [
-      "vue-cli-service lint"
+      "yarn run lint"
     ]
   }
 }

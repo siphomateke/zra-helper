@@ -57,6 +57,7 @@ const module = {
     addLine({ commit, state, rootState }, payload) {
       commit('addLine', payload);
 
+      /* eslint-disable no-console */
       if (rootState.config.debug.logToConsole) {
         const text = `${payload.category || state.currentCategory}: ${payload.content}`;
         switch (payload.type) {
@@ -74,6 +75,7 @@ const module = {
             break;
         }
       }
+      /* eslint-enable no-console */
     },
     addErrorLine({ dispatch, rootState }, { error, warning = false }) {
       const errorString = errorToString(error);
@@ -83,6 +85,7 @@ const module = {
         type: warning ? 'warning' : 'error',
       });
 
+      /* eslint-disable no-console */
       if (rootState.config.debug.errors) {
         if (error instanceof ExtendedError) {
           console.groupCollapsed(`${error.type} Details`);
@@ -98,6 +101,7 @@ const module = {
           console.error(error);
         }
       }
+      /* eslint-enable no-console */
     },
     log({ dispatch }, content) {
       return dispatch('addLine', {
