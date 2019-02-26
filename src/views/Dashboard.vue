@@ -16,19 +16,9 @@
         <br>
         <div class="field">
           <label class="label">Select actions</label>
-          <div
-            v-for="action in clientActions"
-            :key="action.id"
-            class="control">
-            <b-checkbox
-              v-model="selectedClientActions"
-              :native-value="action.id"
-              :disabled="!actionSupportsCurrentBrowser(action.id) || selectActionsDisabled"
-              :title="!actionSupportsCurrentBrowser(action.id) ? getUnsupportedBrowserString(action.id) : ''"
-              name="actions">
-              {{ action.name }}
-            </b-checkbox>
-          </div>
+          <ClientActionSelector
+            v-model="selectedClientActions"
+            :disabled="selectActionsDisabled"/>
         </div>
         <button
           :disabled="runActionsButtonDisabled"
@@ -66,10 +56,9 @@ import ClientList from '@/components/ClientList/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
-import { mapState, mapGetters } from 'vuex';
+import ClientActionSelector from '@/components/ClientActionSelector.vue';
+import { mapState } from 'vuex';
 import configMixin from '@/mixins/config';
-import { browserNames } from '@/backend/constants';
-import { joinSpecialLast } from '@/utils';
 
 export default {
   name: 'Dashboard',
@@ -79,6 +68,7 @@ export default {
     TaskList,
     Log,
     ClientActionOutput,
+    ClientActionSelector,
   },
   mixins: [configMixin],
   data() {
@@ -92,18 +82,8 @@ export default {
       clientActionsObject: state => state.clientActions.all,
       clientsObj: state => state.clients.all,
     }),
-    ...mapGetters('clientActions', [
-      'actionSupportsCurrentBrowser',
-      'getBrowsersActionSupports',
-    ]),
     clients() {
       return Object.values(this.clientsObj);
-    },
-    clientActionIds() {
-      return Object.keys(this.clientActionsObject);
-    },
-    clientActions() {
-      return Object.values(this.clientActionsObject);
     },
     clientActionsWithOutputs() {
       return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
@@ -141,13 +121,6 @@ export default {
     },
     updateClients(clients) {
       this.$store.dispatch('clients/update', clients);
-    },
-    getNamesOfBrowsersActionSupports(actionId) {
-      return this.getBrowsersActionSupports(actionId).map(browserCode => browserNames[browserCode]);
-    },
-    getUnsupportedBrowserString(actionId) {
-      const browsers = this.getNamesOfBrowsersActionSupports(actionId);
-      return `This action can only be run in ${joinSpecialLast(browsers, ', ', ' or ')}`;
     },
   },
 };
