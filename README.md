@@ -24,3 +24,10 @@ yarn run build:all # Builds for all browsers (only works on UNIX based operating
 ```
 yarn run lint
 ```
+
+### Debug with developer tools
+First, change the `devtools` debug setting to true.
+Then run:
+```
+yarn run devtools
+```
