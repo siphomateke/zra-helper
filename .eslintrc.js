@@ -18,6 +18,7 @@ module.exports = {
     'no-param-reassign': 'off',
     'no-plusplus': 'off',
     'no-shadow': 'off',
+    'vue/prop-name-casing': 'error',
   },
   parserOptions: {
     parser: 'babel-eslint',
