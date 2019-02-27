@@ -7848,10 +7848,9 @@ vm-browserify@0.0.4:
   dependencies:
     indexof "0.0.1"
 
-vue-cli-plugin-browser-extension@^0.12.0:
-  version "0.12.1"
-  resolved "https://registry.yarnpkg.com/vue-cli-plugin-browser-extension/-/vue-cli-plugin-browser-extension-0.12.1.tgz#a1343c16a897a46e67df02ca372916615e8f8a88"
-  integrity sha512-Me5n4JQ5j70qUQGD+9pB+4Ar4j9tMT/6rlNqw5/VXpJ4e2RIz+Dub4hupW2gSLoVd+0qGwPqWF9bjaEK5Yp25Q==
+"vue-cli-plugin-browser-extension@https://github.com/siphomateke/vue-cli-plugin-browser-extension#add-manifest-transformer":
+  version "0.14.0"
+  resolved "https://github.com/siphomateke/vue-cli-plugin-browser-extension#53c8c49a3332feaec3ea87f543733aaf82e3b378"
   dependencies:
     "@vue/cli-shared-utils" "^3.0.0-rc.3"
     copy-webpack-plugin "^4.5.2"

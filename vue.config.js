@@ -78,6 +78,17 @@ module.exports = {
       },
       manifestSync: ['version', 'description'],
       outputDir: `dist/${browser}`,
+      manifestTransformer(originalManifest) {
+        const manifest = Object.assign({}, originalManifest);
+        if (browser === 'firefox') {
+          // Remove pageCapture permission in Firefox
+          const index = manifest.permissions.indexOf('pageCapture');
+          manifest.permissions.splice(index, 1);
+        } else if (browser === 'chrome') {
+          delete manifest.applications;
+        }
+        return manifest;
+      },
     },
   },
   outputDir: `dist/${browser}`,
