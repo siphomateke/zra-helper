@@ -1,8 +1,9 @@
 <template>
   <draggable
-    v-model="list"
+    :value="list"
     :options="dragOptions"
     class="draggable-list"
+    @input="updateList"
     @start="drag = true"
     @end="drag = false">
     <transition-group
@@ -81,7 +82,9 @@ export default {
     value(value) {
       this.list = value;
     },
-    list(value) {
+  },
+  methods: {
+    updateList(value) {
       this.$emit('input', value);
     },
   },

@@ -7,7 +7,7 @@
         :key="action.id"
         class="control">
         <b-checkbox
-          v-model="selected"
+          v-model="selectedActionIds"
           :native-value="action.id"
           :disabled="actionIsDisabled(action.id)"
           :title="actionIsDisabled(action.id) ? actionDisabledReason(action.id) : ''"
@@ -17,15 +17,29 @@
       </div>
     </div>
 
-    <div class="field">
-      <b-checkbox v-model="customOrder">Use custom execution order</b-checkbox>
-      <DraggableList
-        v-if="customOrder"
-        v-model="orderedSelectedActions"
-        :drag-anywhere="true">
-        <span slot-scope="{item}">{{ item.name }}</span>
-      </DraggableList>
-    </div>
+    <template v-if="multipleActionsSelected">
+      <b-collapse
+        :open.sync="showOrderChooser">
+        <div
+          slot="trigger"
+          slot-scope="props">
+          <button
+            class="button is-small"
+            type="button">
+            <b-icon
+              :icon="props.open ? 'caret-down' : 'caret-right'"
+              size="is-small"/>
+            <span>{{ `${props.open ? 'Hide' : 'Show'} execution order` }}</span>
+          </button>
+        </div>
+        <DraggableList
+          :value="selectedActions"
+          :drag-anywhere="true"
+          @input="changedOrder">
+          <span slot-scope="{item}">{{ item.name }}</span>
+        </DraggableList>
+      </b-collapse>
+    </template>
   </div>
 </template>
 
@@ -52,9 +66,9 @@ export default {
   },
   data() {
     return {
-      selected: this.value,
-      customOrder: false,
-      orderedSelectedActions: [],
+      selectedActionIds: this.value,
+      selectedActions: [],
+      showOrderChooser: false,
     };
   },
   computed: {
@@ -68,33 +82,21 @@ export default {
     actions() {
       return Object.values(this.clientActionsObject);
     },
-    selectedActions() {
-      return this.selected.map(id => this.clientActionsObject[id]);
-    },
-    orderedSelectedIds() {
-      return this.orderedSelectedActions.map(action => action.id);
-    },
-    orderedTest() {
-      return this.actions.map(action => ({
-        id: action.id,
-        name: action.name,
-        disabled: this.actionIsDisabled(action.id),
-      }));
+    multipleActionsSelected() {
+      return this.selectedActionIds.length > 1;
     },
   },
   watch: {
     value(value) {
-      this.selected = value;
+      this.selectedActionIds = value;
     },
-    selectedActions() {
-      this.updatedOrderedSelectedActions();
-    },
-    orderedSelectedIds(value) {
-      this.$emit('input', value);
+    selectedActionIds(ids) {
+      this.updateSelectedActions();
+      this.$emit('input', ids);
     },
   },
   created() {
-    this.updatedOrderedSelectedActions();
+    this.updateSelectedActions();
   },
   methods: {
     actionIsDisabled(actionId) {
@@ -113,8 +115,11 @@ export default {
       }
       return '';
     },
-    updatedOrderedSelectedActions() {
-      this.orderedSelectedActions = this.selectedActions;
+    changedOrder(reorderedActions) {
+      this.selectedActionIds = reorderedActions.map(action => action.id);
+    },
+    updateSelectedActions() {
+      this.selectedActions = this.selectedActionIds.map(id => this.clientActionsObject[id]);
     },
   },
 };
