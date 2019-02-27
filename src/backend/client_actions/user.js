@@ -25,8 +25,10 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
 
   log.setCategory('login');
   log.log(`Logging in client "${client.name}"`);
+  let tabId = null;
   try {
     const tab = await createTab('https://www.zra.org.zm');
+    tabId = tab.id;
     task.addStep('Waiting for tab to load');
     try {
       await tabLoaded(tab.id);
@@ -69,6 +71,10 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
       }
     }
   } catch (error) {
+    if (keepTabOpen && tabId !== null) {
+      // TODO: Catch tab close errors
+      closeTab(tabId);
+    }
     task.setError(error);
     throw error;
   } finally {

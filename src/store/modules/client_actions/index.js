@@ -9,6 +9,7 @@ import { robustLogin, logout } from '@/backend/client_actions/user';
 import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
 import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
 import notify from '@/backend/notify';
+import { closeTab } from '@/backend/utils';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
@@ -302,6 +303,9 @@ const module = {
         sequential: isSingleAction,
         parent: parentTaskId,
       });
+      let loggedInTabId = null;
+      let loggedOut = false;
+      let anyActionsNeedLoggedInTab = false;
       try {
         if (client.valid) {
           // Check if any of the actions require something
@@ -319,7 +323,7 @@ const module = {
             }
           }
 
-          const anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
+          anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
           const anyActionsRequireTaskTypes = actionsThatRequire.taskTypes.length > 0;
 
           // If any actions require task types, an extra task will be added to retrieve them.
@@ -328,7 +332,7 @@ const module = {
           }
 
           mainTask.status = 'Logging in';
-          const loggedInTabId = await robustLogin({
+          loggedInTabId = await robustLogin({
             client,
             parentTaskId: mainTask.id,
             maxAttempts: rootState.config.maxLoginAttempts,
@@ -377,6 +381,7 @@ const module = {
             parentTaskId: mainTask.id,
             loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
           });
+          loggedOut = true;
 
           if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
             if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
@@ -389,6 +394,12 @@ const module = {
           throw new InvalidClientError('Client is invalid', null, { client });
         }
       } catch (error) {
+        // If an action asked to keep the logged in tab open and logout didn't complete
+        // then the tab still needs to be closed.
+        if (anyActionsNeedLoggedInTab && !loggedOut && loggedInTabId !== null) {
+          // TODO: Catch tab close errors
+          closeTab(loggedInTabId);
+        }
         log.setCategory(clientIdentifier);
         log.showError(error);
         mainTask.setError(error);
