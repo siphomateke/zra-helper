@@ -30,6 +30,8 @@ const defaultConfig = {
   tabOpenDelay: 0,
   /** The maximum number of times an attempt should be made to login to a client.  */
   maxLoginAttempts: 3,
+  /** Whether to send a notification when all running tasks have completed. */
+  sendNotifications: true,
   actions: {
     getAcknowledgementsOfReturns: {
       /** The maximum number of tabs that can be opened when downloading return receipts. */

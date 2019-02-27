@@ -8,6 +8,7 @@ import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
 import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
 import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
+import notify from '@/backend/notify';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
@@ -405,7 +406,7 @@ const module = {
      * @param {ClientActionId[]} payload.actionIds
      * @param {Client[]} payload.clients
      */
-    async runAll({ dispatch }, { actionIds, clients }) {
+    async runAll({ rootState, dispatch }, { actionIds, clients }) {
       if (clients.length > 0) {
         const rootTask = await createTask(store, {
           title: 'Run actions on clients',
@@ -426,6 +427,12 @@ const module = {
         } catch (error) {
           rootTask.setError(error);
         } finally {
+          if (rootState.config.sendNotifications) {
+            notify({
+              title: 'All tasks complete',
+              message: `Finished running ${actionIds.length} action(s) on ${clients.length} client(s)`,
+            });
+          }
           rootTask.markAsComplete();
           rootTask.setStateBasedOnChildren();
         }

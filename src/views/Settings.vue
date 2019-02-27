@@ -102,6 +102,11 @@
           type="number"/>
       </b-field>
 
+      <b-field
+        title="Whether to send a notification when all running tasks have completed.">
+        <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
+      </b-field>
+
       <div class="field is-grouped">
         <span class="control">
           <button
