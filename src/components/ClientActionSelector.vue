@@ -33,6 +33,7 @@
           </button>
         </div>
         <DraggableList
+          :disabled="disabled"
           :value="selectedActions"
           :drag-anywhere="true"
           @input="changedOrder">

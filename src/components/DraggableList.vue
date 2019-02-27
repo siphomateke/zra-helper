@@ -2,6 +2,7 @@
   <draggable
     :value="list"
     :options="dragOptions"
+    :class="{'disabled': disabled}"
     class="draggable-list"
     @input="updateList"
     @start="drag = true"
@@ -16,7 +17,7 @@
         :class="{'drag-anywhere': dragAnywhere}"
         class="draggable-list--item">
         <b-icon
-          v-if="showHandle"
+          v-if="showHandleInternal"
           icon="grip-vertical"
           size="is-small"
           class="handle"/>
@@ -59,6 +60,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -71,11 +76,15 @@ export default {
       const options = {
         animation: 200,
         dragoverBubble: true,
+        disabled: this.disabled,
       };
       if (!this.dragAnywhere) {
         options.handle = '.handle';
       }
       return options;
+    },
+    showHandleInternal() {
+      return !this.disabled ? this.showHandle : false;
     },
   },
   watch: {
@@ -139,6 +148,10 @@ export default {
       padding: 0.75em;
       margin-right: 0.5em;
     }
+  }
+
+  &.disabled .draggable-list--item.drag-anywhere {
+    cursor: default;
   }
 }
 </style>
