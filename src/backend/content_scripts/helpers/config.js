@@ -2,7 +2,7 @@ import addContentScriptListener from './listener';
 
 let config = null;
 
-addContentScriptListener('receiveConfig', async (message) => {
+addContentScriptListener('receive_config', async (message) => {
   ({ config } = message);
 });
 

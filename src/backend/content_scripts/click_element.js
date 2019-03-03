@@ -32,4 +32,4 @@ function listener(message) {
     }
   });
 }
-addContentScriptListener('click', listener);
+addContentScriptListener('click_element', listener);

@@ -19,4 +19,4 @@ async function listener() {
   });
   return { registrationDetails };
 }
-addContentScriptListener('getRegistrationDetails', listener);
+addContentScriptListener('get_registration_details', listener);

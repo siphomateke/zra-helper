@@ -8,4 +8,4 @@ async function listener(message) {
   document.body.innerHTML = message.html;
   document.getElementById('zra-helper-post-form').submit();
 }
-addContentScriptListener('injectForm', listener);
+addContentScriptListener('inject_form', listener);

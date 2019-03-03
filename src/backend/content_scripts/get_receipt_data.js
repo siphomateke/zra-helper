@@ -82,4 +82,4 @@ async function listener(message) {
 
   return data;
 }
-addContentScriptListener('getReceiptData', listener);
+addContentScriptListener('get_receipt_data', listener);

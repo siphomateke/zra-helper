@@ -81,4 +81,4 @@ async function listener(message) {
     documentString: getHtmlFromNode(document),
   });
 }
-addContentScriptListener('checkLogin', listener);
+addContentScriptListener('check_login', listener);

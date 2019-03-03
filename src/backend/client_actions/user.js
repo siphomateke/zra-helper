@@ -2,7 +2,7 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '@/backend/utils';
+import { clickElement, createTab, executeScript, tabLoaded, closeTab, runContentScript } from '@/backend/utils';
 
 /** @typedef {import('@/backend/constants').Client} Client */
 
@@ -44,22 +44,16 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
       await tabLoaded(tab.id);
       task.addStep('Logging in');
       // OCRAD should be imported in login.js but work with webpack
-      await executeScript(tab.id, { file: 'ocrad.js' }, true);
-      await executeScript(tab.id, { file: 'login.js' });
+      await executeScript(tab.id, 'ocrad', true);
       // Actually login
-      await sendMessage(tab.id, {
-        command: 'login',
+      await runContentScript(tab.id, 'login', {
         client,
         maxCaptchaRefreshes: 10,
       });
       task.addStep('Waiting for login to complete');
       await tabLoaded(tab.id);
       task.addStep('Checking if login was successful');
-      await executeScript(tab.id, { file: 'check_login.js' });
-      await sendMessage(tab.id, {
-        command: 'checkLogin',
-        client,
-      });
+      await runContentScript(tab.id, 'check_login', { client });
       task.state = taskStates.SUCCESS;
       log.log(`Done logging in "${client.name}"`);
       return tab.id;

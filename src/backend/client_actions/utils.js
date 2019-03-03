@@ -5,13 +5,12 @@ import config from '@/transitional/config';
 import { InvalidReceiptError } from '../errors';
 import {
   createTabPost,
-  executeScript,
   saveAsMHTML,
-  sendMessage,
   tabLoaded,
   monitorDownloadProgress,
   closeTab,
   clickElement,
+  runContentScript,
 } from '../utils';
 import { taxTypeNames } from '../constants';
 
@@ -47,11 +46,7 @@ export async function downloadReceipt({
       task.addStep('Waiting for receipt to load');
       await tabLoaded(tab.id);
 
-      await executeScript(tab.id, { file: 'get_receipt_data.js' });
-      const receiptData = await sendMessage(tab.id, {
-        command: 'getReceiptData',
-        type,
-      });
+      const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
 
       if (!receiptData.referenceNumber) {
         throw new InvalidReceiptError('Invalid receipt; missing reference number.');
@@ -329,8 +324,7 @@ export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
     await tabLoaded(loggedInTabId);
 
     task.addStep('Extracting tax types');
-    await executeScript(loggedInTabId, { file: 'get_registration_details.js' });
-    const { registrationDetails } = await sendMessage(loggedInTabId, { command: 'getRegistrationDetails' });
+    const { registrationDetails } = await runContentScript(loggedInTabId, 'get_registration_details');
 
     // Get only registered tax types
     const registeredTaxTypes = [];

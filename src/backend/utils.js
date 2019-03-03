@@ -49,24 +49,25 @@ export async function sendMessage(tabId, message) {
  * Executes a script in a particular tab
  *
  * @param {number} tabId
- * @param {browser.extensionTypes.InjectDetails} details
+ * @param {string} filename The name of the script to execute excluding the extension.
  * @param {boolean} vendor
  * @throws {ExecuteScriptError}
  */
-export async function executeScript(tabId, details, vendor = false) {
-  if (details.file) {
+export async function executeScript(tabId, filename, vendor = false) {
+  if (filename) {
     if (!vendor) {
-      details.file = `content_scripts/${details.file}`;
+      filename = `content_scripts/${filename}`;
     } else {
-      details.file = `vendor/${details.file}`;
+      filename = `vendor/${filename}`;
     }
+    filename += '.js';
   }
   try {
-    await browser.tabs.executeScript(tabId, details);
+    await browser.tabs.executeScript(tabId, { file: filename });
     if (config.debug.contentScripts) {
       try {
         await sendMessage(tabId, {
-          command: 'receiveConfig',
+          command: 'receive_config',
           config: store.state.config,
         });
       } catch (e) {
@@ -98,6 +99,22 @@ export async function executeScript(tabId, details, vendor = false) {
     }
     throw new ExecuteScriptError(`Failed to execute script: "${errorString}"`, null, { tabId });
   }
+}
+
+/**
+ * Executes a script in a tab and sends a message to it.
+ * @param {number} tabId
+ * @param {string} id
+ * A string that is both the filename of the script and the command that will be sent to trigger the script.
+ * @param {Object} message Message that will be sent to the script.
+ */
+export async function runContentScript(tabId, id, message = {}) {
+  await executeScript(tabId, id);
+  const response = await sendMessage(tabId, {
+    command: id,
+    ...message,
+  });
+  return response;
 }
 
 class TabCreator {
@@ -269,11 +286,7 @@ export async function createTabPost({ url, data, active = false }) {
     tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
     await tabLoaded(tab.id);
     // Insert the form into the page.
-    await executeScript(tab.id, { file: 'inject_form.js' });
-    await sendMessage(tab.id, {
-      command: 'injectForm',
-      html: formHtml,
-    });
+    await runContentScript(tab.id, 'inject_form', { html: formHtml });
   } else {
     formHtml += '<script>document.forms[0].submit();</script>';
     const generatedUrl = `data:text/html;charset=utf8,${encodeURIComponent(formHtml)}`;
@@ -339,9 +352,7 @@ export async function getActiveTab() {
  * @param {IgnoreZraError} [ignoreZraErrors=false]
  */
 export async function clickElement(tabId, selector, name = null, ignoreZraErrors = false) {
-  await executeScript(tabId, { file: 'click_element.js' });
-  await sendMessage(tabId, {
-    command: 'click',
+  await runContentScript(tabId, 'click_element', {
     selector,
     name,
     ignoreZraErrors,

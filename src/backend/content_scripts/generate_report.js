@@ -35,4 +35,4 @@ function listener(message) {
     }
   });
 }
-addContentScriptListener('generateReport', listener);
+addContentScriptListener('generate_report', listener);

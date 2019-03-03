@@ -4,7 +4,7 @@ import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { taxTypes, exportFormatCodes } from '../constants';
-import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab } from '../utils';
+import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab, runContentScript } from '../utils';
 import { writeJson } from '../file_utils';
 
 /**
@@ -20,15 +20,12 @@ import { writeJson } from '../file_utils';
  * @param {string[]} columns The columns that contain the totals we wish to retrieve
  * @returns {Promise.<getTotalsResponse>}
  */
-async function getTotals(tabId, columns) {
-  await executeScript(tabId, { file: 'get_totals.js' });
-  const totalsResponse = await sendMessage(tabId, {
-    command: 'getTotals',
+function getTotals(tabId, columns) {
+  return runContentScript(tabId, 'get_totals', {
     columns,
     /** The first column with a pending liability */
     startColumn: 5,
   });
-  return totalsResponse;
 }
 
 /** Columns to get from the pending liabilities table */
@@ -71,13 +68,13 @@ const clientAction = {
 
             task.addStep('Selecting tax type');
 
-            await executeScript(tab.id, { file: 'generate_report.js' });
+            await executeScript(tab.id, 'generate_report');
 
             try {
               task.addStep('Generating report');
 
               await sendMessage(tab.id, {
-                command: 'generateReport',
+                command: 'generate_report',
                 taxTypeId,
               });
               // Get Totals

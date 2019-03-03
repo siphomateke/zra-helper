@@ -73,4 +73,4 @@ async function listener(message) {
   // TODO: Consider making this a custom error
   throw new Error('Invalid record number string.');
 }
-addContentScriptListener('getTotals', listener);
+addContentScriptListener('get_totals', listener);
