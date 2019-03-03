@@ -1,6 +1,7 @@
-import { errorToJson, CaptchaLoadError } from '../errors';
+import { CaptchaLoadError } from '../errors';
 import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
 import { getElements, getElement } from './helpers/elements';
+import addContentScriptListener from './helpers/listener';
 
 /* global OCRAD */
 
@@ -155,32 +156,19 @@ async function login(client, maxCaptchaRefreshes) {
 
 /**
  * @param {Object} message
- * @param {string} message.command
  * @param {import('../constants').Client} message.client
  * @param {MaxCaptchaRefreshes} message.maxCaptchaRefreshes
  */
-function listener(message) {
-  return new Promise((resolve) => {
-    if (message.command === 'login') {
-      try {
-        const clientInfo = getClientInfo();
-        if (clientInfo) {
-          const foundUsername = usernameInClientInfo(message.client.username, clientInfo);
-          // If we did not find the username in the client info, then another client
-          // is already logged in.
-          if (!foundUsername) {
-            throw getWrongClientError(clientInfo);
-          }
-        }
-        login(message.client, message.maxCaptchaRefreshes).then(() => {
-          resolve({});
-        }).catch((error) => {
-          throw error;
-        });
-      } catch (error) {
-        resolve({ error: errorToJson(error) });
-      }
+async function listener(message) {
+  const clientInfo = getClientInfo();
+  if (clientInfo) {
+    const foundUsername = usernameInClientInfo(message.client.username, clientInfo);
+    // If we did not find the username in the client info, then another client
+    // is already logged in.
+    if (!foundUsername) {
+      throw getWrongClientError(clientInfo);
     }
-  });
+  }
+  await login(message.client, message.maxCaptchaRefreshes);
 }
-browser.runtime.onMessage.addListener(listener);
+addContentScriptListener('login', listener);

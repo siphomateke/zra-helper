@@ -1,21 +1,11 @@
-import { errorToJson } from '../errors';
+import addContentScriptListener from './helpers/listener';
 
 /**
  * @param {Object} message
- * @param {string} message.command
  * @param {string} message.html
  */
-function listener(message) {
-  return new Promise((resolve) => {
-    if (message.command === 'injectForm') {
-      try {
-        document.body.innerHTML = message.html;
-        document.getElementById('zra-helper-post-form').submit();
-        resolve({});
-      } catch (error) {
-        resolve({ error: errorToJson(error) });
-      }
-    }
-  });
+async function listener(message) {
+  document.body.innerHTML = message.html;
+  document.getElementById('zra-helper-post-form').submit();
 }
-browser.runtime.onMessage.addListener(listener);
+addContentScriptListener('injectForm', listener);
