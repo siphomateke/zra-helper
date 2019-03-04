@@ -130,100 +130,100 @@ export default {
 @import 'styles/variables.scss';
 
 .task {
-    &:not(:last-child) {
-        margin-bottom: 1em;
-    }
+  &:not(:last-child) {
+    margin-bottom: 1em;
+  }
 
-    &.has-children > .task-content {
-      cursor: pointer;
-    }
+  &.has-children > .task-content {
+    cursor: pointer;
+  }
 
+  & > .task-content {
+    background: rgb(245, 245, 245);
+    border: $taskBorderWidth solid rgb(139, 139, 139);
+    border-radius: $taskBorderRadius;
+    border-left-width: 5px;
+    padding: 0.5em;
+    .header {
+      display: flex;
+      align-items: center;
+      .title {
+        margin-bottom: 0;
+      }
+
+      .subtasks-info {
+        margin-left: auto;
+        display: flex;
+        white-space: nowrap;
+        .item .count {
+          padding-left: 0.2em;
+        }
+        .item:not(:last-child) {
+          padding-right: 1em;
+        }
+        @each $state, $color in $taskColors {
+          .#{$state} .icon {
+            color: $color;
+          }
+        }
+      }
+    }
+  }
+
+  @mixin taskState($color) {
+    border-color: $color;
+    color: darken($color, 20%);
+    background-color: lighten($color, 50%);
+  }
+
+  @each $state, $color in $taskColors {
+    &.#{$state} > .task-content {
+      @include taskState($color);
+    }
+  }
+
+  & > .sub-tasks {
+    display: none;
+    background: #eee;
+    padding: 1em;
+    border: 1px solid #bdbdbd;
+  }
+
+  &.open {
     & > .task-content {
-        background: rgb(245, 245, 245);
-        border: $taskBorderWidth solid rgb(139, 139, 139);
-        border-radius: $taskBorderRadius;
-        border-left-width: 5px;
-        padding: 0.5em;
-        .header {
-            display: flex;
-            align-items: center;
-            .title {
-                margin-bottom: 0;
-            }
-
-            .subtasks-info {
-                margin-left: auto;
-                display: flex;
-                white-space: nowrap;
-                .item .count {
-                  padding-left: 0.2em;
-                }
-                .item:not(:last-child) {
-                    padding-right: 1em;
-                }
-                @each $state, $color in $taskColors {
-                    .#{$state} .icon {
-                        color: $color;
-                    }
-                }
-            }
-        }
-    }
-
-    @mixin taskState($color) {
-        border-color: $color;
-        color: darken($color, 20%);
-        background-color: lighten($color, 50%);
-    }
-
-    @each $state, $color in $taskColors {
-        &.#{$state} > .task-content {
-            @include taskState($color);
-        }
+      border-bottom-width: 0;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
     }
 
     & > .sub-tasks {
-        display: none;
-        background: #eee;
-        padding: 1em;
-        border: 1px solid #bdbdbd;
+      display: block;
     }
-
-    &.open {
-        & > .task-content {
-            border-bottom-width: 0;
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
-        }
-
-        & > .sub-tasks {
-            display: block;
-        }
-    }
+  }
 }
 
 .sub-task {
+  margin-bottom: 0;
+  &:not(:last-child) {
+    // Override .task
     margin-bottom: 0;
-    &:not(:last-child) {
-        // Override .task
-        margin-bottom: 0;
-    }
+  }
 
-    & > .task-content {
-        border-radius: 0;
-        border-bottom-width: 0;
+  & > .task-content {
+    border-radius: 0;
+    border-bottom-width: 0;
+  }
+  &:not(.open) {
+    &:last-child > .task-content {
+      border-bottom-width: $taskBorderWidth;
+      border-bottom-left-radius: $taskBorderRadius;
+      border-bottom-right-radius: $taskBorderRadius;
     }
-    &:not(.open) {
-        &:last-child > .task-content {
-            border-bottom-width: $taskBorderWidth;
-            border-bottom-left-radius: $taskBorderRadius;
-            border-bottom-right-radius: $taskBorderRadius;
-        }
-        &:first-child > .task-content {
-            border-top-width: $taskBorderWidth;
-            border-top-left-radius: $taskBorderRadius;
-            border-top-right-radius: $taskBorderRadius;
-        }
+    &:first-child > .task-content {
+      border-top-width: $taskBorderWidth;
+      border-top-left-radius: $taskBorderRadius;
+      border-top-right-radius: $taskBorderRadius;
     }
+  }
 }
 </style>
