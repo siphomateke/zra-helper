@@ -101,3 +101,69 @@ export function parseTableAdvanced({
     reject(new TableError('No records found in table.', 'NoRecordsFound'));
   });
 }
+
+/**
+ * @typedef {Object} ParsedReportTable
+ * @property {ParsedTableRecord[]} records
+ * @property {number} numPages
+ * @property {number} currentPage
+ */
+
+/**
+ * Parses rslt report tables.
+ * These are used by the pending liabilities and the tax payer ledger reports.
+ * @param {Object} options
+ * @param {Document|Element} options.root
+ * @param {string[]} options.headers
+ * @returns {Promise.<ParsedReportTable>}
+ * @throws {TableError}
+ */
+export async function parseReportTable({ root, headers }) {
+  let numPages = null;
+  let currentPage = null;
+  let records = null;
+  // Check if the element that contains "No data found" exists
+  if (root.querySelector('#rsltTableHtml>table>tbody>tr:nth-child(2)>td>center.Label3')) {
+    numPages = 0;
+    currentPage = 1;
+    records = [];
+  } else {
+    const numRecordsEl = getElementFromDocument(
+      root,
+      '#navTable>tbody>tr:nth-child(1)>td.Label3',
+      'number of records',
+    );
+    /**
+     * String that contains the number of records.
+     * For example: "Displaying 1 to 20 of 280 records."
+     */
+    const numRecordsString = numRecordsEl.innerText;
+    const matches = numRecordsString.match(/Displaying (\d+) to (\d+) of (\d+) records\./i);
+    if (matches && matches.length === 4) {
+      const recordsPerPage = 20;
+      numPages = Math.ceil(Number(matches[3]) / recordsPerPage);
+
+      const currentPageEl = getElementFromDocument(
+        root,
+        '#navTable>tbody>tr:nth-child(2) .rptNavigationSelected',
+        'current page',
+      );
+      currentPage = Number(currentPageEl.innerText);
+
+      const table = getElementFromDocument(root, '#rprtDataTable', 'data table');
+      records = parseTable({
+        root: table,
+        headers,
+        recordSelector: 'tbody>tr.rprtDataTableGrandTotalRow,tbody>tr.TablerowBG1',
+      });
+    } else {
+      // TODO: Consider making this a custom error
+      throw new Error('Invalid record number string.');
+    }
+  }
+  return {
+    numPages,
+    currentPage,
+    records,
+  };
+}
