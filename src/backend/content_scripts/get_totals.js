@@ -54,7 +54,7 @@ async function listener(message) {
   }
 
   return {
-    numberOfPages: response.numPages,
+    numPages: response.numPages,
     totals,
   };
 }

@@ -9,7 +9,7 @@ import { writeJson } from '../file_utils';
 
 /**
  * @typedef {Object} getTotalsResponse
- * @property {number} numberOfPages The total discovered number of pages.
+ * @property {number} numPages The total discovered number of pages.
  * @property {number[]} totals Array of totals whose length is equal to `numTotals`.
  * @see getTotals for more on numTotals.
  */
@@ -83,8 +83,8 @@ const clientAction = {
               task.addStep('Getting totals');
 
               let totalsResponse = await getTotals(tab.id, totalsColumns);
-              if (totalsResponse.numberOfPages > 1) {
-              // Set the current page to be the last one by clicking the "last page" button.
+              if (totalsResponse.numPages > 1) {
+                // Set the current page to be the last one by clicking the "last page" button.
                 await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
                 totalsResponse = await getTotals(tab.id, totalsColumns);
               }
