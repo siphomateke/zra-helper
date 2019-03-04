@@ -64,7 +64,7 @@ export async function executeScript(tabId, filename, vendor = false) {
   }
   try {
     await browser.tabs.executeScript(tabId, { file: filename });
-    if (config.debug.contentScripts) {
+    if (config.debug.sendConfigToContentScripts) {
       try {
         await sendMessage(tabId, {
           command: 'receive_config',
