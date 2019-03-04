@@ -147,6 +147,8 @@ export default {
     .header {
       display: flex;
       align-items: center;
+      line-height: 1.125;
+
       .title {
         margin-bottom: 0;
       }
