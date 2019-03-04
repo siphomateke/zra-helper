@@ -147,7 +147,7 @@ const clientAction = {
           retrievalErrors,
         };
         for (const taxType of Object.values(taxTypes)) {
-          output.totals[taxType] = totals[taxType];
+          output.totals[taxType] = Object.assign({}, totals[taxType]);
         }
         resolve(output);
       });
