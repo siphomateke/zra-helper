@@ -51,6 +51,19 @@ module.exports = {
         args[0]['process.env'].BROWSER = `"${browser}"`;
         return args;
       });
+
+    // Disable hot-reloading since it doesn't work
+    config.module
+      .rule('vue')
+      .use('vue-loader')
+      .loader('vue-loader')
+      .tap((options) => {
+        options.hotReload = false;
+        return options;
+      });
+    if (config.plugins.has('hmr')) {
+      config.plugins.delete('hmr');
+    }
   },
   pages: {
     dashboard: {
