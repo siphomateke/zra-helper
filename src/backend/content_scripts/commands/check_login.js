@@ -1,11 +1,15 @@
-import { LoginError } from '../errors';
-import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
-import { getElementText, getHtmlFromNode } from './helpers/elements';
-import addContentScriptListener from './helpers/listener';
+import { LoginError } from '@/backend/errors';
+import {
+  getWrongClientError,
+  getClientInfo,
+  usernameInClientInfo,
+} from '@/backend/content_scripts/helpers/check_login';
+import { getElementText, getHtmlFromNode } from '@/backend/content_scripts/helpers/elements';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 /**
  * @param {Object} message
- * @param {import('../constants').Client} message.client
+ * @param {import('@/backend/constants').Client} message.client
  */
 async function listener(message) {
   // Detect login errors such as expired password, invalid username and invalid password

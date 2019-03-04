@@ -1,10 +1,10 @@
-import { getElement } from './helpers/elements';
-import { getZraError } from './helpers/zra';
-import addContentScriptListener from './helpers/listener';
+import { getElement } from '@/backend/content_scripts/helpers/elements';
+import { getZraError } from '@/backend/content_scripts/helpers/zra';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 /**
  * @param {Object} message
- * @param {import('../utils').IgnoreZraError} message.ignoreZraErrors
+ * @param {import('../../utils').IgnoreZraError} message.ignoreZraErrors
  * Whether errors from the ZRA website should be ignored.
  * @param {string} message.selector The selector of the element.
  * @param {string} message.name A descriptive name of the element used when generating errors.

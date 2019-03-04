@@ -1,6 +1,6 @@
-import { parseTable } from './helpers/zra';
-import { getElement } from './helpers/elements';
-import addContentScriptListener from './helpers/listener';
+import { parseTable } from '@/backend/content_scripts/helpers/zra';
+import { getElement } from '@/backend/content_scripts/helpers/elements';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 async function listener() {
   // eslint-disable-next-line max-len

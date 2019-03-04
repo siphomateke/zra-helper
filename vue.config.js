@@ -1,17 +1,22 @@
 const path = require('path');
 const fs = require('fs');
 
-const contentScriptsPath = 'src/backend/content_scripts';
-const contentScripts = fs.readdirSync(contentScriptsPath);
-
 const contentScriptEntries = {};
-for (const file of contentScripts) {
-  const ext = path.extname(file);
-  if (ext === '.js') {
-    const filename = path.basename(file, ext);
-    contentScriptEntries[`content_scripts/${filename}`] = `${contentScriptsPath}/${file}`;
+
+function addContentScripts(folder) {
+  const contentScriptsPath = path.join('src/backend/content_scripts', folder);
+  const contentScripts = fs.readdirSync(contentScriptsPath);
+  for (const file of contentScripts) {
+    const ext = path.extname(file);
+    if (ext === '.js') {
+      const filename = path.basename(file, ext);
+      const outputPath = path.join('content_scripts', folder, filename);
+      contentScriptEntries[outputPath] = path.join(contentScriptsPath, file);
+    }
   }
 }
+
+addContentScripts('commands');
 
 const copy = [
   {

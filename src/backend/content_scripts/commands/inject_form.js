@@ -1,4 +1,4 @@
-import addContentScriptListener from './helpers/listener';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 /**
  * @param {Object} message

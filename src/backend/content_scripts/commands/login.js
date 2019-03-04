@@ -1,7 +1,11 @@
-import { CaptchaLoadError } from '../errors';
-import { getWrongClientError, getClientInfo, usernameInClientInfo } from './helpers/check_login';
-import { getElements, getElement } from './helpers/elements';
-import addContentScriptListener from './helpers/listener';
+import { CaptchaLoadError } from '@/backend/errors';
+import {
+  getWrongClientError,
+  getClientInfo,
+  usernameInClientInfo,
+} from '@/backend/content_scripts/helpers/check_login';
+import { getElements, getElement } from '@/backend/content_scripts/helpers/elements';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 /* global OCRAD */
 
@@ -101,7 +105,7 @@ const commonIncorrectCharacters = [
 /**
  * Logs into a particular client's account
  *
- * @param {import('../constants').Client} client The client whose account to login to
+ * @param {import('@/backend/constants').Client} client The client whose account to login to
  * @param {MaxCaptchaRefreshes} maxCaptchaRefreshes
  * @throws {import('../errors').ElementsNotFoundError}
  */
@@ -156,7 +160,7 @@ async function login(client, maxCaptchaRefreshes) {
 
 /**
  * @param {Object} message
- * @param {import('../constants').Client} message.client
+ * @param {import('@/backend/constants').Client} message.client
  * @param {MaxCaptchaRefreshes} message.maxCaptchaRefreshes
  */
 async function listener(message) {

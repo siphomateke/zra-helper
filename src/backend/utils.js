@@ -56,7 +56,7 @@ export async function sendMessage(tabId, message) {
 export async function executeScript(tabId, filename, vendor = false) {
   if (filename) {
     if (!vendor) {
-      filename = `content_scripts/${filename}`;
+      filename = `content_scripts/commands/${filename}`;
     } else {
       filename = `vendor/${filename}`;
     }

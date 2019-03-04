@@ -1,11 +1,11 @@
-import { TaxTypeNotFoundError } from '../errors';
-import { getElement } from './helpers/elements';
-import { getZraError } from './helpers/zra';
-import addContentScriptListener from './helpers/listener';
+import { TaxTypeNotFoundError } from '@/backend/errors';
+import { getElement } from '@/backend/content_scripts/helpers/elements';
+import { getZraError } from '@/backend/content_scripts/helpers/zra';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 /**
  * @param {Object} message
- * @param {import('../constants').TaxTypeNumericalCode} message.taxTypeId
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} message.taxTypeId
  */
 function listener(message) {
   return new Promise((resolve, reject) => {

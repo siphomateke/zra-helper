@@ -1,6 +1,6 @@
-import { getElement, getElementFromDocument } from './helpers/elements';
-import { parseTable } from './helpers/zra';
-import addContentScriptListener from './helpers/listener';
+import { getElement, getElementFromDocument } from '@/backend/content_scripts/helpers/elements';
+import { parseTable } from '@/backend/content_scripts/helpers/zra';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 /**
  * @param {Object} message

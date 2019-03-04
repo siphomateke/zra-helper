@@ -1,5 +1,5 @@
-import { parseReportTable } from './helpers/zra';
-import addContentScriptListener from './helpers/listener';
+import { parseReportTable } from '@/backend/content_scripts/helpers/zra';
+import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
 const recordHeaders = [
   'srNo',
