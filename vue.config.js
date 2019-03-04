@@ -17,6 +17,7 @@ function addContentScripts(folder) {
 }
 
 addContentScripts('commands');
+addContentScripts('pages');
 
 const copy = [
   {

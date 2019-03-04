@@ -8,6 +8,12 @@
   "background": {
     "scripts": ["background.js"]
   },
+  "content_scripts": [
+    {
+      "matches": ["https://www.zra.org.zm/login.htm?actionCode=newLoginPage"],
+      "js": ["content_scripts/pages/login_page.js"]
+    }
+  ],
   "options_ui": {
     "page": "options.html"
   },
