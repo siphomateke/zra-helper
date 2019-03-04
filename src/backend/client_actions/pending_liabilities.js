@@ -40,7 +40,7 @@ const totalsColumns = [
 const clientAction = {
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
-  requiresTaskTypes: true,
+  requiresTaxTypes: true,
   async func({ parentTask, client: { taxTypes: taxTypeIds } }) {
     return new Promise((resolve) => {
       const promises = [];

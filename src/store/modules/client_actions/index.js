@@ -144,14 +144,14 @@ const module = {
       const actualPayload = Object.assign({
         hasOutput: false,
         usesLoggedInTab: false,
-        requiresTaskTypes: false,
+        requiresTaxTypes: false,
         // TODO: Consider letting this be set by a parameter
         logCategory: payload.id,
         outputs: [],
         requiredFeatures: [],
       }, payload);
-      if (actualPayload.requiresTaskTypes) {
-        // A logged in tab is required to get task types
+      if (actualPayload.requiresTaxTypes) {
+        // A logged in tab is required to get tax types
         actualPayload.usesLoggedInTab = true;
       }
 
@@ -229,7 +229,7 @@ const module = {
       const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
       let taskHasError = false;
       try {
-        if (!(clientAction.requiresTaskTypes && client.taxTypes === null)) {
+        if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
           if (clientAction.func) {
             log.setCategory(clientAction.logCategory);
 
@@ -311,23 +311,23 @@ const module = {
           // Check if any of the actions require something
           const actionsThatRequire = {
             loggedInTab: [],
-            taskTypes: [],
+            taxTypes: [],
           };
           for (const actionId of actionIds) {
             const clientAction = getters.getActionById(actionId);
             if (clientAction.usesLoggedInTab) {
               actionsThatRequire.loggedInTab.push(actionId);
             }
-            if (clientAction.requiresTaskTypes) {
-              actionsThatRequire.taskTypes.push(actionId);
+            if (clientAction.requiresTaxTypes) {
+              actionsThatRequire.taxTypes.push(actionId);
             }
           }
 
           anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
-          const anyActionsRequireTaskTypes = actionsThatRequire.taskTypes.length > 0;
+          const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
 
-          // If any actions require task types, an extra task will be added to retrieve them.
-          if (anyActionsRequireTaskTypes) {
+          // If any actions require tax types, an extra task will be added to retrieve them.
+          if (anyActionsRequireTaxTypes) {
             mainTask.progressMax += 1;
           }
 
@@ -340,7 +340,7 @@ const module = {
           });
 
           // Get tax types if any actions require them
-          if (anyActionsRequireTaskTypes) {
+          if (anyActionsRequireTaxTypes) {
             mainTask.status = 'Getting tax types';
             try {
               await dispatch('clients/getTaxTypes', {
@@ -349,8 +349,8 @@ const module = {
                 loggedInTabId,
               }, { root: true });
             } catch (error) {
-              const allActionsRequireTaskTypes = actionsThatRequire.taskTypes.length === actionIds.length;
-              if (allActionsRequireTaskTypes) {
+              const allActionsRequireTaxTypes = actionsThatRequire.taxTypes.length === actionIds.length;
+              if (allActionsRequireTaxTypes) {
                 throw error;
               } else {
                 // Ignore error if not all tasks require tax types

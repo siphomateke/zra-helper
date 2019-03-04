@@ -222,7 +222,7 @@ const clientAction = {
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',
   requiredFeatures: [browserFeatures.MHTML],
-  requiresTaskTypes: true,
+  requiresTaxTypes: true,
   async func({ client, parentTask, clientActionConfig }) {
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;

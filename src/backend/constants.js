@@ -103,7 +103,7 @@ export const clientPropValidationErrorMessages = {
  * @property {boolean} [usesLoggedInTab] Whether this action needs to open a page from a logged in tab.
  * If this is enabled, the page that is opened after logging in will not be closed until the user is
  * about to be logged out.
- * @property {boolean} [requiresTaskTypes]
+ * @property {boolean} [requiresTaxTypes]
  * @property {boolean} [hasOutput] Whether this client action returns an output.
  * @property {ExportFormatCode} [defaultOutputFormat]
  * @property {ExportFormatCode[]} [outputFormats]
