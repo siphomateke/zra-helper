@@ -24,7 +24,13 @@ export function getZraError(document) {
 }
 
 /**
- * @typedef {Object.<string, string>} ParsedTableRecord
+ * @typedef {Object} ParsedTableLinkCell
+ * @property {string} innerText
+ * @property {string} onclick
+ */
+
+/**
+ * @typedef {Object.<string, string|ParsedTableLinkCell>} ParsedTableRecord
  * Object representing a single row whose keys are column headers and whose values are the corresponding cell values.
  */
 
