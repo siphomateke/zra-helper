@@ -1,15 +1,15 @@
 {
   "json.schemas": [
     {
-      "fileMatch": [
-        "manifest.json"
-      ],
+      "fileMatch": ["manifest.json"],
       "url": "http://json.schemastore.org/webextension"
-    },
+    }
   ],
   "javascript.preferences.quoteStyle": "single",
   "files.watcherExclude": {
     "**/dist-zip/**": true,
     "**/dist/**": true
-  }
+  },
+  "prettier.disableLanguages": ["javascript", "vue"],
+  "vetur.format.defaultFormatter.js": "none"
 }
