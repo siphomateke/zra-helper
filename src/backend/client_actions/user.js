@@ -11,7 +11,8 @@ import { clickElement, createTab, executeScript, tabLoaded, closeTab, runContent
  * @param {Object} payload
  * @param {Client} payload.client
  * @param {number} payload.parentTaskId
- * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open after logging in.
+ * @param {boolean} [payload.keepTabOpen]
+ * Whether the logged in tab should be kept open after logging in.
  * @returns {Promise.<number>} The ID of the logged in tab.
  * @throws {import('@/backend/errors').ExtendedError}
  */
@@ -125,7 +126,8 @@ export async function logout({ parentTaskId, loggedInTabId = null }) {
  * @param {Object} payload
  * @param {Client} payload.client
  * @param {number} payload.parentTaskId
- * @param {number} payload.maxAttempts The maximum number of times an attempt should be made to login to a client.
+ * @param {number} payload.maxAttempts
+ * The maximum number of times an attempt should be made to login to a client.
  * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open.
  * @returns {Promise.<number>} The ID of the logged in tab.
  */

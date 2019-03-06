@@ -168,8 +168,10 @@ function getClientsFromCsv(csvString, config = {}) {
     // If the number of 'FieldMismatch' errors matches the number of data rows,
     // then the header row probably has the wrong number of columns
     if (numberOfFieldMismatchErrors === parsed.data.length) {
-      log.log('A large number of field mismatch errors were detected. '
-            + 'Make sure that a header with the same number of columns as the rest of the CSV is present.', 'info');
+      log.log(
+        'A large number of field mismatch errors were detected. Make sure that a header with the same number of columns as the rest of the CSV is present.',
+        'info',
+      );
     }
   }
   log.log(`Parsed ${list.length} valid client(s)`);

@@ -68,7 +68,8 @@ export const clientPropValidationErrorMessages = {
  * List of validation errors per property
  *
  * @typedef {Object} ClientState
- * @property {TaxTypeNumericalCode[]|null} taxTypes List of numerical tax type codes that this client has registered.
+ * @property {TaxTypeNumericalCode[]|null} taxTypes
+ * List of numerical tax type codes that this client has registered.
  *
  * @typedef {ParsedClient & ClientState} Client
  */
@@ -99,8 +100,9 @@ export const clientPropValidationErrorMessages = {
  * @property {string} id A unique camelCase ID to identify this client action.
  * @property {string} name The human-readable name of this client action.
  * @property {ClientActionFunction} [func]
- * @property {BrowserFeature[]} [requiredFeatures],
- * @property {boolean} [usesLoggedInTab] Whether this action needs to open a page from a logged in tab.
+ * @property {BrowserFeature[]} [requiredFeatures]
+ * @property {boolean} [usesLoggedInTab]
+ * Whether this action needs to open a page from a logged in tab.
  * If this is enabled, the page that is opened after logging in will not be closed until the user is
  * about to be logged out.
  * @property {boolean} [requiresTaxTypes]

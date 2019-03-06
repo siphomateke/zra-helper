@@ -68,7 +68,7 @@ function getChildProgress(type, { getters, task, id }) {
           // and total progress on the fly.
           if (!task.sequential) {
             result += childTaskProgress;
-          // Otherwise, use the first uncompleted task as the current task.
+            // Otherwise, use the first uncompleted task as the current task.
           } else if (!getters.complete(childTask.id)) {
             result = childTaskProgress;
             break;
@@ -297,7 +297,8 @@ const module = {
       commit('setStatus', { id, value: '' });
     },
     /**
-     * Sets this task's error to the provided one, its state to ERROR and its status to one based on the error.
+     * Sets this task's error to the provided one, its state to ERROR and its status to one based
+     * on the error.
      * @param {import('vuex').ActionContext} context
      * @param {Object} payload
      * @param {number} payload.id

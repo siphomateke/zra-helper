@@ -117,22 +117,24 @@ export async function downloadReceipt({
  */
 
 /**
- * Loops through a list or `count` number of times and runs a provided function asynchronously on each item
- * in the list or index.
+ * Loops through a list or `count` number of times and runs a provided function asynchronously
+ * on each item in the list or index.
  *
  * The provided parent task will be automatically configured.
  * @param {Object} options
  * @param {Array} [options.list] The list to loop through
  * @param {number} [options.startIndex] Optional index to start looping from
- * @param {number} [options.count] The number of times to run. This is can be provided instead of a list.
+ * @param {number} [options.count]
+ * The number of times to run. This is can be provided instead of a list.
  * @param {Task} options.task The parent task
  * @param {ParallelTaskMapFunction} options.func The function to run on each list item
  * @param {boolean} [options.autoCalculateTaskState=true]
  * Set this to false to disable the parent task's state from being automatically
  * set when all the async functions have completed.
  *
- * If this is true, the state will be set based on the task's children by `task.setStateBasedOnChildren()`
- * and the promise will be rejected if the state evaluates to error.
+ * If this is true, the state will be set based on the task's children by
+ * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
+ * error.
  */
 export function parallelTaskMap({
   list = null,
@@ -211,7 +213,8 @@ export function parallelTaskMap({
  * @param {GetTaskData} options.getTaskData
  * Function that generates a task's options given a page number and a parent task ID.
  * @param {GetDataFromPageFunction} options.getDataFunction
- * A function that when given a page number will return the data from that page including the total number of pages.
+ * A function that when given a page number will return the data from that page including the total
+ * number of pages.
  * @param {number} options.parentTaskId
  * @param {number} options.page The page to get data from.
  * @param {number} [options.firstPage=1] The index of the first page.
@@ -244,7 +247,8 @@ export async function getDataFromPageTask({
  * The task to use to contain all the subtasks that get data from multiple pages.
  * @param {GetTaskData} options.getPageSubTask
  * @param {GetDataFromPageFunction} options.getDataFunction
- * A function that when given a page number will return the data from that page including the total number of pages.
+ * A function that when given a page number will return the data from that page including the total
+ * number of pages.
  * @param {number} [options.firstPage] The index of the first page.
  */
 // TODO: Use me in more places such has payment history

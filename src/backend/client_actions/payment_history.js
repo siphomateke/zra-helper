@@ -25,9 +25,11 @@ import { taxTypeNames, taxTypeNumericalCodes, taxTypes, browserFeatures } from '
  * @property {number} page
  */
 
+/* eslint-disable max-len */
 /**
  * @typedef {GetAllPaymentReceiptNumbersOptions & GetPaymentReceiptNumbersOptions.Temp} GetPaymentReceiptNumbersOptions
  */
+/* eslint-enable max-len */
 
 /**
  * @typedef PaymentReceipt

@@ -111,7 +111,7 @@ const clientAction = {
               try {
                 await closeTab(tab.id);
               } catch (error) {
-              // If we fail to close the tab then it's probably already closed
+                // If we fail to close the tab then it's probably already closed
               }
             }
             task.markAsComplete();
@@ -132,8 +132,11 @@ const clientAction = {
         }
         if (errorCount > 0) {
           parentTask.state = taskStates.ERROR;
-        } else if (parentTask.children.length > 0 && taxTypeErrorCount === parentTask.children.length) {
-        // If all sub tasks don't have a tax type, something probably went wrong
+        } else if (
+          parentTask.children.length > 0
+          && taxTypeErrorCount === parentTask.children.length
+        ) {
+          // If all sub tasks don't have a tax type, something probably went wrong
           parentTask.state = taskStates.WARNING;
           parentTask.status = 'No tax types found.';
         } else {

@@ -137,10 +137,12 @@ export class LoginError extends ExtendedError {
   /**
    * @param {Object} props
    * @param {string} [props.clientName] The name of the client that failed to login.
-   * @param {string} [props.loggedInClient] Information about the client that is currently logged in.
+   * @param {string} [props.loggedInClient]
+   * Information about the client that is currently logged in.
    * @param {string} [props.attemptsRemaining]
    * The number of login attempts remaining before the client's account is locked.
-   * @param {string} [props.documentString] Entire document string. Only thrown when the login error is unknown.
+   * @param {string} [props.documentString]
+   * Entire document string. Only thrown when the login error is unknown.
    */
   constructor(message, code = null, props = {
     clientName: null,

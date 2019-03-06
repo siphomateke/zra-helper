@@ -105,7 +105,8 @@ export async function executeScript(tabId, filename, vendor = false) {
  * Executes a script in a tab and sends a message to it.
  * @param {number} tabId
  * @param {string} id
- * A string that is both the filename of the script and the command that will be sent to trigger the script.
+ * A string that is both the filename of the script and the command that will be sent to trigger
+ * the script.
  * @param {Object} message Message that will be sent to the script.
  */
 export async function runContentScript(tabId, id, message = {}) {
@@ -146,7 +147,10 @@ class TabCreator {
   slotFree() {
     const notMaxOpenTabs = config.maxOpenTabs === 0 || this.openTabsCount < config.maxOpenTabs;
     const timeSinceLastTabOpened = Date.now() - this.lastTabOpenTime;
-    const delayLargeEnough = this.lastTabOpenTime === null || timeSinceLastTabOpened >= config.tabOpenDelay;
+    const delayLargeEnough = (
+      this.lastTabOpenTime === null
+      || timeSinceLastTabOpened >= config.tabOpenDelay
+    );
     return notMaxOpenTabs && delayLargeEnough;
   }
 
@@ -200,7 +204,8 @@ export const tabCreator = new TabCreator();
  *
  * @param {number} desiredTabId
  * @param {number} [timeout]
- * The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in config.
+ * The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in
+ * config.
  * @returns {Promise}
  * @throws {TabError} Throws an error if the tab is closed before it loads
  */
@@ -366,8 +371,8 @@ export async function clickElement(tabId, selector, name = null, ignoreZraErrors
  */
 
 /**
- * Checks a download's progress every once in a while and passes the progress to the provided callback.
- * Once the download is complete, the promise resolves.
+ * Checks a download's progress every once in a while and passes the progress to the provided
+ * callback. Once the download is complete, the promise resolves.
  * @param {number} downloadId The ID of the download whose progress we wish to monitor.
  * @param {monitorDownloadProgressCallback} callback
  * @param {number} pollFrequency How frequently to check the download's progress.

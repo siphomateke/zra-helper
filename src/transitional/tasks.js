@@ -36,7 +36,8 @@ function taskFromId(store, id) {
  * @property {TaskObject} parent
  * @property {boolean} hasChildren
  * @property {TaskObject[]} children
- * @property {Object.<TaskState, number>} childStateCounts Total number of child states per state type
+ * @property {Object.<TaskState, number>} childStateCounts
+ * Total number of child states per state type
  * @property {string} childStateString
  * @property {boolean} complete
  * @property {number} progress
@@ -75,7 +76,10 @@ class Task {
        * @param {string} prop
        */
       get(obj, prop) {
-        // TODO: Find a less hacky way to prevent the Proxy from overriding actual properties and methods.
+        /**
+         * TODO: Find a less hacky way to prevent the Proxy from overriding actual properties and
+         * methods.
+         */
         if (
           typeof prop === 'string'
           && prop !== 'addStep'

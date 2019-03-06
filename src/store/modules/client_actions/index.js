@@ -31,14 +31,17 @@ import { closeTab } from '@/backend/utils';
  * @property {string} clientId
  * @property {Client} client
  * @property {Object} value
- * @property {Error|null} error If there was an error when getting the client's output, this will bet set.
+ * @property {Error|null} error
+ * If there was an error when getting the client's output, this will bet set.
  */
 
+/* eslint-disable max-len */
 /**
  * @typedef {string} ClientUsername
  * @typedef {string} ClientActionId
  * @typedef {Object.<ClientActionId, Object.<ClientUsername, ClientActionOutput>>} ClientActionOutputs
  */
+/* eslint-enable max-len */
 
 /**
  * Validates a client action's options.
@@ -216,7 +219,8 @@ const module = {
      * @param {ClientActionId} payload.actionId
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
-     * @param {boolean} payload.isSingleAction Whether this is the only action running on this client
+     * @param {boolean} payload.isSingleAction
+     * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
     async runActionOnClient({ rootState, getters, commit }, {
@@ -349,8 +353,8 @@ const module = {
                 loggedInTabId,
               }, { root: true });
             } catch (error) {
-              const allActionsRequireTaxTypes = actionsThatRequire.taxTypes.length === actionIds.length;
-              if (allActionsRequireTaxTypes) {
+              // if all actions require tax types
+              if (actionsThatRequire.taxTypes.length === actionIds.length) {
                 throw error;
               } else {
                 // Ignore error if not all tasks require tax types

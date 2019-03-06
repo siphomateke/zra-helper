@@ -18,8 +18,8 @@ export function getHtmlFromNode(node) {
 }
 
 /**
- * From an object of selectors, generates an object of elements with the same keys as the selectors object
- * using the passed document.
+ * From an object of selectors, generates an object of elements with the same keys as the selectors
+ * object using the passed document.
  *
  * If any of the elements are missing, an `ElementsNotFoundError` is thrown.
  * @param {Document|Element} document
@@ -63,7 +63,8 @@ export function getElementsFromDocument(document, selectors, customErrorMessage 
 }
 
 /**
- * Gets an element from a document using a selector and throws an `ElementNotFoundError` if it doesn't exist.
+ * Gets an element from a document using a selector and throws an `ElementNotFoundError` if it
+ * doesn't exist.
  * @param {Document|Element} document
  * @param {string} selector
  * @param {string} name A descriptive name of the element. Used when generating errors.
@@ -84,7 +85,8 @@ export function getElementFromDocument(document, selector, name = null) {
 }
 
 /**
- * From an object of selectors, generates an object of elements with the same keys as the selectors object.
+ * From an object of selectors, generates an object of elements with the same keys as the selectors
+ * object.
  *
  * If any of the elements are missing, an `ElementsNotFoundError` is thrown.
  * @param {Object.<string, string>} selectors Object of selectors with names as keys.

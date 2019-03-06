@@ -63,7 +63,8 @@ const module = {
      * @param {Object} payload
      * @param {number} payload.id ID of client to get tax types for.
      * @param {number} payload.parentTaskId
-     * @param {number} payload.loggedInTabId ID of a logged in tab to use to navigate to the tax payer profile.
+     * @param {number} payload.loggedInTabId
+     * ID of a logged in tab to use to navigate to the tax payer profile.
      */
     async getTaxTypes({ state, commit }, { id, parentTaskId, loggedInTabId }) {
       const client = state.all[id];
