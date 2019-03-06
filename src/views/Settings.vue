@@ -9,36 +9,38 @@
           <div class="control">
             <b-checkbox
               v-model="config.debug.devtools"
-              title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect.">Devtools</b-checkbox>
+              title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect."
+            >Devtools</b-checkbox>
           </div>
           <div class="control">
             <b-checkbox
               v-model="config.debug.logToConsole"
-              title="Show all user-side logs in the console.">Mirror log to developer console</b-checkbox>
+              title="Show all user-side logs in the console."
+            >Mirror log to developer console</b-checkbox>
           </div>
           <div class="control">
             <b-checkbox
               v-model="config.debug.errors"
-              title="Show detailed information about errors if available.">Detailed error information</b-checkbox>
+              title="Show detailed information about errors if available."
+            >Detailed error information</b-checkbox>
           </div>
           <div class="control">
             <b-checkbox
               v-model="config.debug.progressBars"
-              :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`">Progress bars</b-checkbox>
+              :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`"
+            >Progress bars</b-checkbox>
           </div>
           <div class="control">
             <b-checkbox
               v-model="config.debug.sendConfigToContentScripts"
-              title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging.">
-              Send settings to content scripts
-            </b-checkbox>
+              title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging."
+            >Send settings to content scripts</b-checkbox>
           </div>
           <div class="control">
             <b-checkbox
               v-model="config.debug.missingElementInfo"
-              :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`">
-              Collect extra information about missing element errors
-            </b-checkbox>
+              :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
+            >Collect extra information about missing element errors</b-checkbox>
           </div>
         </div>
 
@@ -59,9 +61,8 @@
           <div class="control">
             <b-checkbox
               v-model="config.export.removeMhtmlExtension"
-              title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.">
-              Remove '.mhtml' extension from downloaded receipts
-            </b-checkbox>
+              title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
+            >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
           </div>
         </div>
       </div>
@@ -71,39 +72,46 @@
         <b-field
           label="Tab load timeout"
           title="The amount of time to wait for a tab to load (in milliseconds)."
-          class="column">
+          class="column"
+        >
           <b-input
             v-model="config.tabLoadTimeout"
-            type="number"/>
+            type="number"
+          />
         </b-field>
         <b-field
           label="Maximum open tabs"
           title="The maximum number of tabs that can be opened. Set to 0 to disable."
-          class="column">
+          class="column"
+        >
           <b-input
             v-model="config.maxOpenTabs"
-            type="number"/>
+            type="number"
+          />
         </b-field>
         <b-field
           label="Tab open delay"
           title="The time to wait after creating a tab before creating another one (in milliseconds)."
-          class="column">
+          class="column"
+        >
           <b-input
             v-model="config.tabOpenDelay"
-            type="number"/>
+            type="number"
+          />
         </b-field>
       </div>
 
       <b-field
         label="Max login attempts"
-        title="The maximum number of times an attempt should be made to login to a client.">
+        title="The maximum number of times an attempt should be made to login to a client."
+      >
         <b-input
           v-model="config.maxLoginAttempts"
-          type="number"/>
+          type="number"
+        />
       </b-field>
 
-      <b-field
-        title="Whether to send a notification when all running tasks have completed.">
+      <b-field title="Whether to send a notification when all running tasks have completed.">
         <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
       </b-field>
 
@@ -111,26 +119,30 @@
         <span class="control">
           <button
             class="button is-primary"
-            type="submit">Save changes</button>
+            type="submit"
+          >Save changes</button>
         </span>
         <span class="control">
           <button
             class="button"
             type="button"
-            @click="clearChanges">Cancel</button>
+            @click="clearChanges"
+          >Cancel</button>
         </span>
         <span class="control">
           <button
             class="button"
             type="button"
-            @click="resetToDefaults">Reset to defaults</button>
+            @click="resetToDefaults"
+          >Reset to defaults</button>
         </span>
       </div>
     </form>
     <!-- eslint-enable max-len -->
     <b-loading
       :active="isLoading"
-      :is-full-page="false"/>
+      :is-full-page="false"
+    />
   </div>
 </template>
 

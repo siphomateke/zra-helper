@@ -5,10 +5,12 @@
     :disabled="disabled"
     class="button"
     type="button"
-    @click="download">
+    @click="download"
+  >
     <b-icon
       icon="download"
-      size="is-small"/>
+      size="is-small"
+    />
     <span v-if="!compact">{{ label }}</span>
   </button>
 </template>

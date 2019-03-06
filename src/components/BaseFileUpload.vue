@@ -2,23 +2,22 @@
   <b-upload @input="fileInput">
     <div
       :class="{'has-name': file}"
-      class="file">
+      class="file"
+    >
       <div class="file-label">
         <span class="file-cta">
           <span class="file-icon">
             <b-icon
               size="is-small"
-              icon="upload"/>
+              icon="upload"
+            />
           </span>
-          <span class="file-label">
-            Browse...
-          </span>
+          <span class="file-label">Browse...</span>
         </span>
         <span
           v-if="file"
-          class="file-name">
-          {{ file.name }}
-        </span>
+          class="file-name"
+        >{{ file.name }}</span>
       </div>
     </div>
   </b-upload>

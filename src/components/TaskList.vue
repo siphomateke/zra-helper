@@ -3,21 +3,23 @@
     <TaskListItem
       v-for="id in tasks"
       :key="id"
-      :id="id"/>
+      :id="id"
+    />
     <EmptySection
       v-if="isRoot && tasks.length === 0"
-      message="No tasks are currently running"/>
+      message="No tasks are currently running"
+    />
     <div v-if="isRoot">
       <b-checkbox
         v-model="onlyExportClientTasks"
         :disabled="tasks.length === 0"
-        title="Whether only the top level client tasks should be included in the export.">
-        Only export client tasks
-      </b-checkbox>
+        title="Whether only the top level client tasks should be included in the export."
+      >Only export client tasks</b-checkbox>
       <ExportButtons
         :generators="exportGenerators"
         :disabled="tasks.length === 0"
-        filename="tasks"/>
+        filename="tasks"
+      />
     </div>
   </div>
 </template>

@@ -1,14 +1,16 @@
 <template>
   <div
     v-show="visible"
-    class="progress-wrapper">
+    class="progress-wrapper"
+  >
     <span class="progress-label">
       <template v-if="!complete && !indeterminate">{{ progressText }}</template>
       <template v-if="complete">
         <b-icon
           :icon="icon"
           :type="type"
-          size="is-small"/>
+          size="is-small"
+        />
       </template>
     </span>
     <div class="progress-bar-wrapper">
@@ -19,13 +21,15 @@
           {'complete': complete},
           {'indeterminate': indeterminate && !complete},
         ]"
-        class="progress">
+        class="progress"
+      >
         <div
           :aria-valuenow="value"
           :aria-valuemax="max"
           :style="{width: !indeterminate ? `${percentageValue}%` : ''}"
           class="progress-bar"
-          role="progressbar"/>
+          role="progressbar"
+        />
       </div>
     </div>
   </div>
@@ -152,14 +156,15 @@ export default {
     padding-left: 40px;
   }
 
-  .progress, .progress:not(:last-child) {
+  .progress,
+  .progress:not(:last-child) {
     margin-bottom: 0;
   }
 
   .progress {
     display: flex;
     overflow: hidden;
-    font-size: .75rem;
+    font-size: 0.75rem;
     background-color: $progress-bar-background-color;
 
     .progress-bar {

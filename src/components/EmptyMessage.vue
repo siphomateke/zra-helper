@@ -3,7 +3,8 @@
     <p v-if="icon">
       <b-icon
         :icon="icon"
-        size="is-large"/>
+        size="is-large"
+      />
     </p>
     <p>{{ message }}</p>
   </div>

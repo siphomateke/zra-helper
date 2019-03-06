@@ -4,16 +4,19 @@
     <button
       class="button"
       type="button"
-      @click="showClientTableModal = !showClientTableModal">
+      @click="showClientTableModal = !showClientTableModal"
+    >
       <span>View clients</span>
       <b-icon
         icon="angle-right"
-        size="is-small"/>
+        size="is-small"
+      />
     </button>
     <b-modal
       :active.sync="showClientTableModal"
       has-modal-card
-      width="100%">
+      width="100%"
+    >
       <div class="modal-card">
         <header class="modal-card-head">
           <p class="modal-card-title">Clients ({{ clients.length }})</p>
@@ -21,7 +24,8 @@
             v-model="internalSearch"
             type="search"
             placeholder="Search clients..."
-            icon="search"/>
+            icon="search"
+          />
         </header>
         <section class="modal-card-body">
           <template v-if="shownClients.length > 0">
@@ -29,15 +33,16 @@
               <p>Found {{ shownClients.length }} client(s) matching your query</p>
               <br>
             </template>
-            <ClientListTable
-              :clients="shownClients"/>
+            <ClientListTable :clients="shownClients"/>
           </template>
           <section
             v-else
-            class="section">
+            class="section"
+          >
             <EmptyMessage
               icon="frown"
-              message="No clients found that match your query"/>
+              message="No clients found that match your query"
+            />
           </section>
         </section>
       </div>

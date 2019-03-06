@@ -4,36 +4,43 @@
       state,
       {'open': open},
       hasParent ? 'task sub-task' : 'task',
-      {'has-children': hasChildren}]">
+      {'has-children': hasChildren}]"
+  >
     <div
       class="task-content"
-      @click="showChildren()">
+      @click="showChildren()"
+    >
       <div class="header">
         <div class="title is-6">
           <b-icon
             v-if="hasChildren"
             :icon="open ? 'caret-down' : 'caret-right'"
-            size="is-small"/>
+            size="is-small"
+          />
           <span>{{ title }}</span>
         </div>
         <div
           :title="childStateString"
-          class="subtasks-info">
+          class="subtasks-info"
+        >
           <span
             v-for="(count, state) in childStateCounts"
             :key="state"
             :class="state"
-            class="item">
+            class="item"
+          >
             <b-icon
               :icon="getStateIcon(state)"
-              size="is-small"/>
+              size="is-small"
+            />
             <span class="count">{{ count }}</span>
           </span>
         </div>
       </div>
       <div
         v-show="messages"
-        class="messages">{{ messages }}</div>
+        class="messages"
+      >{{ messages }}</div>
       <Progress
         :value="progress"
         :max="progressMax"
@@ -41,11 +48,13 @@
         :hide-on-complete="true"
         :indeterminate="indeterminate"
         :state="state"
-        size="is-small"/>
+        size="is-small"
+      />
     </div>
     <TaskList
       v-if="hasChildren"
-      :tasks="children"/>
+      :tasks="children"
+    />
   </div>
 </template>
 

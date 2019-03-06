@@ -1,55 +1,65 @@
 <template>
   <div
     v-if="!separateButtonsInternal"
-    class="buttons has-addons">
+    class="buttons has-addons"
+  >
     <b-field>
       <p class="control">
         <span
           :class="[size]"
-          class="button is-static">{{ 'Export as ' }}</span>
+          class="button is-static"
+        >{{ 'Export as ' }}</span>
       </p>
       <b-select
         v-model="selectedFormat"
         :disabled="disabled"
-        placeholder="Format">
+        placeholder="Format"
+      >
         <option
           v-for="format of formats"
           :key="format"
           :value="format"
-          :disabled="disabled">{{ getFormatName(format) }}</option>
+          :disabled="disabled"
+        >{{ getFormatName(format) }}</option>
       </b-select>
       <CopyToClipboardButton
         :generator="generator"
         :size="size"
         :compact="compact"
-        :disabled="disabled"/>
+        :disabled="disabled"
+      />
       <DownloadButton
         :generator="generator"
         :size="size"
         :compact="compact"
         :disabled="disabled"
         :filename="filename"
-        :type="selectedFormat"/>
+        :type="selectedFormat"
+      />
     </b-field>
   </div>
   <b-field
     v-else
     grouped
-    group-multiline>
+    group-multiline
+  >
     <b-field
       v-for="format of formats"
-      :key="format">
+      :key="format"
+    >
       <p class="control">
         <span
           :class="[size]"
-          class="button is-static">{{ getFormatName(format) }}</span>
+          class="button is-static"
+        >{{ getFormatName(format) }}</span>
       </p>
       <p class="control">
         <CopyToClipboardButton
           :generator="getGeneratorFromFormat(format)"
           :size="size"
           :compact="true"
-          :disabled="disabled"/>
+          :disabled="disabled"
+        />
       </p>
       <p class="control">
         <DownloadButton
@@ -58,7 +68,8 @@
           :compact="true"
           :disabled="disabled"
           :filename="filename"
-          :type="format"/>
+          :type="format"
+        />
       </p>
     </b-field>
   </b-field>

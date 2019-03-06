@@ -1,11 +1,13 @@
 <template>
   <div
     id="app"
-    class="container">
+    class="container"
+  >
     <TabNav
       :tabs="tabs"
       v-model="activeTab"
-      @change="tabChanged"/>
+      @change="tabChanged"
+    />
     <router-view class="page-content"/>
   </div>
 </template>
@@ -52,5 +54,5 @@ export default {
 
 
 <style lang="scss">
-  @import "@/assets/scss/app.scss";
+@import '@/assets/scss/app.scss';
 </style>

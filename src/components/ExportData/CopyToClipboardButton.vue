@@ -5,16 +5,19 @@
     :disabled="disabled"
     class="button"
     type="button"
-    @click="copy">
+    @click="copy"
+  >
     <b-tooltip
       :active="showTooltip"
       :label="tooltip"
       always
       animated
-      type="is-dark">
+      type="is-dark"
+    >
       <b-icon
         icon="clipboard"
-        size="is-small"/>
+        size="is-small"
+      />
       <span v-if="!compact">{{ label }}</span>
     </b-tooltip>
   </button>
@@ -59,7 +62,7 @@ export default {
           this.copyComplete(true);
         }).catch(() => {
           this.copyComplete(false);
-        });
+      });
     },
   },
 };

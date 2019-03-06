@@ -3,19 +3,22 @@
     :data="clients"
     :mobile-cards="false"
     bordered
-    narrowed>
+    narrowed
+  >
     <template slot-scope="props">
       <b-table-column
         :sortable="true"
         field="valid"
         label="Valid"
-        width="40">
+        width="40"
+      >
         <b-icon
           v-if="!props.row.valid"
           icon="exclamation-circle"
           size="is-small"
           type="is-danger"
-          title="This client is invalid."/>
+          title="This client is invalid."
+        />
       </b-table-column>
       <b-table-column
         v-for="(column, index) in columns"
@@ -24,10 +27,12 @@
         :key="index"
         :label="column.label"
         :field="column.field"
-        :sortable="true">
+        :sortable="true"
+      >
         <ClientListTableColumn
           :row="props.row"
-          :prop="column.field"/>
+          :prop="column.field"
+        />
       </b-table-column>
     </template>
   </b-table>

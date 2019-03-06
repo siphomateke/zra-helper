@@ -8,16 +8,19 @@
             :value="defaultOutput"
             class="textarea"
             readonly
-            rows="7"/>
+            rows="7"
+          />
         </div>
         <ExportButtons
           :generators="generators"
           :default-format="defaultFormat"
-          :filename="`${action.id}Output`"/>
+          :filename="`${action.id}Output`"
+        />
       </div>
       <EmptySection
         v-else
-        message="Nothing has been outputted yet"/>
+        message="Nothing has been outputted yet"
+      />
     </div>
   </div>
 </template>
@@ -113,7 +116,7 @@ export default {
 </script>
 
 <style lang="scss">
-@import "styles/variables.scss";
+@import 'styles/variables.scss';
 
 .client-action-output {
   width: 100%;

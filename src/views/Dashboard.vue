@@ -11,17 +11,20 @@
           </div>
           <ClientList
             v-if="clients.length > 0"
-            :clients="clients"/>
+            :clients="clients"
+          />
         </div>
         <br>
         <ClientActionSelector
           v-model="selectedClientActions"
-          :disabled="selectActionsDisabled"/>
+          :disabled="selectActionsDisabled"
+        />
         <button
           :disabled="runActionsButtonDisabled"
           :title="runActionsButtonDisabledReason"
           class="button is-primary"
-          type="submit">Run selected action(s)</button>
+          type="submit"
+        >Run selected action(s)</button>
       </form>
     </section>
     <section class="dashboard-section">
@@ -32,17 +35,20 @@
       <h3 class="title is-4">Tasks</h3>
       <TaskList
         :tasks="tasks"
-        :is-root="true"/>
+        :is-root="true"
+      />
     </section>
     <section
       v-if="clientActionsWithOutputs.length > 0"
-      class="dashboard-section">
+      class="dashboard-section"
+    >
       <h3 class="title is-4">Outputs</h3>
       <ClientActionOutput
         v-for="actionId in clientActionsWithOutputs"
         :key="actionId"
         :action-id="actionId"
-        :clients="clientsObj"/>
+        :clients="clientsObj"
+      />
     </section>
   </div>
 </template>

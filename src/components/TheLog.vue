@@ -2,27 +2,31 @@
   <div v-if="!empty">
     <div
       ref="scrollRegion"
-      class="log">
+      class="log"
+    >
       <div class="log-inner">
         <span
           v-for="(line, index) in lines"
           :key="index"
           :class="[line.type]"
-          class="line">
-          <span class="cell timestamp">
-            {{ showDateInTimestamp ? line.timestamp : line.timestampNoDate }}
-          </span>
+          class="line"
+        >
+          <span
+            class="cell timestamp"
+          >{{ showDateInTimestamp ? line.timestamp : line.timestampNoDate }}</span>
           <span class="cell icon">
             <i
               v-if="getTypeIcon(line.type)"
               :class="[getTypeIcon(line.type)]"
               :title="getTypeTooltip(line.type)"
               class="fas"
-              aria-hidden="true"/>
+              aria-hidden="true"
+            />
           </span>
           <span
             v-if="line.category"
-            class="cell category">
+            class="cell category"
+          >
             <span class="log-tag">{{ line.category }}</span>
           </span>
           <span class="cell content">{{ line.content }}</span>
@@ -32,11 +36,13 @@
     <ExportButtons
       :generators="exportGenerators"
       :disabled="lines.length === 0"
-      filename="log"/>
+      filename="log"
+    />
   </div>
   <EmptySection
     v-else
-    message="Nothing has been logged yet"/>
+    message="Nothing has been logged yet"
+  />
 </template>
 
 <script>
@@ -197,7 +203,7 @@ export default {
 </script>
 
 <style lang="scss">
-@import "styles/variables.scss";
+@import 'styles/variables.scss';
 
 @mixin logColoredLine($color, $backgroundColor, $borderColor, $iconColor) {
   color: $color;
@@ -231,21 +237,11 @@ export default {
       }
 
       &.success {
-        @include logColoredLine(
-          green,
-          hsl(110, 100%, 98%),
-          hsl(110, 97%, 88%),
-          $successColor
-        );
+        @include logColoredLine(green, hsl(110, 100%, 98%), hsl(110, 97%, 88%), $successColor);
       }
 
       &.error {
-        @include logColoredLine(
-          red,
-          hsl(0, 100%, 97%),
-          hsl(50, 100%, 88%),
-          $errorColor
-        );
+        @include logColoredLine(red, hsl(0, 100%, 97%), hsl(50, 100%, 88%), $errorColor);
       }
 
       &.warning {

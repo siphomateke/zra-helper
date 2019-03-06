@@ -4,11 +4,13 @@
       <li
         v-for="(tab, index) in tabs"
         :key="index"
-        :class="{ 'is-active': activeTab === index}">
+        :class="{ 'is-active': activeTab === index}"
+      >
         <a @click="tabClick(index)">
           <b-icon
             v-if="tab.icon"
-            :icon="tab.icon"/>
+            :icon="tab.icon"
+          />
           <span>{{ tab.label }}</span>
         </a>
       </li>

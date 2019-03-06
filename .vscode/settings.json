@@ -10,6 +10,13 @@
     "**/dist-zip/**": true,
     "**/dist/**": true
   },
+  "editor.formatOnSave": true,
   "prettier.disableLanguages": ["javascript", "vue"],
-  "vetur.format.defaultFormatter.js": "none"
+  "vetur.format.defaultFormatter.js": "none",
+  "vetur.format.defaultFormatter.html": "prettyhtml",
+  "vetur.format.defaultFormatterOptions": {
+    "prettyhtml": {
+      "wrapAttributes": true
+    }
+  }
 }

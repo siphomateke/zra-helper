@@ -1,9 +1,9 @@
 <template>
-  <div
-    class="empty-section">
+  <div class="empty-section">
     <EmptyMessage
       :icon="icon"
-      :message="message"/>
+      :message="message"
+    />
   </div>
 </template>
 
@@ -29,11 +29,11 @@ export default {
 </script>
 
 <style lang="scss">
-@import "styles/variables.scss";
+@import 'styles/variables.scss';
 
 .empty-section {
-  border:1px solid $region-outline-color;
+  border: 1px solid $region-outline-color;
   border-radius: 5px;
-  padding:1em;
+  padding: 1em;
 }
 </style>

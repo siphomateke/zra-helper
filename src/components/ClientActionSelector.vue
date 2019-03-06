@@ -5,30 +5,32 @@
       <div
         v-for="action in actions"
         :key="action.id"
-        class="control">
+        class="control"
+      >
         <b-checkbox
           v-model="selectedActionIds"
           :native-value="action.id"
           :disabled="actionIsDisabled(action.id)"
           :title="actionIsDisabled(action.id) ? actionDisabledReason(action.id) : ''"
-          name="actions">
-          {{ action.name }}
-        </b-checkbox>
+          name="actions"
+        >{{ action.name }}</b-checkbox>
       </div>
     </div>
 
     <template v-if="multipleActionsSelected">
-      <b-collapse
-        :open.sync="showOrderChooser">
+      <b-collapse :open.sync="showOrderChooser">
         <div
           slot="trigger"
-          slot-scope="props">
+          slot-scope="props"
+        >
           <button
             class="button is-small"
-            type="button">
+            type="button"
+          >
             <b-icon
               :icon="props.open ? 'caret-down' : 'caret-right'"
-              size="is-small"/>
+              size="is-small"
+            />
             <span>{{ `${props.open ? 'Hide' : 'Show'} execution order` }}</span>
           </button>
         </div>
@@ -36,7 +38,8 @@
           :disabled="disabled"
           :value="selectedActions"
           :drag-anywhere="true"
-          @input="changedOrder">
+          @input="changedOrder"
+        >
           <span slot-scope="{item}">{{ item.name }}</span>
         </DraggableList>
       </b-collapse>

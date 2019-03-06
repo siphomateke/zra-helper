@@ -6,21 +6,25 @@
     class="draggable-list"
     @input="updateList"
     @start="drag = true"
-    @end="drag = false">
+    @end="drag = false"
+  >
     <transition-group
       :name="!drag ? 'flip-list' : null"
-      type="transition">
+      type="transition"
+    >
       <div
         v-for="item in list"
         :key="item.id"
         :data-id="item.id"
         :class="{'drag-anywhere': dragAnywhere}"
-        class="draggable-list--item">
+        class="draggable-list--item"
+      >
         <b-icon
           v-if="showHandleInternal"
           icon="grip-vertical"
           size="is-small"
-          class="handle"/>
+          class="handle"
+        />
         <slot :item="item"/>
       </div>
     </transition-group>
@@ -114,7 +118,7 @@ export default {
     border-bottom-width: 0;
     border-left-width: $draggable-list-border-width;
     border-right-width: $draggable-list-border-width;
-    padding: .2em .5em;
+    padding: 0.2em 0.5em;
     background-color: #fff;
 
     &:first-child {
@@ -127,10 +131,10 @@ export default {
     }
 
     &.sortable-drag {
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
 
-    &.sortable-ghost{
+    &.sortable-ghost {
       border-color: $ghost-border-color;
       background-color: $ghost-color;
 

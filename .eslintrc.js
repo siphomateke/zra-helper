@@ -20,6 +20,15 @@ module.exports = {
     'no-shadow': 'off',
     'vue/prop-name-casing': 'error',
   },
+  overrides: [
+    {
+      files: ['*.vue'],
+      rules: {
+        'indent': 'off',
+        'vue/script-indent': ['error', 2, { baseIndent: 0 }],
+      },
+    },
+  ],
   parserOptions: {
     parser: 'babel-eslint',
   },
