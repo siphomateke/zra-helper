@@ -54,8 +54,8 @@
 </template>
 
 <script>
-import ClientListFileUpload from '@/components/ClientList/ClientListFileUpload.vue';
-import ClientList from '@/components/ClientList/ClientList.vue';
+import ClientListFileUpload from '@/components/Clients/ClientListFileUpload.vue';
+import ClientList from '@/components/Clients/ClientList.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
