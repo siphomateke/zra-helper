@@ -68,6 +68,11 @@ export default {
       type: String,
       default: '',
     },
+    /** Fields to check when searching for clients. */
+    searchFields: {
+      type: Array,
+      default: () => ['name', 'username'],
+    },
   },
   data() {
     return {
@@ -77,11 +82,13 @@ export default {
   },
   computed: {
     searchableClientData() {
-      return this.clients.map(client => ({
-        name: client.name.toLowerCase(),
-        username: client.username.toLowerCase(),
-        password: client.password.toLowerCase(),
-      }));
+      return this.clients.map((client) => {
+        const data = {};
+        for (const field of this.searchFields) {
+          data[field] = client[field].toLowerCase();
+        }
+        return data;
+      });
     },
     lowerCaseSearchStr() {
       return this.internalSearch.toLowerCase();
@@ -92,12 +99,11 @@ export default {
         const matches = [];
         for (let i = 0; i < this.searchableClientData.length; i++) {
           const client = this.searchableClientData[i];
-          if (
-            client.name.includes(q)
-            || client.username.includes(q)
-            || client.password.includes(q)
-          ) {
-            matches.push(this.clients[i]);
+          for (const field of this.searchFields) {
+            if (client[field].includes(q)) {
+              matches.push(this.clients[i]);
+              break;
+            }
           }
         }
         return matches;
