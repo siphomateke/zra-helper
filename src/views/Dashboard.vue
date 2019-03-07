@@ -96,7 +96,7 @@ import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
 import ClientActionSelector from '@/components/ClientActionSelector.vue';
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 
 export default {
@@ -127,6 +127,7 @@ export default {
       clientActionsObject: state => state.clientActions.all,
       clientsObj: state => state.clients.all,
     }),
+    ...mapGetters('clients', ['getClientById']),
     clients() {
       return Object.values(this.clientsObj);
     },
@@ -165,6 +166,18 @@ export default {
     },
     selectActionsDisabled() {
       return this.clientActionsRunning;
+    },
+  },
+  watch: {
+    validClientIds() {
+      // Remove all the selected clients which are no longer valid or don't exist.
+      for (let i = this.selectedClientIds.length - 1; i >= 0; i--) {
+        const id = this.selectedClientIds[i];
+        const client = this.getClientById(id);
+        if (!client || !client.valid) {
+          this.selectedClientIds.splice(i);
+        }
+      }
     },
   },
   created() {
