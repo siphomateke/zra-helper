@@ -41,14 +41,16 @@
 <script>
 import { clientPropValidationErrorMessages } from '@/backend/constants';
 import ParsedClientsViewerColumn from './ParsedClientsViewerColumn.vue';
+import clientIdMixin from '@/mixins/client_ids';
 
 export default {
   name: 'ParsedClientsViewer',
   components: {
     ParsedClientsViewerColumn,
   },
+  mixins: [clientIdMixin],
   props: {
-    clients: {
+    clientIds: {
       type: Array,
       default: () => [],
       required: true,

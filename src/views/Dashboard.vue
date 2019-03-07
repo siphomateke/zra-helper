@@ -16,7 +16,7 @@
               @click="parsedClientsViewerVisible = true"
             />
             <OpenModalButton
-              v-if="validClients.length > 0"
+              v-if="validClientIds.length > 0"
               label="Select clients"
               @click="clientSelectorVisible = true"
             />
@@ -62,24 +62,24 @@
 
     <ClientListModal
       v-if="clients.length > 0"
-      :clients="clients"
+      :client-ids="clientIds"
       :active.sync="parsedClientsViewerVisible"
       title="Parsed clients"
     >
-      <template slot-scope="{ clients }">
-        <ParsedClientsViewer :clients="clients"/>
+      <template slot-scope="{ clientIds }">
+        <ParsedClientsViewer :client-ids="clientIds"/>
       </template>
     </ClientListModal>
     <ClientListModal
-      v-if="validClients.length > 0"
-      :clients="validClients"
+      v-if="validClientIds.length > 0"
+      :client-ids="validClientIds"
       :active.sync="clientSelectorVisible"
       title="Valid clients"
     >
-      <template slot-scope="{ clients }">
+      <template slot-scope="{ clientIds }">
         <ClientSelector
-          v-model="selectedClients"
-          :clients="clients"
+          v-model="selectedClientIds"
+          :client-ids="clientIds"
         />
       </template>
     </ClientListModal>
@@ -115,7 +115,7 @@ export default {
   mixins: [configMixin],
   data() {
     return {
-      selectedClients: [],
+      selectedClientIds: [],
       selectedClientActions: [],
       parsedClientsViewerVisible: false,
       clientSelectorVisible: false,
@@ -130,8 +130,17 @@ export default {
     clients() {
       return Object.values(this.clientsObj);
     },
-    validClients() {
-      return this.clients.filter(client => client.valid);
+    clientIds() {
+      return Object.keys(this.clientsObj);
+    },
+    validClientIds() {
+      const valid = [];
+      for (const client of this.clients) {
+        if (client.valid) {
+          valid.push(client.id);
+        }
+      }
+      return valid;
     },
     clientActionsWithOutputs() {
       return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
@@ -145,7 +154,8 @@ export default {
     runActionsButtonDisabledReason() {
       if (this.noActionsSelected) {
         return 'Please select some actions to run on the clients first.';
-      } else if (this.clientActionsRunning) {
+      }
+      if (this.clientActionsRunning) {
         return 'Some client actions are still running. Please wait for them to finish before running some more.';
       }
       return '';

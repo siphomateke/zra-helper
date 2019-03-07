@@ -16,11 +16,11 @@
         />
       </header>
       <section class="modal-card-body">
-        <template v-if="shownClients.length > 0">
+        <template v-if="shownClientIds.length > 0">
           <template v-if="internalSearch.length > 0">
-            <p>Found {{ shownClients.length }} client(s) matching your query</p>
+            <p>Found {{ shownClientIds.length }} client(s) matching your query</p>
           </template>
-          <slot :clients="shownClients"/>
+          <slot :client-ids="shownClientIds"/>
         </template>
         <section
           v-else
@@ -38,6 +38,7 @@
 
 <script>
 import EmptyMessage from '@/components/EmptyMessage.vue';
+import clientIdMixin from '@/mixins/client_ids';
 
 // FIXME: Get rid of lag when opening and closing modal.
 // The lag is due to the modal being re-created every time it is opened.
@@ -46,8 +47,9 @@ export default {
   components: {
     EmptyMessage,
   },
+  mixins: [clientIdMixin],
   props: {
-    clients: {
+    clientIds: {
       type: Array,
       default: () => [],
       required: true,
@@ -110,6 +112,9 @@ export default {
       }
       return this.clients;
     },
+    shownClientIds() {
+      return this.shownClients.map(client => client.id);
+    },
   },
   watch: {
     search(value) {
@@ -121,6 +126,7 @@ export default {
     showClientTableModal(value) {
       this.$emit('update:active', value);
       if (value) {
+        // If the modal is open, focus the search input
         this.$nextTick(() => {
           this.$refs.search.focus();
         });

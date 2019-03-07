@@ -7,9 +7,10 @@
     <b-table
       :data="clients"
       :mobile-cards="false"
-      :checked-rows.sync="selected"
+      :checked-rows="selected"
       checkable
       narrowed
+      @update:checkedRows="updateCheckedRows"
     >
       <template slot-scope="{ row }">
         <b-table-column
@@ -28,10 +29,13 @@
 </template>
 
 <script>
+import clientIdMixin from '@/mixins/client_ids';
+
 export default {
   name: 'ClientSelector',
+  mixins: [clientIdMixin],
   props: {
-    clients: {
+    clientIds: {
       type: Array,
       required: true,
     },
@@ -42,15 +46,30 @@ export default {
   },
   data() {
     return {
-      selected: this.value,
+      /** @type {import('@/backend/constants').Client[]} */
+      selected: [],
+      /** @type {number[]} Client IDs */
+      selectedIds: this.value,
     };
   },
   watch: {
-    selected(value) {
+    value(value) {
+      this.selectedIds = value;
+    },
+    selectedIds(value) {
+      this.updateSelected(value);
       this.$emit('input', value);
     },
-    value() {
-      this.selected = this.value;
+  },
+  created() {
+    this.updateSelected(this.selectedIds);
+  },
+  methods: {
+    updateCheckedRows(clients) {
+      this.selectedIds = clients.map(client => client.id);
+    },
+    updateSelected(ids) {
+      this.selected = this.getClientsFromIds(ids);
     },
   },
 };
