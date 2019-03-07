@@ -9,11 +9,18 @@
               <ClientListFileUpload @input="updateClients"/>
             </div>
           </div>
-          <OpenModalButton
-            v-if="clients.length > 0"
-            label="View parsed clients"
-            @click="parsedClientsViewerVisible = true"
-          />
+          <div class="buttons">
+            <OpenModalButton
+              v-if="clients.length > 0"
+              label="View parsed clients"
+              @click="parsedClientsViewerVisible = true"
+            />
+            <OpenModalButton
+              v-if="validClients.length > 0"
+              label="Select clients"
+              @click="clientSelectorVisible = true"
+            />
+          </div>
         </div>
         <br>
         <ClientActionSelector
@@ -63,6 +70,19 @@
         <ParsedClientsViewer :clients="clients"/>
       </template>
     </ClientListModal>
+    <ClientListModal
+      v-if="validClients.length > 0"
+      :clients="validClients"
+      :active.sync="clientSelectorVisible"
+      title="Valid clients"
+    >
+      <template slot-scope="{ clients }">
+        <ClientSelector
+          v-model="selectedClients"
+          :clients="clients"
+        />
+      </template>
+    </ClientListModal>
   </div>
 </template>
 
@@ -70,6 +90,7 @@
 import ClientListFileUpload from '@/components/Clients/ClientListFileUpload.vue';
 import ClientListModal from '@/components/Clients/ClientListModal.vue';
 import ParsedClientsViewer from '@/components/Clients/ParsedClientsViewer.vue';
+import ClientSelector from '@/components/Clients/ClientSelector.vue';
 import OpenModalButton from '@/components/OpenModalButton.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
@@ -84,6 +105,7 @@ export default {
     ClientListFileUpload,
     ClientListModal,
     ParsedClientsViewer,
+    ClientSelector,
     OpenModalButton,
     TaskList,
     Log,
@@ -93,8 +115,10 @@ export default {
   mixins: [configMixin],
   data() {
     return {
+      selectedClients: [],
       selectedClientActions: [],
       parsedClientsViewerVisible: false,
+      clientSelectorVisible: false,
     };
   },
   computed: {
@@ -105,6 +129,9 @@ export default {
     }),
     clients() {
       return Object.values(this.clientsObj);
+    },
+    validClients() {
+      return this.clients.filter(client => client.valid);
     },
     clientActionsWithOutputs() {
       return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
