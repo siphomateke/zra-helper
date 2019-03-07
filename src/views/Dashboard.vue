@@ -9,9 +9,10 @@
               <ClientListFileUpload @input="updateClients"/>
             </div>
           </div>
-          <ClientList
+          <OpenModalButton
             v-if="clients.length > 0"
-            :clients="clients"
+            label="View parsed clients"
+            @click="parsedClientsViewerVisible = true"
           />
         </div>
         <br>
@@ -50,12 +51,26 @@
         :clients="clientsObj"
       />
     </section>
+
+
+    <ClientListModal
+      v-if="clients.length > 0"
+      :clients="clients"
+      :active.sync="parsedClientsViewerVisible"
+      title="Parsed clients"
+    >
+      <template slot-scope="{ clients }">
+        <ParsedClientsViewer :clients="clients"/>
+      </template>
+    </ClientListModal>
   </div>
 </template>
 
 <script>
 import ClientListFileUpload from '@/components/Clients/ClientListFileUpload.vue';
-import ClientList from '@/components/Clients/ClientList.vue';
+import ClientListModal from '@/components/Clients/ClientListModal.vue';
+import ParsedClientsViewer from '@/components/Clients/ParsedClientsViewer.vue';
+import OpenModalButton from '@/components/OpenModalButton.vue';
 import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
@@ -67,7 +82,9 @@ export default {
   name: 'Dashboard',
   components: {
     ClientListFileUpload,
-    ClientList,
+    ClientListModal,
+    ParsedClientsViewer,
+    OpenModalButton,
     TaskList,
     Log,
     ClientActionOutput,
@@ -77,6 +94,7 @@ export default {
   data() {
     return {
       selectedClientActions: [],
+      parsedClientsViewerVisible: false,
     };
   },
   computed: {

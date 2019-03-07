@@ -1,5 +1,8 @@
 <template>
-  <FileUpload @input="fileUploaded"/>
+  <div>
+    <FileUpload @input="fileUploaded"/>
+    <p v-show="clients.length > 0">Parsed {{ clients.length }} client(s)</p>
+  </div>
 </template>
 
 <script>

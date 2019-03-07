@@ -29,7 +29,7 @@
         :field="column.field"
         :sortable="true"
       >
-        <ClientListTableColumn
+        <ParsedClientsViewerColumn
           :row="props.row"
           :prop="column.field"
         />
@@ -40,12 +40,12 @@
 
 <script>
 import { clientPropValidationErrorMessages } from '@/backend/constants';
-import ClientListTableColumn from './ClientListTableColumn.vue';
+import ParsedClientsViewerColumn from './ParsedClientsViewerColumn.vue';
 
 export default {
-  name: 'ClientListTable',
+  name: 'ParsedClientsViewer',
   components: {
-    ClientListTableColumn,
+    ParsedClientsViewerColumn,
   },
   props: {
     clients: {
