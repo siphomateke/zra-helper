@@ -76,12 +76,31 @@ export default {
     };
   },
   computed: {
+    searchableClientData() {
+      return this.clients.map(client => ({
+        name: client.name.toLowerCase(),
+        username: client.username.toLowerCase(),
+        password: client.password.toLowerCase(),
+      }));
+    },
+    lowerCaseSearchStr() {
+      return this.internalSearch.toLowerCase();
+    },
     shownClients() {
       if (this.internalSearch) {
-        const q = this.internalSearch.toLowerCase();
-        return this.clients.filter(client => client.name.toLowerCase().includes(q)
-          || client.username.toLowerCase().includes(q)
-          || client.password.toLowerCase().includes(q));
+        const q = this.lowerCaseSearchStr;
+        const matches = [];
+        for (let i = 0; i < this.searchableClientData.length; i++) {
+          const client = this.searchableClientData[i];
+          if (
+            client.name.includes(q)
+            || client.username.includes(q)
+            || client.password.includes(q)
+          ) {
+            matches.push(this.clients[i]);
+          }
+        }
+        return matches;
       }
       return this.clients;
     },
