@@ -200,6 +200,9 @@ export default {
     selectActionsDisabled() {
       return this.clientActionsRunning;
     },
+    shouldPromptToRetryFailures() {
+      return this.$store.state.config.promptRetryActions;
+    },
   },
   watch: {
     validClientIds() {
@@ -210,6 +213,16 @@ export default {
         if (!client || !client.valid) {
           this.selectedClientIds.splice(i);
         }
+      }
+    },
+    clientActionsRunning(running) {
+      if (this.shouldPromptToRetryFailures && !running && this.anyRetryableFailures) {
+        this.$dialog.confirm({
+          message: 'Some actions failed to run. Would you like to retry those that failed?',
+          onConfirm: this.retryFailures,
+          confirmText: 'Retry failed actions',
+          cancelText: 'Cancel',
+        });
       }
     },
   },

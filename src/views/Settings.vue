@@ -115,6 +115,10 @@
         <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
       </b-field>
 
+      <b-field title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed.">
+        <b-checkbox v-model="config.promptRetryActions">Prompt to retry actions that fail</b-checkbox>
+      </b-field>
+
       <div class="field is-grouped">
         <span class="control">
           <button
