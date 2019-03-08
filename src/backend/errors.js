@@ -202,16 +202,6 @@ export class DownloadError extends ExtendedError {
   }
 }
 
-export class InvalidClientError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {Object} props.client
-   */
-  constructor(message, code = null, props = { client: null }) {
-    super(message, code, props);
-    this.setType('InvalidClientError');
-  }
-}
 export class MissingTaxTypesError extends ExtendedError {
   constructor(...args) {
     super(...args);

@@ -32,6 +32,8 @@ const defaultConfig = {
   maxLoginAttempts: 3,
   /** Whether to send a notification when all running tasks have completed. */
   sendNotifications: true,
+  /** Whether to show a prompt to retry actions that encountered errors when all running tasks have completed. */
+  promptRetryActions: true,
   actions: {
     getAcknowledgementsOfReturns: {
       /** The maximum number of tabs that can be opened when downloading return receipts. */

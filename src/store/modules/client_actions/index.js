@@ -3,8 +3,7 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { writeJson } from '@/backend/file_utils';
-import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
+import { MissingTaxTypesError, ExtendedError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
 import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
 import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
@@ -29,19 +28,23 @@ import { closeTab } from '@/backend/utils';
  * @typedef {Object} ClientActionOutput
  * @property {ClientActionId} actionId
  * @property {string} clientId
- * @property {Client} client
- * @property {Object} value
- * @property {Error|null} error
+ * @property {Object} [value]
+ * @property {Error|null} [error]
  * If there was an error when getting the client's output, this will bet set.
  */
 
-/* eslint-disable max-len */
 /**
  * @typedef {string} ClientUsername
  * @typedef {string} ClientActionId
- * @typedef {Object.<ClientActionId, Object.<ClientUsername, ClientActionOutput>>} ClientActionOutputs
+ * @typedef {Object.<ClientActionId, ClientActionOutput>} ClientActionOutputs
  */
-/* eslint-enable max-len */
+
+/**
+ * @typedef {Object} ClientActionFailure
+ * @property {number} clientId
+ * @property {number} actionId
+ * @property {Error|import('@/backend/errors').ExtendedError} [error]
+ */
 
 /**
  * Validates a client action's options.
@@ -89,6 +92,22 @@ function validateActionOptions(options) {
   }
 }
 
+/**
+ * Whether a failure should be tried again.
+ * @param {ClientActionFailure} failure
+ */
+function failureShouldBeRetried({ error }) {
+  if (!(error instanceof ExtendedError)) return true;
+  // Don't retry if client's username or password is invalid or their password has expired.
+  if (
+    error.type === 'LoginError'
+    && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
+  ) {
+    return false;
+  }
+  return true;
+}
+
 // TODO: Document state and actions
 /** @type {import('vuex').Module} */
 const module = {
@@ -98,6 +117,8 @@ const module = {
     all: {},
     /** @type {ClientActionOutputs} */
     outputs: {},
+    /** @type {ClientActionFailure[]} Actions that failed during the last run by client. */
+    failures: [],
   },
   getters: {
     getActionById: state => id => state.all[id],
@@ -135,6 +156,23 @@ const module = {
         return !rootTask.complete;
       }
       return false;
+    },
+    retryableFailures(state) {
+      return state.failures.filter(failureShouldBeRetried);
+    },
+    retryableFailuresByClient(state, getters) {
+      const clientFailures = {};
+      for (const failure of getters.retryableFailures) {
+        const { clientId } = failure;
+        if (!(clientId in clientFailures)) {
+          Vue.set(clientFailures, clientId, []);
+        }
+        clientFailures[clientId].push(failure);
+      }
+      return clientFailures;
+    },
+    anyRetryableFailures(state, getters) {
+      return getters.retryableFailures.length > 0;
     },
   },
   mutations: {
@@ -179,6 +217,16 @@ const module = {
       });
       state.all[actionId].outputs.push(outputId);
     },
+    resetFailures(state) {
+      state.failures = [];
+    },
+    /**
+     * @param {any} state
+     * @param {ClientActionFailure} failure
+     */
+    addFailure(state, failure) {
+      state.failures.push(failure);
+    },
   },
   actions: {
     // TODO: Refer to action IDs as the same thing throughout
@@ -187,29 +235,8 @@ const module = {
      * @param {ActionContext} context
      * @param {ClientActionObject} payload
      */
-    async add({ commit, rootGetters }, payload) {
-      // Add write to JSON as default output formatter
-      if (!('outputFormatter' in payload && typeof payload.outputFormatter === 'function')) {
-        payload.outputFormatter = data => writeJson(data);
-      }
-
-      // FIXME: Fix outputFormatter initial JSDOC. It doesn't have client objects in
-      // the output until the following lines
-
-      // Use client IDs to get client objects and add them to the output
-      const payloadCopy = Object.assign({}, payload);
-      payloadCopy.outputFormatter = (outputs, format) => {
-        const outputsCopy = [];
-        for (let i = 0; i < outputs.length; i++) {
-          const output = outputs[i];
-          outputsCopy[i] = Object.assign({
-            client: rootGetters['clients/getClientById'](output.clientId),
-          }, output);
-        }
-        return payload.outputFormatter(outputsCopy, format);
-      };
-
-      commit('add', payloadCopy);
+    async add({ commit }, payload) {
+      commit('add', payload);
     },
 
     /**
@@ -223,9 +250,20 @@ const module = {
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
-    async runActionOnClient({ rootState, getters, commit }, {
-      actionId, client, mainTask, isSingleAction, loggedInTabId,
-    }) {
+    async runActionOnClient(
+      {
+        rootState,
+        getters,
+        commit,
+      },
+      {
+        actionId,
+        client,
+        mainTask,
+        isSingleAction,
+        loggedInTabId,
+      },
+    ) {
       /** @type {ClientActionState} */
       const clientAction = getters.getActionById(actionId);
       const clientActionConfig = rootState.config.actions[actionId];
@@ -277,6 +315,7 @@ const module = {
             // Show a warning on the main task to indicate that one of the actions failed.
             mainTask.state = taskStates.WARNING;
           }
+          commit('addFailure', { clientId: client.id, actionId, error: task.error });
         }
       }
     },
@@ -311,7 +350,7 @@ const module = {
       let loggedOut = false;
       let anyActionsNeedLoggedInTab = false;
       try {
-        if (client.valid) {
+        try {
           // Check if any of the actions require something
           const actionsThatRequire = {
             loggedInTab: [],
@@ -379,23 +418,27 @@ const module = {
             }));
           }
           await Promise.all(promises);
-
-          mainTask.status = 'Logging out';
-          await logout({
-            parentTaskId: mainTask.id,
-            loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
-          });
-          loggedOut = true;
-
-          if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
-            if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
-              mainTask.state = taskStates.WARNING;
-            } else {
-              mainTask.state = taskStates.SUCCESS;
-            }
+        } catch (error) {
+          for (const actionId of actionIds) {
+            commit('setOutput', { actionId, clientId: client.id, error });
+            commit('addFailure', { clientId: client.id, actionId, error });
           }
-        } else {
-          throw new InvalidClientError('Client is invalid', null, { client });
+          throw error;
+        }
+
+        mainTask.status = 'Logging out';
+        await logout({
+          parentTaskId: mainTask.id,
+          loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
+        });
+        loggedOut = true;
+
+        if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
+          if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
+            mainTask.state = taskStates.WARNING;
+          } else {
+            mainTask.state = taskStates.SUCCESS;
+          }
         }
       } catch (error) {
         // If an action asked to keep the logged in tab open and logout didn't complete
@@ -407,22 +450,41 @@ const module = {
         log.setCategory(clientIdentifier);
         log.showError(error);
         mainTask.setError(error);
-        for (const actionId of actionIds) {
-          commit('setOutput', { actionId, clientId: client.id, error });
-        }
       } finally {
         mainTask.markAsComplete();
       }
     },
     /**
-     * Runs each client action on each client.
+     * @callback GetClientsActionIds Gets the IDs of the actions to run on a client.
+     * @param {Client} client
+     * @return {number[]} The IDs of the actions
+     */
+    /**
+     * Main program that runs actions on clients. The actions to run are decided on a per-client
+     * basis using the `getClientsActionIds` parameter.
+     *
+     * A root task is wrapped around each client and a notification is sent once all are complete.
      * @param {ActionContext} context
      * @param {Object} payload
      * @param {ClientActionId[]} payload.actionIds
-     * @param {Client[]} payload.clients
+     * @param {number[]} payload.clientIds
+     * @param {GetClientsActionIds} payload.getClientsActionIds
+     * Function that decides the actions to run on each client.
      */
-    async runAll({ rootState, dispatch }, { actionIds, clients }) {
+    async run({
+      rootState,
+      rootGetters,
+      commit,
+      dispatch,
+    }, {
+      clientIds,
+      getClientsActionIds,
+    }) {
+      const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       if (clients.length > 0) {
+        // Prepare for this run
+        commit('resetFailures');
+
         const rootTask = await createTask(store, {
           title: 'Run actions on clients',
           progressMax: clients.length,
@@ -436,6 +498,7 @@ const module = {
             rootTask.status = client.name;
             // TODO: Consider checking if a tab has been closed prematurely all the time.
             // Currently, only tabLoaded checks for this.
+            const actionIds = getClientsActionIds(client);
             await dispatch('runActionsOnClient', { client, actionIds, parentTaskId: rootTask.id });
           }
           /* eslint-enable no-await-in-loop */
@@ -445,7 +508,7 @@ const module = {
           if (rootState.config.sendNotifications) {
             notify({
               title: 'All tasks complete',
-              message: `Finished running ${actionIds.length} action(s) on ${clients.length} client(s)`,
+              message: `Finished running ${clients.length} client(s)`,
             });
           }
           rootTask.markAsComplete();
@@ -455,6 +518,33 @@ const module = {
         log.setCategory('clientAction');
         log.showError('No clients found');
       }
+    },
+    /**
+     * Runs the passed actions on all clients.
+     * @param {ActionContext} context
+     * @param {Object} payload
+     * @param {number[]} actionIds
+     * @param {number[]} clientIds
+     */
+    async runSelectedActionsOnAllClients({ dispatch }, { actionIds, clientIds }) {
+      await dispatch('run', {
+        clientIds,
+        getClientsActionIds: () => actionIds,
+      });
+    },
+    /**
+     * Re-runs all the actions that failed on the clients they failed on.
+     * @param {ActionContext} context
+     */
+    async retryFailures({ getters, dispatch }) {
+      // Use a copy of the failures as they are reset on each run.
+      const retryableFailuresByClient = Object.assign({}, getters.retryableFailuresByClient);
+      await dispatch('run', {
+        clientIds: Object.keys(retryableFailuresByClient),
+        getClientsActionIds(client) {
+          return retryableFailuresByClient[client.id].map(failure => failure.actionId);
+        },
+      });
     },
   },
 };

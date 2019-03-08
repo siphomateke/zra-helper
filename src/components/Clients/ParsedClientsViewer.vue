@@ -29,7 +29,7 @@
         :field="column.field"
         :sortable="true"
       >
-        <ClientListTableColumn
+        <ParsedClientsViewerColumn
           :row="props.row"
           :prop="column.field"
         />
@@ -40,15 +40,17 @@
 
 <script>
 import { clientPropValidationErrorMessages } from '@/backend/constants';
-import ClientListTableColumn from './ClientListTableColumn.vue';
+import ParsedClientsViewerColumn from './ParsedClientsViewerColumn.vue';
+import clientIdMixin from '@/mixins/client_ids';
 
 export default {
-  name: 'ClientListTable',
+  name: 'ParsedClientsViewer',
   components: {
-    ClientListTableColumn,
+    ParsedClientsViewerColumn,
   },
+  mixins: [clientIdMixin],
   props: {
-    clients: {
+    clientIds: {
       type: Array,
       default: () => [],
       required: true,
