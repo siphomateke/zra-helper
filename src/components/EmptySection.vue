@@ -35,5 +35,8 @@ export default {
   border: 1px solid $region-outline-color;
   border-radius: 5px;
   padding: 1em;
+  &:not(:last-child) {
+    margin-bottom: 0.5rem;
+  }
 }
 </style>
