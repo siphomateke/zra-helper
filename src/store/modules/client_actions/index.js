@@ -40,6 +40,12 @@ import { closeTab } from '@/backend/utils';
  */
 
 /**
+ * @typedef {Object} ClientActionFailure
+ * @property {number} clientId
+ * @property {number} actionId
+ */
+
+/**
  * Validates a client action's options.
  * @param {ClientActionObject} options
  * @throws {Error}
@@ -94,6 +100,8 @@ const module = {
     all: {},
     /** @type {ClientActionOutputs} */
     outputs: {},
+    /** @type {ClientActionFailure[]} Actions that failed during the last run by client. */
+    failures: [],
   },
   getters: {
     getActionById: state => id => state.all[id],
@@ -131,6 +139,19 @@ const module = {
         return !rootTask.complete;
       }
       return false;
+    },
+    failuresByClient(state) {
+      const clientFailures = {};
+      for (const { clientId, actionId } of state.failures) {
+        if (!(clientId in clientFailures)) {
+          clientFailures[clientId] = [];
+        }
+        clientFailures[clientId].push(actionId);
+      }
+      return clientFailures;
+    },
+    anyFailed(state) {
+      return state.failures.length > 0;
     },
   },
   mutations: {
@@ -175,6 +196,16 @@ const module = {
       });
       state.all[actionId].outputs.push(outputId);
     },
+    resetFailures(state) {
+      state.failures = [];
+    },
+    /**
+     * @param {any} state
+     * @param {ClientActionFailure} failure
+     */
+    addFailure(state, failure) {
+      state.failures.push(failure);
+    },
   },
   actions: {
     // TODO: Refer to action IDs as the same thing throughout
@@ -198,9 +229,20 @@ const module = {
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
-    async runActionOnClient({ rootState, getters, commit }, {
-      actionId, client, mainTask, isSingleAction, loggedInTabId,
-    }) {
+    async runActionOnClient(
+      {
+        rootState,
+        getters,
+        commit,
+      },
+      {
+        actionId,
+        client,
+        mainTask,
+        isSingleAction,
+        loggedInTabId,
+      },
+    ) {
       /** @type {ClientActionState} */
       const clientAction = getters.getActionById(actionId);
       const clientActionConfig = rootState.config.actions[actionId];
@@ -252,6 +294,7 @@ const module = {
             // Show a warning on the main task to indicate that one of the actions failed.
             mainTask.state = taskStates.WARNING;
           }
+          commit('addFailure', { clientId: client.id, actionId });
         }
       }
     },
@@ -380,21 +423,43 @@ const module = {
         mainTask.setError(error);
         for (const actionId of actionIds) {
           commit('setOutput', { actionId, clientId: client.id, error });
+          commit('addFailure', { clientId: client.id, actionId });
         }
       } finally {
         mainTask.markAsComplete();
       }
     },
     /**
-     * Runs each client action on each client.
+     * @callback GetClientsActionIds Gets the IDs of the actions to run on a client.
+     * @param {Client} client
+     * @return {number[]} The IDs of the actions
+     */
+    /**
+     * Main program that runs actions on clients. The actions to run are decided on a per-client
+     * basis using the `getClientsActionIds` parameter.
+     *
+     * A root task is wrapped around each client and a notification is sent once all are complete.
      * @param {ActionContext} context
      * @param {Object} payload
      * @param {ClientActionId[]} payload.actionIds
      * @param {number[]} payload.clientIds
+     * @param {GetClientsActionIds} payload.getClientsActionIds
+     * Function that decides the actions to run on each client.
      */
-    async runAll({ rootState, rootGetters, dispatch }, { actionIds, clientIds }) {
+    async run({
+      rootState,
+      rootGetters,
+      commit,
+      dispatch,
+    }, {
+      clientIds,
+      getClientsActionIds,
+    }) {
       const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       if (clients.length > 0) {
+        // Prepare for this run
+        commit('resetFailures');
+
         const rootTask = await createTask(store, {
           title: 'Run actions on clients',
           progressMax: clients.length,
@@ -408,6 +473,7 @@ const module = {
             rootTask.status = client.name;
             // TODO: Consider checking if a tab has been closed prematurely all the time.
             // Currently, only tabLoaded checks for this.
+            const actionIds = getClientsActionIds(client);
             await dispatch('runActionsOnClient', { client, actionIds, parentTaskId: rootTask.id });
           }
           /* eslint-enable no-await-in-loop */
@@ -417,7 +483,7 @@ const module = {
           if (rootState.config.sendNotifications) {
             notify({
               title: 'All tasks complete',
-              message: `Finished running ${actionIds.length} action(s) on ${clients.length} client(s)`,
+              message: `Finished running ${clients.length} client(s)`,
             });
           }
           rootTask.markAsComplete();
@@ -427,6 +493,31 @@ const module = {
         log.setCategory('clientAction');
         log.showError('No clients found');
       }
+    },
+    /**
+     * Runs the passed actions on all clients.
+     * @param {ActionContext} context
+     * @param {Object} payload
+     * @param {number[]} actionIds
+     * @param {number[]} clientIds
+     */
+    async runSelectedActionsOnAllClients({ dispatch }, { actionIds, clientIds }) {
+      await dispatch('run', {
+        clientIds,
+        getClientsActionIds: () => actionIds,
+      });
+    },
+    /**
+     * Re-runs all the actions that failed on the clients they failed on.
+     * @param {ActionContext} context
+     */
+    async retryFailures({ getters, dispatch }) {
+      // Use a copy of the failures as they are reset on each run.
+      const failuresByClient = Object.assign({}, getters.failuresByClient);
+      await dispatch('run', {
+        clientIds: Object.keys(failuresByClient),
+        getClientsActionIds: client => failuresByClient[client.id],
+      });
     },
   },
 };

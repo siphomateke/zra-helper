@@ -46,6 +46,18 @@
         :is-root="true"
       />
     </section>
+    <section class="dashboard-section">
+      <button
+        v-if="anyFailed"
+        class="button"
+        type="button"
+        @click="retryFailures">
+        <b-icon
+          icon="redo"
+          size="is-small"/>
+        <span>Retry failed clients</span>
+      </button>
+    </section>
     <section
       v-if="clientActionsWithOutputs.length > 0"
       class="dashboard-section"
@@ -128,6 +140,7 @@ export default {
       clientsObj: state => state.clients.all,
     }),
     ...mapGetters('clients', ['getClientById']),
+    ...mapGetters('clientActions', ['anyFailed']),
     clients() {
       return Object.values(this.clientsObj);
     },
@@ -184,8 +197,8 @@ export default {
     this.loadConfig();
   },
   methods: {
-    submit() {
-      this.$store.dispatch('clientActions/runAll', {
+    async submit() {
+      await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
         actionIds: this.selectedClientActions,
         clientIds: this.selectedClientIds,
       });
@@ -195,6 +208,9 @@ export default {
 
       // Select all clients by default
       this.selectedClientIds = this.validClientIds;
+    },
+    async retryFailures() {
+      await this.$store.dispatch('clientActions/retryFailures');
     },
   },
 };
