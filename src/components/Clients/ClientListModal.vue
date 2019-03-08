@@ -1,42 +1,40 @@
 <template>
-  <b-modal
+  <CardModal
     :active.sync="showClientTableModal"
-    has-modal-card
     width="100%"
   >
-    <div class="modal-card">
-      <header class="modal-card-head">
-        <p class="modal-card-title">{{ `${title} (${clients.length})` }}</p>
-        <b-input
-          ref="search"
-          v-model="internalSearch"
-          type="search"
-          placeholder="Search clients..."
-          icon="search"
-        />
-      </header>
-      <section class="modal-card-body">
-        <template v-if="shownClientIds.length > 0">
-          <template v-if="internalSearch.length > 0">
-            <p>Found {{ shownClientIds.length }} client(s) matching your query</p>
-          </template>
-          <slot :client-ids="shownClientIds"/>
+    <template slot="head">
+      <p class="modal-card-title">{{ `${title} (${clients.length})` }}</p>
+      <b-input
+        ref="search"
+        v-model="internalSearch"
+        type="search"
+        placeholder="Search clients..."
+        icon="search"
+      />
+    </template>
+    <template slot="body">
+      <template v-if="shownClientIds.length > 0">
+        <template v-if="internalSearch.length > 0">
+          <p>Found {{ shownClientIds.length }} client(s) matching your query</p>
         </template>
-        <section
-          v-else
-          class="section"
-        >
-          <EmptyMessage
-            icon="frown"
-            message="No clients found that match your query"
-          />
-        </section>
+        <slot :client-ids="shownClientIds"/>
+      </template>
+      <section
+        v-else
+        class="section"
+      >
+        <EmptyMessage
+          icon="frown"
+          message="No clients found that match your query"
+        />
       </section>
-    </div>
-  </b-modal>
+    </template>
+  </CardModal>
 </template>
 
 <script>
+import CardModal from '@/components/CardModal.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import clientIdMixin from '@/mixins/client_ids';
 
@@ -45,6 +43,7 @@ import clientIdMixin from '@/mixins/client_ids';
 export default {
   name: 'ClientListModal',
   components: {
+    CardModal,
     EmptyMessage,
   },
   mixins: [clientIdMixin],
