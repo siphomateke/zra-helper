@@ -47,16 +47,26 @@
       />
     </section>
     <section class="dashboard-section">
-      <button
-        v-if="anyRetryableFailures"
-        class="button"
-        type="button"
-        @click="retryFailures">
-        <b-icon
-          icon="redo"
-          size="is-small"/>
-        <span>Retry failed clients</span>
-      </button>
+      <div
+        v-if="!clientActionsRunning && anyRetryableFailures"
+        class="buttons has-addons"
+      >
+        <button
+          class="button"
+          type="button"
+          @click="retryFailures"
+        >
+          <b-icon
+            icon="redo"
+            size="is-small"
+          />
+          <span>Retry failed clients</span>
+        </button>
+        <OpenModalButton
+          label="View failures"
+          @click="showFailures"
+        />
+      </div>
     </section>
     <section
       v-if="clientActionsWithOutputs.length > 0"
@@ -95,6 +105,11 @@
         />
       </template>
     </ClientListModal>
+    <CardModal
+      :active.sync="failuresModalVisible"
+      title="Client failures">
+      <ClientActionFailures slot="body"/>
+    </CardModal>
   </div>
 </template>
 
@@ -108,6 +123,8 @@ import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
 import ClientActionSelector from '@/components/ClientActionSelector.vue';
+import CardModal from '@/components/CardModal.vue';
+import ClientActionFailures from '@/components/ClientActionFailures.vue';
 import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 
@@ -123,6 +140,8 @@ export default {
     Log,
     ClientActionOutput,
     ClientActionSelector,
+    CardModal,
+    ClientActionFailures,
   },
   mixins: [configMixin],
   data() {
@@ -131,6 +150,7 @@ export default {
       selectedClientActions: [],
       parsedClientsViewerVisible: false,
       clientSelectorVisible: false,
+      failuresModalVisible: false,
     };
   },
   computed: {
@@ -211,6 +231,9 @@ export default {
     },
     async retryFailures() {
       await this.$store.dispatch('clientActions/retryFailures');
+    },
+    showFailures() {
+      this.failuresModalVisible = true;
     },
   },
 };
