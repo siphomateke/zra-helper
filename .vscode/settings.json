@@ -18,5 +18,15 @@
     "prettyhtml": {
       "wrapAttributes": true
     }
-  }
+  },
+  "cSpell.words": [
+    "backend",
+    "mhtml",
+    "minroy",
+    "papaparse",
+    "paye",
+    "tlevy",
+    "tpin",
+    "unparse"
+  ]
 }
