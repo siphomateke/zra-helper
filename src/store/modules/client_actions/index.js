@@ -329,73 +329,81 @@ const module = {
       let loggedOut = false;
       let anyActionsNeedLoggedInTab = false;
       try {
-        // Check if any of the actions require something
-        const actionsThatRequire = {
-          loggedInTab: [],
-          taxTypes: [],
-        };
-        for (const actionId of actionIds) {
-          const clientAction = getters.getActionById(actionId);
-          if (clientAction.usesLoggedInTab) {
-            actionsThatRequire.loggedInTab.push(actionId);
-          }
-          if (clientAction.requiresTaxTypes) {
-            actionsThatRequire.taxTypes.push(actionId);
-          }
-        }
-
-        anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
-        const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
-
-        // If any actions require tax types, an extra task will be added to retrieve them.
-        if (anyActionsRequireTaxTypes) {
-          mainTask.progressMax += 1;
-        }
-
-        mainTask.status = 'Logging in';
-        loggedInTabId = await robustLogin({
-          client,
-          parentTaskId: mainTask.id,
-          maxAttempts: rootState.config.maxLoginAttempts,
-          keepTabOpen: anyActionsNeedLoggedInTab,
-        });
-
-        // Get tax types if any actions require them
-        if (anyActionsRequireTaxTypes) {
-          mainTask.status = 'Getting tax types';
-          try {
-            await dispatch('clients/getTaxTypes', {
-              id: client.id,
-              parentTaskId: mainTask.id,
-              loggedInTabId,
-            }, { root: true });
-          } catch (error) {
-            // if all actions require tax types
-            if (actionsThatRequire.taxTypes.length === actionIds.length) {
-              throw error;
-            } else {
-              // Ignore error if not all tasks require tax types
+        try {
+          // Check if any of the actions require something
+          const actionsThatRequire = {
+            loggedInTab: [],
+            taxTypes: [],
+          };
+          for (const actionId of actionIds) {
+            const clientAction = getters.getActionById(actionId);
+            if (clientAction.usesLoggedInTab) {
+              actionsThatRequire.loggedInTab.push(actionId);
+            }
+            if (clientAction.requiresTaxTypes) {
+              actionsThatRequire.taxTypes.push(actionId);
             }
           }
-        }
 
-        // Run actions in parallel
-        if (!isSingleAction) {
-          mainTask.status = 'Running actions';
-        } else {
-          mainTask.status = singleAction.name;
-        }
-        const promises = [];
-        for (const actionId of actionIds) {
-          promises.push(dispatch('runActionOnClient', {
-            actionId,
+          anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
+          const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
+
+          // If any actions require tax types, an extra task will be added to retrieve them.
+          if (anyActionsRequireTaxTypes) {
+            mainTask.progressMax += 1;
+          }
+
+          mainTask.status = 'Logging in';
+          loggedInTabId = await robustLogin({
             client,
-            mainTask,
-            isSingleAction,
-            loggedInTabId,
-          }));
+            parentTaskId: mainTask.id,
+            maxAttempts: rootState.config.maxLoginAttempts,
+            keepTabOpen: anyActionsNeedLoggedInTab,
+          });
+
+          // Get tax types if any actions require them
+          if (anyActionsRequireTaxTypes) {
+            mainTask.status = 'Getting tax types';
+            try {
+              await dispatch('clients/getTaxTypes', {
+                id: client.id,
+                parentTaskId: mainTask.id,
+                loggedInTabId,
+              }, { root: true });
+            } catch (error) {
+              // if all actions require tax types
+              if (actionsThatRequire.taxTypes.length === actionIds.length) {
+                throw error;
+              } else {
+                // Ignore error if not all tasks require tax types
+              }
+            }
+          }
+
+          // Run actions in parallel
+          if (!isSingleAction) {
+            mainTask.status = 'Running actions';
+          } else {
+            mainTask.status = singleAction.name;
+          }
+          const promises = [];
+          for (const actionId of actionIds) {
+            promises.push(dispatch('runActionOnClient', {
+              actionId,
+              client,
+              mainTask,
+              isSingleAction,
+              loggedInTabId,
+            }));
+          }
+          await Promise.all(promises);
+        } catch (error) {
+          for (const actionId of actionIds) {
+            commit('setOutput', { actionId, clientId: client.id, error });
+            commit('addFailure', { clientId: client.id, actionId });
+          }
+          throw error;
         }
-        await Promise.all(promises);
 
         mainTask.status = 'Logging out';
         await logout({
@@ -421,10 +429,6 @@ const module = {
         log.setCategory(clientIdentifier);
         log.showError(error);
         mainTask.setError(error);
-        for (const actionId of actionIds) {
-          commit('setOutput', { actionId, clientId: client.id, error });
-          commit('addFailure', { clientId: client.id, actionId });
-        }
       } finally {
         mainTask.markAsComplete();
       }
