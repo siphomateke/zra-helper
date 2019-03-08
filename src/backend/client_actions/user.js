@@ -2,7 +2,9 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { clickElement, createTab, executeScript, tabLoaded, closeTab, runContentScript } from '@/backend/utils';
+import {
+  clickElement, createTab, executeScript, tabLoaded, closeTab, runContentScript,
+} from '@/backend/utils';
 
 /** @typedef {import('@/backend/constants').Client} Client */
 
@@ -78,6 +80,21 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
 }
 
 /**
+ * @returns {Promise.<number>} ID of logout tab
+ */
+async function createLogoutTab() {
+  const tab = await createTab('https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick');
+  return tab.id;
+}
+
+/**
+ * @param {number} tabId
+ */
+function clickLogoutButton(tabId) {
+  return clickElement(tabId, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
+}
+
+/**
  * Creates a new tab, logs out and then closes the tab
  * @param {Object} payload
  * @param {number} payload.parentTaskId
@@ -98,13 +115,27 @@ export async function logout({ parentTaskId, loggedInTabId = null }) {
   try {
     let tabId = loggedInTabId;
     if (loggedInTabId === null) {
-      const tab = await createTab('https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick');
-      tabId = tab.id;
+      tabId = await createLogoutTab();
     }
     try {
       task.addStep('Initiating logout');
-      // Click logout button
-      await clickElement(tabId, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
+      try {
+        await clickLogoutButton(tabId);
+      } catch (error) {
+        // If the tab is missing, create a new one
+        if (
+          error.type === 'ExecuteScriptError'
+          && error.message.toLowerCase().includes('no tab with id')
+        ) {
+          task.progressMax += 1;
+          task.addStep('Tab missing. Re-creating it.');
+          tabId = await createLogoutTab();
+          // Try again
+          await clickLogoutButton(tabId);
+        } else {
+          throw error;
+        }
+      }
       task.addStep('Waiting to finish logging out');
       task.state = taskStates.SUCCESS;
       log.log('Done logging out');
