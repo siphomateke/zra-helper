@@ -8,6 +8,7 @@
       :data="clients"
       :mobile-cards="false"
       :checked-rows="selected"
+      :is-row-checkable="isRowCheckable"
       checkable
       narrowed
       @update:checkedRows="updateCheckedRows"
@@ -43,6 +44,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -70,6 +75,9 @@ export default {
     },
     updateSelected(ids) {
       this.selected = this.getClientsFromIds(ids);
+    },
+    isRowCheckable() {
+      return !this.disabled;
     },
   },
 };

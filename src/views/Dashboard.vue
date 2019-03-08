@@ -102,6 +102,7 @@
         <ClientSelector
           v-model="selectedClientIds"
           :client-ids="clientIds"
+          :disabled="clientActionsRunning"
         />
       </template>
     </ClientListModal>
