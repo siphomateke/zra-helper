@@ -1,6 +1,6 @@
 <template>
   <CardModal
-    :active.sync="showClientTableModal"
+    :active.sync="showClientListModal"
     width="100%"
   >
     <template slot="head">
@@ -78,7 +78,7 @@ export default {
   data() {
     return {
       internalSearch: '',
-      showClientTableModal: false,
+      showClientListModal: false,
     };
   },
   computed: {
@@ -120,9 +120,9 @@ export default {
       this.internalSearch = value;
     },
     active(value) {
-      this.showClientTableModal = value;
+      this.showClientListModal = value;
     },
-    showClientTableModal(value) {
+    showClientListModal(value) {
       this.$emit('update:active', value);
       if (value) {
         // If the modal is open, focus the search input
