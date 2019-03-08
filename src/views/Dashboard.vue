@@ -190,8 +190,11 @@ export default {
         clients: this.clients,
       });
     },
-    updateClients(clients) {
-      this.$store.dispatch('clients/update', clients);
+    async updateClients(clients) {
+      await this.$store.dispatch('clients/update', clients);
+
+      // Select all clients by default
+      this.selectedClientIds = this.validClientIds;
     },
   },
 };
