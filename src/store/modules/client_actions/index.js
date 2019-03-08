@@ -419,9 +419,10 @@ const module = {
      * @param {ActionContext} context
      * @param {Object} payload
      * @param {ClientActionId[]} payload.actionIds
-     * @param {Client[]} payload.clients
+     * @param {number[]} payload.clientIds
      */
-    async runAll({ rootState, dispatch }, { actionIds, clients }) {
+    async runAll({ rootState, rootGetters, dispatch }, { actionIds, clientIds }) {
+      const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       if (clients.length > 0) {
         const rootTask = await createTask(store, {
           title: 'Run actions on clients',

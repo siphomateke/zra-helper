@@ -187,7 +187,7 @@ export default {
     submit() {
       this.$store.dispatch('clientActions/runAll', {
         actionIds: this.selectedClientActions,
-        clients: this.clients,
+        clientIds: this.selectedClientIds,
       });
     },
     async updateClients(clients) {
