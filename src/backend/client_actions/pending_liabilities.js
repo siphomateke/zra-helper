@@ -4,7 +4,15 @@ import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { taxTypes, exportFormatCodes } from '../constants';
-import { clickElement, createTab, executeScript, sendMessage, tabLoaded, closeTab, runContentScript } from '../utils';
+import {
+  clickElement,
+  createTab,
+  executeScript,
+  sendMessage,
+  tabLoaded,
+  closeTab,
+  runContentScript,
+} from '../utils';
 import { writeJson } from '../file_utils';
 
 /**
@@ -159,13 +167,17 @@ const clientAction = {
   hasOutput: true,
   defaultOutputFormat: exportFormatCodes.CSV,
   outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-  outputFormatter(clientOutputs, format) {
+  outputFormatter(clients, clientOutputs, format) {
     if (format === exportFormatCodes.CSV) {
       const rows = [];
       const columnOrder = totalsColumns;
       // Columns are: client identifier, ...totals, error
       const numberOfColumns = 2 + totalsColumns.length + 1;
-      for (const { client, value } of clientOutputs) {
+      for (const client of clients) {
+        let value = null;
+        if (client.id in clientOutputs) {
+          ({ value } = clientOutputs[client.id]);
+        }
         const totalsObjects = value ? value.totals : null;
         let i = 0;
         for (const taxType of Object.values(taxTypes)) {
@@ -203,7 +215,23 @@ const clientAction = {
         quotes: true,
       });
     }
-    return writeJson(clientOutputs);
+    const json = {};
+    for (const client of clients) {
+      if (client.id in clientOutputs) {
+        const output = clientOutputs[client.id];
+        json[client.id] = {
+          client: {
+            id: client.id,
+            name: client.name,
+            username: client.username,
+          },
+          actionId: output.actionId,
+          value: output.value,
+          error: output.error,
+        };
+      }
+    }
+    return writeJson(json);
   },
 };
 export default clientAction;

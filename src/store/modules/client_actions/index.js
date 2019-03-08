@@ -3,8 +3,7 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { writeJson } from '@/backend/file_utils';
-import { InvalidClientError, MissingTaxTypesError } from '@/backend/errors';
+import { MissingTaxTypesError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
 import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
 import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
@@ -29,19 +28,16 @@ import { closeTab } from '@/backend/utils';
  * @typedef {Object} ClientActionOutput
  * @property {ClientActionId} actionId
  * @property {string} clientId
- * @property {Client} client
- * @property {Object} value
- * @property {Error|null} error
+ * @property {Object} [value]
+ * @property {Error|null} [error]
  * If there was an error when getting the client's output, this will bet set.
  */
 
-/* eslint-disable max-len */
 /**
  * @typedef {string} ClientUsername
  * @typedef {string} ClientActionId
- * @typedef {Object.<ClientActionId, Object.<ClientUsername, ClientActionOutput>>} ClientActionOutputs
+ * @typedef {Object.<ClientActionId, ClientActionOutput>} ClientActionOutputs
  */
-/* eslint-enable max-len */
 
 /**
  * Validates a client action's options.
@@ -187,29 +183,8 @@ const module = {
      * @param {ActionContext} context
      * @param {ClientActionObject} payload
      */
-    async add({ commit, rootGetters }, payload) {
-      // Add write to JSON as default output formatter
-      if (!('outputFormatter' in payload && typeof payload.outputFormatter === 'function')) {
-        payload.outputFormatter = data => writeJson(data);
-      }
-
-      // FIXME: Fix outputFormatter initial JSDOC. It doesn't have client objects in
-      // the output until the following lines
-
-      // Use client IDs to get client objects and add them to the output
-      const payloadCopy = Object.assign({}, payload);
-      payloadCopy.outputFormatter = (outputs, format) => {
-        const outputsCopy = [];
-        for (let i = 0; i < outputs.length; i++) {
-          const output = outputs[i];
-          outputsCopy[i] = Object.assign({
-            client: rootGetters['clients/getClientById'](output.clientId),
-          }, output);
-        }
-        return payload.outputFormatter(outputsCopy, format);
-      };
-
-      commit('add', payloadCopy);
+    async add({ commit }, payload) {
+      commit('add', payload);
     },
 
     /**
@@ -311,91 +286,87 @@ const module = {
       let loggedOut = false;
       let anyActionsNeedLoggedInTab = false;
       try {
-        if (client.valid) {
-          // Check if any of the actions require something
-          const actionsThatRequire = {
-            loggedInTab: [],
-            taxTypes: [],
-          };
-          for (const actionId of actionIds) {
-            const clientAction = getters.getActionById(actionId);
-            if (clientAction.usesLoggedInTab) {
-              actionsThatRequire.loggedInTab.push(actionId);
-            }
-            if (clientAction.requiresTaxTypes) {
-              actionsThatRequire.taxTypes.push(actionId);
-            }
+        // Check if any of the actions require something
+        const actionsThatRequire = {
+          loggedInTab: [],
+          taxTypes: [],
+        };
+        for (const actionId of actionIds) {
+          const clientAction = getters.getActionById(actionId);
+          if (clientAction.usesLoggedInTab) {
+            actionsThatRequire.loggedInTab.push(actionId);
           }
-
-          anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
-          const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
-
-          // If any actions require tax types, an extra task will be added to retrieve them.
-          if (anyActionsRequireTaxTypes) {
-            mainTask.progressMax += 1;
+          if (clientAction.requiresTaxTypes) {
+            actionsThatRequire.taxTypes.push(actionId);
           }
+        }
 
-          mainTask.status = 'Logging in';
-          loggedInTabId = await robustLogin({
-            client,
-            parentTaskId: mainTask.id,
-            maxAttempts: rootState.config.maxLoginAttempts,
-            keepTabOpen: anyActionsNeedLoggedInTab,
-          });
+        anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
+        const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
 
-          // Get tax types if any actions require them
-          if (anyActionsRequireTaxTypes) {
-            mainTask.status = 'Getting tax types';
-            try {
-              await dispatch('clients/getTaxTypes', {
-                id: client.id,
-                parentTaskId: mainTask.id,
-                loggedInTabId,
-              }, { root: true });
-            } catch (error) {
-              // if all actions require tax types
-              if (actionsThatRequire.taxTypes.length === actionIds.length) {
-                throw error;
-              } else {
-                // Ignore error if not all tasks require tax types
-              }
-            }
-          }
+        // If any actions require tax types, an extra task will be added to retrieve them.
+        if (anyActionsRequireTaxTypes) {
+          mainTask.progressMax += 1;
+        }
 
-          // Run actions in parallel
-          if (!isSingleAction) {
-            mainTask.status = 'Running actions';
-          } else {
-            mainTask.status = singleAction.name;
-          }
-          const promises = [];
-          for (const actionId of actionIds) {
-            promises.push(dispatch('runActionOnClient', {
-              actionId,
-              client,
-              mainTask,
-              isSingleAction,
+        mainTask.status = 'Logging in';
+        loggedInTabId = await robustLogin({
+          client,
+          parentTaskId: mainTask.id,
+          maxAttempts: rootState.config.maxLoginAttempts,
+          keepTabOpen: anyActionsNeedLoggedInTab,
+        });
+
+        // Get tax types if any actions require them
+        if (anyActionsRequireTaxTypes) {
+          mainTask.status = 'Getting tax types';
+          try {
+            await dispatch('clients/getTaxTypes', {
+              id: client.id,
+              parentTaskId: mainTask.id,
               loggedInTabId,
-            }));
-          }
-          await Promise.all(promises);
-
-          mainTask.status = 'Logging out';
-          await logout({
-            parentTaskId: mainTask.id,
-            loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
-          });
-          loggedOut = true;
-
-          if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
-            if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
-              mainTask.state = taskStates.WARNING;
+            }, { root: true });
+          } catch (error) {
+            // if all actions require tax types
+            if (actionsThatRequire.taxTypes.length === actionIds.length) {
+              throw error;
             } else {
-              mainTask.state = taskStates.SUCCESS;
+              // Ignore error if not all tasks require tax types
             }
           }
+        }
+
+        // Run actions in parallel
+        if (!isSingleAction) {
+          mainTask.status = 'Running actions';
         } else {
-          throw new InvalidClientError('Client is invalid', null, { client });
+          mainTask.status = singleAction.name;
+        }
+        const promises = [];
+        for (const actionId of actionIds) {
+          promises.push(dispatch('runActionOnClient', {
+            actionId,
+            client,
+            mainTask,
+            isSingleAction,
+            loggedInTabId,
+          }));
+        }
+        await Promise.all(promises);
+
+        mainTask.status = 'Logging out';
+        await logout({
+          parentTaskId: mainTask.id,
+          loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
+        });
+        loggedOut = true;
+
+        if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
+          if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
+            mainTask.state = taskStates.WARNING;
+          } else {
+            mainTask.state = taskStates.SUCCESS;
+          }
         }
       } catch (error) {
         // If an action asked to keep the logged in tab open and logout didn't complete

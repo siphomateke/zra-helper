@@ -89,8 +89,12 @@ export const clientPropValidationErrorMessages = {
  */
 
 /**
+ * @typedef {import('@/store/modules/client_actions/index').ClientActionOutput} ClientActionOutput
+ * @typedef {Object.<number, ClientActionOutput>} ClientActionOutputs
+ *
  * @callback ClientActionOutputFormatter
- * @param {import('@/store/modules/client_actions/index').ClientActionOutput[]} outputs
+ * @param {Client[]} clients
+ * @param {ClientActionOutputs} outputs Key is client ID
  * @param {ExportFormatCode} format
  * @returns {any}
  */

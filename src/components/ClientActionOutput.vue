@@ -61,13 +61,13 @@ export default {
     },
     /**
      * Gets the outputs of all this action's clients.
-     * @returns {import('@/backend/constants').ClientActionOutputFormatterDataItem}
+     * @returns {import('@/backend/constants').ClientActionOutputs}
      */
     clientOutputs() {
-      const results = [];
+      const results = {};
       for (const outputId of this.action.outputs) {
         const output = this.outputs[outputId];
-        results.push(output);
+        results[output.clientId] = output;
       }
       return results;
     },
@@ -106,7 +106,8 @@ export default {
      * @param {import('@/backend/constants').ExportFormatCode} format
      */
     async formatOutput(format) {
-      return this.action.outputFormatter(this.clientOutputs, format);
+      const clients = Object.keys(this.clients).map(id => this.clientFromId(id));
+      return this.action.outputFormatter(clients, this.clientOutputs, format);
     },
     async getDefaultOutput() {
       this.defaultOutput = await this.formatOutput(this.defaultFormat);
