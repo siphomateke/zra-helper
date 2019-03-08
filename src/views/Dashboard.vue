@@ -48,7 +48,7 @@
     </section>
     <section class="dashboard-section">
       <button
-        v-if="anyFailed"
+        v-if="anyRetryableFailures"
         class="button"
         type="button"
         @click="retryFailures">
@@ -140,7 +140,10 @@ export default {
       clientsObj: state => state.clients.all,
     }),
     ...mapGetters('clients', ['getClientById']),
-    ...mapGetters('clientActions', ['anyFailed']),
+    ...mapGetters('clientActions', {
+      anyRetryableFailures: 'anyRetryableFailures',
+      clientActionsRunning: 'running',
+    }),
     clients() {
       return Object.values(this.clientsObj);
     },
@@ -173,9 +176,6 @@ export default {
         return 'Some client actions are still running. Please wait for them to finish before running some more.';
       }
       return '';
-    },
-    clientActionsRunning() {
-      return this.$store.getters['clientActions/running'];
     },
     selectActionsDisabled() {
       return this.clientActionsRunning;

@@ -3,7 +3,7 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { MissingTaxTypesError } from '@/backend/errors';
+import { MissingTaxTypesError, ExtendedError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
 import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
 import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
@@ -43,6 +43,7 @@ import { closeTab } from '@/backend/utils';
  * @typedef {Object} ClientActionFailure
  * @property {number} clientId
  * @property {number} actionId
+ * @property {Error|import('@/backend/errors').ExtendedError} [error]
  */
 
 /**
@@ -89,6 +90,22 @@ function validateActionOptions(options) {
   if (errors.length > 0) {
     throw new Error(`InvalidClientActionOptions: ${errors.join(', ')}`);
   }
+}
+
+/**
+ * Whether a failure should be tried again.
+ * @param {ClientActionFailure} failure
+ */
+function failureShouldBeRetried({ error }) {
+  if (!(error instanceof ExtendedError)) return true;
+  // Don't retry if client's username or password is invalid or their password has expired.
+  if (
+    error.type === 'LoginError'
+    && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
+  ) {
+    return false;
+  }
+  return true;
 }
 
 // TODO: Document state and actions
@@ -140,18 +157,22 @@ const module = {
       }
       return false;
     },
-    failuresByClient(state) {
+    retryableFailures(state) {
+      return state.failures.filter(failureShouldBeRetried);
+    },
+    retryableFailuresByClient(state, getters) {
       const clientFailures = {};
-      for (const { clientId, actionId } of state.failures) {
+      for (const failure of getters.retryableFailures) {
+        const { clientId } = failure;
         if (!(clientId in clientFailures)) {
-          clientFailures[clientId] = [];
+          Vue.set(clientFailures, clientId, []);
         }
-        clientFailures[clientId].push(actionId);
+        clientFailures[clientId].push(failure);
       }
       return clientFailures;
     },
-    anyFailed(state) {
-      return state.failures.length > 0;
+    anyRetryableFailures(state, getters) {
+      return getters.retryableFailures.length > 0;
     },
   },
   mutations: {
@@ -294,7 +315,7 @@ const module = {
             // Show a warning on the main task to indicate that one of the actions failed.
             mainTask.state = taskStates.WARNING;
           }
-          commit('addFailure', { clientId: client.id, actionId });
+          commit('addFailure', { clientId: client.id, actionId, error: task.error });
         }
       }
     },
@@ -400,7 +421,7 @@ const module = {
         } catch (error) {
           for (const actionId of actionIds) {
             commit('setOutput', { actionId, clientId: client.id, error });
-            commit('addFailure', { clientId: client.id, actionId });
+            commit('addFailure', { clientId: client.id, actionId, error });
           }
           throw error;
         }
@@ -517,10 +538,12 @@ const module = {
      */
     async retryFailures({ getters, dispatch }) {
       // Use a copy of the failures as they are reset on each run.
-      const failuresByClient = Object.assign({}, getters.failuresByClient);
+      const retryableFailuresByClient = Object.assign({}, getters.retryableFailuresByClient);
       await dispatch('run', {
-        clientIds: Object.keys(failuresByClient),
-        getClientsActionIds: client => failuresByClient[client.id],
+        clientIds: Object.keys(retryableFailuresByClient),
+        getClientsActionIds(client) {
+          return retryableFailuresByClient[client.id].map(failure => failure.actionId);
+        },
       });
     },
   },
