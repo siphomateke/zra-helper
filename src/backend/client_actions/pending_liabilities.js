@@ -194,8 +194,11 @@ const clientAction = {
     for (const taxTypeId of Object.keys(responses)) {
       const taxType = taxTypes[taxTypeId];
       const { totals, retrievalErrors } = responses[taxTypeId];
-      output.totals[taxType] = Object.assign({}, totals);
-      output.retrievalErrors[taxType] = retrievalErrors;
+      if (totals) {
+        output.totals[taxType] = Object.assign({}, totals);
+      } else {
+        output.retrievalErrors[taxType] = retrievalErrors;
+      }
     }
     return output;
   },
@@ -221,7 +224,7 @@ const clientAction = {
             firstCol = client.name ? client.name : `Client ${client.id}`;
           }
           const row = [firstCol, taxType];
-          if (value && totalsObjects[taxType]) {
+          if (value && (taxType in totalsObjects)) {
             const totalsObject = totalsObjects[taxType];
             const totals = [];
             for (const column of columnOrder) {
