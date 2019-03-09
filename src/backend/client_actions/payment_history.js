@@ -4,8 +4,18 @@ import createTask from '@/transitional/tasks';
 import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
-import { downloadReceipt, parallelTaskMap, getPagedData } from './utils';
-import { taxTypeNames, taxTypeNumericalCodes, taxTypes, browserFeatures } from '../constants';
+import {
+  downloadReceipt,
+  parallelTaskMap,
+  getPagedData,
+  taskFunction,
+} from './utils';
+import {
+  taxTypeNames,
+  taxTypeNumericalCodes,
+  taxTypes,
+  browserFeatures,
+} from '../constants';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -275,7 +285,7 @@ const clientAction = {
   name: 'Get payment receipts',
   requiredFeatures: [browserFeatures.MHTML],
   func({ client, parentTask, clientActionConfig }) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const options = {
         fromDate: '01/10/2013',
         toDate: moment().format('DD/MM/YYYY'),
@@ -284,20 +294,17 @@ const clientAction = {
       parentTask.unknownMaxProgress = false;
       parentTask.progressMax = 2;
 
-      try {
-        const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
-        const initialMaxOpenTabs = config.maxOpenTabs;
-        config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
-        await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
-        config.maxOpenTabs = initialMaxOpenTabs;
-        resolve();
-      } catch (error) {
-        parentTask.setError(error);
-        reject(error);
-      } finally {
-        parentTask.markAsComplete();
-        parentTask.setStateBasedOnChildren();
-      }
+      taskFunction({
+        task: parentTask,
+        setStateBasedOnChildren: true,
+        async func() {
+          const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
+          const initialMaxOpenTabs = config.maxOpenTabs;
+          config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
+          await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
+          config.maxOpenTabs = initialMaxOpenTabs;
+        },
+      }).then(resolve).catch(reject);
     });
   },
 };

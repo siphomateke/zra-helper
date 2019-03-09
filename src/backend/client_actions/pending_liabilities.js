@@ -14,6 +14,7 @@ import {
   runContentScript,
 } from '../utils';
 import { writeJson } from '../file_utils';
+import { taskFunction } from './utils';
 
 /**
  * @typedef {Object} getTotalsResponse
@@ -70,40 +71,53 @@ const clientAction = {
           log.log(`Generating ${taxType} report`);
 
           let tab = null;
+          // TODO: Move this to separate function
           try {
-            tab = await createTab('https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability');
-            await tabLoaded(tab.id);
+            await taskFunction({
+              task,
+              async func() {
+                try {
+                  tab = await createTab('https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability');
+                  await tabLoaded(tab.id);
 
-            task.addStep('Selecting tax type');
+                  task.addStep('Selecting tax type');
 
-            await executeScript(tab.id, 'generate_report');
+                  await executeScript(tab.id, 'generate_report');
 
-            try {
-              task.addStep('Generating report');
+                  try {
+                    task.addStep('Generating report');
 
-              await sendMessage(tab.id, {
-                command: 'generate_report',
-                taxTypeId,
-              });
-              // Get Totals
-              await tabLoaded(tab.id);
+                    await sendMessage(tab.id, {
+                      command: 'generate_report',
+                      taxTypeId,
+                    });
+                    // Get Totals
+                    await tabLoaded(tab.id);
 
-              task.addStep('Getting totals');
+                    task.addStep('Getting totals');
 
-              let totalsResponse = await getTotals(tab.id, totalsColumns);
-              if (totalsResponse.numPages > 1) {
-                // Set the current page to be the last one by clicking the "last page" button.
-                await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
-                totalsResponse = await getTotals(tab.id, totalsColumns);
-              }
-              totals[taxType] = totalsResponse.totals;
-              task.state = taskStates.SUCCESS;
-              resolve();
-            } finally {
-              log.log(`Finished generating ${taxType} report`);
-            }
+                    let totalsResponse = await getTotals(tab.id, totalsColumns);
+                    if (totalsResponse.numPages > 1) {
+                      // Set the current page to be the last one by clicking the "last page" button.
+                      await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
+                      totalsResponse = await getTotals(tab.id, totalsColumns);
+                    }
+                    totals[taxType] = totalsResponse.totals;
+                  } finally {
+                    log.log(`Finished generating ${taxType} report`);
+                  }
+                } finally {
+                  if (tab) {
+                    try {
+                      await closeTab(tab.id);
+                    } catch (error) {
+                      // If we fail to close the tab then it's probably already closed
+                    }
+                  }
+                }
+              },
+            });
           } catch (error) {
-            task.setError(error);
             if (error.type === 'TaxTypeNotFoundError') {
               // By default the `TaxTypeNotFoundError` contains the tax type.
               // We don't need to show the tax type in the status since it's under
@@ -113,19 +127,12 @@ const clientAction = {
               retrievalErrors[taxType] = error;
             }
             log.showError(error);
-            resolve();
           } finally {
-            if (tab) {
-              try {
-                await closeTab(tab.id);
-              } catch (error) {
-                // If we fail to close the tab then it's probably already closed
-              }
-            }
-            task.markAsComplete();
+            resolve();
           }
         }));
       }
+      // TODO: Use parallel task map
       Promise.all(promises).then(() => {
         let errorCount = 0;
         let taxTypeErrorCount = 0;

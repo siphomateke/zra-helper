@@ -1,10 +1,15 @@
 import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
-import { taskStates } from '@/store/modules/tasks';
 import {
-  clickElement, createTab, executeScript, tabLoaded, closeTab, runContentScript,
+  clickElement,
+  createTab,
+  executeScript,
+  tabLoaded,
+  closeTab,
+  runContentScript,
 } from '@/backend/utils';
+import { taskFunction } from './utils';
 
 /** @typedef {import('@/backend/constants').Client} Client */
 
@@ -29,54 +34,57 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
   log.setCategory('login');
   log.log(`Logging in client "${client.name}"`);
   let tabId = null;
-  try {
-    const tab = await createTab('https://www.zra.org.zm');
-    tabId = tab.id;
-    task.addStep('Waiting for tab to load');
-    try {
-      await tabLoaded(tab.id);
-      task.addStep('Navigating to login page');
-      // Navigate to login page
-      await clickElement(
-        tab.id,
-        // eslint-disable-next-line max-len
-        '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a',
-        'go to login button',
-      );
-      task.addStep('Waiting for login page to load');
-      await tabLoaded(tab.id);
-      task.addStep('Logging in');
-      // OCRAD should be imported in login.js but work with webpack
-      await executeScript(tab.id, 'ocrad', true);
-      // Actually login
-      await runContentScript(tab.id, 'login', {
-        client,
-        maxCaptchaRefreshes: 10,
-      });
-      task.addStep('Waiting for login to complete');
-      await tabLoaded(tab.id);
-      task.addStep('Checking if login was successful');
-      await runContentScript(tab.id, 'check_login', { client });
-      task.state = taskStates.SUCCESS;
-      log.log(`Done logging in "${client.name}"`);
-      return tab.id;
-    } finally {
-      if (!keepTabOpen) {
-        // Don't need to wait for the tab to close to carry out logged in actions
-        // TODO: Catch tab close errors
-        closeTab(tab.id);
+
+  return taskFunction({
+    task,
+    async func() {
+      try {
+        const tab = await createTab('https://www.zra.org.zm');
+        tabId = tab.id;
+        task.addStep('Waiting for tab to load');
+        try {
+          await tabLoaded(tab.id);
+          task.addStep('Navigating to login page');
+          // Navigate to login page
+          await clickElement(
+            tab.id,
+            // eslint-disable-next-line max-len
+            '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a',
+            'go to login button',
+          );
+          task.addStep('Waiting for login page to load');
+          await tabLoaded(tab.id);
+          task.addStep('Logging in');
+          // OCRAD should be imported in login.js but work with webpack
+          await executeScript(tab.id, 'ocrad', true);
+          // Actually login
+          await runContentScript(tab.id, 'login', {
+            client,
+            maxCaptchaRefreshes: 10,
+          });
+          task.addStep('Waiting for login to complete');
+          await tabLoaded(tab.id);
+          task.addStep('Checking if login was successful');
+          await runContentScript(tab.id, 'check_login', { client });
+          log.log(`Done logging in "${client.name}"`);
+          return tab.id;
+        } finally {
+          if (!keepTabOpen) {
+            // Don't need to wait for the tab to close to carry out logged in actions
+            // TODO: Catch tab close errors
+            closeTab(tab.id);
+          }
+        }
+      } catch (error) {
+        // FIXME: Remove this since it doesn't seem to do anything.
+        if (keepTabOpen && tabId !== null) {
+          // TODO: Catch tab close errors
+          closeTab(tabId);
+        }
+        throw error;
       }
-    }
-  } catch (error) {
-    if (keepTabOpen && tabId !== null) {
-      // TODO: Catch tab close errors
-      closeTab(tabId);
-    }
-    task.setError(error);
-    throw error;
-  } finally {
-    task.markAsComplete();
-  }
+    },
+  });
 }
 
 /**
@@ -112,44 +120,41 @@ export async function logout({ parentTaskId, loggedInTabId = null }) {
 
   log.setCategory('logout');
   log.log('Logging out');
-  try {
-    let tabId = loggedInTabId;
-    if (loggedInTabId === null) {
-      tabId = await createLogoutTab();
-    }
-    try {
-      task.addStep('Initiating logout');
-      try {
-        await clickLogoutButton(tabId);
-      } catch (error) {
-        // If the tab is missing, create a new one
-        if (
-          error.type === 'ExecuteScriptError'
-          && error.message.toLowerCase().includes('no tab with id')
-        ) {
-          task.progressMax += 1;
-          task.addStep('Tab missing. Re-creating it.');
-          tabId = await createLogoutTab();
-          // Try again
-          await clickLogoutButton(tabId);
-        } else {
-          throw error;
-        }
+  return taskFunction({
+    task,
+    async func() {
+      let tabId = loggedInTabId;
+      if (loggedInTabId === null) {
+        tabId = await createLogoutTab();
       }
-      task.addStep('Waiting to finish logging out');
-      task.state = taskStates.SUCCESS;
-      log.log('Done logging out');
-    } finally {
-      // Note: The tab automatically closes after pressing logout
-      // TODO: Catch tab close errors
-      closeTab(tabId);
-    }
-  } catch (error) {
-    task.setError(error);
-    throw error;
-  } finally {
-    task.markAsComplete();
-  }
+      try {
+        task.addStep('Initiating logout');
+        try {
+          await clickLogoutButton(tabId);
+        } catch (error) {
+          // If the tab is missing, create a new one
+          if (
+            error.type === 'ExecuteScriptError'
+            && error.message.toLowerCase().includes('no tab with id')
+          ) {
+            task.progressMax += 1;
+            task.addStep('Tab missing. Re-creating it.');
+            tabId = await createLogoutTab();
+            // Try again
+            await clickLogoutButton(tabId);
+          } else {
+            throw error;
+          }
+        }
+        task.addStep('Waiting to finish logging out');
+        log.log('Done logging out');
+      } finally {
+        // Note: The tab automatically closes after pressing logout
+        // TODO: Catch tab close errors
+        closeTab(tabId);
+      }
+    },
+  });
 }
 
 /**
@@ -176,38 +181,35 @@ export async function robustLogin({
   });
   let attempts = 0;
   let run = true;
-  try {
-    let loggedInTabId = null;
-    /* eslint-disable no-await-in-loop */
-    while (run) {
-      try {
-        if (attempts > 0) {
-          task.status = 'Logging in again';
-        } else {
-          task.status = 'Logging in';
+  return taskFunction({
+    task,
+    async func() {
+      let loggedInTabId = null;
+      /* eslint-disable no-await-in-loop */
+      while (run) {
+        try {
+          if (attempts > 0) {
+            task.status = 'Logging in again';
+          } else {
+            task.status = 'Logging in';
+          }
+          loggedInTabId = await login({ client, parentTaskId: task.id, keepTabOpen });
+          run = false;
+        } catch (error) {
+          if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts + 1 < maxAttempts) {
+            log.setCategory('login');
+            log.showError(error, true);
+            task.status = 'Logging out';
+            await logout({ parentTaskId: task.id });
+            run = true;
+          } else {
+            throw error;
+          }
         }
-        loggedInTabId = await login({ client, parentTaskId: task.id, keepTabOpen });
-        run = false;
-      } catch (error) {
-        if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts + 1 < maxAttempts) {
-          log.setCategory('login');
-          log.showError(error, true);
-          task.status = 'Logging out';
-          await logout({ parentTaskId: task.id });
-          run = true;
-        } else {
-          throw error;
-        }
+        attempts++;
       }
-      attempts++;
-    }
-    /* eslint-enable no-await-in-loop */
-    task.state = taskStates.SUCCESS;
-    return loggedInTabId;
-  } catch (error) {
-    task.setError(error);
-    throw error;
-  } finally {
-    task.markAsComplete();
-  }
+      /* eslint-enable no-await-in-loop */
+      return loggedInTabId;
+    },
+  });
 }

@@ -17,6 +17,50 @@ import { taxTypeNames } from '../constants';
 /** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
 /**
+ * Sets a task's state, error and completion status based on an async function.
+ *
+ * If the function throws an error, the task's error is set. Otherwise, the task's state is set to
+ * success or is determined from it's sub tasks. Regardless of whether an error was thrown, the
+ * task's completion status is set to true once the function is done running.
+ * @template AsyncFunctionReturn
+ * @param {Object} options
+ * @param {import('@/transitional/tasks').TaskObject} options.task
+ * @param {() => AsyncFunctionReturn} options.func
+ * @param {boolean} [options.setState]
+ * Whether the task's state should be set after completing without errors.
+ * @param {boolean} [options.setStateBasedOnChildren]
+ * @param {boolean} [options.catchErrors]
+ * @returns {Promise<AsyncFunctionReturn>}
+ */
+export async function taskFunction({
+  task,
+  func,
+  setState = true,
+  setStateBasedOnChildren = false,
+  catchErrors = false,
+}) {
+  try {
+    const response = await func();
+    if (setState) {
+      if (setStateBasedOnChildren) {
+        task.setStateBasedOnChildren();
+      } else {
+        task.state = taskStates.SUCCESS;
+      }
+    }
+    return response;
+  } catch (error) {
+    task.setError(error);
+    if (catchErrors) {
+      return null;
+    }
+    throw error;
+  } finally {
+    task.markAsComplete();
+  }
+}
+
+/**
  * Downloads a receipt
  * @param {Object} options
  * @param {'return'|'payment'} options.type
@@ -40,73 +84,70 @@ export async function downloadReceipt({
     progressMax: 4,
     status: 'Opening receipt tab',
   });
-  try {
-    const tab = await createTabPost(createTabPostOptions);
-    try {
-      task.addStep('Waiting for receipt to load');
-      await tabLoaded(tab.id);
+  return taskFunction({
+    task,
+    async func() {
+      const tab = await createTabPost(createTabPostOptions);
+      try {
+        task.addStep('Waiting for receipt to load');
+        await tabLoaded(tab.id);
 
-      const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
+        const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
 
-      if (!receiptData.referenceNumber) {
-        throw new InvalidReceiptError('Invalid receipt; missing reference number.');
-      }
-
-      task.addStep('Converting receipt to MHTML');
-      const blob = await saveAsMHTML({ tabId: tab.id });
-      const url = URL.createObjectURL(blob);
-      task.addStep('Downloading generated MHTML');
-
-      let generatedFilename;
-      if (typeof filename === 'function') {
-        generatedFilename = filename(receiptData);
-      } else {
-        generatedFilename = filename;
-      }
-      let generatedFilenames;
-      if (typeof generatedFilename === 'string') {
-        generatedFilenames = [generatedFilename];
-      } else {
-        generatedFilenames = generatedFilename;
-      }
-      const taskProgressBeforeDownload = task.progress;
-      if (Array.isArray(generatedFilenames)) {
-        const promises = [];
-        for (const generatedFilename of generatedFilenames) {
-          promises.push(new Promise(async (resolve) => {
-            let downloadFilename = generatedFilename;
-            if (!config.export.removeMhtmlExtension) {
-              downloadFilename += '.mhtml';
-            }
-            const downloadId = await browser.downloads.download({
-              url,
-              filename: downloadFilename,
-            });
-            // FIXME: Catch and handle download errors
-            await monitorDownloadProgress(downloadId, (downloadProgress) => {
-              if (downloadProgress !== -1) {
-                task.progress = taskProgressBeforeDownload + downloadProgress;
-              }
-            });
-            resolve();
-          }));
+        if (!receiptData.referenceNumber) {
+          throw new InvalidReceiptError('Invalid receipt; missing reference number.');
         }
-        await Promise.all(promises);
-      } else {
-        throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+
+        task.addStep('Converting receipt to MHTML');
+        const blob = await saveAsMHTML({ tabId: tab.id });
+        const url = URL.createObjectURL(blob);
+        task.addStep('Downloading generated MHTML');
+
+        let generatedFilename;
+        if (typeof filename === 'function') {
+          generatedFilename = filename(receiptData);
+        } else {
+          generatedFilename = filename;
+        }
+        let generatedFilenames;
+        if (typeof generatedFilename === 'string') {
+          generatedFilenames = [generatedFilename];
+        } else {
+          generatedFilenames = generatedFilename;
+        }
+        const taskProgressBeforeDownload = task.progress;
+        if (Array.isArray(generatedFilenames)) {
+          const promises = [];
+          for (const generatedFilename of generatedFilenames) {
+            promises.push(new Promise(async (resolve) => {
+              let downloadFilename = generatedFilename;
+              if (!config.export.removeMhtmlExtension) {
+                downloadFilename += '.mhtml';
+              }
+              const downloadId = await browser.downloads.download({
+                url,
+                filename: downloadFilename,
+              });
+              // FIXME: Catch and handle download errors
+              await monitorDownloadProgress(downloadId, (downloadProgress) => {
+                if (downloadProgress !== -1) {
+                  task.progress = taskProgressBeforeDownload + downloadProgress;
+                }
+              });
+              resolve();
+            }));
+          }
+          await Promise.all(promises);
+        } else {
+          throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+        }
+      } finally {
+        // Don't need to wait for the tab to close to carry out logged in actions
+        // TODO: Catch tab close errors
+        closeTab(tab.id);
       }
-      task.state = taskStates.SUCCESS;
-    } finally {
-      // Don't need to wait for the tab to close to carry out logged in actions
-      // TODO: Catch tab close errors
-      closeTab(tab.id);
-    }
-  } catch (error) {
-    task.setError(error);
-    throw error;
-  } finally {
-    task.markAsComplete();
-  }
+    },
+  });
 }
 
 /**
@@ -228,16 +269,10 @@ export async function getDataFromPageTask({
   firstPage = 1,
 }) {
   const childTask = await createTask(store, getTaskData(page, parentTaskId));
-  try {
-    const result = await getDataFunction(page + firstPage);
-    childTask.state = taskStates.SUCCESS;
-    return result;
-  } catch (error) {
-    childTask.setError(error);
-    throw error;
-  } finally {
-    childTask.markAsComplete();
-  }
+  return taskFunction({
+    task: childTask,
+    func: () => getDataFunction(page + firstPage),
+  });
 }
 
 /**
@@ -252,51 +287,49 @@ export async function getDataFromPageTask({
  * @param {number} [options.firstPage] The index of the first page.
  */
 // TODO: Use me in more places such has payment history
-export async function getPagedData({
+export function getPagedData({
   task,
   getPageSubTask,
   getDataFunction,
   firstPage = 1,
 }) {
-  try {
-    const options = {
-      getTaskData: getPageSubTask,
-      getDataFunction,
-      firstPage,
-    };
+  return taskFunction({
+    task,
+    setState: false,
+    async func() {
+      const options = {
+        getTaskData: getPageSubTask,
+        getDataFunction,
+        firstPage,
+      };
 
-    const allResults = [];
+      const allResults = [];
 
-    // Get data from the first page so we know the total number of pages
-    // NOTE: The settings set by parallel task map aren't set when this runs
-    const result = await getDataFromPageTask(Object.assign({
-      page: 0,
-      parentTaskId: task.id,
-    }, options));
-    allResults.push(result);
+      // Get data from the first page so we know the total number of pages
+      // NOTE: The settings set by parallel task map aren't set when this runs
+      const result = await getDataFromPageTask(Object.assign({
+        page: 0,
+        parentTaskId: task.id,
+      }, options));
+      allResults.push(result);
 
-    // Then get the rest of the pages in parallel
-    const results = await parallelTaskMap({
-      startIndex: 1,
-      count: result.numPages,
-      task,
-      func(page, parentTaskId) {
-        return getDataFromPageTask(Object.assign({
-          page,
-          parentTaskId,
-        }, options));
-      },
-    });
-    allResults.push(...results);
+      // Then get the rest of the pages in parallel
+      const results = await parallelTaskMap({
+        startIndex: 1,
+        count: result.numPages,
+        task,
+        func(page, parentTaskId) {
+          return getDataFromPageTask(Object.assign({
+            page,
+            parentTaskId,
+          }, options));
+        },
+      });
+      allResults.push(...results);
 
-    return allResults;
-  } catch (error) {
-    task.setError(error);
-    throw error;
-  } finally {
-    // TODO: This shouldn't be called if it has already been called in parallelTaskMap
-    task.markAsComplete();
-  }
+      return allResults;
+    },
+  });
 }
 
 /**
@@ -315,35 +348,34 @@ export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
     progressMax: 4,
   });
 
-  try {
-    task.addStep('Navigating to taxpayer profile');
-    await clickElement(
-      loggedInTabId,
-      // eslint-disable-next-line max-len
-      '#leftMainDiv .leftMenuAccordion div.submenu:nth-child(8)>ul:nth-child(1)>li:nth-child(1)>div:nth-child(1)>a:nth-child(1)',
-      'go to taxpayer profile button',
-    );
+  return taskFunction({
+    task,
+    // TODO: Find out why we were catching errors
+    catchErrors: true,
+    async func() {
+      task.addStep('Navigating to taxpayer profile');
+      await clickElement(
+        loggedInTabId,
+        // eslint-disable-next-line max-len
+        '#leftMainDiv .leftMenuAccordion div.submenu:nth-child(8)>ul:nth-child(1)>li:nth-child(1)>div:nth-child(1)>a:nth-child(1)',
+        'go to taxpayer profile button',
+      );
 
-    task.addStep('Waiting for taxpayer profile to load');
-    await tabLoaded(loggedInTabId);
+      task.addStep('Waiting for taxpayer profile to load');
+      await tabLoaded(loggedInTabId);
 
-    task.addStep('Extracting tax types');
-    const { registrationDetails } = await runContentScript(loggedInTabId, 'get_registration_details');
+      task.addStep('Extracting tax types');
+      const { registrationDetails } = await runContentScript(loggedInTabId, 'get_registration_details');
 
-    // Get only registered tax types
-    const registeredTaxTypes = [];
-    for (const { status, taxType } of registrationDetails) {
-      if (status.toLowerCase() === 'registered') {
-        const taxTypeId = taxTypeNames[taxType.toLowerCase()];
-        registeredTaxTypes.push(taxTypeId);
+      // Get only registered tax types
+      const registeredTaxTypes = [];
+      for (const { status, taxType } of registrationDetails) {
+        if (status.toLowerCase() === 'registered') {
+          const taxTypeId = taxTypeNames[taxType.toLowerCase()];
+          registeredTaxTypes.push(taxTypeId);
+        }
       }
-    }
-    task.state = taskStates.SUCCESS;
-    return registeredTaxTypes;
-  } catch (error) {
-    task.setError(error);
-    return null;
-  } finally {
-    task.markAsComplete();
-  }
+      return registeredTaxTypes;
+    },
+  });
 }
