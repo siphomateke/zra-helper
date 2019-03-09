@@ -70,8 +70,40 @@ const recordHeaders = [
 ];
 
 /**
+ * @typedef {Object} PrnNo
+ * @property {string} innerText '118019903987'
+ * @property {string} onclick "payementHistory('0617620366056', '1051185712615', 'WCO')"
+ */
+
+/**
+ * @typedef {Object} PaymentReceiptNumbers
+ * ```js
+  {
+  srNo: '1',
+  prnNo: {
+    innerText: '118019903987',
+    onclick: "payementHistory('0617620366056', '1051185712615', 'WCO')",
+  },
+  amount: '365.00',
+  status: 'Payment Received',
+  prnDate: '12 / 05 / 2018',
+  paymentDate: '16 / 05 / 2018',
+  type: 'Without Cash Office',
+  }
+ ```
+ * @property {string} srNo '1'
+ * @property {PrnNo} prnNo
+ * @property {string} amount '365.00'
+ * @property {string} status 'Payment Received'
+ * @property {string} prnDate '12 / 05 / 2018'
+ * @property {string} paymentDate '16 / 05 / 2018'
+ * @property {string} type 'Without Cash Office'
+ */
+
+/**
  * Gets payment receipt numbers from a single page.
  * @param {GetPaymentReceiptNumbersOptions} options
+ * TODO: Document return type
  */
 async function getPaymentReceiptNumbers({
   receiptNumber = '', referenceNumber = '', page, fromDate, toDate,
@@ -87,29 +119,20 @@ async function getPaymentReceiptNumbers({
       prnNo: receiptNumber,
     },
   });
-  try {
-    const parsed = await parseTableAdvanced({
-      root: doc,
-      headers: recordHeaders,
-      tableInfoSelector: '#contentDiv>table>tbody>tr>td',
-      recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
-      noRecordsString: 'No Records Found',
-    });
-    return parsed;
-  } catch (error) {
-    if (error.type === 'TableError' && error.code === 'NoRecordsFound') {
-      error.message = 'No payment receipts found.';
-      throw error;
-    } else {
-      throw error;
-    }
-  }
+  return parseTableAdvanced({
+    root: doc,
+    headers: recordHeaders,
+    tableInfoSelector: '#contentDiv>table>tbody>tr>td',
+    recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
+    noRecordsString: 'No Records Found',
+  });
 }
 
 /**
  * Gets payment receipt numbers from all pages.
  * @param {GetAllPaymentReceiptNumbersOptions} options
  * @param {number} parentTaskId
+ * @returns {Promise<PaymentReceiptNumbers[]>}
  */
 async function getAllPaymentReceiptNumbers(options, parentTaskId) {
   const task = await createTask(store, {
@@ -134,12 +157,14 @@ async function getAllPaymentReceiptNumbers(options, parentTaskId) {
 
   const records = [];
   for (const result of results) {
-    // Remove header rows
-    result.records.shift();
-    for (const record of result.records) {
-      // Ignore all the payment registrations
-      if (record.status.toLowerCase() !== 'prn generated') {
-        records.push(record);
+    if (result.records.length > 0) {
+      // Remove header rows
+      result.records.shift();
+      for (const record of result.records) {
+        // Ignore all the payment registrations
+        if (record.status.toLowerCase() !== 'prn generated') {
+          records.push(record);
+        }
       }
     }
   }
@@ -300,9 +325,12 @@ const clientAction = {
         async func() {
           const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
           const initialMaxOpenTabs = config.maxOpenTabs;
-          config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
-          await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
-          config.maxOpenTabs = initialMaxOpenTabs;
+          // TODO: Indicate why receipts weren't downloaded
+          if (receipts.length > 0) {
+            config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
+            await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
+            config.maxOpenTabs = initialMaxOpenTabs;
+          }
         },
       }).then(resolve).catch(reject);
     });

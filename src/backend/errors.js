@@ -80,12 +80,6 @@ export class TaxTypeNotFoundError extends ExtendedError {
     this.setType('TaxTypeNotFoundError');
   }
 }
-export class TableError extends ExtendedError {
-  constructor(...args) {
-    super(...args);
-    this.setType('TableError');
-  }
-}
 export class ElementsNotFoundError extends ExtendedError {
   /**
    * @param {Object} props
