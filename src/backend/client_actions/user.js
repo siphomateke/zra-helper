@@ -76,7 +76,15 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
           }
         }
       } catch (error) {
-        // FIXME: Remove this since it doesn't seem to do anything.
+        /*
+        If login doesn't get to the end, the tab ID will never be returned.
+        Thus, nothing else will be able to close the login tab and it must be closed
+        here instead.
+
+        We may want to make it possible to return the tab ID even if an error occurs in the future,
+        however, this is not necessary at the moment since nothing else can run if logging in
+        fails.
+        */
         if (keepTabOpen && tabId !== null) {
           // TODO: Catch tab close errors
           closeTab(tabId);
