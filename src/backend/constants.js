@@ -112,6 +112,7 @@ export const clientPropValidationErrorMessages = {
  * @property {boolean} [requiresTaxTypes]
  * @property {boolean} [hasOutput] Whether this client action returns an output.
  * @property {ExportFormatCode} [defaultOutputFormat]
+ * Default output format. Must be set if `hasOutput` is set.
  * @property {ExportFormatCode[]} [outputFormats]
  * The export formats this client action can output. Must be set if `hasOutput` is set.
  * @property {ClientActionOutputFormatter} [outputFormatter]
