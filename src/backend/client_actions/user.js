@@ -43,36 +43,36 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
         tabId = tab.id;
         task.addStep('Waiting for tab to load');
         try {
-          await tabLoaded(tab.id);
+          await tabLoaded(tabId);
           task.addStep('Navigating to login page');
           // Navigate to login page
           await clickElement(
-            tab.id,
+            tabId,
             // eslint-disable-next-line max-len
             '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a',
             'go to login button',
           );
           task.addStep('Waiting for login page to load');
-          await tabLoaded(tab.id);
+          await tabLoaded(tabId);
           task.addStep('Logging in');
           // OCRAD should be imported in login.js but work with webpack
-          await executeScript(tab.id, 'ocrad', true);
+          await executeScript(tabId, 'ocrad', true);
           // Actually login
-          await runContentScript(tab.id, 'login', {
+          await runContentScript(tabId, 'login', {
             client,
             maxCaptchaRefreshes: 10,
           });
           task.addStep('Waiting for login to complete');
-          await tabLoaded(tab.id);
+          await tabLoaded(tabId);
           task.addStep('Checking if login was successful');
-          await runContentScript(tab.id, 'check_login', { client });
+          await runContentScript(tabId, 'check_login', { client });
           log.log(`Done logging in "${client.name}"`);
-          return tab.id;
+          return tabId;
         } finally {
           if (!keepTabOpen) {
             // Don't need to wait for the tab to close to carry out logged in actions
             // TODO: Catch tab close errors
-            closeTab(tab.id);
+            closeTab(tabId);
           }
         }
       } catch (error) {
