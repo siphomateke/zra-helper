@@ -1,4 +1,4 @@
-import { TableError, ZraError } from '../../errors';
+import { ZraError } from '../../errors';
 import { getElementFromDocument } from './elements';
 
 /**
@@ -89,26 +89,25 @@ export function parseTable({ root, headers, recordSelector }) {
  * @param {string} options.noRecordsString String that will exist when there are no records
  * @returns {Promise.<ParsedTable>}
  */
-export function parseTableAdvanced({
+export async function parseTableAdvanced({
   root, headers, tableInfoSelector, recordSelector, noRecordsString = 'No Records Found',
 }) {
-  return new Promise((resolve, reject) => {
-    const tableInfoElement = getElementFromDocument(root, tableInfoSelector, 'table info');
-    const tableInfo = tableInfoElement.innerText;
-    if (!tableInfo.includes(noRecordsString)) {
-      const tableInfoMatches = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
-      const currentPage = tableInfoMatches[1];
-      const numPages = tableInfoMatches[2];
-      const records = parseTable({ root, headers, recordSelector });
-      resolve({
-        records,
-        currentPage: Number(currentPage),
-        numPages: Number(numPages),
-      });
-      return;
-    }
-    reject(new TableError('No records found in table.', 'NoRecordsFound'));
-  });
+  const tableInfoElement = getElementFromDocument(root, tableInfoSelector, 'table info');
+  const tableInfo = tableInfoElement.innerText;
+  let currentPage = 1;
+  let numPages = 0;
+  let records = [];
+  if (!tableInfo.includes(noRecordsString)) {
+    const tableInfoMatches = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
+    currentPage = Number(tableInfoMatches[1]);
+    numPages = Number(tableInfoMatches[2]);
+    records = parseTable({ root, headers, recordSelector });
+  }
+  return {
+    records,
+    currentPage,
+    numPages,
+  };
 }
 
 /**
@@ -125,7 +124,6 @@ export function parseTableAdvanced({
  * @param {Document|Element} options.root
  * @param {string[]} options.headers
  * @returns {Promise.<ParsedReportTable>}
- * @throws {TableError}
  */
 export async function parseReportTable({ root, headers }) {
   let numPages = null;

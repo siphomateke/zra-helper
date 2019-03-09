@@ -4,7 +4,6 @@ import config from '@/transitional/config';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
 import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
-import { TaxTypeNotFoundError } from '../errors';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
@@ -69,7 +68,6 @@ const recordHeaders = [
  * @param {number} options.page
  * @param {ExciseTypeCode} options.exciseType
  * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
- * @throws {TaxTypeNotFoundError}
  */
 async function getAcknowledgementReceiptsReferenceNumbers({
   tpin, taxType, fromDate, toDate, page, exciseType,
@@ -90,23 +88,13 @@ async function getAcknowledgementReceiptsReferenceNumbers({
     },
   });
 
-  try {
-    return await parseTableAdvanced({
-      root: doc,
-      headers: recordHeaders,
-      tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
-      recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
-      noRecordsString: 'No Data Found',
-    });
-  } catch (error) {
-    if (error.type === 'TableError' && error.code === 'NoRecordsFound') {
-      throw new TaxTypeNotFoundError(`Tax type with id "${taxType}" not found`, null, {
-        taxTypeId: taxType,
-      });
-    } else {
-      throw error;
-    }
-  }
+  return parseTableAdvanced({
+    root: doc,
+    headers: recordHeaders,
+    tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
+    recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
+    noRecordsString: 'No Data Found',
+  });
 }
 
 /**
@@ -259,12 +247,15 @@ const clientAction = {
               exciseType: exciseTypes.airtime,
               parentTaskId: task.id,
             });
-            await downloadAcknowledgementReceipts({
-              taxType: taxTypeId,
-              referenceNumbers,
-              parentTaskId: task.id,
-              client,
-            });
+            // TODO: Indicate why receipts weren't downloaded
+            if (referenceNumbers.length > 0) {
+              await downloadAcknowledgementReceipts({
+                taxType: taxTypeId,
+                referenceNumbers,
+                parentTaskId: task.id,
+                client,
+              });
+            }
           },
         });
       },
