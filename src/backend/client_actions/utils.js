@@ -374,8 +374,6 @@ export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
 
   return taskFunction({
     task,
-    // TODO: Find out why we were catching errors
-    catchErrors: true,
     async func() {
       task.addStep('Navigating to taxpayer profile');
       await clickElement(
