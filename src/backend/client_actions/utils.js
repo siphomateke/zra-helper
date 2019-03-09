@@ -176,6 +176,14 @@ export async function downloadReceipt({
  * If this is true, the state will be set based on the task's children by
  * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
  * error.
+ * @param {boolean} [options.mapResultsToItemKeys]
+ * Returns a map of func results instead of a plain array. The map's keys are the same as the
+ * items passed to the functions. If `list` is passed, the items are items of that list. If
+ * `count` is passed, the items are indices.
+ * @returns {Array|Object}
+ * An array containing the return value of each `func` or, if `useItemKeys` is set to true, an
+ * object whose keys are the same as the items passed to each `func` and whose values are the
+ * return values of the very same `func`s.
  */
 export function parallelTaskMap({
   list = null,
@@ -184,6 +192,7 @@ export function parallelTaskMap({
   task,
   func,
   autoCalculateTaskState = true,
+  mapResultsToItemKeys = false,
 }) {
   return new Promise((resolve, reject) => {
     task.sequential = false;
@@ -208,21 +217,36 @@ export function parallelTaskMap({
       const item = listMode ? list[i] : i;
       promises.push(new Promise((resolve) => {
         func(item, task.id)
-          .then(resolve)
+          .then((value) => {
+            if (mapResultsToItemKeys) {
+              resolve({ item, value });
+            } else {
+              resolve(value);
+            }
+          })
           .catch(resolve);
       }));
     }
     Promise.all(promises).then((values) => {
+      let processedValues;
+      if (mapResultsToItemKeys) {
+        processedValues = {};
+        for (const value of values) {
+          processedValues[value.item] = value.value;
+        }
+      } else {
+        processedValues = values;
+      }
       task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
         if (task.state === taskStates.ERROR) {
           reject();
         } else {
-          resolve(values);
+          resolve(processedValues);
         }
       } else {
-        resolve(values);
+        resolve(processedValues);
       }
     });
   });

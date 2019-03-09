@@ -14,17 +14,21 @@ import {
   runContentScript,
 } from '../utils';
 import { writeJson } from '../file_utils';
-import { taskFunction } from './utils';
+import { taskFunction, parallelTaskMap } from './utils';
 
 /**
- * @typedef {number[]} Totals
+ * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
+ * @typedef {import('../constants').TaxTypeCode} TaxTypeCode
+ */
+
+/**
+ * @typedef {Object.<string, number>} Totals
  */
 
 /**
  * @typedef {Object} getTotalsResponse
  * @property {number} numPages The total discovered number of pages.
- * @property {Totals} totals Array of totals whose length is equal to `numTotals`.
- * @see getTotals for more on numTotals.
+ * @property {Totals} totals
  */
 
 /**
@@ -51,8 +55,8 @@ const totalsColumns = [
 
 /**
  * Gets the pending liability totals of a tax type.
- * @param {import('../constants').TaxTypeCode} taxType
- * @param {import('../constants').TaxTypeNumericalCode} taxTypeId
+ * @param {TaxTypeCode} taxType
+ * @param {TaxTypeNumericalCode} taxTypeId
  * @param {number} parentTaskId
  * @returns {Promise<Totals>}
  */
@@ -129,66 +133,71 @@ const clientAction = {
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
   async func({ parentTask, client: { taxTypes: taxTypeIds } }) {
-    return new Promise((resolve) => {
-      const promises = [];
-      // TODO: Document totals type
-      const totals = {};
-      const retrievalErrors = {};
-      parentTask.sequential = false;
-      parentTask.unknownMaxProgress = false;
-      parentTask.progressMax = taxTypeIds.length;
-      for (const taxTypeId of taxTypeIds) {
+    parentTask.sequential = false;
+    parentTask.unknownMaxProgress = false;
+    parentTask.progressMax = taxTypeIds.length;
+
+    /**
+     * @typedef {Object} TotalsResponses
+     * @property {Totals} totals
+     * @property {Error} retrievalErrors
+     */
+    /** @type {Object.<TaxTypeNumericalCode, TotalsResponses>} */
+    const responses = await parallelTaskMap({
+      task: parentTask,
+      list: taxTypeIds,
+      autoCalculateTaskState: false,
+      mapResultsToItemKeys: true,
+      async func(taxTypeId, parentTaskId) {
         const taxType = taxTypes[taxTypeId];
-        promises.push(
-          new Promise(async (resolve) => {
-            try {
-              totals[taxType] = await getPendingLiabilities(taxType, taxTypeId, parentTask.id);
-            } catch (error) {
-              retrievalErrors[taxType] = error;
-            } finally {
-              resolve();
-            }
-          }),
-        );
-      }
-      // TODO: Use parallel task map
-      Promise.all(promises).then(() => {
-        let errorCount = 0;
-        let taxTypeErrorCount = 0;
-        for (const task of parentTask.children) {
-          if (task.state === taskStates.ERROR) {
-            if (task.error.type !== 'TaxTypeNotFoundError') {
-              errorCount++;
-            } else {
-              taxTypeErrorCount++;
-            }
-          }
-        }
-        if (errorCount > 0) {
-          parentTask.state = taskStates.ERROR;
-        } else if (
-          parentTask.children.length > 0
-          && taxTypeErrorCount === parentTask.children.length
-        ) {
-          // If all sub tasks don't have a tax type, something probably went wrong
-          parentTask.state = taskStates.WARNING;
-          parentTask.status = 'No tax types found.';
-        } else {
-          parentTask.state = taskStates.SUCCESS;
-        }
-
-
-        parentTask.markAsComplete();
-        const output = {
-          totals: {},
-          retrievalErrors,
+        const response = {
+          totals: null,
+          retrievalErrors: [],
         };
-        for (const taxType of Object.values(taxTypes)) {
-          output.totals[taxType] = Object.assign({}, totals[taxType]);
+        try {
+          response.totals = await getPendingLiabilities(taxType, taxTypeId, parentTaskId);
+        } catch (error) {
+          response.retrievalErrors = error;
         }
-        resolve(output);
-      });
+        return response;
+      },
     });
+
+    let errorCount = 0;
+    let taxTypeErrorCount = 0;
+    for (const task of parentTask.children) {
+      if (task.state === taskStates.ERROR) {
+        if (task.error.type !== 'TaxTypeNotFoundError') {
+          errorCount++;
+        } else {
+          taxTypeErrorCount++;
+        }
+      }
+    }
+    if (errorCount > 0) {
+      parentTask.state = taskStates.ERROR;
+    } else if (
+      parentTask.children.length > 0
+      && taxTypeErrorCount === parentTask.children.length
+    ) {
+      // If all sub tasks don't have a tax type, something probably went wrong
+      parentTask.state = taskStates.WARNING;
+      parentTask.status = 'No tax types found.';
+    } else {
+      parentTask.state = taskStates.SUCCESS;
+    }
+
+    const output = {
+      totals: {},
+      retrievalErrors: {},
+    };
+    for (const taxTypeId of Object.keys(responses)) {
+      const taxType = taxTypes[taxTypeId];
+      const { totals, retrievalErrors } = responses[taxTypeId];
+      output.totals[taxType] = Object.assign({}, totals);
+      output.retrievalErrors[taxType] = retrievalErrors;
+    }
+    return output;
   },
   hasOutput: true,
   defaultOutputFormat: exportFormatCodes.CSV,
