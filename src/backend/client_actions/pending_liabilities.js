@@ -14,12 +14,21 @@ import {
   runContentScript,
 } from '../utils';
 import { writeJson } from '../file_utils';
+import { taskFunction, parallelTaskMap } from './utils';
+
+/**
+ * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
+ * @typedef {import('../constants').TaxTypeCode} TaxTypeCode
+ */
+
+/**
+ * @typedef {Object.<string, number>} Totals
+ */
 
 /**
  * @typedef {Object} getTotalsResponse
  * @property {number} numPages The total discovered number of pages.
- * @property {number[]} totals Array of totals whose length is equal to `numTotals`.
- * @see getTotals for more on numTotals.
+ * @property {Totals} totals
  */
 
 /**
@@ -44,125 +53,151 @@ const totalsColumns = [
   'total',
 ];
 
+/**
+ * Gets the pending liability totals of a tax type.
+ * @param {TaxTypeCode} taxType
+ * @param {TaxTypeNumericalCode} taxTypeId
+ * @param {number} parentTaskId
+ * @returns {Promise<Totals>}
+ */
+async function getPendingLiabilities(taxType, taxTypeId, parentTaskId) {
+  const task = await createTask(store, {
+    title: `Get ${taxType} totals`,
+    parent: parentTaskId,
+    progressMax: 4,
+    status: 'Opening tab',
+  });
+
+  log.log(`Generating ${taxType} report`);
+
+  try {
+    const totals = await taskFunction({
+      task,
+      async func() {
+        let tab = null;
+        try {
+          tab = await createTab('https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability');
+          await tabLoaded(tab.id);
+
+          task.addStep('Selecting tax type');
+          await executeScript(tab.id, 'generate_report');
+
+          try {
+            task.addStep('Generating report');
+            await sendMessage(tab.id, {
+              command: 'generate_report',
+              taxTypeId,
+            });
+            await tabLoaded(tab.id);
+
+            task.addStep('Getting totals');
+            let totalsResponse = await getTotals(tab.id, totalsColumns);
+            if (totalsResponse.numPages > 1) {
+              // Set the current page to be the last one by clicking the "last page" button.
+              await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
+              totalsResponse = await getTotals(tab.id, totalsColumns);
+            }
+            return totalsResponse.totals;
+          } finally {
+            log.log(`Finished generating ${taxType} report`);
+          }
+        } finally {
+          if (tab) {
+            try {
+              await closeTab(tab.id);
+            } catch (error) {
+              // If we fail to close the tab then it's probably already closed
+            }
+          }
+        }
+      },
+    });
+    return totals;
+  } catch (error) {
+    log.showError(error);
+    if (error.type === 'TaxTypeNotFoundError') {
+      // By default the `TaxTypeNotFoundError` contains the tax type.
+      // We don't need to show the tax type in the status since it's under
+      // a task which already has the tax type in it's title.
+      task.errorString = 'Tax type not found';
+    } else {
+      throw error;
+    }
+  }
+  return null;
+}
+
 /** @type {import('@/backend/constants').ClientActionObject} */
 const clientAction = {
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
   async func({ parentTask, client: { taxTypes: taxTypeIds } }) {
-    return new Promise((resolve) => {
-      const promises = [];
-      const totals = {};
-      const retrievalErrors = {};
-      parentTask.sequential = false;
-      parentTask.unknownMaxProgress = false;
-      parentTask.progressMax = taxTypeIds.length;
-      for (const taxTypeId of taxTypeIds) {
-        promises.push(new Promise(async (resolve) => {
-          const taxType = taxTypes[taxTypeId];
-          const task = await createTask(store, {
-            title: `Get ${taxType} totals`,
-            parent: parentTask.id,
-            progressMax: 4,
-            status: 'Opening tab',
-          });
+    parentTask.sequential = false;
+    parentTask.unknownMaxProgress = false;
+    parentTask.progressMax = taxTypeIds.length;
 
-          log.log(`Generating ${taxType} report`);
-
-          let tab = null;
-          try {
-            tab = await createTab('https://www.zra.org.zm/reportController.htm?actionCode=pendingLiability');
-            await tabLoaded(tab.id);
-
-            task.addStep('Selecting tax type');
-
-            await executeScript(tab.id, 'generate_report');
-
-            try {
-              task.addStep('Generating report');
-
-              await sendMessage(tab.id, {
-                command: 'generate_report',
-                taxTypeId,
-              });
-              // Get Totals
-              await tabLoaded(tab.id);
-
-              task.addStep('Getting totals');
-
-              let totalsResponse = await getTotals(tab.id, totalsColumns);
-              if (totalsResponse.numPages > 1) {
-                // Set the current page to be the last one by clicking the "last page" button.
-                await clickElement(tab.id, '#navTable>tbody>tr:nth-child(2)>td:nth-child(5)>a', 'last page button');
-                totalsResponse = await getTotals(tab.id, totalsColumns);
-              }
-              totals[taxType] = totalsResponse.totals;
-              task.state = taskStates.SUCCESS;
-              resolve();
-            } finally {
-              log.log(`Finished generating ${taxType} report`);
-            }
-          } catch (error) {
-            task.setError(error);
-            if (error.type === 'TaxTypeNotFoundError') {
-              // By default the `TaxTypeNotFoundError` contains the tax type.
-              // We don't need to show the tax type in the status since it's under
-              // a task which already has the tax type in it's title.
-              task.errorString = 'Tax type not found';
-            } else {
-              retrievalErrors[taxType] = error;
-            }
-            log.showError(error);
-            resolve();
-          } finally {
-            if (tab) {
-              try {
-                await closeTab(tab.id);
-              } catch (error) {
-                // If we fail to close the tab then it's probably already closed
-              }
-            }
-            task.markAsComplete();
-          }
-        }));
-      }
-      Promise.all(promises).then(() => {
-        let errorCount = 0;
-        let taxTypeErrorCount = 0;
-        for (const task of parentTask.children) {
-          if (task.state === taskStates.ERROR) {
-            if (task.error.type !== 'TaxTypeNotFoundError') {
-              errorCount++;
-            } else {
-              taxTypeErrorCount++;
-            }
-          }
-        }
-        if (errorCount > 0) {
-          parentTask.state = taskStates.ERROR;
-        } else if (
-          parentTask.children.length > 0
-          && taxTypeErrorCount === parentTask.children.length
-        ) {
-          // If all sub tasks don't have a tax type, something probably went wrong
-          parentTask.state = taskStates.WARNING;
-          parentTask.status = 'No tax types found.';
-        } else {
-          parentTask.state = taskStates.SUCCESS;
-        }
-
-
-        parentTask.markAsComplete();
-        const output = {
-          totals: {},
-          retrievalErrors,
+    /**
+     * @typedef {Object} TotalsResponses
+     * @property {Totals} totals
+     * @property {Error} retrievalErrors
+     */
+    /** @type {Object.<TaxTypeNumericalCode, TotalsResponses>} */
+    const responses = await parallelTaskMap({
+      task: parentTask,
+      list: taxTypeIds,
+      autoCalculateTaskState: false,
+      mapResultsToItemKeys: true,
+      async func(taxTypeId, parentTaskId) {
+        const taxType = taxTypes[taxTypeId];
+        const response = {
+          totals: null,
+          retrievalErrors: [],
         };
-        for (const taxType of Object.values(taxTypes)) {
-          output.totals[taxType] = Object.assign({}, totals[taxType]);
+        try {
+          response.totals = await getPendingLiabilities(taxType, taxTypeId, parentTaskId);
+        } catch (error) {
+          response.retrievalErrors = error;
         }
-        resolve(output);
-      });
+        return response;
+      },
     });
+
+    let errorCount = 0;
+    let taxTypeErrorCount = 0;
+    for (const task of parentTask.children) {
+      if (task.state === taskStates.ERROR) {
+        if (task.error.type !== 'TaxTypeNotFoundError') {
+          errorCount++;
+        } else {
+          taxTypeErrorCount++;
+        }
+      }
+    }
+    if (errorCount > 0) {
+      parentTask.state = taskStates.ERROR;
+    } else if (
+      parentTask.children.length > 0
+      && taxTypeErrorCount === parentTask.children.length
+    ) {
+      // If all sub tasks don't have a tax type, something probably went wrong
+      parentTask.state = taskStates.WARNING;
+      parentTask.status = 'No tax types found.';
+    } else {
+      parentTask.state = taskStates.SUCCESS;
+    }
+
+    const output = {
+      totals: {},
+      retrievalErrors: {},
+    };
+    for (const taxTypeId of Object.keys(responses)) {
+      const taxType = taxTypes[taxTypeId];
+      const { totals, retrievalErrors } = responses[taxTypeId];
+      output.totals[taxType] = Object.assign({}, totals);
+      output.retrievalErrors[taxType] = retrievalErrors;
+    }
+    return output;
   },
   hasOutput: true,
   defaultOutputFormat: exportFormatCodes.CSV,

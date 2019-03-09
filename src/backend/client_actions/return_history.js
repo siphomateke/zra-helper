@@ -7,7 +7,12 @@ import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
 import { TaxTypeNotFoundError } from '../errors';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
-import { downloadReceipt, parallelTaskMap, getPagedData } from './utils';
+import {
+  downloadReceipt,
+  parallelTaskMap,
+  getPagedData,
+  taskFunction,
+} from './utils';
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -240,27 +245,28 @@ const clientAction = {
           unknownMaxProgress: false,
           progressMax: 2,
         });
-        try {
-          const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
-            tpin: client.username,
-            taxType: taxTypeId,
-            fromDate: '01/01/2013',
-            toDate: moment().format('31/12/YYYY'),
-            exciseType: exciseTypes.airtime,
-            parentTaskId: task.id,
-          });
-          await downloadAcknowledgementReceipts({
-            taxType: taxTypeId,
-            referenceNumbers,
-            parentTaskId: task.id,
-            client,
-          });
-          task.setStateBasedOnChildren();
-        } catch (error) {
-          task.setError(error);
-        } finally {
-          task.markAsComplete();
-        }
+
+        return taskFunction({
+          task,
+          catchErrors: true,
+          setStateBasedOnChildren: true,
+          async func() {
+            const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
+              tpin: client.username,
+              taxType: taxTypeId,
+              fromDate: '01/01/2013',
+              toDate: moment().format('31/12/YYYY'),
+              exciseType: exciseTypes.airtime,
+              parentTaskId: task.id,
+            });
+            await downloadAcknowledgementReceipts({
+              taxType: taxTypeId,
+              referenceNumbers,
+              parentTaskId: task.id,
+              client,
+            });
+          },
+        });
       },
     });
 

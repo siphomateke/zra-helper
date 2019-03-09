@@ -9,6 +9,7 @@ import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/
 import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
 import notify from '@/backend/notify';
 import { closeTab } from '@/backend/utils';
+import { taskFunction } from '@/backend/client_actions/utils';
 
 /**
  * @typedef {import('vuex').ActionContext} ActionContext
@@ -271,31 +272,35 @@ const module = {
       const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
       let taskHasError = false;
       try {
-        if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
-          if (clientAction.func) {
-            log.setCategory(clientAction.logCategory);
+        await taskFunction({
+          task,
+          async func() {
+            if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
+              if (clientAction.func) {
+                log.setCategory(clientAction.logCategory);
 
-            const output = await clientAction.func({
-              client,
-              parentTask: task,
-              clientActionConfig,
-              loggedInTabId,
-            });
-            commit('setOutput', { actionId, clientId: client.id, value: output });
-            if (task.state === taskStates.ERROR) {
-              taskHasError = true;
+                const output = await clientAction.func({
+                  client,
+                  parentTask: task,
+                  clientActionConfig,
+                  loggedInTabId,
+                });
+                commit('setOutput', { actionId, clientId: client.id, value: output });
+                if (task.state === taskStates.ERROR) {
+                  taskHasError = true;
+                }
+              } else {
+                task.state = taskStates.SUCCESS;
+              }
+            } else {
+              // eslint-disable-next-line max-len
+              throw new MissingTaxTypesError('Missing tax types. This was probably due to an error when retrieving them from the taxpayer profile.');
             }
-          } else {
-            task.state = taskStates.SUCCESS;
-          }
-        } else {
-          // eslint-disable-next-line max-len
-          throw new MissingTaxTypesError('Missing tax types. This was probably due to an error when retrieving them from the taxpayer profile.');
-        }
+          },
+        });
       } catch (error) {
         log.setCategory(clientAction.logCategory);
         log.showError(error);
-        task.setError(error);
         if (isSingleAction) {
           // If this is the only action being run on this client,
           // show any errors produced by it on the main task.
@@ -305,7 +310,6 @@ const module = {
         }
         commit('setOutput', { actionId, clientId: client.id, error });
       } finally {
-        task.markAsComplete();
         if (taskHasError) {
           if (isSingleAction) {
             // If this is the only action being run on this client,
@@ -350,108 +354,114 @@ const module = {
       let loggedOut = false;
       let anyActionsNeedLoggedInTab = false;
       try {
-        try {
-          // Check if any of the actions require something
-          const actionsThatRequire = {
-            loggedInTab: [],
-            taxTypes: [],
-          };
-          for (const actionId of actionIds) {
-            const clientAction = getters.getActionById(actionId);
-            if (clientAction.usesLoggedInTab) {
-              actionsThatRequire.loggedInTab.push(actionId);
-            }
-            if (clientAction.requiresTaxTypes) {
-              actionsThatRequire.taxTypes.push(actionId);
-            }
-          }
-
-          anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
-          const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
-
-          // If any actions require tax types, an extra task will be added to retrieve them.
-          if (anyActionsRequireTaxTypes) {
-            mainTask.progressMax += 1;
-          }
-
-          mainTask.status = 'Logging in';
-          loggedInTabId = await robustLogin({
-            client,
-            parentTaskId: mainTask.id,
-            maxAttempts: rootState.config.maxLoginAttempts,
-            keepTabOpen: anyActionsNeedLoggedInTab,
-          });
-
-          // Get tax types if any actions require them
-          if (anyActionsRequireTaxTypes) {
-            mainTask.status = 'Getting tax types';
+        await taskFunction({
+          task: mainTask,
+          async func() {
             try {
-              await dispatch('clients/getTaxTypes', {
-                id: client.id,
-                parentTaskId: mainTask.id,
-                loggedInTabId,
-              }, { root: true });
-            } catch (error) {
-              // if all actions require tax types
-              if (actionsThatRequire.taxTypes.length === actionIds.length) {
+              try {
+                // Check if any of the actions require something
+                const actionsThatRequire = {
+                  loggedInTab: [],
+                  taxTypes: [],
+                };
+                for (const actionId of actionIds) {
+                  const clientAction = getters.getActionById(actionId);
+                  if (clientAction.usesLoggedInTab) {
+                    actionsThatRequire.loggedInTab.push(actionId);
+                  }
+                  if (clientAction.requiresTaxTypes) {
+                    actionsThatRequire.taxTypes.push(actionId);
+                  }
+                }
+
+                anyActionsNeedLoggedInTab = actionsThatRequire.loggedInTab.length > 0;
+                const anyActionsRequireTaxTypes = actionsThatRequire.taxTypes.length > 0;
+
+                // If any actions require tax types, an extra task will be added to retrieve them.
+                if (anyActionsRequireTaxTypes) {
+                  mainTask.progressMax += 1;
+                }
+
+                mainTask.status = 'Logging in';
+                loggedInTabId = await robustLogin({
+                  client,
+                  parentTaskId: mainTask.id,
+                  maxAttempts: rootState.config.maxLoginAttempts,
+                  keepTabOpen: anyActionsNeedLoggedInTab,
+                });
+
+                // Get tax types if any actions require them
+                if (anyActionsRequireTaxTypes) {
+                  mainTask.status = 'Getting tax types';
+                  try {
+                    await dispatch('clients/getTaxTypes', {
+                      id: client.id,
+                      parentTaskId: mainTask.id,
+                      loggedInTabId,
+                    }, { root: true });
+                  } catch (error) {
+                    // if all actions require tax types
+                    if (actionsThatRequire.taxTypes.length === actionIds.length) {
+                      throw error;
+                    } else {
+                      // Ignore error if not all tasks require tax types
+                    }
+                  }
+                }
+
+                // Run actions in parallel
+                if (!isSingleAction) {
+                  mainTask.status = 'Running actions';
+                } else {
+                  mainTask.status = singleAction.name;
+                }
+                const promises = [];
+                for (const actionId of actionIds) {
+                  promises.push(dispatch('runActionOnClient', {
+                    actionId,
+                    client,
+                    mainTask,
+                    isSingleAction,
+                    loggedInTabId,
+                  }));
+                }
+                await Promise.all(promises);
+              } catch (error) {
+                for (const actionId of actionIds) {
+                  commit('setOutput', { actionId, clientId: client.id, error });
+                  commit('addFailure', { clientId: client.id, actionId, error });
+                }
                 throw error;
-              } else {
-                // Ignore error if not all tasks require tax types
               }
+
+              mainTask.status = 'Logging out';
+              await logout({
+                parentTaskId: mainTask.id,
+                loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
+              });
+              loggedOut = true;
+
+              if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
+                if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
+                  mainTask.state = taskStates.WARNING;
+                } else {
+                  mainTask.state = taskStates.SUCCESS;
+                }
+              }
+            } catch (error) {
+              // If an action asked to keep the logged in tab open and logout didn't complete
+              // then the tab still needs to be closed.
+              if (anyActionsNeedLoggedInTab && !loggedOut && loggedInTabId !== null) {
+                // TODO: Catch tab close errors
+                closeTab(loggedInTabId);
+              }
+              throw error;
             }
-          }
-
-          // Run actions in parallel
-          if (!isSingleAction) {
-            mainTask.status = 'Running actions';
-          } else {
-            mainTask.status = singleAction.name;
-          }
-          const promises = [];
-          for (const actionId of actionIds) {
-            promises.push(dispatch('runActionOnClient', {
-              actionId,
-              client,
-              mainTask,
-              isSingleAction,
-              loggedInTabId,
-            }));
-          }
-          await Promise.all(promises);
-        } catch (error) {
-          for (const actionId of actionIds) {
-            commit('setOutput', { actionId, clientId: client.id, error });
-            commit('addFailure', { clientId: client.id, actionId, error });
-          }
-          throw error;
-        }
-
-        mainTask.status = 'Logging out';
-        await logout({
-          parentTaskId: mainTask.id,
-          loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
+          },
         });
-        loggedOut = true;
-
-        if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
-          if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
-            mainTask.state = taskStates.WARNING;
-          } else {
-            mainTask.state = taskStates.SUCCESS;
-          }
-        }
       } catch (error) {
-        // If an action asked to keep the logged in tab open and logout didn't complete
-        // then the tab still needs to be closed.
-        if (anyActionsNeedLoggedInTab && !loggedOut && loggedInTabId !== null) {
-          // TODO: Catch tab close errors
-          closeTab(loggedInTabId);
-        }
         log.setCategory(clientIdentifier);
         log.showError(error);
-        mainTask.setError(error);
-      } finally {
-        mainTask.markAsComplete();
       }
     },
     /**
@@ -493,17 +503,22 @@ const module = {
         });
         await dispatch('tasks/setRootTask', rootTask.id, { root: true });
         try {
-          /* eslint-disable no-await-in-loop */
-          for (const client of clients) {
-            rootTask.status = client.name;
-            // TODO: Consider checking if a tab has been closed prematurely all the time.
-            // Currently, only tabLoaded checks for this.
-            const actionIds = getClientsActionIds(client);
-            await dispatch('runActionsOnClient', { client, actionIds, parentTaskId: rootTask.id });
-          }
-          /* eslint-enable no-await-in-loop */
-        } catch (error) {
-          rootTask.setError(error);
+          await taskFunction({
+            task: rootTask,
+            catchErrors: true,
+            setStateBasedOnChildren: true,
+            async func() {
+              /* eslint-disable no-await-in-loop */
+              for (const client of clients) {
+                rootTask.status = client.name;
+                // TODO: Consider checking if a tab has been closed prematurely all the time.
+                // Currently, only tabLoaded checks for this.
+                const actionIds = getClientsActionIds(client);
+                await dispatch('runActionsOnClient', { client, actionIds, parentTaskId: rootTask.id });
+              }
+              /* eslint-enable no-await-in-loop */
+            },
+          });
         } finally {
           if (rootState.config.sendNotifications) {
             notify({
@@ -511,8 +526,6 @@ const module = {
               message: `Finished running ${clients.length} client(s)`,
             });
           }
-          rootTask.markAsComplete();
-          rootTask.setStateBasedOnChildren();
         }
       } else {
         log.setCategory('clientAction');
