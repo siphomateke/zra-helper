@@ -455,6 +455,7 @@ const module = {
                 // TODO: Catch tab close errors
                 closeTab(loggedInTabId);
               }
+              throw error;
             }
           },
         });
