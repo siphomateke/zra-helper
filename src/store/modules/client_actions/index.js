@@ -274,6 +274,7 @@ const module = {
       try {
         await taskFunction({
           task,
+          setState: false,
           async func() {
             if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
               if (clientAction.func) {
@@ -356,6 +357,7 @@ const module = {
       try {
         await taskFunction({
           task: mainTask,
+          setState: false,
           async func() {
             try {
               try {
