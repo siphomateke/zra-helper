@@ -1,18 +1,18 @@
 <template>
-  <div class="content has-text-grey has-text-centered">
-    <p v-if="icon">
-      <b-icon
-        :icon="icon"
-        size="is-large"
-      />
-    </p>
-    <p>{{ message }}</p>
-  </div>
+  <CenterMessage
+    :message="message"
+    :icon="icon"
+  />
 </template>
 
 <script>
+import CenterMessage from '@/components/CenterMessage.vue';
+
 export default {
   name: 'EmptyMessage',
+  components: {
+    CenterMessage,
+  },
   props: {
     message: {
       type: String,
