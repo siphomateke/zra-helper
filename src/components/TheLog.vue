@@ -39,15 +39,17 @@
       filename="log"
     />
   </div>
-  <EmptySection
+  <div
     v-else
-    message="Nothing has been logged yet"
-  />
+    class="bordered-section"
+  >
+    <EmptyMessage message="Nothing has been logged yet" />
+  </div>
 </template>
 
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import EmptySection from '@/components/EmptySection.vue';
+import EmptyMessage from '@/components/EmptyMessage.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
 import { createNamespacedHelpers } from 'vuex';
 import renderTable from 'text-table';
@@ -81,7 +83,7 @@ export default {
   name: 'TheLog',
   components: {
     ExportButtons,
-    EmptySection,
+    EmptyMessage,
   },
   data() {
     return {

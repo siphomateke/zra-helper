@@ -5,10 +5,11 @@
       :key="id"
       :id="id"
     />
-    <EmptySection
+    <div
       v-if="isRoot && tasks.length === 0"
-      message="No tasks are currently running"
-    />
+      class="bordered-section">
+      <EmptyMessage message="No tasks are currently running" />
+    </div>
     <div v-if="isRoot">
       <b-checkbox
         v-model="onlyExportClientTasks"
@@ -25,7 +26,7 @@
 </template>
 
 <script>
-import EmptySection from '@/components/EmptySection.vue';
+import EmptyMessage from '@/components/EmptyMessage.vue';
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import { writeJson } from '@/backend/file_utils';
 import { errorToString } from '@/backend/errors';
@@ -56,7 +57,7 @@ const taskGettersToExport = [
 export default {
   name: 'TaskList',
   components: {
-    EmptySection,
+    EmptyMessage,
     // TODO: Find out why this breaks Vetur
     // TaskListItem: () => import(/* webpackChunkName: "task-list-item" */'./TaskListItem.vue'),
     ExportButtons,

@@ -17,24 +17,26 @@
           :filename="`${action.id}Output`"
         />
       </div>
-      <EmptySection
+      <div
         v-else
-        message="Nothing has been outputted yet"
-      />
+        class="bordered-section"
+      >
+        <EmptyMessage message="Nothing has been outputted yet"/>
     </div>
+  </div>
   </div>
 </template>
 
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import EmptySection from '@/components/EmptySection.vue';
+import EmptyMessage from '@/components/EmptyMessage.vue';
 import { mapState } from 'vuex';
 
 export default {
   name: 'ClientActionOutput',
   components: {
     ExportButtons,
-    EmptySection,
+    EmptyMessage,
   },
   props: {
     actionId: {
