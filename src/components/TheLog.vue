@@ -182,14 +182,16 @@ export default {
           return row;
         });
         return renderTable(table);
-      } else if (type === exportFormatCodes.CSV) {
+      }
+      if (type === exportFormatCodes.CSV) {
         return writeCsv(this.lines.map(line => ({
           timestamp: line.timestamp,
           type: line.type,
           category: line.category,
           content: line.content,
         })));
-      } else if (type === exportFormatCodes.JSON) {
+      }
+      if (type === exportFormatCodes.JSON) {
         return writeJson(this.lines);
       }
       return null;

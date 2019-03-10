@@ -127,9 +127,11 @@ export default {
     getStateEmoji(state) {
       if (state === 'success') {
         return '✔';
-      } else if (state === 'error') {
+      }
+      if (state === 'error') {
         return 'X';
-      } else if (state === 'warning') {
+      }
+      if (state === 'warning') {
         return '!';
       }
       return '?';
@@ -223,7 +225,8 @@ export default {
         const tasks = this.getTextExportMetadata(tasksJson);
         if (format === exportFormatCodes.TXT) {
           return this.getTextExport(tasks);
-        } else if (format === exportFormatCodes.CSV) {
+        }
+        if (format === exportFormatCodes.CSV) {
           return this.getCsvExport(tasks);
         }
       }
