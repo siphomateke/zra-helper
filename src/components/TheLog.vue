@@ -39,15 +39,17 @@
       filename="log"
     />
   </div>
-  <EmptySection
+  <div
     v-else
-    message="Nothing has been logged yet"
-  />
+    class="bordered-section"
+  >
+    <EmptyMessage message="Nothing has been logged yet" />
+  </div>
 </template>
 
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import EmptySection from '@/components/EmptySection.vue';
+import EmptyMessage from '@/components/EmptyMessage.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
 import { createNamespacedHelpers } from 'vuex';
 import renderTable from 'text-table';
@@ -81,7 +83,7 @@ export default {
   name: 'TheLog',
   components: {
     ExportButtons,
-    EmptySection,
+    EmptyMessage,
   },
   data() {
     return {
@@ -180,14 +182,16 @@ export default {
           return row;
         });
         return renderTable(table);
-      } else if (type === exportFormatCodes.CSV) {
+      }
+      if (type === exportFormatCodes.CSV) {
         return writeCsv(this.lines.map(line => ({
           timestamp: line.timestamp,
           type: line.type,
           category: line.category,
           content: line.content,
         })));
-      } else if (type === exportFormatCodes.JSON) {
+      }
+      if (type === exportFormatCodes.JSON) {
         return writeJson(this.lines);
       }
       return null;

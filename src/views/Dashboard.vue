@@ -78,9 +78,9 @@
         :key="actionId"
         :action-id="actionId"
         :clients="clientsObj"
+        :loading="clientActionsRunning"
       />
     </section>
-
 
     <ClientListModal
       v-if="clients.length > 0"

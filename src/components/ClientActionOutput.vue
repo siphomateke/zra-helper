@@ -1,40 +1,52 @@
 <template>
   <div class="client-action-output">
     <div class="field">
-      <div v-if="defaultOutput">
-        <label class="label">{{ action.name }} output</label>
-        <div class="control client-action-output-control">
-          <textarea
-            :value="defaultOutput"
-            class="textarea"
-            readonly
-            rows="7"
+      <template v-if="!loading">
+        <div v-if="defaultOutput">
+          <label class="label">{{ action.name }} output</label>
+          <div class="control client-action-output-control">
+            <textarea
+              :value="defaultOutput"
+              class="textarea"
+              readonly
+              rows="7"
+            />
+          </div>
+          <ExportButtons
+            :generators="generators"
+            :default-format="defaultFormat"
+            :filename="`${action.id}Output`"
           />
         </div>
-        <ExportButtons
-          :generators="generators"
-          :default-format="defaultFormat"
-          :filename="`${action.id}Output`"
-        />
-      </div>
-      <EmptySection
+        <div
+          v-else
+          class="bordered-section"
+        >
+          <EmptyMessage message="Nothing has been outputted yet"/>
+        </div>
+      </template>
+      <div
         v-else
-        message="Nothing has been outputted yet"
-      />
+        class="bordered-section"
+      >
+        <LoadingMessage message="Getting outputs"/>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import EmptySection from '@/components/EmptySection.vue';
+import EmptyMessage from '@/components/EmptyMessage.vue';
+import LoadingMessage from '@/components/LoadingMessage.vue';
 import { mapState } from 'vuex';
 
 export default {
   name: 'ClientActionOutput',
   components: {
     ExportButtons,
-    EmptySection,
+    EmptyMessage,
+    LoadingMessage,
   },
   props: {
     actionId: {
@@ -45,31 +57,23 @@ export default {
       type: Object,
       default: () => {},
     },
+    loading: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
       defaultOutput: null,
+      clientOutputs: null,
     };
   },
   computed: {
     ...mapState('clientActions', {
       allActions: 'all',
-      outputs: 'outputs',
     }),
     action() {
       return this.allActions[this.actionId];
-    },
-    /**
-     * Gets the outputs of all this action's clients.
-     * @returns {import('@/backend/constants').ClientActionOutputs}
-     */
-    clientOutputs() {
-      const results = {};
-      for (const outputId of this.action.outputs) {
-        const output = this.outputs[outputId];
-        results[output.clientId] = output;
-      }
-      return results;
     },
     defaultFormat() {
       return this.action.defaultOutputFormat;
@@ -89,11 +93,28 @@ export default {
     clientOutputs() {
       this.getDefaultOutput();
     },
+    loading(loading) {
+      if (!loading) {
+        this.updateOutput();
+      }
+    },
   },
   created() {
     this.getDefaultOutput();
   },
   methods: {
+    /**
+     * Gets the outputs of all this action's clients.
+     * @returns {import('@/backend/constants').ClientActionOutputs}
+     */
+    getClientOutputs() {
+      const results = {};
+      for (const outputId of this.action.outputs) {
+        const output = this.$store.state.clientActions.outputs[outputId];
+        results[output.clientId] = output;
+      }
+      this.clientOutputs = results;
+    },
     /**
      * Gets a client that has a certain ID.
      * @param {string} id The ID of the client we wish to retreive.
@@ -111,6 +132,9 @@ export default {
     },
     async getDefaultOutput() {
       this.defaultOutput = await this.formatOutput(this.defaultFormat);
+    },
+    updateOutput() {
+      this.getClientOutputs();
     },
   },
 };

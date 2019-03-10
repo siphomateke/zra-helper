@@ -2,14 +2,16 @@
   <CenterMessage
     :message="message"
     :icon="icon"
-  />
+  >
+    <div class="spinner is-centered"/>
+  </CenterMessage>
 </template>
 
 <script>
 import CenterMessage from '@/components/CenterMessage.vue';
 
 export default {
-  name: 'EmptyMessage',
+  name: 'LoadingMessage',
   components: {
     CenterMessage,
   },
