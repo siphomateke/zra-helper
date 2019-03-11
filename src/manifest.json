@@ -10,7 +10,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.zra.org.zm/login.htm?actionCode=newLoginPage"],
+      "matches": ["https://www.zra.org.zm/login.htm*"],
       "js": ["content_scripts/pages/login_page.js"]
     }
   ],
