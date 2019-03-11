@@ -111,6 +111,17 @@ export class CaptchaLoadError extends ImageLoadError {
     this.setType('CaptchaLoadError');
   }
 }
+export class TaxAccountNameNotFound extends ExtendedError {
+  /**
+   * @param {Object} props
+   * @param {string} props.accountName The tax account name that was not found.
+   */
+  constructor(message, code = null, props = { accountName: null }) {
+    super(message, code, props);
+    this.setType('TaxAccountNameNotFound');
+  }
+}
+
 // codes include:
 // PasswordExpired
 // InvalidUsernameOrPassword
