@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import store from '@/store';
-import { getTaxTypes } from '@/backend/client_actions/utils';
+import { getTaxAccounts } from '@/backend/client_actions/utils';
+import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
 
 let lastClientId = 0;
 
@@ -14,6 +15,8 @@ let lastClientId = 0;
  * @typedef {Object} State
  * @property {Object.<string, Client>} all
  */
+
+const listStoreHelper = new ListStoreHelper('all', 'client', 'getClientById');
 
 /** @type {import('vuex').Module} */
 const module = {
@@ -35,15 +38,19 @@ const module = {
       Vue.set(state.all, lastClientId, Object.assign({
         id: lastClientId,
         taxTypes: null,
+        taxAccounts: null,
+        registeredTaxAccounts: null,
       }, payload));
       lastClientId++;
     },
     clear(state) {
       state.all = {};
     },
-    setTaxTypes(state, { id, taxTypes }) {
-      Vue.set(state.all[id], 'taxTypes', taxTypes);
-    },
+    ...listStoreHelper.itemMutations([
+      'taxTypes',
+      'taxAccounts',
+      'registeredTaxAccounts',
+    ]),
   },
   actions: {
     /**
@@ -58,22 +65,29 @@ const module = {
       }
     },
     /**
-     * Gets and sets the tax types that this client has registered.
+     * Gets the tax accounts a client has. This includes registered tax types.
      * @param {ActionContext} context
      * @param {Object} payload
-     * @param {number} payload.id ID of client to get tax types for.
+     * @param {number} payload.id ID of the client
      * @param {number} payload.parentTaskId
      * @param {number} payload.loggedInTabId
      * ID of a logged in tab to use to navigate to the tax payer profile.
      */
-    async getTaxTypes({ state, commit }, { id, parentTaskId, loggedInTabId }) {
-      const client = state.all[id];
-      if (!client.taxTypes) {
-        const taxTypes = await getTaxTypes({ store, parentTaskId, loggedInTabId });
-        commit('setTaxTypes', { id, taxTypes });
-        return taxTypes;
+    async getTaxAccounts({ commit, getters }, { id, parentTaskId, loggedInTabId }) {
+      const client = getters.getClientById(id);
+      if (!client.taxAccounts) {
+        const taxAccounts = await getTaxAccounts({ store, parentTaskId, loggedInTabId });
+        commit('setTaxAccounts', { id, value: taxAccounts });
+
+        const registeredTaxAccounts = taxAccounts.filter(account => account.status === 'registered');
+        commit('setRegisteredTaxAccounts', { id, value: registeredTaxAccounts });
+
+        const taxTypes = registeredTaxAccounts.map(account => account.taxTypeId);
+        commit('setTaxTypes', { id, value: taxTypes });
+
+        return taxAccounts;
       }
-      return client.taxTypes;
+      return client.taxAccounts;
     },
   },
 };

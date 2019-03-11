@@ -516,9 +516,9 @@ const module = {
 
                 // Get tax types if any actions require them
                 if (anyActionsRequireTaxTypes) {
-                  mainTask.status = 'Getting tax types';
+                  mainTask.status = 'Getting tax account details';
                   try {
-                    await dispatch('clients/getTaxTypes', {
+                    await dispatch('clients/getTaxAccounts', {
                       id: client.id,
                       parentTaskId: mainTask.id,
                       loggedInTabId,
