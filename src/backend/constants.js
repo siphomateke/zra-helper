@@ -145,6 +145,14 @@ export const taxTypeNames = {
   'mineral royalty': taxTypeNumericalCodes.MINROY,
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
+
+const taxTypeNamesInverted = {};
+for (const name of Object.keys(taxTypeNames)) {
+  const taxTypeCode = taxTypeNames[name];
+  taxTypeNamesInverted[taxTypeCode] = name;
+}
+export { taxTypeNamesInverted };
+
 // #endregion
 
 // #region Export

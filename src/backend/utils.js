@@ -465,19 +465,3 @@ export async function getDocumentByAjax({ url, method = 'get', data = {} }) {
     return doc;
   }
 }
-
-/**
- * Changes the page of a rslt report table.
- * Example rslt report tables include: pending liabilities and tax payer ledger.
- *
- * This will only work if `page` is not equal to the current page.
- * @param {number} tabId The ID of the tab with the report table.
- * @param {number} page The page to change to.
- */
-export async function changeReportTablePage(tabId, page) {
-  await clickElement(
-    tabId,
-    `#navTable>tbody>tr:nth-child(2) a[onclick="goToPageNum(${page})"]`,
-    `go to page ${page} link`,
-  );
-}
