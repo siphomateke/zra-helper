@@ -1,5 +1,6 @@
 import { parseReportTable } from '@/backend/content_scripts/helpers/zra';
 import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
+import { getElement } from '../helpers/elements';
 
 const recordHeaders = [
   'srNo',
@@ -32,7 +33,7 @@ function generateTotals(columns, value) {
  */
 async function listener(message) {
   const response = await parseReportTable({
-    root: document,
+    root: getElement('#rsltTableHtml'),
     headers: recordHeaders,
   });
   const pendingLiabilities = response.records;

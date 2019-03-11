@@ -130,7 +130,7 @@ export async function parseReportTable({ root, headers }) {
   let currentPage = null;
   let records = null;
   // Check if the element that contains "No data found" exists
-  if (root.querySelector('#rsltTableHtml>table>tbody>tr:nth-child(2)>td>center.Label3')) {
+  if (root.querySelector('table>tbody>tr:nth-child(2)>td>center.Label3')) {
     numPages = 0;
     currentPage = 1;
     records = [];
