@@ -1,4 +1,3 @@
-import { taxTypeNamesInverted } from './constants';
 import { parseReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
 
@@ -6,66 +5,6 @@ const reportCodes = {
   PENDING_LIABILITY: '10093',
   TAX_PAYER_LEDGER: '10085',
 };
-
-/**
- * Converts an account name into a format that report requests accept. At the moment, the
- * conversion just converts the account name to uppercase.
- * @param {string} accountName
- * @returns {string}
- */
-function convertAccountNameForHeaderString(accountName) {
-  return accountName.toUpperCase();
-}
-
-/**
- * Converts JSON to a special string where each keys and values are separated by colons (:) and
- * key value pairs are separated by tildes (\~). For example,`key1:value1~key2:value2~`.
- *
- * This format is used by report AJAX requests.
- * @param {Object} data
- * @returns {string}
- */
-function buildHeaderString(data) {
-  let string = '';
-  for (const key of Object.keys(data)) {
-    const value = data[key];
-    string += `${key}:${value}~`;
-  }
-  return string.replace(' ', '+');
-}
-
-/**
- *
- * @param {Object} options
- * @param {string} options.accountName
- * @param {string} options.fromDate
- * @param {string} options.toDate
- * @returns {string}
- */
-function generateTaxPayerLedgerHeaderString({ accountName, fromDate, toDate }) {
-  return buildHeaderString({
-    'Account Name': convertAccountNameForHeaderString(accountName),
-    'Date From': fromDate,
-    'Date To': toDate,
-  });
-}
-
-/**
- *
- * @param {Object} options
- * @param {string} options.accountName
- * @param {string} options.tpin Same as client's username.
- * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
- * @returns {string}
- */
-function generatePendingLiabilityHeaderString({ accountName, tpin, taxTypeId }) {
-  return buildHeaderString({
-    'Account Name': convertAccountNameForHeaderString(accountName),
-    TPIN: tpin,
-    // TODO: Check if the tax type name needs to be specially capitalized
-    'Tax Type': taxTypeNamesInverted[taxTypeId],
-  });
-}
 
 /**
  * @typedef {Object} ReportData
@@ -143,6 +82,7 @@ async function getReportPage({
         reqPageNum: page,
         // TODO: Find out if a page number needs to be provided
         // prm1_rprtPageNum: '',
+        prm1_paraDisStr: '',
       },
     },
   });
@@ -170,7 +110,6 @@ async function getReportPage({
  * @param {Object} options
  * @param {string} options.tpin Same as client's username.
  * @param {string} options.accountCode E.g. 119608 or 405534
- * @param {string} options.accountName E.g. john smith-income tax
  * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {number} options.page The page to get.
  * @returns {Promise.<ReportPage>}
@@ -178,7 +117,6 @@ async function getReportPage({
 export function getPendingLiabilityPage({
   tpin,
   accountCode,
-  accountName,
   taxTypeId,
   page,
 }) {
@@ -190,7 +128,6 @@ export function getPendingLiabilityPage({
       prm1_accountName: accountCode,
       prm1_TaxType: taxTypeId,
       prm1_ajaxComboTarget: 'accountName',
-      prm1_paraDisStr: generatePendingLiabilityHeaderString({ accountName, tpin, taxTypeId }),
     },
     // FIXME: This is a duplicate of get_totals
     reportHeaders: [
@@ -211,7 +148,6 @@ export function getPendingLiabilityPage({
  * @param {Object} options
  * @param {string} options.tpin Same as client's username.
  * @param {string} options.accountCode E.g. 119608 or 405534
- * @param {string} options.accountName E.g. john smith-income tax
  * @param {string} options.fromDate Format must be DD/MM/YYYY
  * @param {string} options.toDate Format must be DD/MM/YYYY
  * @param {number} options.page The page to get.
@@ -220,7 +156,6 @@ export function getPendingLiabilityPage({
 export function getTaxPayerLedgerPage({
   tpin,
   accountCode,
-  accountName,
   fromDate,
   toDate,
   page,
@@ -235,7 +170,6 @@ export function getTaxPayerLedgerPage({
       prm1_acntName: accountCode,
       prm1_ajaxComboTarget: '',
       // prm1_loc_code: '',
-      prm1_paraDisStr: generateTaxPayerLedgerHeaderString({ accountName, fromDate, toDate }),
     },
     reportHeaders: [
       'srNo',
