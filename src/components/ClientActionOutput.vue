@@ -135,7 +135,9 @@ export default {
       return this.action.outputFormatter(clients, this.clientOutputs, format);
     },
     async getDefaultOutput() {
-      this.defaultOutput = await this.formatOutput(this.defaultFormat);
+      if (this.clientOutputs) {
+        this.defaultOutput = await this.formatOutput(this.defaultFormat);
+      }
     },
     updateOutput() {
       this.getClientOutputs();
