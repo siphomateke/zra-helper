@@ -129,7 +129,6 @@ export function getPendingLiabilityPage({
       prm1_TaxType: taxTypeId,
       prm1_ajaxComboTarget: 'accountName',
     },
-    // FIXME: This is a duplicate of get_totals
     reportHeaders: [
       'srNo',
       'accountName',
