@@ -95,12 +95,7 @@ async function getPendingLiabilities(client, taxAccount, parentTaskId) {
               totals = {};
               for (const column of totalsColumns) {
                 const cell = totalsRow[column];
-                if (typeof cell === 'string') {
-                  totals[column] = cell.replace(/\n\n/g, '');
-                } else {
-                  // Handle cells that contain links
-                  totals[column] = cell.innerText.replace(/\n\n/g, '');
-                }
+                totals[column] = cell.replace(/\n\n/g, '');
               }
             } else {
               totals = null;

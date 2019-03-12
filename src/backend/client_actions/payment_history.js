@@ -128,6 +128,7 @@ async function getPaymentReceiptNumbers({
     tableInfoSelector: '#contentDiv>table>tbody>tr>td',
     recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
     noRecordsString: 'No Records Found',
+    parseLinks: true,
   });
 }
 

@@ -30,7 +30,7 @@ export function getZraError(document) {
  */
 
 /**
- * @typedef {Object.<string, string|ParsedTableLinkCell>} ParsedTableRecord
+ * @typedef {Object.<string, string>} ParsedTableRecord
  * Object representing a single row whose keys are column headers and whose values are the
  * corresponding cell values.
  */
@@ -42,9 +42,17 @@ export function getZraError(document) {
  * @param {string[]} options.headers Column headers
  * @param {string} options.recordSelector
  * Selector of a single table data row. This shouldn't match any header rows.
+ * @param {boolean} [options.parseLinks]
+ * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
+ * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
  * @returns {ParsedTableRecord[]}
  */
-export function parseTable({ root, headers, recordSelector }) {
+export function parseTable({
+  root,
+  headers,
+  recordSelector,
+  parseLinks = false,
+}) {
   const records = [];
   const recordElements = root.querySelectorAll(recordSelector);
   for (const recordElement of recordElements) {
@@ -53,14 +61,16 @@ export function parseTable({ root, headers, recordSelector }) {
     for (let index = 0; index < columns.length; index++) {
       const column = columns[index];
       let value = column.innerText.trim();
-      const link = column.querySelector('a');
-      if (link) {
-        const onclick = link.getAttribute('onclick');
-        if (onclick) {
-          value = {
-            innerText: value,
-            onclick,
-          };
+      if (parseLinks) {
+        const link = column.querySelector('a');
+        if (link) {
+          const onclick = link.getAttribute('onclick');
+          if (onclick) {
+            value = {
+              innerText: value,
+              onclick,
+            };
+          }
         }
       }
       row[headers[index]] = value;
@@ -87,10 +97,18 @@ export function parseTable({ root, headers, recordSelector }) {
  * @param {string} options.recordSelector
  * Selector of a single table data row. This shouldn't match header rows.
  * @param {string} options.noRecordsString String that will exist when there are no records
+ * @param {boolean} [options.parseLinks]
+ * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
+ * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
  * @returns {Promise.<ParsedTable>}
  */
 export async function parseTableAdvanced({
-  root, headers, tableInfoSelector, recordSelector, noRecordsString = 'No Records Found',
+  root,
+  headers,
+  tableInfoSelector,
+  recordSelector,
+  noRecordsString = 'No Records Found',
+  parseLinks = false,
 }) {
   const tableInfoElement = getElementFromDocument(root, tableInfoSelector, 'table info');
   const tableInfo = tableInfoElement.innerText;
@@ -101,7 +119,12 @@ export async function parseTableAdvanced({
     const tableInfoMatches = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
     currentPage = Number(tableInfoMatches[1]);
     numPages = Number(tableInfoMatches[2]);
-    records = parseTable({ root, headers, recordSelector });
+    records = parseTable({
+      root,
+      headers,
+      recordSelector,
+      parseLinks,
+    });
   }
   return {
     records,
