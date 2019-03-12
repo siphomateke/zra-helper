@@ -8,24 +8,6 @@ import { createClientAction, ClientActionRunner } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { getAccountCodeTask } from '../tax_account_code';
 
-/**
- * @typedef {Object.<string, number>} Totals
- */
-
-/**
- * Generates an object with totals that are all one value.
- * @param {string[]} columns
- * @param {any} value
- * @returns {Object.<string, any>}
- */
-function generateTotals(columns, value) {
-  const totals = {};
-  for (const column of columns) {
-    totals[column] = value;
-  }
-  return totals;
-}
-
 /** Columns to get from the pending liabilities table */
 const totalsColumns = [
   'principal',
@@ -35,11 +17,30 @@ const totalsColumns = [
 ];
 
 /**
+ * @typedef {Object.<string, string>} Totals
+ * Totals with two decimal places. The possible totals are all the items in `totalsColumns`.
+ */
+
+/**
+ * Generates an object with totals that are all one value.
+ * @param {string[]} columns
+ * @param {string} value
+ * @returns {Totals}
+ */
+function generateTotals(columns, value) {
+  const totals = {};
+  for (const column of columns) {
+    totals[column] = value;
+  }
+  return totals;
+}
+
+/**
  * Gets the pending liability totals of a tax type.
  * @param {import('../constants').Client} client
  * @param {import('./utils').TaxAccount} taxAccount
  * @param {number} parentTaskId
- * @returns {Promise<Totals>}
+ * @returns {Promise<Totals|null>}
  */
 async function getPendingLiabilities(client, taxAccount, parentTaskId) {
   const taxType = taxTypes[taxAccount.taxTypeId];
@@ -85,18 +86,27 @@ async function getPendingLiabilities(client, taxAccount, parentTaskId) {
             });
           }
 
-          let totals = null;
+          let totals;
           const { records } = response.parsedTable;
           if (records.length > 0) {
             const totalsRow = records[records.length - 1];
-            totals = {};
-            for (const column of totalsColumns) {
-              // FIXME: Fix possible fail when there is a link in one of the cells
-              totals[column] = totalsRow[column].replace(/\n\n/g, '');
+            // Make sure we are getting totals from the grand total row.
+            if (totalsRow.srNo.toLowerCase() === 'grand total') {
+              totals = {};
+              for (const column of totalsColumns) {
+                const cell = totalsRow[column];
+                if (typeof cell === 'string') {
+                  totals[column] = cell.replace(/\n\n/g, '');
+                } else {
+                  // Handle cells that contain links
+                  totals[column] = cell.innerText.replace(/\n\n/g, '');
+                }
+              }
+            } else {
+              totals = null;
             }
           } else {
-            // FIXME: Generated totals should be strings
-            totals = generateTotals(totalsColumns, 0);
+            totals = generateTotals(totalsColumns, '0');
           }
 
           return totals;
