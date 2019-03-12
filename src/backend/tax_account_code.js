@@ -44,7 +44,7 @@ export function findAccountCodeFromName({ root, accountName }) {
  */
 export async function getAccountCodeTask({ accountName, parentTaskId }) {
   const task = await createTask(store, {
-    title: `Determining ID of account: "${accountName}"`,
+    title: `Determine ID of account: "${accountName}"`,
     parent: parentTaskId,
     unknownMaxProgress: false,
     progressMax: 2,
