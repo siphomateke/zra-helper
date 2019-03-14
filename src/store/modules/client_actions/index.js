@@ -26,6 +26,7 @@ import { taskFunction } from '@/backend/client_actions/utils';
  * @property {Object.<string, string[]>} instancesByActionId
  * IDs of instances from this run grouped by action ID. Instances are stored by action ID to make
  * it easier to combine all outputs from all clients of a single action into a single output.
+ * @property {boolean} running Whether the run is still in progress or has completed.
  */
 
 /**
@@ -125,10 +126,11 @@ const module = {
      * Whether the extension is currently running some tasks.
      * @returns {boolean}
      */
-    running: (_state, _getters, _rootState, rootGetters) => {
-      const rootTask = rootGetters['tasks/rootTask'];
-      if (rootTask) {
-        return !rootTask.complete;
+    running: (_state, getters) => {
+      /** @type {{currentRun: ActionRun}} */
+      const { currentRun } = getters;
+      if (currentRun) {
+        return currentRun.running;
       }
       return false;
     },
@@ -219,10 +221,17 @@ const module = {
     startNewRun(state) {
       const runsLength = state.runs.push({
         instancesByActionId: {},
+        running: true,
       });
       const runId = runsLength - 1;
       state.currentRunId = runId;
-      return runId;
+    },
+    /**
+     * Sets a run's running status to false.
+     * @param {number} runId
+     */
+    completeRun(state, runId) {
+      state.runs[runId].running = false;
     },
     /**
      * Adds a newly created action runner instance to the current run.
@@ -500,6 +509,7 @@ const module = {
      * Function that decides the actions to run on each client.
      */
     async run({
+      state,
       rootState,
       rootGetters,
       commit,
@@ -547,6 +557,7 @@ const module = {
               message: `Finished running ${clients.length} client(s)`,
             });
           }
+          commit('completeRun', state.currentRunId);
           if (rootState.config.zraLiteMode) {
             dispatch('setZraLiteMode', false, { root: true });
           }
