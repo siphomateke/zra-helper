@@ -13,6 +13,20 @@ export const storeOptions = {
     tasks,
     log,
   },
+  state: {
+    zraLiteModeEnabled: false,
+  },
+  mutations: {
+    setZraLiteMode(state, value) {
+      state.zraLiteModeEnabled = value;
+    },
+  },
+  actions: {
+    async setZraLiteMode({ commit }, value) {
+      await browser.runtime.sendMessage({ command: 'setZraLiteMode', mode: value });
+      commit('setZraLiteMode', value);
+    },
+  },
   strict: true,
 };
 export default new Vuex.Store(storeOptions);

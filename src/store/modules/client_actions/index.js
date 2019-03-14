@@ -497,6 +497,10 @@ const module = {
         // Prepare for this run
         commit('resetFailures');
 
+        if (rootState.config.zraLiteMode) {
+          dispatch('setZraLiteMode', true, { root: true });
+        }
+
         const rootTask = await createTask(store, {
           title: 'Run actions on clients',
           progressMax: clients.length,
@@ -527,6 +531,9 @@ const module = {
               title: 'All tasks complete',
               message: `Finished running ${clients.length} client(s)`,
             });
+          }
+          if (rootState.config.zraLiteMode) {
+            dispatch('setZraLiteMode', false, { root: true });
           }
         }
       } else {
