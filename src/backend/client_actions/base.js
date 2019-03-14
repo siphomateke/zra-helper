@@ -74,6 +74,7 @@ export class ClientActionRunner {
     // Run status data
     this.error = null;
     this.output = null;
+    this.running = false;
   }
 
   /**
@@ -102,10 +103,13 @@ export class ClientActionRunner {
     this.loggedInTabId = data.loggedInTabId;
     this.parentTask = data.parentTask;
     try {
+      this.running = true;
       await this.runInternal();
     } catch (error) {
       this.error = error;
       throw error;
+    } finally {
+      this.running = false;
     }
   }
 
