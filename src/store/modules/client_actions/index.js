@@ -33,6 +33,9 @@ import { taskFunction } from '@/backend/client_actions/utils';
  * @property {number} clientId
  * @property {string} actionId
  * @property {Error|import('@/backend/errors').ExtendedError} [error]
+ *
+ * @typedef {Object.<number, ClientActionFailure[]>} ClientActionFailuresByClient
+ * Failures grouped by Client ID.
  */
 
 /**
@@ -82,6 +85,10 @@ const module = {
       const run = getters.getRunById(runId);
       return Object.keys(run.instancesByActionId);
     },
+    /**
+     * Gets all the browsers a particular action supports.
+     * @returns {(id: string) => import('@/backend/constants').BrowserCode[]}
+     */
     getBrowsersActionSupports: (_, getters) => (id) => {
       const action = getters.getActionById(id);
       const supportedBrowsers = [];
@@ -100,6 +107,10 @@ const module = {
       }
       return supportedBrowsers;
     },
+    /**
+     * Checks if an action supports the browser the extension is currently running in.
+     * @returns {(id: string) => boolean}
+     */
     actionSupportsCurrentBrowser: (_, getters) => (id) => {
       const action = getters.getActionById(id);
       const featuresSupportedByCurrentBrowser = featuresSupportedByBrowsers[getCurrentBrowser()];
@@ -110,6 +121,10 @@ const module = {
       }
       return true;
     },
+    /**
+     * Whether the extension is currently running some tasks.
+     * @returns {boolean}
+     */
     running: (_state, _getters, _rootState, rootGetters) => {
       const rootTask = rootGetters['tasks/rootTask'];
       if (rootTask) {
@@ -142,7 +157,12 @@ const module = {
       }
       return failures;
     },
+    /**
+     * All the failures that can be retried grouped by client ID.
+     * @returns {ClientActionFailuresByClient}
+     */
     retryableFailuresByClient(_state, getters) {
+      /** @type {ClientActionFailuresByClient} */
       const clientFailures = {};
       for (const failure of getters.retryableFailures) {
         const { clientId } = failure;
