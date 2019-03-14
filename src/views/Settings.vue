@@ -119,6 +119,10 @@
         <b-checkbox v-model="config.promptRetryActions">Prompt to retry actions that fail</b-checkbox>
       </b-field>
 
+      <b-field title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable.">
+        <b-checkbox v-model="config.zraLiteMode">Use basic HTML version of ZRA when running</b-checkbox>
+      </b-field>
+
       <div class="field is-grouped">
         <span class="control">
           <button

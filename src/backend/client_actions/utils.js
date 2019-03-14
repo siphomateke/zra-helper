@@ -12,7 +12,8 @@ import {
   clickElement,
   runContentScript,
 } from '../utils';
-import { taxTypeNames } from '../constants';
+import { taxTypeNames, browserCodes } from '../constants';
+import { getCurrentBrowser } from '@/utils';
 
 /** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
@@ -400,4 +401,21 @@ export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
       return registeredTaxTypes;
     },
   });
+}
+
+const currentBrowser = getCurrentBrowser();
+async function changeLiteMode(mode) {
+  // Firefox has a better way of controlling which resources are blocked so we don't need
+  // to disable all resource loading.
+  if (currentBrowser !== browserCodes.FIREFOX && config.zraLiteMode) {
+    await store.dispatch('setZraLiteMode', mode);
+  }
+}
+
+export function startDownloadingReceipts() {
+  return changeLiteMode(false);
+}
+
+export async function finishDownloadingReceipts() {
+  return changeLiteMode(true);
 }

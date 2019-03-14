@@ -39,6 +39,17 @@
       <h3 class="title is-4">Log</h3>
       <Log/>
     </section>
+    <section
+      v-if="zraLiteModeEnabled"
+      class="dashboard-section"
+    >
+      <b-message
+        type="is-info"
+        icon-size="small"
+        has-icon
+        headerless
+      >The ZRA website is in basic HTML mode until all running tasks have completed.</b-message>
+    </section>
     <section class="dashboard-section">
       <h3 class="title is-4">Tasks</h3>
       <TaskList
@@ -160,6 +171,7 @@ export default {
       clientActionsObject: state => state.clientActions.all,
       clientsObj: state => state.clients.all,
     }),
+    ...mapState(['zraLiteModeEnabled']),
     ...mapGetters('clients', ['getClientById']),
     ...mapGetters('clientActions', {
       anyRetryableFailures: 'anyRetryableFailures',

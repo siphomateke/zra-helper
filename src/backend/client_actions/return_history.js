@@ -11,6 +11,8 @@ import {
   parallelTaskMap,
   getPagedData,
   taskFunction,
+  startDownloadingReceipts,
+  finishDownloadingReceipts,
 } from './utils';
 
 /**
@@ -220,6 +222,7 @@ const clientAction = {
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
 
+    await startDownloadingReceipts();
     await parallelTaskMap({
       list: client.taxTypes,
       task: parentTask,
@@ -260,6 +263,7 @@ const clientAction = {
         });
       },
     });
+    await finishDownloadingReceipts();
 
     config.maxOpenTabs = initialMaxOpenTabs;
 

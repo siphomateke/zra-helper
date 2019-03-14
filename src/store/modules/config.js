@@ -34,6 +34,11 @@ const defaultConfig = {
   sendNotifications: true,
   /** Whether to show a prompt to retry actions that encountered errors when all running tasks have completed. */
   promptRetryActions: true,
+  /**
+   * If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance.
+   * This means that while the extension is running, the ZRA website may not be usable.
+   */
+  zraLiteMode: true,
   actions: {
     getAcknowledgementsOfReturns: {
       /** The maximum number of tabs that can be opened when downloading return receipts. */

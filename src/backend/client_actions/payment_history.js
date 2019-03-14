@@ -9,6 +9,8 @@ import {
   parallelTaskMap,
   getPagedData,
   taskFunction,
+  startDownloadingReceipts,
+  finishDownloadingReceipts,
 } from './utils';
 import {
   taxTypeNames,
@@ -328,7 +330,9 @@ const clientAction = {
           // TODO: Indicate why receipts weren't downloaded
           if (receipts.length > 0) {
             config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
+            await startDownloadingReceipts();
             await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
+            await finishDownloadingReceipts();
             config.maxOpenTabs = initialMaxOpenTabs;
           }
         },
