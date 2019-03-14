@@ -77,7 +77,7 @@ const module = {
      * Gets the IDs of all the actions in the specified run.
      * @returns {(runId: string) => string[]} IDs of the actions in run.
      */
-    getAllActionsInRun: (state, getters) => (runId) => {
+    getAllActionsInRun: (_state, getters) => (runId) => {
       /** @type {ActionRun} */
       const run = getters.getRunById(runId);
       return Object.keys(run.instancesByActionId);
@@ -110,7 +110,7 @@ const module = {
       }
       return true;
     },
-    running: (state, getters, rootState, rootGetters) => {
+    running: (_state, _getters, _rootState, rootGetters) => {
       const rootTask = rootGetters['tasks/rootTask'];
       if (rootTask) {
         return !rootTask.complete;
@@ -142,7 +142,7 @@ const module = {
       }
       return failures;
     },
-    retryableFailuresByClient(state, getters) {
+    retryableFailuresByClient(_state, getters) {
       const clientFailures = {};
       for (const failure of getters.retryableFailures) {
         const { clientId } = failure;
@@ -153,7 +153,7 @@ const module = {
       }
       return clientFailures;
     },
-    anyRetryableFailures(state, getters) {
+    anyRetryableFailures(_state, getters) {
       return getters.retryableFailures.length > 0;
     },
     /**
@@ -244,7 +244,7 @@ const module = {
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
-    async runActionOnClient(context, {
+    async runActionOnClient(_context, {
       instance,
       client,
       mainTask,
