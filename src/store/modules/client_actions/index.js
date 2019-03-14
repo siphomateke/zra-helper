@@ -12,7 +12,6 @@ import { closeTab } from '@/backend/utils';
 import { taskFunction } from '@/backend/client_actions/utils';
 
 /**
- * @typedef {import('vuex').ActionContext} VuexActionContext
  * @typedef {import('@/backend/constants').Client} Client
  * @typedef {import('@/backend/client_actions/base').ClientActionRunner} ActionInstance
  * A single instance of a client action runner. New instances are created each run allowing
@@ -48,6 +47,8 @@ import { taskFunction } from '@/backend/client_actions/utils';
  * @property {ActionRun[]} runs Action runs stored by run IDs.
  * @property {number} currentRunId Which run the program is currently on.
  */
+
+/** @typedef {import('vuex').ActionContext<State>} VuexActionContext */
 
 /**
  * @typedef {Object} ClientActionOutput
