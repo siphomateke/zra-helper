@@ -40,6 +40,9 @@ export const taskStates = {
  * @property {boolean} [sequential=true] Whether only one child task will be running at a time.
  * @property {boolean} [autoUpdateParent=true]
  * Whether this task will automatically update it's parent progress and status.
+ * @property {boolean} [isRoot=false]
+ * Whether this task is at the highest level and has no parents. Root tasks are generally
+ * associated with a single client action run.
  */
 
 // TODO: Document this module. Especially the getters.
@@ -101,11 +104,9 @@ const module = {
      * @type {Object.<string, TaskVuexState>}
      */
     tasks: {},
-    rootTask: null,
   },
   getters: {
     getTaskById: state => id => state.tasks[id],
-    rootTask: state => state.tasks[state.rootTask],
     ...listStoreHelper.itemGetters({
       hasParent: ({ task }) => task.parent !== null,
       parent: ({ getters, task }) => getters.getTaskById(task.parent),
@@ -167,7 +168,6 @@ const module = {
         }
         return task.progressMax;
       },
-      isRoot: ({ state, task }) => state.rootTask === task.id,
     }),
   },
   mutations: {
@@ -244,9 +244,6 @@ const module = {
       'autoUpdateParent',
       'indeterminate',
     ]),
-    setRootTask(state, id) {
-      state.rootTask = id;
-    },
   },
   actions: {
     /**
@@ -272,6 +269,7 @@ const module = {
         unknownMaxProgress: true,
         sequential: true,
         autoUpdateParent: true,
+        isRoot: false,
       }, data);
       const { id } = task;
       commit('create', { id, task });
@@ -344,9 +342,6 @@ const module = {
         state = taskStates.SUCCESS;
       }
       commit('setState', { id, value: state });
-    },
-    setRootTask({ commit }, id) {
-      commit('setRootTask', id);
     },
   },
 };

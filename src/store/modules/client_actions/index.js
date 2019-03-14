@@ -531,8 +531,8 @@ const module = {
           progressMax: clients.length,
           unknownMaxProgress: false,
           sequential: true,
+          isRoot: true,
         });
-        await dispatch('tasks/setRootTask', rootTask.id, { root: true });
         try {
           await taskFunction({
             task: rootTask,
