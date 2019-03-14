@@ -18,6 +18,7 @@ import {
   taxTypes,
   browserFeatures,
 } from '../constants';
+import { createClientAction, ClientActionRunner } from './base';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -306,38 +307,45 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   });
 }
 
-/** @type {import('@/backend/constants').ClientActionObject} */
-const clientAction = {
+const GetPaymentReceiptsClientAction = createClientAction({
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',
   requiredFeatures: [browserFeatures.MHTML],
-  func({ client, parentTask, clientActionConfig }) {
-    return new Promise((resolve, reject) => {
-      const options = {
-        fromDate: '01/10/2013',
-        toDate: moment().format('DD/MM/YYYY'),
-      };
+});
 
-      parentTask.unknownMaxProgress = false;
-      parentTask.progressMax = 2;
+GetPaymentReceiptsClientAction.runner = class extends ClientActionRunner {
+  constructor() { super(GetPaymentReceiptsClientAction); }
 
-      taskFunction({
-        task: parentTask,
-        setStateBasedOnChildren: true,
-        async func() {
-          const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
-          const initialMaxOpenTabs = config.maxOpenTabs;
-          // TODO: Indicate why receipts weren't downloaded
-          if (receipts.length > 0) {
-            config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
-            await startDownloadingReceipts();
-            await downloadPaymentReceipts({ client, receipts, parentTaskId: parentTask.id });
-            await finishDownloadingReceipts();
-            config.maxOpenTabs = initialMaxOpenTabs;
-          }
-        },
-      }).then(resolve).catch(reject);
+  async runInternal() {
+    const options = {
+      fromDate: '01/10/2013',
+      toDate: moment().format('DD/MM/YYYY'),
+    };
+
+    this.parentTask.unknownMaxProgress = false;
+    this.parentTask.progressMax = 2;
+
+    await taskFunction({
+      task: this.parentTask,
+      setStateBasedOnChildren: true,
+      func: async () => {
+        const receipts = await getAllPaymentReceiptNumbers(options, this.parentTask.id);
+        const initialMaxOpenTabs = config.maxOpenTabs;
+        // TODO: Indicate why receipts weren't downloaded
+        if (receipts.length > 0) {
+          config.maxOpenTabs = this.config.maxOpenTabsWhenDownloading;
+          await startDownloadingReceipts();
+          await downloadPaymentReceipts({
+            client: this.client,
+            receipts,
+            parentTaskId: this.parentTask.id,
+          });
+          await finishDownloadingReceipts();
+          config.maxOpenTabs = initialMaxOpenTabs;
+        }
+      },
     });
-  },
+  }
 };
-export default clientAction;
+
+export default GetPaymentReceiptsClientAction;

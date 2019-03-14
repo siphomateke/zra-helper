@@ -15,6 +15,7 @@ import {
 } from '../utils';
 import { writeJson } from '../file_utils';
 import { taskFunction, parallelTaskMap } from './utils';
+import { createClientAction, ClientActionRunner } from './base';
 
 /**
  * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
@@ -127,81 +128,10 @@ async function getPendingLiabilities(taxType, taxTypeId, parentTaskId) {
   return null;
 }
 
-/** @type {import('@/backend/constants').ClientActionObject} */
-const clientAction = {
+const GetAllPendingLiabilitiesClientAction = createClientAction({
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
-  async func({ parentTask, client: { taxTypes: taxTypeIds } }) {
-    parentTask.sequential = false;
-    parentTask.unknownMaxProgress = false;
-    parentTask.progressMax = taxTypeIds.length;
-
-    /**
-     * @typedef {Object} TotalsResponses
-     * @property {Totals} totals
-     * @property {Error} retrievalErrors
-     */
-    /** @type {Object.<TaxTypeNumericalCode, TotalsResponses>} */
-    const responses = await parallelTaskMap({
-      task: parentTask,
-      list: taxTypeIds,
-      autoCalculateTaskState: false,
-      mapResultsToItemKeys: true,
-      async func(taxTypeId, parentTaskId) {
-        const taxType = taxTypes[taxTypeId];
-        const response = {
-          totals: null,
-          retrievalErrors: [],
-        };
-        try {
-          response.totals = await getPendingLiabilities(taxType, taxTypeId, parentTaskId);
-        } catch (error) {
-          response.retrievalErrors = error;
-        }
-        return response;
-      },
-    });
-
-    let errorCount = 0;
-    let taxTypeErrorCount = 0;
-    for (const task of parentTask.children) {
-      if (task.state === taskStates.ERROR) {
-        if (task.error.type !== 'TaxTypeNotFoundError') {
-          errorCount++;
-        } else {
-          taxTypeErrorCount++;
-        }
-      }
-    }
-    if (errorCount > 0) {
-      parentTask.state = taskStates.ERROR;
-    } else if (
-      parentTask.children.length > 0
-      && taxTypeErrorCount === parentTask.children.length
-    ) {
-      // If all sub tasks don't have a tax type, something probably went wrong
-      parentTask.state = taskStates.WARNING;
-      parentTask.status = 'No tax types found.';
-    } else {
-      parentTask.state = taskStates.SUCCESS;
-    }
-
-    const output = {
-      totals: {},
-      retrievalErrors: {},
-    };
-    for (const taxTypeId of Object.keys(responses)) {
-      const taxType = taxTypes[taxTypeId];
-      const { totals, retrievalErrors } = responses[taxTypeId];
-      if (totals) {
-        output.totals[taxType] = Object.assign({}, totals);
-      } else {
-        output.retrievalErrors[taxType] = retrievalErrors;
-      }
-    }
-    return output;
-  },
   hasOutput: true,
   defaultOutputFormat: exportFormatCodes.CSV,
   outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
@@ -271,5 +201,83 @@ const clientAction = {
     }
     return writeJson(json);
   },
+});
+
+GetAllPendingLiabilitiesClientAction.runner = class extends ClientActionRunner {
+  constructor() { super(GetAllPendingLiabilitiesClientAction); }
+
+  async runInternal() {
+    const taxTypeIds = this.client.taxTypes;
+
+    this.parentTask.sequential = false;
+    this.parentTask.unknownMaxProgress = false;
+    this.parentTask.progressMax = taxTypeIds.length;
+
+    /**
+     * @typedef {Object} TotalsResponses
+     * @property {Totals} totals
+     * @property {Error} retrievalErrors
+     */
+    /** @type {Object.<TaxTypeNumericalCode, TotalsResponses>} */
+    const responses = await parallelTaskMap({
+      task: this.parentTask,
+      list: taxTypeIds,
+      autoCalculateTaskState: false,
+      mapResultsToItemKeys: true,
+      async func(taxTypeId, parentTaskId) {
+        const taxType = taxTypes[taxTypeId];
+        const response = {
+          totals: null,
+          retrievalErrors: [],
+        };
+        try {
+          response.totals = await getPendingLiabilities(taxType, taxTypeId, parentTaskId);
+        } catch (error) {
+          response.retrievalErrors = error;
+        }
+        return response;
+      },
+    });
+
+    let errorCount = 0;
+    let taxTypeErrorCount = 0;
+    for (const task of this.parentTask.children) {
+      if (task.state === taskStates.ERROR) {
+        if (task.error.type !== 'TaxTypeNotFoundError') {
+          errorCount++;
+        } else {
+          taxTypeErrorCount++;
+        }
+      }
+    }
+    if (errorCount > 0) {
+      this.parentTask.state = taskStates.ERROR;
+    } else if (
+      this.parentTask.children.length > 0
+      && taxTypeErrorCount === this.parentTask.children.length
+    ) {
+      // If all sub tasks don't have a tax type, something probably went wrong
+      this.parentTask.state = taskStates.WARNING;
+      this.parentTask.status = 'No tax types found.';
+    } else {
+      this.parentTask.state = taskStates.SUCCESS;
+    }
+
+    const output = {
+      totals: {},
+      retrievalErrors: {},
+    };
+    for (const taxTypeId of Object.keys(responses)) {
+      const taxType = taxTypes[taxTypeId];
+      const { totals, retrievalErrors } = responses[taxTypeId];
+      if (totals) {
+        output.totals[taxType] = Object.assign({}, totals);
+      } else {
+        output.retrievalErrors[taxType] = retrievalErrors;
+      }
+    }
+    this.output = output;
+  }
 };
-export default clientAction;
+
+export default GetAllPendingLiabilitiesClientAction;

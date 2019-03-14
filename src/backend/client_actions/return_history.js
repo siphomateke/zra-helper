@@ -14,6 +14,7 @@ import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
 } from './utils';
+import { createClientAction, ClientActionRunner } from './base';
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -212,22 +213,26 @@ async function downloadAcknowledgementReceipts({
   });
 }
 
-/** @type {import('@/backend/constants').ClientActionObject} */
-const clientAction = {
+const GetAcknowledgementsOfReturnsClientAction = createClientAction({
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',
   requiredFeatures: [browserFeatures.MHTML],
   requiresTaxTypes: true,
-  async func({ client, parentTask, clientActionConfig }) {
+});
+
+GetAcknowledgementsOfReturnsClientAction.runner = class extends ClientActionRunner {
+  constructor() { super(GetAcknowledgementsOfReturnsClientAction); }
+
+  async runInternal() {
     const initialMaxOpenTabs = config.maxOpenTabs;
-    config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
+    config.maxOpenTabs = this.config.maxOpenTabsWhenDownloading;
 
     await startDownloadingReceipts();
     await parallelTaskMap({
-      list: client.taxTypes,
-      task: parentTask,
+      list: this.client.taxTypes,
+      task: this.parentTask,
       autoCalculateTaskState: false,
-      async func(taxTypeId, parentTaskId) {
+      func: async (taxTypeId, parentTaskId) => {
         const taxType = taxTypes[taxTypeId];
 
         const task = await createTask(store, {
@@ -241,9 +246,9 @@ const clientAction = {
           task,
           catchErrors: true,
           setStateBasedOnChildren: true,
-          async func() {
+          func: async () => {
             const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
-              tpin: client.username,
+              tpin: this.client.username,
               taxType: taxTypeId,
               fromDate: '01/01/2013',
               toDate: moment().format('31/12/YYYY'),
@@ -256,7 +261,7 @@ const clientAction = {
                 taxType: taxTypeId,
                 referenceNumbers,
                 parentTaskId: task.id,
-                client,
+                client: this.client,
               });
             }
           },
@@ -269,7 +274,7 @@ const clientAction = {
 
     let errorCount = 0;
     let taxTypeErrorCount = 0;
-    for (const task of parentTask.children) {
+    for (const task of this.parentTask.children) {
       if (task.state === taskStates.ERROR) {
         if (task.error && task.error.type === 'TaxTypeNotFoundError') {
           taxTypeErrorCount++;
@@ -279,16 +284,20 @@ const clientAction = {
       }
     }
     if (errorCount > 0) {
-      parentTask.state = taskStates.ERROR;
-    } else if (parentTask.children.length > 0 && taxTypeErrorCount === parentTask.children.length) {
+      this.parentTask.state = taskStates.ERROR;
+    } else if (
+      this.parentTask.children.length > 0
+      && taxTypeErrorCount === this.parentTask.children.length
+    ) {
       // If all sub tasks don't have a tax type, something probably went wrong
-      parentTask.state = taskStates.WARNING;
-      parentTask.errorString = 'No tax types found.';
-    } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
-      parentTask.state = taskStates.WARNING;
+      this.parentTask.state = taskStates.WARNING;
+      this.parentTask.errorString = 'No tax types found.';
+    } else if (this.parentTask.childStateCounts[taskStates.WARNING] > 0) {
+      this.parentTask.state = taskStates.WARNING;
     } else {
-      parentTask.state = taskStates.SUCCESS;
+      this.parentTask.state = taskStates.SUCCESS;
     }
-  },
+  }
 };
-export default clientAction;
+
+export default GetAcknowledgementsOfReturnsClientAction;
