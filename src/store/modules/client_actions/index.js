@@ -26,6 +26,7 @@ import { taskFunction } from '@/backend/client_actions/utils';
  * @property {Object.<string, string[]>} instancesByActionId
  * IDs of instances from this run grouped by action ID. Instances are stored by action ID to make
  * it easier to combine all outputs from all clients of a single action into a single output.
+ * @property {number} taskId The ID of the task associated with this run.
  * @property {boolean} running Whether the run is still in progress or has completed.
  */
 
@@ -216,11 +217,13 @@ const module = {
     /**
      * Initializes a new program run. Each run can have different actions and outputs.
      * @see {@link ActionRun}
-     * @returns {number} The ID of the newly started run.
+     * @param {Object} payload
+     * @param {number} payload.taskId ID of the task associated with this run.
      */
-    startNewRun(state) {
+    startNewRun(state, { taskId }) {
       const runsLength = state.runs.push({
         instancesByActionId: {},
+        taskId,
         running: true,
       });
       const runId = runsLength - 1;
@@ -520,8 +523,6 @@ const module = {
     }) {
       const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       if (clients.length > 0) {
-        commit('startNewRun');
-
         if (rootState.config.zraLiteMode) {
           dispatch('setZraLiteMode', true, { root: true });
         }
@@ -533,6 +534,8 @@ const module = {
           sequential: true,
           isRoot: true,
         });
+
+        commit('startNewRun', { taskId: rootTask.id });
         try {
           await taskFunction({
             task: rootTask,
