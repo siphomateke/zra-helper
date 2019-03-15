@@ -220,17 +220,21 @@ const GetAcknowledgementsOfReturnsClientAction = createClientAction({
   requiresTaxTypes: true,
 });
 
-GetAcknowledgementsOfReturnsClientAction.runner = class extends ClientActionRunner {
-  constructor() { super(GetAcknowledgementsOfReturnsClientAction); }
+GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunner {
+  constructor(data) {
+    super(data);
+    this.storeProxy.actionId = GetAcknowledgementsOfReturnsClientAction.id;
+  }
 
   async runInternal() {
+    const { client, parentTask, config: actionConfig } = this.storeProxy;
     const initialMaxOpenTabs = config.maxOpenTabs;
-    config.maxOpenTabs = this.config.maxOpenTabsWhenDownloading;
+    config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
 
     await startDownloadingReceipts();
     await parallelTaskMap({
-      list: this.client.taxTypes,
-      task: this.parentTask,
+      list: client.taxTypes,
+      task: parentTask,
       autoCalculateTaskState: false,
       func: async (taxTypeId, parentTaskId) => {
         const taxType = taxTypes[taxTypeId];
@@ -248,7 +252,7 @@ GetAcknowledgementsOfReturnsClientAction.runner = class extends ClientActionRunn
           setStateBasedOnChildren: true,
           func: async () => {
             const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
-              tpin: this.client.username,
+              tpin: client.username,
               taxType: taxTypeId,
               fromDate: '01/01/2013',
               toDate: moment().format('31/12/YYYY'),
@@ -261,7 +265,7 @@ GetAcknowledgementsOfReturnsClientAction.runner = class extends ClientActionRunn
                 taxType: taxTypeId,
                 referenceNumbers,
                 parentTaskId: task.id,
-                client: this.client,
+                client,
               });
             }
           },
@@ -274,7 +278,7 @@ GetAcknowledgementsOfReturnsClientAction.runner = class extends ClientActionRunn
 
     let errorCount = 0;
     let taxTypeErrorCount = 0;
-    for (const task of this.parentTask.children) {
+    for (const task of parentTask.children) {
       if (task.state === taskStates.ERROR) {
         if (task.error && task.error.type === 'TaxTypeNotFoundError') {
           taxTypeErrorCount++;
@@ -284,18 +288,18 @@ GetAcknowledgementsOfReturnsClientAction.runner = class extends ClientActionRunn
       }
     }
     if (errorCount > 0) {
-      this.parentTask.state = taskStates.ERROR;
+      parentTask.state = taskStates.ERROR;
     } else if (
-      this.parentTask.children.length > 0
-      && taxTypeErrorCount === this.parentTask.children.length
+      parentTask.children.length > 0
+      && taxTypeErrorCount === parentTask.children.length
     ) {
       // If all sub tasks don't have a tax type, something probably went wrong
-      this.parentTask.state = taskStates.WARNING;
-      this.parentTask.errorString = 'No tax types found.';
-    } else if (this.parentTask.childStateCounts[taskStates.WARNING] > 0) {
-      this.parentTask.state = taskStates.WARNING;
+      parentTask.state = taskStates.WARNING;
+      parentTask.errorString = 'No tax types found.';
+    } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
+      parentTask.state = taskStates.WARNING;
     } else {
-      this.parentTask.state = taskStates.SUCCESS;
+      parentTask.state = taskStates.SUCCESS;
     }
   }
 };

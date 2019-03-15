@@ -313,8 +313,11 @@ const GetPaymentReceiptsClientAction = createClientAction({
   requiredFeatures: [browserFeatures.MHTML],
 });
 
-GetPaymentReceiptsClientAction.runner = class extends ClientActionRunner {
-  constructor() { super(GetPaymentReceiptsClientAction); }
+GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
+  constructor(data) {
+    super(data);
+    this.storeProxy.actionId = GetPaymentReceiptsClientAction.id;
+  }
 
   async runInternal() {
     const options = {
@@ -322,23 +325,24 @@ GetPaymentReceiptsClientAction.runner = class extends ClientActionRunner {
       toDate: moment().format('DD/MM/YYYY'),
     };
 
-    this.parentTask.unknownMaxProgress = false;
-    this.parentTask.progressMax = 2;
+    const { parentTask, client, config: actionConfig } = this.storeProxy;
+    parentTask.unknownMaxProgress = false;
+    parentTask.progressMax = 2;
 
     await taskFunction({
-      task: this.parentTask,
+      task: parentTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        const receipts = await getAllPaymentReceiptNumbers(options, this.parentTask.id);
+        const receipts = await getAllPaymentReceiptNumbers(options, parentTask.id);
         const initialMaxOpenTabs = config.maxOpenTabs;
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
-          config.maxOpenTabs = this.config.maxOpenTabsWhenDownloading;
+          config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           await startDownloadingReceipts();
           await downloadPaymentReceipts({
-            client: this.client,
+            client,
             receipts,
-            parentTaskId: this.parentTask.id,
+            parentTaskId: parentTask.id,
           });
           await finishDownloadingReceipts();
           config.maxOpenTabs = initialMaxOpenTabs;

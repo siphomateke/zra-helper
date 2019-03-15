@@ -2,10 +2,12 @@ import { exportFormatCodes } from '@/backend/constants';
 import { objectHasProperties, joinSpecialLast } from '@/utils';
 import { taskStates } from '@/store/modules/tasks';
 import { ExtendedError } from '../errors';
+import store from '@/store';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
  * @typedef {import('../constants').ExportFormatCode} ExportFormatCode
+ * @typedef {import('@/transitional/tasks').TaskObject} TaskObject
  */
 
 /**
@@ -23,7 +25,7 @@ import { ExtendedError } from '../errors';
  * @typedef ClientActionOptions
  * @property {string} id A unique camelCase ID to identify this client action.
  * @property {string} name The human-readable name of this client action.
- * @property {new () => ClientActionRunner} [runner]
+ * @property {new () => ClientActionRunner} [Runner]
  * @property {import('@/backend/constants').BrowserFeature[]} [requiredFeatures]
  * Features this action requires that are only available in certain browsers.
  * @property {boolean} [usesLoggedInTab]
@@ -46,6 +48,22 @@ import { ExtendedError } from '../errors';
  */
 
 /**
+ * @typedef {Object} ClientActionRunnerProxy
+ * A wrapper around an instance's data in the store that makes it easier to get state and commit
+ * mutations.
+ * @property {string} id
+ * Client action runner instance ID used to retrieve an instance from the store.
+ * @property {string} actionId
+ * @property {Client} client
+ * @property {Object} config
+ * @property {number} loggedInTabId
+ * @property {TaskObject} parentTask
+ * @property {any} error
+ * @property {any} output
+ * @property {boolean} running
+ */
+
+/**
  * The part of a client action that will actually be run.
  * Each client action runner instance can have its own client, options, parent task, errors and
  * output.
@@ -53,10 +71,32 @@ import { ExtendedError } from '../errors';
  */
 export class ClientActionRunner {
   /**
-   * @param {ClientActionObject} action
+   * @param {string} id ID of runner instance in Vuex store.
    */
-  constructor(action) {
-    this.action = action;
+  constructor(id) {
+    this.id = id;
+
+    /**
+     * @type {ClientActionRunnerProxy}
+     * A wrapper around this instance's data in the store to make it easier to get state and commit
+     * mutations.
+     */
+    this.storeProxy = new Proxy({}, {
+      get: (_obj, prop) => {
+        const state = store.state.clientActions.instances[this.id];
+        if (typeof prop === 'string' && prop in state) {
+          return state[prop];
+        }
+        return undefined;
+      },
+      set: (_obj, prop, value) => {
+        store.commit('clientActions/setInstanceProperty', { id: this.id, prop, value });
+        return true;
+      },
+    });
+
+    this.storeProxy.id = this.id;
+    this.storeProxy.actionId = null;
   }
 
   /**
@@ -66,15 +106,15 @@ export class ClientActionRunner {
    * @param {Object} data.config this client action's config
    */
   init(data) {
-    this.client = data.client;
-    this.config = data.config;
-    this.loggedInTabId = null;
-    this.parentTask = null;
+    this.storeProxy.client = data.client;
+    this.storeProxy.config = data.config;
+    this.storeProxy.loggedInTabId = null;
+    this.storeProxy.parentTask = null;
 
     // Run status data
-    this.error = null;
-    this.output = null;
-    this.running = false;
+    this.storeProxy.error = null;
+    this.storeProxy.output = null;
+    this.storeProxy.running = false;
   }
 
   /**
@@ -86,7 +126,7 @@ export class ClientActionRunner {
    * @private
    */
   runInternal() {
-    this.parentTask.state = taskStates.SUCCESS;
+    this.storeProxy.parentTask.state = taskStates.SUCCESS;
   }
 
   /**
@@ -97,19 +137,19 @@ export class ClientActionRunner {
    * well as setting this runner's error if `runInternal` fails.
    * @param {Object} data
    * @param {number} data.loggedInTabId ID of the logged in tab.
-   * @param {import('@/transitional/tasks').TaskObject} data.parentTask
+   * @param {TaskObject} data.parentTask
    */
   async run(data) {
-    this.loggedInTabId = data.loggedInTabId;
-    this.parentTask = data.parentTask;
+    this.storeProxy.loggedInTabId = data.loggedInTabId;
+    this.storeProxy.parentTask = data.parentTask;
     try {
-      this.running = true;
+      this.storeProxy.running = true;
       await this.runInternal();
     } catch (error) {
-      this.error = error;
+      this.storeProxy.error = error;
       throw error;
     } finally {
-      this.running = false;
+      this.storeProxy.running = false;
     }
   }
 
@@ -121,11 +161,12 @@ export class ClientActionRunner {
    * @returns {boolean}
    */
   shouldRetry() {
-    if (this.error !== null && this.error instanceof ExtendedError) {
+    const { error, parentTask } = this.storeProxy;
+    if (error !== null && error instanceof ExtendedError) {
       // Don't retry if client's username or password is invalid or their password has expired.
       if (
-        this.error.type === 'LoginError'
-        && (this.error.code === 'PasswordExpired' || this.error.code === 'InvalidUsernameOrPassword')
+        error.type === 'LoginError'
+        && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
       ) {
         return false;
       }
@@ -133,7 +174,7 @@ export class ClientActionRunner {
 
     // TODO: Instead of checking task state, explicitly set actions as failed in their shouldRetry
     // methods.
-    if (this.error !== null || (this.parentTask && this.parentTask.state === taskStates.ERROR)) {
+    if (error !== null || (parentTask && parentTask.state === taskStates.ERROR)) {
       return true;
     }
 

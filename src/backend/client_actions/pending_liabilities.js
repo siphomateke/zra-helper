@@ -203,15 +203,19 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   },
 });
 
-GetAllPendingLiabilitiesClientAction.runner = class extends ClientActionRunner {
-  constructor() { super(GetAllPendingLiabilitiesClientAction); }
+GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
+  constructor(data) {
+    super(data);
+    this.storeProxy.actionId = GetAllPendingLiabilitiesClientAction.id;
+  }
 
   async runInternal() {
-    const taxTypeIds = this.client.taxTypes;
+    const { parentTask, client } = this.storeProxy;
+    const taxTypeIds = client.taxTypes;
 
-    this.parentTask.sequential = false;
-    this.parentTask.unknownMaxProgress = false;
-    this.parentTask.progressMax = taxTypeIds.length;
+    parentTask.sequential = false;
+    parentTask.unknownMaxProgress = false;
+    parentTask.progressMax = taxTypeIds.length;
 
     /**
      * @typedef {Object} TotalsResponses
@@ -220,7 +224,7 @@ GetAllPendingLiabilitiesClientAction.runner = class extends ClientActionRunner {
      */
     /** @type {Object.<TaxTypeNumericalCode, TotalsResponses>} */
     const responses = await parallelTaskMap({
-      task: this.parentTask,
+      task: parentTask,
       list: taxTypeIds,
       autoCalculateTaskState: false,
       mapResultsToItemKeys: true,
@@ -241,7 +245,7 @@ GetAllPendingLiabilitiesClientAction.runner = class extends ClientActionRunner {
 
     let errorCount = 0;
     let taxTypeErrorCount = 0;
-    for (const task of this.parentTask.children) {
+    for (const task of parentTask.children) {
       if (task.state === taskStates.ERROR) {
         if (task.error.type !== 'TaxTypeNotFoundError') {
           errorCount++;
@@ -251,16 +255,16 @@ GetAllPendingLiabilitiesClientAction.runner = class extends ClientActionRunner {
       }
     }
     if (errorCount > 0) {
-      this.parentTask.state = taskStates.ERROR;
+      parentTask.state = taskStates.ERROR;
     } else if (
-      this.parentTask.children.length > 0
-      && taxTypeErrorCount === this.parentTask.children.length
+      parentTask.children.length > 0
+      && taxTypeErrorCount === parentTask.children.length
     ) {
       // If all sub tasks don't have a tax type, something probably went wrong
-      this.parentTask.state = taskStates.WARNING;
-      this.parentTask.status = 'No tax types found.';
+      parentTask.state = taskStates.WARNING;
+      parentTask.status = 'No tax types found.';
     } else {
-      this.parentTask.state = taskStates.SUCCESS;
+      parentTask.state = taskStates.SUCCESS;
     }
 
     const output = {
@@ -276,7 +280,7 @@ GetAllPendingLiabilitiesClientAction.runner = class extends ClientActionRunner {
         output.retrievalErrors[taxType] = retrievalErrors;
       }
     }
-    this.output = output;
+    this.storeProxy.output = output;
   }
 };
 

@@ -13,9 +13,12 @@ import { taskFunction } from '@/backend/client_actions/utils';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('@/backend/client_actions/base').ClientActionRunner} ActionInstance
- * A single instance of a client action runner. New instances are created each run allowing
- * the outputs from each run to be stored and displayed.
+ * @typedef {import('@/backend/client_actions/base').ClientActionRunnerProxy} ActionInstanceData
+ * Data for a single instance of a client action runner. New instances are created each run allowing
+ * the outputs from each run to be stored and displayed. This actual run method is contained in a
+ * [ActionInstanceClass]{@link ActionInstanceClass} which can be retrieved from `instanceClasses`.
+ * @typedef {import('@/backend/client_actions/base').ClientActionRunner} ActionInstanceClass
+ * Single instance of a client action runner that contains the actual run method.
  * @typedef {import('@/backend/client_actions/base').ClientActionObject} ActionObject
  */
 
@@ -42,7 +45,9 @@ import { taskFunction } from '@/backend/client_actions/utils';
 /**
  * @typedef {Object} State
  * @property {Object.<string, ActionObject>} actions Client actions stored by IDs.
- * @property {Object.<string, ActionInstance>} instances
+ * @property {Object.<string, ActionInstanceData>} instances
+ * Client action runner instances' data stored by instance ID.
+ * @property {Object.<string, ActionInstanceClass>} instanceClasses
  * Client action runner instances stored by instance ID.
  * @property {ActionRun[]} runs Action runs stored by run IDs.
  * @property {number} currentRunId Which run the program is currently on.
@@ -71,12 +76,14 @@ const module = {
   state: {
     actions: {},
     instances: {},
+    instanceClasses: {},
     runs: [],
     currentRunId: null,
   },
   getters: {
     getActionById: state => id => state.actions[id],
     getInstanceById: state => id => state.instances[id],
+    getInstanceClassById: state => id => state.instanceClasses[id],
     getRunById: state => id => state.runs[id],
     currentRun: state => state.runs[state.currentRunId],
     /**
@@ -147,12 +154,14 @@ const module = {
       if (currentRun) {
         for (const instanceIds of Object.values(currentRun.instancesByActionId)) {
           for (const instanceId of instanceIds) {
-            /** @type {ActionInstance} */
+            /** @type {ActionInstanceData} */
             const instance = getters.getInstanceById(instanceId);
-            if (instance.shouldRetry()) {
+            /** @type {ActionInstanceClass} */
+            const instanceClass = getters.getInstanceClassById(instanceId);
+            if (instanceClass.shouldRetry()) {
               failures.push({
                 clientId: instance.client.id,
-                actionId: instance.action.id,
+                actionId: instance.actionId,
                 error: instance.error,
               });
             }
@@ -193,7 +202,7 @@ const module = {
       if (currentRun) {
         const instanceIds = currentRun.instancesByActionId[actionId];
         for (const instanceId of instanceIds) {
-          /** @type {ActionInstance} */
+          /** @type {ActionInstanceData} */
           const instance = getters.getInstanceById(instanceId);
           // TODO: Don't add so much to the output
           outputs[instance.client.id] = {
@@ -239,22 +248,57 @@ const module = {
     },
     /**
      * Adds a newly created action runner instance to the current run.
-     * @param {ActionInstance} instance
+     * @param {State} state
+     * @param {Object} payload
+     * @param {string} payload.instanceId
+     * TODO: Find a better way to keep this constructor in sync with the actual runner constructor.
+     * @param {new (id) => ActionInstanceClass} payload.Runner
+     * @param {Client} payload.client
+     * @param {Object} payload.config
      */
-    addNewInstance(state, instance) {
-      // Generate a unique instance ID and add instance to the store under that ID.
-      const instanceId = String(lastInstanceId);
-      lastInstanceId++;
-      state.instances[instanceId] = instance;
-      Vue.set(state.instances, instanceId, instance);
+    addNewInstance(state, {
+      instanceId,
+      Runner,
+      client,
+      config,
+    }) {
+      // Create a place to store this instances' data.
+      Vue.set(state.instances, instanceId, {});
+
+      // Actually create the instance and store the class whose methods will be called.
+      const instanceClass = new Runner(instanceId);
+      Vue.set(state.instanceClasses, instanceId, instanceClass);
+
+      // Initialize the instance's data.
+      instanceClass.init({ client, config });
 
       // Add the instance to the current run.
       const currentRun = state.runs[state.currentRunId];
-      const actionId = instance.action.id;
+      const { actionId } = state.instances[instanceId];
       if (!(actionId in currentRun.instancesByActionId)) {
         Vue.set(currentRun.instancesByActionId, actionId, []);
       }
       currentRun.instancesByActionId[actionId].push(instanceId);
+    },
+    /**
+     * Changes a client action runner instance's data.
+     * Used in ClientActionRunners to proxy the store.
+     * @param {Object} payload
+     * @param {string} payload.id ID of the instance.
+     * @param {string} payload.prop Property to change.
+     * @param {any} payload.value New value of the property.
+     */
+    setInstanceProperty(state, { id, prop, value }) {
+      Vue.set(state.instances[id], prop, value);
+    },
+    /**
+     * Sets a client action runner instance's error.
+     * @param {Object} payload
+     * @param {string} payload.id ID of the instance.
+     * @param {any} payload.error
+     */
+    setInstanceError(state, { id, error }) {
+      Vue.set(state.instances[id], 'error', error);
     },
   },
   actions: {
@@ -267,25 +311,48 @@ const module = {
       commit('add', payload);
     },
     /**
+     * Creates a new client action runner instance.
+     * @param {VuexActionContext} context
+     * @param {Object} payload
+     * @param {ActionObject} payload.action
+     * @param {Client} payload.client
+     * @returns {Promise.<string>} The ID of the newly created instance.
+     */
+    async addNewInstance({ commit, rootState }, { action, client }) {
+      const instanceId = String(lastInstanceId);
+      lastInstanceId++;
+
+      const clientActionConfig = rootState.config.actions[action.id];
+      commit('addNewInstance', {
+        instanceId,
+        Runner: action.Runner,
+        client,
+        config: clientActionConfig,
+      });
+      return instanceId;
+    },
+    /**
      * Runs an action on a single client.
      * @param {VuexActionContext} context
      * @param {Object} payload
-     * @param {ActionInstance} payload.instance
+     * @param {string} payload.instanceId
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
-    async runActionOnClient(_context, {
-      instance,
+    async runActionOnClient({ commit, getters }, {
+      instanceId,
       client,
       mainTask,
       isSingleAction,
       loggedInTabId,
     }) {
+      /** @type {ActionInstanceData} */
+      const instance = getters.getInstanceById(instanceId);
       /** @type {ActionObject} */
-      const clientAction = instance.action;
+      const clientAction = getters.getActionById(instance.actionId);
 
       const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
       let taskHasError = false;
@@ -297,7 +364,9 @@ const module = {
             if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
               log.setCategory(clientAction.logCategory);
 
-              await instance.run({
+              /** @type {ActionInstanceClass} */
+              const instanceClass = getters.getInstanceClassById(instanceId);
+              await instanceClass.run({
                 parentTask: task,
                 loggedInTabId,
               });
@@ -320,7 +389,7 @@ const module = {
         } else {
           taskHasError = true;
         }
-        instance.error = error;
+        commit('setInstanceError', { id: instanceId, error });
       } finally {
         if (taskHasError) {
           if (isSingleAction) {
@@ -371,15 +440,8 @@ const module = {
       const actions = actionIds.map(id => getters.getActionById(id));
 
       // Initialize all client action runner instances.
-      const instances = [];
-      for (const action of actions) {
-        const ClientActionRunner = action.runner;
-        const instance = new ClientActionRunner();
-        const clientActionConfig = rootState.config.actions[action.id];
-        instance.init({ client, config: clientActionConfig });
-        commit('addNewInstance', instance);
-        instances.push(instance);
-      }
+      const promises = actions.map(action => dispatch('addNewInstance', { action, client }));
+      const instanceIds = await Promise.all(promises);
 
       let loggedInTabId = null;
       let loggedOut = false;
@@ -448,9 +510,9 @@ const module = {
                   mainTask.status = singleAction.name;
                 }
                 const promises = [];
-                for (const instance of instances) {
+                for (const instanceId of instanceIds) {
                   promises.push(dispatch('runActionOnClient', {
-                    instance,
+                    instanceId,
                     client,
                     mainTask,
                     isSingleAction,
@@ -459,8 +521,8 @@ const module = {
                 }
                 await Promise.all(promises);
               } catch (error) {
-                for (const instance of instances) {
-                  instance.error = error;
+                for (const instanceId of instanceIds) {
+                  commit('setInstanceError', { id: instanceId, error });
                 }
                 throw error;
               }
