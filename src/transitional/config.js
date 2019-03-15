@@ -2,7 +2,9 @@ import store from '@/store';
 
 const { config } = store.state;
 
-// TODO: Document me
+/**
+ * @type {import('@/store/modules/config').State}
+ */
 const configHelper = new Proxy({}, {
   get(obj, prop) {
     return config[prop];

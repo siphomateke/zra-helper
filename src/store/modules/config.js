@@ -1,51 +1,85 @@
 import { deepClone, deepReactiveClone } from '@/utils';
 
-/* eslint-disable max-len */
+/**
+ * @typedef {Object} State
+ *
+ * @property {Object} debug
+ * @property {boolean} debug.devtools
+ * Whether the app should communicate with devtools. Extension must be reloaded for this to take
+ * effect.
+ * @property {boolean} debug.logToConsole
+ * Show all user-side logs in the console.
+ * @property {boolean} debug.errors
+ * Show detailed information about errors if available.
+ * @property {boolean} debug.progressBars
+ * Show raw progress bar values such as current value and max value.
+ * Additionally keeps progress bars visible even after they are complete.
+ * @property {boolean} debug.sendConfigToContentScripts
+ * Whether these settings should be sent to content scripts.
+ * This will be removed if we ever need the config in the content scripts for more than debugging.
+ * @property {boolean} debug.missingElementInfo
+ * Wether to collect extra information about missing elements.
+
+ * @property {number} tabLoadTimeout
+ * The amount of time to wait for a tab to load (in milliseconds).
+ * @property {number} maxOpenTabs
+ * The maximum number of tabs that can be opened. Set to 0 to disable.
+ * @property {number} tabOpenDelay
+ * The time to wait after creating a tab before creating another one (in milliseconds).
+ * @property {number} maxLoginAttempts
+ * The maximum number of times an attempt should be made to login to a client.
+ * @property {boolean} sendNotifications
+ * Whether to send a notification when all running tasks have completed.
+ * @property {boolean} promptRetryActions
+ * Whether to show a prompt to retry actions that encountered errors when all running tasks have
+ * completed.
+ * @property {boolean} zraLiteMode
+ * If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to
+ * increase performance. This means that while the extension is running, the ZRA website may not
+ * be usable.
+ *
+ * @property {Object} actions
+ * @property {Object} actions.getAcknowledgementsOfReturns
+ * @property {number} actions.getAcknowledgementsOfReturns.maxOpenTabsWhenDownloading
+ * The maximum number of tabs that can be opened when downloading return receipts.
+ * @property {Object} actions.getPaymentReceipts
+ * @property {number} actions.getPaymentReceipts.maxOpenTabsWhenDownloading
+ * The maximum number of tabs that can be opened when downloading payment receipts.
+ *
+ * @property {Object} log
+ * @property {boolean} log.showDateInTimestamp
+ *
+ * @property {Object} export
+ * @property {boolean} export.showSaveAsDialog
+ * Whether 'save as' dialogs should be shown when exporting various things in formats such as CSV
+ * and JSON.
+ * @property {boolean} export.removeMhtmlExtension
+ * Removes the .mhtml file extension from all downloaded receipts.
+ * Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.
+ */
+
+/** @type {State} */
 const defaultConfig = {
   debug: {
-    /** Whether the app should communicate with devtools. Extension must be reloaded for this to take effect. */
     devtools: false,
-    /** Show all user-side logs in the console. */
     logToConsole: false,
-    /** Show detailed information about errors if available. */
     errors: true,
-    /**
-     * Show raw progress bar values such as current value and max value.
-     * Additionally keeps progress bars visible even after they are complete.
-     */
     progressBars: false,
-    /**
-     * Whether these settings should be sent to content scripts.
-     * This will be removed if we ever need the config in the content scripts for more than debugging.
-     */
     sendConfigToContentScripts: true,
-    /** Wether to collect extra information about missing elements. */
     missingElementInfo: true,
   },
-  /** The amount of time to wait for a tab to load (in milliseconds). */
   tabLoadTimeout: 20000,
-  /** The maximum number of tabs that can be opened. Set to 0 to disable. */
   maxOpenTabs: 8,
-  /** The time to wait after creating a tab before creating another one (in milliseconds). */
   tabOpenDelay: 0,
-  /** The maximum number of times an attempt should be made to login to a client.  */
   maxLoginAttempts: 3,
-  /** Whether to send a notification when all running tasks have completed. */
   sendNotifications: true,
-  /** Whether to show a prompt to retry actions that encountered errors when all running tasks have completed. */
   promptRetryActions: true,
-  /**
-   * If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance.
-   * This means that while the extension is running, the ZRA website may not be usable.
-   */
   zraLiteMode: true,
   actions: {
     getAcknowledgementsOfReturns: {
-      /** The maximum number of tabs that can be opened when downloading return receipts. */
       maxOpenTabsWhenDownloading: 3,
     },
     getPaymentReceipts: {
-      /** The maximum number of tabs that can be opened when downloading payment receipts. */
       maxOpenTabsWhenDownloading: 3,
     },
   },
@@ -53,18 +87,12 @@ const defaultConfig = {
     showDateInTimestamp: true,
   },
   export: {
-    /** Whether 'save as' dialogs should be shown when exporting various things in formats such as CSV and JSON. */
     showSaveAsDialog: true,
-    /**
-     * Removes the .mhtml file extension from all downloaded receipts.
-     * Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.
-     */
     removeMhtmlExtension: true,
   },
 };
-/* eslint-enable max-len */
 
-/** @type {import('vuex').Module} */
+/** @type {import('vuex').Module<State>} */
 const module = {
   namespaced: true,
   state: deepClone(defaultConfig),
