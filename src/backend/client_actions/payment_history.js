@@ -2,7 +2,10 @@ import moment from 'moment';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  taskFunction, downloadPages, downloadPage,
+  taskFunction,
+  downloadPages,
+  downloadPage,
+  getQuarterFromPeriod,
 } from './utils';
 import {
   startDownloadingReceipts,
@@ -142,28 +145,6 @@ function paymentsDifferent(payment1, payment2) {
     }
   }
   return anyDifferent;
-}
-
-/**
- * Gets the quarter number from a period.
- * @param {string} from The month the period started. E.g. '01'
- * @param {string} to The month the period ended.E.g. '03'
- */
-function getQuarterFromPeriod(from, to) {
-  const quarterMap = [
-    ['01', '03'],
-    ['04', '06'],
-    ['07', '09'],
-    ['10', '12'],
-  ];
-  let quarter = null;
-  for (let i = 0; i < quarterMap.length; i++) {
-    if (from === quarterMap[i][0] && to === quarterMap[i][1]) {
-      quarter = i + 1;
-      break;
-    }
-  }
-  return quarter;
 }
 
 /**
