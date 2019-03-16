@@ -1,9 +1,9 @@
 <template>
   <div class="client-action-output">
     <div class="field">
+      <label class="label">{{ action.name }} output</label>
       <template v-if="!loading">
         <div v-if="defaultOutput">
-          <label class="label">{{ action.name }} output</label>
           <div class="control client-action-output-control">
             <textarea
               :value="defaultOutput"
@@ -22,14 +22,14 @@
           v-else
           class="bordered-section"
         >
-          <EmptyMessage message="Nothing has been outputted yet"/>
+          <EmptyMessage message="Output is empty"/>
         </div>
       </template>
       <div
         v-else
         class="bordered-section"
       >
-        <LoadingMessage message="Getting outputs"/>
+        <LoadingMessage message="Getting output"/>
       </div>
     </div>
   </div>
@@ -39,7 +39,7 @@
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
-import { mapState } from 'vuex';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'ClientActionOutput',
@@ -49,17 +49,13 @@ export default {
     LoadingMessage,
   },
   props: {
+    runId: {
+      type: Number,
+      required: true,
+    },
     actionId: {
       type: String,
       default: '',
-    },
-    clients: {
-      type: Object,
-      default: () => {},
-    },
-    loading: {
-      type: Boolean,
-      default: false,
     },
   },
   data() {
@@ -69,11 +65,24 @@ export default {
     };
   },
   computed: {
-    ...mapState('clientActions', {
-      allActions: 'actions',
-    }),
+    ...mapGetters('clientActions', [
+      'getActionById',
+      'getInstanceById',
+      'getOutputsOfAction',
+      'actionHasOutput',
+    ]),
+    /** @returns {import('@/store/modules/client_actions').ActionRun} */
+    run() {
+      return this.$store.state.clientActions.runs[this.runId];
+    },
+    loading() {
+      return this.run.running && !this.actionHasOutput(this.runId, this.actionId);
+    },
+    clients() {
+      return this.run.clients;
+    },
     action() {
-      return this.allActions[this.actionId];
+      return this.getActionById(this.actionId);
     },
     defaultFormat() {
       return this.action.defaultOutputFormat;
@@ -108,7 +117,7 @@ export default {
      * @returns {import('@/store/modules/client_actions').ClientActionOutputs}
      */
     getClientOutputs() {
-      this.clientOutputs = this.$store.getters['clientActions/getOutputsOfAction'](this.actionId);
+      this.clientOutputs = this.getOutputsOfAction(this.runId, this.actionId);
     },
     /**
      * Gets a client that has a certain ID.

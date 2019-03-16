@@ -80,17 +80,23 @@
       </div>
     </section>
     <section
-      v-if="clientActionsWithOutputs.length > 0"
+      v-if="runs.length > 0"
       class="dashboard-section"
     >
       <h3 class="title is-4">Outputs</h3>
-      <ClientActionOutput
-        v-for="actionId in clientActionsWithOutputs"
-        :key="actionId"
-        :action-id="actionId"
-        :clients="clientsObj"
-        :loading="clientActionsRunning"
-      />
+      <div
+        v-for="(run, runId) in runs"
+        :key="runId">
+        <h4
+          v-if="runs.length > 1"
+          class="title is-5">Run {{ runId + 1 }}</h4>
+        <ClientActionOutput
+          v-for="actionId in actionsWithOutputsInRun(run)"
+          :key="actionId"
+          :run-id="runId"
+          :action-id="actionId"
+        />
+      </div>
     </section>
 
     <ClientListModal
@@ -168,10 +174,14 @@ export default {
   computed: {
     ...mapState({
       tasks: state => state.tasks.all,
-      clientActionsObject: state => state.clientActions.actions,
       clientsObj: state => state.clients.all,
     }),
     ...mapState(['zraLiteModeEnabled']),
+    ...mapState('clientActions', {
+      clientActionsObject: 'actions',
+      runs: 'runs',
+      instancesByActionId: 'instancesByActionId',
+    }),
     ...mapGetters('clients', ['getClientById']),
     ...mapGetters('clientActions', {
       anyRetryableFailures: 'anyRetryableFailures',
@@ -191,9 +201,6 @@ export default {
         }
       }
       return valid;
-    },
-    clientActionsWithOutputs() {
-      return this.selectedClientActions.filter(id => this.clientActionsObject[id].hasOutput);
     },
     noActionsSelected() {
       return this.selectedClientActions.length === 0;
@@ -260,6 +267,10 @@ export default {
     },
     showFailures() {
       this.failuresModalVisible = true;
+    },
+    actionsWithOutputsInRun(run) {
+      const actionIds = Object.keys(run.instancesByActionId);
+      return actionIds.filter(id => this.clientActionsObject[id].hasOutput);
     },
   },
 };

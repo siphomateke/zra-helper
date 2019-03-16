@@ -30,6 +30,7 @@ import { taskFunction } from '@/backend/client_actions/utils';
  * it easier to combine all outputs from all clients of a single action into a single output.
  * @property {number} taskId The ID of the task associated with this run.
  * @property {boolean} running Whether the run is still in progress or has completed.
+ * @property {Client[]} clients
  */
 
 /**
@@ -144,6 +145,27 @@ const module = {
       return false;
     },
     /**
+     * Checks whether all instances of a particular action in a run have outputs.
+     * @returns {(runId: string, actionId: string) => boolean}
+     */
+    actionHasOutput: (_state, getters) => (runId, actionId) => {
+      const run = getters.getRunById(runId);
+      if (run) {
+        const instanceIds = run.instancesByActionId[actionId];
+        if (instanceIds.length > 0) {
+          for (const instanceId of instanceIds) {
+            /** @type {ActionInstanceData} */
+            const instance = getters.getInstanceById(instanceId);
+            if (!instance.output) {
+              return false;
+            }
+          }
+          return true;
+        }
+      }
+      return false;
+    },
+    /**
      * Gets all the action instances that should be retried.
      * @returns {ClientActionFailure[]}
      */
@@ -192,15 +214,15 @@ const module = {
     /**
      * Gets the outputs of all client action runner instances whose action IDs match the one
      * specified.
-     * @returns {(actionId: string) => ClientActionOutputs}
+     * @returns {(runId: string, actionId: string) => ClientActionOutputs}
      */
-    getOutputsOfAction: (_state, getters) => (actionId) => {
+    getOutputsOfAction: (_state, getters) => (runId, actionId) => {
       /** @type {ClientActionOutputs} */
       const outputs = {};
-      /** @type {{ currentRun: ActionRun }} */
-      const { currentRun } = getters;
-      if (currentRun) {
-        const instanceIds = currentRun.instancesByActionId[actionId];
+      /** @type {ActionRun} */
+      const run = getters.getRunById(runId);
+      if (run) {
+        const instanceIds = run.instancesByActionId[actionId];
         for (const instanceId of instanceIds) {
           /** @type {ActionInstanceData} */
           const instance = getters.getInstanceById(instanceId);
@@ -229,12 +251,14 @@ const module = {
      * @see {@link ActionRun}
      * @param {Object} payload
      * @param {number} payload.taskId ID of the task associated with this run.
+     * @param {Client[]} payload.clients
      */
-    startNewRun(state, { taskId }) {
+    startNewRun(state, { taskId, clients }) {
       const runsLength = state.runs.push({
         instancesByActionId: {},
         taskId,
         running: true,
+        clients,
       });
       const runId = runsLength - 1;
       state.currentRunId = runId;
@@ -598,7 +622,7 @@ const module = {
           isRoot: true,
         });
 
-        commit('startNewRun', { taskId: rootTask.id });
+        commit('startNewRun', { taskId: rootTask.id, clients });
         try {
           await taskFunction({
             task: rootTask,
