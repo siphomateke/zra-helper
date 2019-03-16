@@ -226,7 +226,7 @@ const module = {
       for (const failure of getters.retryableFailures) {
         const { clientId } = failure;
         if (!(clientId in clientFailures)) {
-          Vue.set(clientFailures, clientId, []);
+          clientFailures[clientId] = [];
         }
         clientFailures[clientId].push(failure);
       }
