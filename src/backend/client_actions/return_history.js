@@ -142,7 +142,7 @@ async function getAllAcknowledgementReceiptsReferenceNumbers({
   });
 
   const referenceNumbers = [];
-  for (const result of results) {
+  for (const result of Object.values(results)) {
     for (const record of result.records) {
       if (record.appliedThrough.toLowerCase() === 'online') {
         referenceNumbers.push(record.referenceNo);

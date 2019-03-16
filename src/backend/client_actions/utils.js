@@ -310,8 +310,8 @@ export async function getDataFromPageTask({
  * A function that when given a page number will return the data from that page including the total
  * number of pages.
  * @param {number} [options.firstPage] The index of the first page.
+ * @returns {Object.<number, any>} Results of the getDataFunction mapped to pages.
  */
-// TODO: Use me in more places such has payment history
 export function getPagedData({
   task,
   getPageSubTask,
@@ -328,7 +328,7 @@ export function getPagedData({
         firstPage,
       };
 
-      const allResults = [];
+      const allResults = {};
 
       // Get data from the first page so we know the total number of pages
       // NOTE: The settings set by parallel task map aren't set when this runs
@@ -336,12 +336,13 @@ export function getPagedData({
         page: 0,
         parentTaskId: task.id,
       }, options));
-      allResults.push(result);
+      allResults[firstPage] = result;
 
       // Then get the rest of the pages in parallel
       const results = await parallelTaskMap({
         startIndex: 1,
         count: result.numPages,
+        mapResultsToItemKeys: true,
         task,
         func(page, parentTaskId) {
           return getDataFromPageTask(Object.assign({
@@ -350,7 +351,10 @@ export function getPagedData({
           }, options));
         },
       });
-      allResults.push(...results);
+      for (const page of Object.keys(results)) {
+        const actualPage = Number(page) + firstPage;
+        allResults[actualPage] = results[page];
+      }
 
       return allResults;
     },
