@@ -635,6 +635,7 @@ const module = {
         });
 
         commit('startNewRun', { taskId: rootTask.id, clients });
+        rootTask.title += ` #${state.currentRunId + 1}`;
         try {
           await taskFunction({
             task: rootTask,
