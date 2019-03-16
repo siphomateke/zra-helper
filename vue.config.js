@@ -21,10 +21,6 @@ addContentScripts('pages');
 
 const copy = [
   {
-    from: 'node_modules/ocrad.js/ocrad.js',
-    to: 'vendor',
-  },
-  {
     from: 'LICENSE.txt',
     to: '',
   },
@@ -39,6 +35,12 @@ const browser = process.env.BROWSER ? process.env.BROWSER : 'chrome';
 module.exports = {
   lintOnSave: false,
   productionSourceMap: false,
+  configureWebpack: {
+    node: {
+      // OCRAD.js expects global to be defined.
+      global: true,
+    },
+  },
   chainWebpack: (config) => {
     config
       .plugin('copy')

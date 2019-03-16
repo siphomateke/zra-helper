@@ -11,9 +11,6 @@ browser.browserAction.onClicked.addListener(() => {
 
 /** Resource URLs that should never be blocked from loading when in lite mode. */
 const blacklist = [
-  // Required to submit login form
-  'https://www.zra.org.zm/pages/common/scripts/mainLayout.js',
-
   // Required to generate login captcha
   'https://www.zra.org.zm/GenerateCaptchaServlet.do',
 

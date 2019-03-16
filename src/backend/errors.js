@@ -138,6 +138,17 @@ export class LoginError extends ExtendedError {
     this.setType('LoginError');
   }
 }
+export class LogoutError extends ExtendedError {
+  /**
+   * @param {Object} props
+   * @param {string} [props.html]
+   * HTML of logout page where the 'logged out successfully message should have been'.
+   */
+  constructor(message, code = null, props = { html: null }) {
+    super(message, code, props);
+    this.setType('LogoutError');
+  }
+}
 
 export class TabError extends ExtendedError {
   /**
