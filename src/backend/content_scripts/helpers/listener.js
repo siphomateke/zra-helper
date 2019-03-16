@@ -10,8 +10,11 @@ import { errorToJson } from '@/backend/errors';
  * Adds a message listener that only runs when a partiular message is received.
  * Additionally sends back any errors (as JSON) that occur when running the listener.
  * @param {ContentScriptListener} handler
+ * @param {boolean} [getConfig]
+ * Whether to resolve the receive config request with an empty object.
+ * The config should be explicitly retrieved using `getConfig()` if this is false.
  */
-export default function addContentScriptListener(command, handler) {
+export default function addContentScriptListener(command, handler, getConfig = false) {
   /**
    * @param {Object} message
    * @param {string} message.command
@@ -27,6 +30,9 @@ export default function addContentScriptListener(command, handler) {
         }).catch((error) => {
           resolve({ error: errorToJson(error) });
         });
+      }
+      if (getConfig && message.command === 'receive_config') {
+        resolve({});
       }
     });
   }
