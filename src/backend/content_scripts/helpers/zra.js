@@ -96,7 +96,7 @@ export function parseTable({
  * Selector of the element that contains information about the table such as the current page.
  * @param {string} options.recordSelector
  * Selector of a single table data row. This shouldn't match header rows.
- * @param {string} options.noRecordsString String that will exist when there are no records
+ * @param {string} [options.noRecordsString] String that will exist when there are no records
  * @param {boolean} [options.parseLinks]
  * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
  * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
@@ -116,7 +116,7 @@ export async function parseTableAdvanced({
   let numPages = 0;
   let records = [];
   if (!tableInfo.includes(noRecordsString)) {
-    const tableInfoMatches = tableInfo.match(/Current Page : (\d+) \/ (\d+)/);
+    const tableInfoMatches = tableInfo.match(/Current Page : (\d+)\s*\/\s*(\d+)/);
     currentPage = Number(tableInfoMatches[1]);
     numPages = Number(tableInfoMatches[2]);
     records = parseTable({

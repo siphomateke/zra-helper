@@ -521,7 +521,6 @@ const module = {
                     await dispatch('clients/getTaxAccounts', {
                       id: client.id,
                       parentTaskId: mainTask.id,
-                      loggedInTabId,
                     }, { root: true });
                   } catch (error) {
                     // if all actions require tax types

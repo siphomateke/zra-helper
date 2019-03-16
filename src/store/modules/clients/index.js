@@ -70,13 +70,13 @@ const module = {
      * @param {Object} payload
      * @param {number} payload.id ID of the client
      * @param {number} payload.parentTaskId
-     * @param {number} payload.loggedInTabId
      * ID of a logged in tab to use to navigate to the tax payer profile.
+     * @returns {Promise.<import('@/backend/client_actions/utils').TaxAccount[]>}
      */
-    async getTaxAccounts({ commit, getters }, { id, parentTaskId, loggedInTabId }) {
+    async getTaxAccounts({ commit, getters }, { id, parentTaskId }) {
       const client = getters.getClientById(id);
       if (!client.taxAccounts) {
-        const taxAccounts = await getTaxAccounts({ store, parentTaskId, loggedInTabId });
+        const taxAccounts = await getTaxAccounts({ store, parentTaskId, tpin: client.username });
         commit('setTaxAccounts', { id, value: taxAccounts });
 
         const registeredTaxAccounts = taxAccounts.filter(account => account.status === 'registered');

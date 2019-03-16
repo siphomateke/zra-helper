@@ -160,7 +160,7 @@ async function getAllPaymentReceiptNumbers(options, parentTaskId) {
   });
 
   const records = [];
-  for (const result of results) {
+  for (const result of Object.values(results)) {
     if (result.records.length > 0) {
       // Remove header rows
       result.records.shift();
