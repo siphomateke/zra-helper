@@ -30,6 +30,7 @@ import { taskFunction } from '@/backend/client_actions/utils';
  * it easier to combine all outputs from all clients of a single action into a single output.
  * @property {number} taskId The ID of the task associated with this run.
  * @property {boolean} running Whether the run is still in progress or has completed.
+ * @property {Client[]} clients
  */
 
 /**
@@ -69,6 +70,32 @@ import { taskFunction } from '@/backend/client_actions/utils';
  */
 
 let lastInstanceId = 0;
+
+/**
+ * Creates a new client action runner instance.
+ * @param {VuexActionContext} context
+ * @param {Object} payload
+ * @param {string} payload.actionId
+ * @param {Client} payload.client
+ *
+ * @returns {string} The ID of the newly created instance.
+ */
+function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
+  const instanceId = String(lastInstanceId);
+  lastInstanceId++;
+
+  /** @type {ActionObject} */
+  const action = getters.getActionById(actionId);
+  const clientActionConfig = rootState.config.actions[action.id];
+  commit('addNewInstance', {
+    instanceId,
+    Runner: action.Runner,
+    client,
+    config: clientActionConfig,
+  });
+
+  return instanceId;
+}
 
 /** @type {import('vuex').Module<State>} */
 const module = {
@@ -144,6 +171,27 @@ const module = {
       return false;
     },
     /**
+     * Checks whether all instances of a particular action in a run have outputs.
+     * @returns {(runId: string, actionId: string) => boolean}
+     */
+    actionHasOutput: (_state, getters) => (runId, actionId) => {
+      const run = getters.getRunById(runId);
+      if (run) {
+        const instanceIds = run.instancesByActionId[actionId];
+        if (instanceIds.length > 0) {
+          for (const instanceId of instanceIds) {
+            /** @type {ActionInstanceData} */
+            const instance = getters.getInstanceById(instanceId);
+            if (!instance.output) {
+              return false;
+            }
+          }
+          return true;
+        }
+      }
+      return false;
+    },
+    /**
      * Gets all the action instances that should be retried.
      * @returns {ClientActionFailure[]}
      */
@@ -192,15 +240,15 @@ const module = {
     /**
      * Gets the outputs of all client action runner instances whose action IDs match the one
      * specified.
-     * @returns {(actionId: string) => ClientActionOutputs}
+     * @returns {(runId: string, actionId: string) => ClientActionOutputs}
      */
-    getOutputsOfAction: (_state, getters) => (actionId) => {
+    getOutputsOfAction: (_state, getters) => (runId, actionId) => {
       /** @type {ClientActionOutputs} */
       const outputs = {};
-      /** @type {{ currentRun: ActionRun }} */
-      const { currentRun } = getters;
-      if (currentRun) {
-        const instanceIds = currentRun.instancesByActionId[actionId];
+      /** @type {ActionRun} */
+      const run = getters.getRunById(runId);
+      if (run) {
+        const instanceIds = run.instancesByActionId[actionId];
         for (const instanceId of instanceIds) {
           /** @type {ActionInstanceData} */
           const instance = getters.getInstanceById(instanceId);
@@ -229,12 +277,14 @@ const module = {
      * @see {@link ActionRun}
      * @param {Object} payload
      * @param {number} payload.taskId ID of the task associated with this run.
+     * @param {Client[]} payload.clients
      */
-    startNewRun(state, { taskId }) {
+    startNewRun(state, { taskId, clients }) {
       const runsLength = state.runs.push({
         instancesByActionId: {},
         taskId,
         running: true,
+        clients,
       });
       const runId = runsLength - 1;
       state.currentRunId = runId;
@@ -309,27 +359,6 @@ const module = {
      */
     async add({ commit }, payload) {
       commit('add', payload);
-    },
-    /**
-     * Creates a new client action runner instance.
-     * @param {VuexActionContext} context
-     * @param {Object} payload
-     * @param {ActionObject} payload.action
-     * @param {Client} payload.client
-     * @returns {Promise.<string>} The ID of the newly created instance.
-     */
-    async addNewInstance({ commit, rootState }, { action, client }) {
-      const instanceId = String(lastInstanceId);
-      lastInstanceId++;
-
-      const clientActionConfig = rootState.config.actions[action.id];
-      commit('addNewInstance', {
-        instanceId,
-        Runner: action.Runner,
-        client,
-        config: clientActionConfig,
-      });
-      return instanceId;
     },
     /**
      * Runs an action on a single client.
@@ -409,6 +438,7 @@ const module = {
      * @param {Object} payload
      * @param {Client} payload.client
      * @param {string[]} payload.actionIds
+     * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
      */
     async runActionsOnClient({
@@ -416,7 +446,12 @@ const module = {
       commit,
       getters,
       dispatch,
-    }, { client, actionIds, parentTaskId }) {
+    }, {
+      client,
+      actionIds,
+      instanceIds,
+      parentTaskId,
+    }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
 
@@ -438,10 +473,6 @@ const module = {
 
       /** @type {ActionObject[]} */
       const actions = actionIds.map(id => getters.getActionById(id));
-
-      // Initialize all client action runner instances.
-      const promises = actions.map(action => dispatch('addNewInstance', { action, client }));
-      const instanceIds = await Promise.all(promises);
 
       let loggedInTabId = null;
       let loggedOut = false;
@@ -560,7 +591,7 @@ const module = {
     /**
      * @callback GetClientsActionIds Gets the IDs of the actions to run on a client.
      * @param {Client} client
-     * @return {number[]} The IDs of the actions
+     * @return {string[]} The IDs of the actions
      */
     /**
      * Main program that runs actions on clients. The actions to run are decided on a per-client
@@ -574,16 +605,18 @@ const module = {
      * @param {GetClientsActionIds} payload.getClientsActionIds
      * Function that decides the actions to run on each client.
      */
-    async run({
-      state,
-      rootState,
-      rootGetters,
-      commit,
-      dispatch,
-    }, {
+    async run(context, {
       clientIds,
       getClientsActionIds,
     }) {
+      const {
+        state,
+        rootState,
+        rootGetters,
+        commit,
+        dispatch,
+      } = context;
+
       const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       if (clients.length > 0) {
         if (rootState.config.zraLiteMode) {
@@ -598,20 +631,39 @@ const module = {
           isRoot: true,
         });
 
-        commit('startNewRun', { taskId: rootTask.id });
+        commit('startNewRun', { taskId: rootTask.id, clients });
         try {
           await taskFunction({
             task: rootTask,
             catchErrors: true,
             setStateBasedOnChildren: true,
             async func() {
-              /* eslint-disable no-await-in-loop */
+              const allInstanceIds = [];
+              const clientActionIds = [];
               for (const client of clients) {
+                const actionIds = getClientsActionIds(client);
+                clientActionIds.push(actionIds);
+
+                // Initialize all client action runner instances.
+                const instanceIds = actionIds.map(
+                  actionId => addNewInstance(context, { actionId, client }),
+                );
+                allInstanceIds.push(instanceIds);
+              }
+              /* eslint-disable no-await-in-loop */
+              for (let i = 0; i < clients.length; i++) {
+                const client = clients[i];
+                const instanceIds = allInstanceIds[i];
                 rootTask.status = client.name;
                 // TODO: Consider checking if a tab has been closed prematurely all the time.
                 // Currently, only tabLoaded checks for this.
-                const actionIds = getClientsActionIds(client);
-                await dispatch('runActionsOnClient', { client, actionIds, parentTaskId: rootTask.id });
+                const actionIds = clientActionIds[i];
+                await dispatch('runActionsOnClient', {
+                  client,
+                  actionIds,
+                  instanceIds,
+                  parentTaskId: rootTask.id,
+                });
               }
               /* eslint-enable no-await-in-loop */
             },
