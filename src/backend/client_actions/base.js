@@ -1,7 +1,7 @@
 import { exportFormatCodes } from '@/backend/constants';
 import { objectHasProperties, joinSpecialLast } from '@/utils';
 import { taskStates } from '@/store/modules/tasks';
-import { ExtendedError } from '../errors';
+import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
 
 /**
@@ -58,6 +58,8 @@ import store from '@/store';
  * @property {Object} config
  * @property {number} loggedInTabId
  * @property {TaskObject} parentTask
+ * @property {string} retryReason The reason why this instance should be retried.
+ * @property {boolean} shouldRetry Whether this instance should be retried.
  * @property {any} error
  * @property {any} output
  * @property {boolean} running
@@ -115,6 +117,8 @@ export class ClientActionRunner {
     this.storeProxy.error = null;
     this.storeProxy.output = null;
     this.storeProxy.running = false;
+    this.storeProxy.shouldRetry = null;
+    this.storeProxy.retryReason = null;
   }
 
   /**
@@ -154,31 +158,39 @@ export class ClientActionRunner {
   }
 
   /**
-   * Function called after the runner has finished running that should decide whether the runner
-   * failed and should be run again.
-   *
-   * Can be overwritten by runners for more advanced behavior.
-   * @returns {boolean}
+   * Called after this runner has finished running to decide whether it failed in some way and
+   * should be run again.
    */
-  shouldRetry() {
-    const { error, parentTask } = this.storeProxy;
-    if (error !== null && error instanceof ExtendedError) {
-      // Don't retry if client's username or password is invalid or their password has expired.
-      if (
-        error.type === 'LoginError'
-        && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
-      ) {
-        return false;
+  checkIfShouldRetry() {
+    // Don't override any retry reasons that have already been given.
+    if (this.storeProxy.shouldRetry === null) {
+      const { error } = this.storeProxy;
+      if (error !== null) {
+        // Don't retry if client's username or password is invalid or their password has expired.
+        if (
+          error instanceof ExtendedError
+          && (
+            error.type === 'LoginError'
+            && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
+          )
+        ) {
+          this.storeProxy.shouldRetry = false;
+        } else {
+          this.setRetryReason(errorToString(error));
+        }
+      } else {
+        this.storeProxy.shouldRetry = false;
       }
     }
+  }
 
-    // TODO: Instead of checking task state, explicitly set actions as failed in their shouldRetry
-    // methods.
-    if (error !== null || (parentTask && parentTask.state === taskStates.ERROR)) {
-      return true;
-    }
-
-    return false;
+  /**
+   * Indicates that an instance should be retried and why.
+   * @param {string} reason The reason why this instance should be retried.
+   */
+  setRetryReason(reason) {
+    this.storeProxy.shouldRetry = true;
+    this.storeProxy.retryReason = reason;
   }
 }
 

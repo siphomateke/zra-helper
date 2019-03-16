@@ -281,6 +281,10 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       }
     }
     this.storeProxy.output = output;
+    const failedTaxTypes = Object.keys(output.retrievalErrors);
+    if (failedTaxTypes.length > 0) {
+      this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);
+    }
   }
 };
 

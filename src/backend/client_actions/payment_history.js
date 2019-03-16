@@ -295,14 +295,25 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
  * @param {Client} options.client
  * @param {PaymentReceipt[]} options.receipts
  * @param {number} options.parentTaskId
+ * @returns {Promise<boolean[]>}
+ * Array of booleans indicating whether each receipt downloaded successfully.
  */
 async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   const task = await createTask(store, { title: 'Download payment receipts', parent: parentTaskId });
   return parallelTaskMap({
     list: receipts,
     task,
-    func(receipt, parentTaskId) {
-      return downloadPaymentReceipt({ client, receipt, parentTaskId });
+    /**
+     * @param {PaymentReceipt} receipt
+     * @param {number} parentTaskId
+     */
+    async func(receipt, parentTaskId) {
+      try {
+        await downloadPaymentReceipt({ client, receipt, parentTaskId });
+        return true;
+      } catch (error) {
+        return false;
+      }
     },
   });
 }
@@ -329,6 +340,8 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
     parentTask.unknownMaxProgress = false;
     parentTask.progressMax = 2;
 
+    let anyReceiptsFailedToDownload;
+
     await taskFunction({
       task: parentTask,
       setStateBasedOnChildren: true,
@@ -339,16 +352,21 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
         if (receipts.length > 0) {
           config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           await startDownloadingReceipts();
-          await downloadPaymentReceipts({
+          const downloadSuccesses = await downloadPaymentReceipts({
             client,
             receipts,
             parentTaskId: parentTask.id,
           });
+          anyReceiptsFailedToDownload = downloadSuccesses.includes(false);
           await finishDownloadingReceipts();
           config.maxOpenTabs = initialMaxOpenTabs;
         }
       },
     });
+
+    if (anyReceiptsFailedToDownload) {
+      this.setRetryReason('Some receipts failed to download.');
+    }
   }
 };
 

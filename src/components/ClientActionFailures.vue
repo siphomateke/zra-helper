@@ -17,7 +17,6 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import { errorToString } from '@/backend/errors';
 
 export default {
   name: 'ClientActionFailures',
@@ -38,7 +37,7 @@ export default {
             action: this.getActionById(failure.actionId).name,
           };
           if (failure.error) {
-            clientFailure.error = errorToString(failure.error);
+            clientFailure.error = failure.error;
           }
           clientFailures[clientId].push(clientFailure);
         }
