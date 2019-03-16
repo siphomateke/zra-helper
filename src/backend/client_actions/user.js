@@ -2,14 +2,124 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import {
-  clickElement,
-  createTab,
-  executeScript,
   tabLoaded,
   closeTab,
   runContentScript,
+  getDocumentByAjax,
+  createTabPost,
 } from '@/backend/utils';
 import { taskFunction } from './utils';
+import { getElementFromDocument, getHtmlFromNode } from '../content_scripts/helpers/elements';
+import { CaptchaLoadError, LogoutError } from '@/backend/errors';
+import OCRAD from 'ocrad.js';
+import md5 from 'md5';
+
+/**
+ * Creates a canvas from a HTML image element
+ * @param {HTMLImageElement} image The image to use
+ * @param {number} [scale=1] Optional scale to apply to the image
+ * @returns {HTMLCanvasElement}
+ */
+function imageToCanvas(image, scale = 1) {
+  const width = image.width * scale;
+  const height = image.height * scale;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(image, 0, 0, width, height);
+  return canvas;
+}
+
+/**
+ * Generates a new captcha as a canvas
+ * @param {number} [scale=2] Optional scale to help recognize the image
+ * @returns {Promise.<HTMLCanvasElement>}
+ */
+function getFreshCaptcha(scale = 2) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    // Set crossOrigin to 'anonymous' to fix the "operation is insecure" error in Firefox.
+    // See https://stackoverflow.com/a/17035132/2999486.
+    image.crossOrigin = 'anonymous';
+    const src = `https://www.zra.org.zm/GenerateCaptchaServlet.do?sourcePage=LOGIN&t=${new Date().getTime()}`;
+    image.src = src;
+    image.onload = function onload() {
+      resolve(imageToCanvas(image, scale));
+    };
+    image.onerror = function onerror() {
+      reject(new CaptchaLoadError('Error loading captcha.', null, { src }));
+    };
+  });
+}
+
+/**
+ * Solves a simple arithmetic captcha.
+ *
+ * The input text should be in the format: "<number> <operator> <number>?". For example, '112-11?'.
+ * Spaces and question marks are automatically stripped.
+ * @param {string} text Text containing arithmetic question.
+ * @example
+ * solveCaptcha('112- 11?') // 101
+ * @returns {number}
+ */
+function solveCaptcha(text) {
+  const captchaArithmetic = text.replace(/\s/g, '').replace(/\?/g, '');
+  let numbers = captchaArithmetic.split(/\+|-/).map(str => parseInt(str, 10));
+  numbers = numbers.map(number => Number(number)); // convert to actual numbers
+  const operator = captchaArithmetic[captchaArithmetic.search(/\+|-/)];
+  if (operator === '+') {
+    return numbers[0] + numbers[1];
+  }
+  return numbers[0] - numbers[1];
+}
+
+/**
+ * Common characters that the OCR engine incorrectly outputs and their
+ * correct counterparts
+ */
+const commonIncorrectCharacters = [
+  ['l', '1'],
+  ['o', '0'],
+];
+
+/**
+ * Gets and solves the login captcha.
+ * @param {number} maxCaptchaRefreshes
+ * The maximum number of times that a new captcha will be loaded if the OCR fails
+ * @returns {Promise.<number>} The solution to the captcha.
+ */
+async function getCaptchaText(maxCaptchaRefreshes) {
+  // Solve captcha
+  let answer = null;
+  let refreshes = 0;
+  /* eslint-disable no-await-in-loop */
+  while (refreshes < maxCaptchaRefreshes) {
+    const captcha = await getFreshCaptcha();
+    const captchaText = OCRAD(captcha);
+    answer = solveCaptcha(captchaText);
+
+    // If captcha reading failed, try again with common recognition errors fixed.
+    let newText = '';
+    if (Number.isNaN(answer)) {
+      newText = captchaText;
+      for (const error of commonIncorrectCharacters) {
+        newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
+      }
+      answer = solveCaptcha(newText);
+    }
+
+    // If captcha reading still failed, try again with a new one.
+    if (Number.isNaN(answer)) {
+      refreshes++;
+    } else {
+      break;
+    }
+  }
+  /* eslint-enable no-await-in-loop */
+  return answer;
+}
 
 /** @typedef {import('@/backend/constants').Client} Client */
 
@@ -27,8 +137,8 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
-    progressMax: 7,
-    status: 'Opening tab',
+    progressMax: 4,
+    status: 'Getting session hash',
   });
 
   log.setCategory('login');
@@ -38,31 +148,31 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
   return taskFunction({
     task,
     async func() {
+      // Retrieve login page to get hidden 'pwd' field's value.
+      const doc = await getDocumentByAjax({
+        url: 'https://www.zra.org.zm/login.htm?actionCode=newLogin',
+        data: { flag: 'TAXPAYER' },
+      });
+      const pwd = getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input').value;
+
+      task.addStep('Initiate login');
       try {
-        const tab = await createTab('https://www.zra.org.zm');
+        const loginRequest = {
+          actionCode: 'loginUser',
+          flag: 'TAXPAYER',
+          userName: client.username,
+          pwd: md5(pwd),
+          xxZTT9p2wQ: md5(client.password),
+          // Note: the ZRA website misspelled captcha
+          captcahText: await getCaptchaText(10),
+        };
+        const tab = await createTabPost({
+          url: 'https://www.zra.org.zm/login.htm',
+          data: loginRequest,
+        });
         tabId = tab.id;
-        task.addStep('Waiting for tab to load');
+        task.addStep('Waiting for login to complete');
         try {
-          await tabLoaded(tabId);
-          task.addStep('Navigating to login page');
-          // Navigate to login page
-          await clickElement(
-            tabId,
-            // eslint-disable-next-line max-len
-            '#leftMainDiv>tbody>tr:nth-child(2)>td>div>div>div:nth-child(2)>table>tbody>tr:nth-child(1)>td:nth-child(1)>ul>li>a',
-            'go to login button',
-          );
-          task.addStep('Waiting for login page to load');
-          await tabLoaded(tabId);
-          task.addStep('Logging in');
-          // OCRAD should be imported in login.js but work with webpack
-          await executeScript(tabId, 'ocrad', true);
-          // Actually login
-          await runContentScript(tabId, 'login', {
-            client,
-            maxCaptchaRefreshes: 10,
-          });
-          task.addStep('Waiting for login to complete');
           await tabLoaded(tabId);
           task.addStep('Checking if login was successful');
           await runContentScript(tabId, 'check_login', { client });
@@ -96,34 +206,16 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
 }
 
 /**
- * @returns {Promise.<number>} ID of logout tab
- */
-async function createLogoutTab() {
-  const tab = await createTab('https://www.zra.org.zm/main.htm?actionCode=showHomePageLnclick');
-  return tab.id;
-}
-
-/**
- * @param {number} tabId
- */
-function clickLogoutButton(tabId) {
-  return clickElement(tabId, '#headerContent>tbody>tr>td:nth-child(3)>a:nth-child(23)', 'logout button');
-}
-
-/**
  * Creates a new tab, logs out and then closes the tab
  * @param {Object} payload
  * @param {number} payload.parentTaskId
- * @param {number} [payload.loggedInTabId]
  * @returns {Promise}
  */
-export async function logout({ parentTaskId, loggedInTabId = null }) {
+export async function logout({ parentTaskId }) {
   const task = await createTask(store, {
     title: 'Logout',
     parent: parentTaskId,
-    unknownMaxProgress: false,
-    progressMax: 3,
-    status: 'Opening tab',
+    indeterminate: true,
   });
 
   log.setCategory('logout');
@@ -131,36 +223,22 @@ export async function logout({ parentTaskId, loggedInTabId = null }) {
   return taskFunction({
     task,
     async func() {
-      let tabId = loggedInTabId;
-      if (loggedInTabId === null) {
-        tabId = await createLogoutTab();
+      const doc = await getDocumentByAjax({
+        url: 'https://www.zra.org.zm/login.htm?actionCode=logOutUser',
+        method: 'post',
+        data: { userType: 'TAXPAYER' },
+      });
+      // TODO: Somehow convert the element not found errors thrown here to logout errors.
+      const el = getElementFromDocument(
+        doc,
+        'body>table>tbody>tr>td>table>tbody>tr>td>form>table>tbody>tr:nth-child(1)>td',
+        'logout message',
+      );
+      const logoutMessage = el.innerText.toLowerCase();
+      if (!logoutMessage.includes('you have successfully logged off')) {
+        throw new LogoutError('Logout success message was empty.', null, { html: getHtmlFromNode(doc) });
       }
-      try {
-        task.addStep('Initiating logout');
-        try {
-          await clickLogoutButton(tabId);
-        } catch (error) {
-          // If the tab is missing, create a new one
-          if (
-            error.type === 'ExecuteScriptError'
-            && error.message.toLowerCase().includes('no tab with id')
-          ) {
-            task.progressMax += 1;
-            task.addStep('Tab missing. Re-creating it.');
-            tabId = await createLogoutTab();
-            // Try again
-            await clickLogoutButton(tabId);
-          } else {
-            throw error;
-          }
-        }
-        task.addStep('Waiting to finish logging out');
-        log.log('Done logging out');
-      } finally {
-        // Note: The tab automatically closes after pressing logout
-        // TODO: Catch tab close errors
-        closeTab(tabId);
-      }
+      log.log('Done logging out');
     },
   });
 }

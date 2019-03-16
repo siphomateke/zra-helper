@@ -473,7 +473,6 @@ const module = {
       const actions = actionIds.map(id => getters.getActionById(id));
 
       let loggedInTabId = null;
-      let loggedOut = false;
       let anyActionsNeedLoggedInTab = false;
       // TODO: Reduce complexity. Move some of it into separate functions, it's hard to read.
       try {
@@ -560,11 +559,7 @@ const module = {
               }
 
               mainTask.status = 'Logging out';
-              await logout({
-                parentTaskId: mainTask.id,
-                loggedInTabId: anyActionsNeedLoggedInTab ? loggedInTabId : null,
-              });
-              loggedOut = true;
+              await logout({ parentTaskId: mainTask.id });
 
               if (mainTask.state !== taskStates.ERROR && mainTask.state !== taskStates.WARNING) {
                 if (mainTask.childStateCounts[taskStates.WARNING] > 0) {
@@ -573,14 +568,11 @@ const module = {
                   mainTask.state = taskStates.SUCCESS;
                 }
               }
-            } catch (error) {
-              // If an action asked to keep the logged in tab open and logout didn't complete
-              // then the tab still needs to be closed.
-              if (anyActionsNeedLoggedInTab && !loggedOut && loggedInTabId !== null) {
+            } finally {
+              if (anyActionsNeedLoggedInTab) {
                 // TODO: Catch tab close errors
                 closeTab(loggedInTabId);
               }
-              throw error;
             }
           },
         });
