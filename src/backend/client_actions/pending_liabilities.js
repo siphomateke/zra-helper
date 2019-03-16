@@ -191,10 +191,6 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
     const { parentTask, client } = this.storeProxy;
     const taxAccounts = client.registeredTaxAccounts;
 
-    parentTask.sequential = false;
-    parentTask.unknownMaxProgress = false;
-    parentTask.progressMax = taxAccounts.length;
-
     /**
      * @typedef {Object} TotalsResponses
      * @property {Totals} totals
