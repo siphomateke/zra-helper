@@ -70,16 +70,6 @@ export class ZraError extends ExtendedError {
     this.setType('ZraError');
   }
 }
-export class TaxTypeNotFoundError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string} props.taxTypeId The tax type that was not found.
-   */
-  constructor(message, code = null, props = { taxTypeId: null }) {
-    super(message, code, props);
-    this.setType('TaxTypeNotFoundError');
-  }
-}
 export class ElementsNotFoundError extends ExtendedError {
   /**
    * @param {Object} props
@@ -256,6 +246,7 @@ export function errorFromJson(json) {
  */
 export function errorToString(error) {
   let errorString = '';
+  // FIXME: Don't assume error is an object. It may be undefined.
   if (!(error instanceof Error) && error.message) {
     errorString = error.message;
   } else if (error instanceof ExtendedError) {

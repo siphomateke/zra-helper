@@ -2,7 +2,6 @@ import moment from 'moment';
 import store from '@/store';
 import config from '@/transitional/config';
 import createTask from '@/transitional/tasks';
-import { taskStates } from '@/store/modules/tasks';
 import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
@@ -197,6 +196,8 @@ function downloadAcknowledgementReceipt({
  * @param {TaxTypeNumericalCode} options.taxType
  * @param {ReferenceNumber[]} options.referenceNumbers
  * @param {number} options.parentTaskId
+ * @returns {Promise<boolean[]>}
+ * Array of booleans indicating whether each receipt downloaded successfully.
  */
 async function downloadAcknowledgementReceipts({
   client, taxType, referenceNumbers, parentTaskId,
@@ -205,10 +206,15 @@ async function downloadAcknowledgementReceipts({
   return parallelTaskMap({
     list: referenceNumbers,
     task,
-    func(referenceNumber, parentTaskId) {
-      return downloadAcknowledgementReceipt({
-        client, taxType, referenceNumber, parentTaskId,
-      });
+    async func(referenceNumber, parentTaskId) {
+      try {
+        await downloadAcknowledgementReceipt({
+          client, taxType, referenceNumber, parentTaskId,
+        });
+        return true;
+      } catch (error) {
+        return false;
+      }
     },
   });
 }
@@ -231,11 +237,12 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
 
+    let anyReceiptsFailedToDownload = false;
+
     await startDownloadingReceipts();
     await parallelTaskMap({
       list: client.taxTypes,
       task: parentTask,
-      autoCalculateTaskState: false,
       func: async (taxTypeId, parentTaskId) => {
         const taxType = taxTypes[taxTypeId];
 
@@ -261,12 +268,15 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
             });
             // TODO: Indicate why receipts weren't downloaded
             if (referenceNumbers.length > 0) {
-              await downloadAcknowledgementReceipts({
+              const downloadSuccesses = await downloadAcknowledgementReceipts({
                 taxType: taxTypeId,
                 referenceNumbers,
                 parentTaskId: task.id,
                 client,
               });
+              if (downloadSuccesses.includes(false)) {
+                anyReceiptsFailedToDownload = true;
+              }
             }
           },
         });
@@ -275,33 +285,7 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
     await finishDownloadingReceipts();
 
     config.maxOpenTabs = initialMaxOpenTabs;
-
-    let errorCount = 0;
-    let taxTypeErrorCount = 0;
-    for (const task of parentTask.children) {
-      if (task.state === taskStates.ERROR) {
-        if (task.error && task.error.type === 'TaxTypeNotFoundError') {
-          taxTypeErrorCount++;
-        } else {
-          errorCount++;
-        }
-      }
-    }
-    if (errorCount > 0) {
-      parentTask.state = taskStates.ERROR;
-    } else if (
-      parentTask.children.length > 0
-      && taxTypeErrorCount === parentTask.children.length
-    ) {
-      // If all sub tasks don't have a tax type, something probably went wrong
-      parentTask.state = taskStates.WARNING;
-      parentTask.errorString = 'No tax types found.';
-    } else if (parentTask.childStateCounts[taskStates.WARNING] > 0) {
-      parentTask.state = taskStates.WARNING;
-    } else {
-      parentTask.state = taskStates.SUCCESS;
-    }
-    if (parentTask.state === taskStates.ERROR || parentTask.state === taskStates.WARNING) {
+    if (anyReceiptsFailedToDownload) {
       this.setRetryReason('Some receipts failed to download.');
     }
   }
