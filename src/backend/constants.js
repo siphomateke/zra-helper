@@ -75,51 +75,6 @@ export const clientPropValidationErrorMessages = {
  */
 
 /**
- * @typedef {Object} ClientActionFunctionParam
- * @property {Client} client
- * @property {import('@/transitional/tasks').TaskObject} parentTask
- * @property {Object} clientActionConfig this client action's config
- * @property {number} loggedInTabId ID of the logged in tab.
- */
-
-/**
- * @callback ClientActionFunction
- * @param {ClientActionFunctionParam} param
- * @returns {Promise.<Object>}
- */
-
-/**
- * @typedef {import('@/store/modules/client_actions/index').ClientActionOutput} ClientActionOutput
- * @typedef {Object.<number, ClientActionOutput>} ClientActionOutputs
- *
- * @callback ClientActionOutputFormatter
- * @param {Client[]} clients
- * @param {ClientActionOutputs} outputs Key is client ID
- * @param {ExportFormatCode} format
- * @returns {any}
- */
-
-/**
- * @typedef ClientActionObject
- * @property {string} id A unique camelCase ID to identify this client action.
- * @property {string} name The human-readable name of this client action.
- * @property {ClientActionFunction} [func]
- * @property {BrowserFeature[]} [requiredFeatures]
- * @property {boolean} [usesLoggedInTab]
- * Whether this action needs to open a page from a logged in tab.
- * If this is enabled, the page that is opened after logging in will not be closed until the user is
- * about to be logged out.
- * @property {boolean} [requiresTaxTypes]
- * @property {boolean} [hasOutput] Whether this client action returns an output.
- * @property {ExportFormatCode} [defaultOutputFormat]
- * Default output format. Must be set if `hasOutput` is set.
- * @property {ExportFormatCode[]} [outputFormats]
- * The export formats this client action can output. Must be set if `hasOutput` is set.
- * @property {ClientActionOutputFormatter} [outputFormatter]
- * Function that formats the output into different formats such as CSV and JSON.
- */
-
-/**
  * @typedef {string} Date Date in the format 'DD/MM/YYYY'
  * @typedef {string} ReferenceNumber
  */

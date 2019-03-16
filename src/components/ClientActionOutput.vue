@@ -70,7 +70,7 @@ export default {
   },
   computed: {
     ...mapState('clientActions', {
-      allActions: 'all',
+      allActions: 'actions',
     }),
     action() {
       return this.allActions[this.actionId];
@@ -105,15 +105,10 @@ export default {
   methods: {
     /**
      * Gets the outputs of all this action's clients.
-     * @returns {import('@/backend/constants').ClientActionOutputs}
+     * @returns {import('@/store/modules/client_actions').ClientActionOutputs}
      */
     getClientOutputs() {
-      const results = {};
-      for (const outputId of this.action.outputs) {
-        const output = this.$store.state.clientActions.outputs[outputId];
-        results[output.clientId] = output;
-      }
-      this.clientOutputs = results;
+      this.clientOutputs = this.$store.getters['clientActions/getOutputsOfAction'](this.actionId);
     },
     /**
      * Gets a client that has a certain ID.

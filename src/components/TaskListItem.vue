@@ -97,7 +97,6 @@ export default {
       'progress',
       'progressMax',
       'complete',
-      'isRoot',
     ]),
     ...mapGettersById('tasks', {
       model: 'getTaskById',
@@ -110,6 +109,7 @@ export default {
       'errorString',
       'children',
       'indeterminate',
+      'isRoot',
     ]),
     taskStates: () => taskStates,
     messages() {

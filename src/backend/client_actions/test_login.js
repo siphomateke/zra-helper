@@ -1,6 +1,15 @@
-/** @type {import('@/backend/constants').ClientActionObject} */
-const clientAction = {
+import { createClientAction, ClientActionRunner } from './base';
+
+const TestLoginClientAction = createClientAction({
   id: 'testLogin',
   name: 'Test login',
+});
+
+TestLoginClientAction.Runner = class extends ClientActionRunner {
+  constructor(data) {
+    super(data);
+    this.storeProxy.actionId = TestLoginClientAction.id;
+  }
 };
-export default clientAction;
+
+export default TestLoginClientAction;

@@ -77,7 +77,7 @@ export default {
   },
   computed: {
     ...mapState({
-      clientActionsObject: state => state.clientActions.all,
+      clientActionsObject: state => state.clientActions.actions,
     }),
     ...mapGetters('clientActions', [
       'actionSupportsCurrentBrowser',

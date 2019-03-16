@@ -14,6 +14,7 @@ import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
 } from './utils';
+import { createClientAction, ClientActionRunner } from './base';
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -212,22 +213,30 @@ async function downloadAcknowledgementReceipts({
   });
 }
 
-/** @type {import('@/backend/constants').ClientActionObject} */
-const clientAction = {
+const GetAcknowledgementsOfReturnsClientAction = createClientAction({
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',
   requiredFeatures: [browserFeatures.MHTML],
   requiresTaxTypes: true,
-  async func({ client, parentTask, clientActionConfig }) {
+});
+
+GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunner {
+  constructor(data) {
+    super(data);
+    this.storeProxy.actionId = GetAcknowledgementsOfReturnsClientAction.id;
+  }
+
+  async runInternal() {
+    const { client, parentTask, config: actionConfig } = this.storeProxy;
     const initialMaxOpenTabs = config.maxOpenTabs;
-    config.maxOpenTabs = clientActionConfig.maxOpenTabsWhenDownloading;
+    config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
 
     await startDownloadingReceipts();
     await parallelTaskMap({
       list: client.taxTypes,
       task: parentTask,
       autoCalculateTaskState: false,
-      async func(taxTypeId, parentTaskId) {
+      func: async (taxTypeId, parentTaskId) => {
         const taxType = taxTypes[taxTypeId];
 
         const task = await createTask(store, {
@@ -241,7 +250,7 @@ const clientAction = {
           task,
           catchErrors: true,
           setStateBasedOnChildren: true,
-          async func() {
+          func: async () => {
             const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
               tpin: client.username,
               taxType: taxTypeId,
@@ -280,7 +289,10 @@ const clientAction = {
     }
     if (errorCount > 0) {
       parentTask.state = taskStates.ERROR;
-    } else if (parentTask.children.length > 0 && taxTypeErrorCount === parentTask.children.length) {
+    } else if (
+      parentTask.children.length > 0
+      && taxTypeErrorCount === parentTask.children.length
+    ) {
       // If all sub tasks don't have a tax type, something probably went wrong
       parentTask.state = taskStates.WARNING;
       parentTask.errorString = 'No tax types found.';
@@ -289,6 +301,7 @@ const clientAction = {
     } else {
       parentTask.state = taskStates.SUCCESS;
     }
-  },
+  }
 };
-export default clientAction;
+
+export default GetAcknowledgementsOfReturnsClientAction;

@@ -50,7 +50,6 @@ const taskGettersToExport = [
   'complete',
   'progress',
   'progressMax',
-  'isRoot',
 ];
 
 // FIXME: Cache export values

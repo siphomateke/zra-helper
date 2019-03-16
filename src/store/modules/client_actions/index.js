@@ -3,126 +3,102 @@ import store from '@/store';
 import log from '@/transitional/log';
 import createTask from '@/transitional/tasks';
 import { taskStates } from '@/store/modules/tasks';
-import { MissingTaxTypesError, ExtendedError } from '@/backend/errors';
+import { MissingTaxTypesError } from '@/backend/errors';
 import { robustLogin, logout } from '@/backend/client_actions/user';
-import { featuresSupportedByBrowsers, browserCodes, exportFormatCodes } from '@/backend/constants';
-import { getCurrentBrowser, objectHasProperties, joinSpecialLast } from '@/utils';
+import { featuresSupportedByBrowsers, browserCodes } from '@/backend/constants';
+import { getCurrentBrowser } from '@/utils';
 import notify from '@/backend/notify';
 import { closeTab } from '@/backend/utils';
 import { taskFunction } from '@/backend/client_actions/utils';
 
 /**
- * @typedef {import('vuex').ActionContext} ActionContext
  * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('@/backend/constants').ClientActionObject} ClientActionObject
+ * @typedef {import('@/backend/client_actions/base').ClientActionRunnerProxy} ActionInstanceData
+ * Data for a single instance of a client action runner. New instances are created each run allowing
+ * the outputs from each run to be stored and displayed. This actual run method is contained in a
+ * [ActionInstanceClass]{@link ActionInstanceClass} which can be retrieved from `instanceClasses`.
+ * @typedef {import('@/backend/client_actions/base').ClientActionRunner} ActionInstanceClass
+ * Single instance of a client action runner that contains the actual run method.
+ * @typedef {import('@/backend/client_actions/base').ClientActionObject} ActionObject
  */
 
 /**
- * @typedef {Object} ClientActionState.Temp
- * @property {string} logCategory The log category to use when logging anything in this action.
- * @property {string[]} outputs IDs of this action's outputs.
- */
-
-/** @typedef {ClientActionObject & ClientActionState.Temp} ClientActionState */
-
-/**
- * @typedef {Object} ClientActionOutput
- * @property {ClientActionId} actionId
- * @property {string} clientId
- * @property {Object} [value]
- * @property {Error|null} [error]
- * If there was an error when getting the client's output, this will bet set.
- */
-
-/**
- * @typedef {string} ClientUsername
- * @typedef {string} ClientActionId
- * @typedef {Object.<ClientActionId, ClientActionOutput>} ClientActionOutputs
+ * @typedef {Object} ActionRun
+ * Contains all the client action instances from a single run of the extension.
+ * @property {Object.<string, string[]>} instancesByActionId
+ * IDs of instances from this run grouped by action ID. Instances are stored by action ID to make
+ * it easier to combine all outputs from all clients of a single action into a single output.
+ * @property {number} taskId The ID of the task associated with this run.
+ * @property {boolean} running Whether the run is still in progress or has completed.
  */
 
 /**
  * @typedef {Object} ClientActionFailure
  * @property {number} clientId
- * @property {number} actionId
+ * @property {string} actionId
  * @property {Error|import('@/backend/errors').ExtendedError} [error]
+ *
+ * @typedef {Object.<number, ClientActionFailure[]>} ClientActionFailuresByClient
+ * Failures grouped by Client ID.
  */
 
 /**
- * Validates a client action's options.
- * @param {ClientActionObject} options
- * @throws {Error}
+ * @typedef {Object} State
+ * @property {Object.<string, ActionObject>} actions Client actions stored by IDs.
+ * @property {Object.<string, ActionInstanceData>} instances
+ * Client action runner instances' data stored by instance ID.
+ * @property {Object.<string, ActionInstanceClass>} instanceClasses
+ * Client action runner instances stored by instance ID.
+ * @property {ActionRun[]} runs Action runs stored by run IDs.
+ * @property {number} currentRunId Which run the program is currently on.
  */
-function validateActionOptions(options) {
-  const errors = [];
-  if (options.hasOutput) {
-    const validFormats = Object.values(exportFormatCodes);
 
-    const requiredProperties = ['defaultOutputFormat', 'outputFormats', 'outputFormatter'];
-    const missing = objectHasProperties(options, requiredProperties);
-    if (
-      !missing.includes('defaultOutputFormat')
-      && !validFormats.includes(options.defaultOutputFormat)
-    ) {
-      errors.push(`${JSON.stringify(options.defaultOutputFormat)} is not a valid default output format`);
-    }
-    if (!missing.includes('outputFormats')) {
-      if (!(Array.isArray(options.outputFormats))) {
-        errors.push("Property 'outputFormats' must be an array");
-      } else {
-        const invalid = [];
-        for (const format of options.outputFormats) {
-          if (!validFormats.includes(format)) {
-            invalid.push(format);
-          }
-        }
-        if (invalid.length > 0) {
-          errors.push(`Unknown output format types: ${JSON.stringify(invalid)}`);
-        }
-      }
-    }
-    if (!missing.includes('outputFormatter') && !(typeof options.outputFormatter === 'function')) {
-      errors.push('Output formatter must be a function');
-    }
-
-    if (missing.length > 0) {
-      errors.push(`If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`);
-    }
-  }
-  if (errors.length > 0) {
-    throw new Error(`InvalidClientActionOptions: ${errors.join(', ')}`);
-  }
-}
+/** @typedef {import('vuex').ActionContext<State>} VuexActionContext */
 
 /**
- * Whether a failure should be tried again.
- * @param {ClientActionFailure} failure
+ * @typedef {Object} ClientActionOutput
+ * @property {string} actionId
+ * @property {number} clientId
+ * @property {Object} [value]
+ * @property {Error|null} [error]
  */
-function failureShouldBeRetried({ error }) {
-  if (!(error instanceof ExtendedError)) return true;
-  // Don't retry if client's username or password is invalid or their password has expired.
-  if (
-    error.type === 'LoginError'
-    && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
-  ) {
-    return false;
-  }
-  return true;
-}
 
-// TODO: Document state and actions
-/** @type {import('vuex').Module} */
+/**
+ * @typedef {Object.<number, ClientActionOutput>} ClientActionOutputs
+ * Client action runner outputs grouped by client ID.
+ */
+
+let lastInstanceId = 0;
+
+/** @type {import('vuex').Module<State>} */
 const module = {
   namespaced: true,
   state: {
-    /** @type {Object.<ClientActionId, ClientActionState>} */
-    all: {},
-    /** @type {ClientActionOutputs} */
-    outputs: {},
-    /** @type {ClientActionFailure[]} Actions that failed during the last run by client. */
-    failures: [],
+    actions: {},
+    instances: {},
+    instanceClasses: {},
+    runs: [],
+    currentRunId: null,
   },
   getters: {
-    getActionById: state => id => state.all[id],
+    getActionById: state => id => state.actions[id],
+    getInstanceById: state => id => state.instances[id],
+    getInstanceClassById: state => id => state.instanceClasses[id],
+    getRunById: state => id => state.runs[id],
+    currentRun: state => state.runs[state.currentRunId],
+    /**
+     * Gets the IDs of all the actions in the specified run.
+     * @returns {(runId: string) => string[]} IDs of the actions in run.
+     */
+    getAllActionsInRun: (_state, getters) => (runId) => {
+      /** @type {ActionRun} */
+      const run = getters.getRunById(runId);
+      return Object.keys(run.instancesByActionId);
+    },
+    /**
+     * Gets all the browsers a particular action supports.
+     * @returns {(id: string) => import('@/backend/constants').BrowserCode[]}
+     */
     getBrowsersActionSupports: (_, getters) => (id) => {
       const action = getters.getActionById(id);
       const supportedBrowsers = [];
@@ -141,6 +117,10 @@ const module = {
       }
       return supportedBrowsers;
     },
+    /**
+     * Checks if an action supports the browser the extension is currently running in.
+     * @returns {(id: string) => boolean}
+     */
     actionSupportsCurrentBrowser: (_, getters) => (id) => {
       const action = getters.getActionById(id);
       const featuresSupportedByCurrentBrowser = featuresSupportedByBrowsers[getCurrentBrowser()];
@@ -151,17 +131,51 @@ const module = {
       }
       return true;
     },
-    running: (state, getters, rootState, rootGetters) => {
-      const rootTask = rootGetters['tasks/rootTask'];
-      if (rootTask) {
-        return !rootTask.complete;
+    /**
+     * Whether the extension is currently running some tasks.
+     * @returns {boolean}
+     */
+    running: (_state, getters) => {
+      /** @type {{currentRun: ActionRun}} */
+      const { currentRun } = getters;
+      if (currentRun) {
+        return currentRun.running;
       }
       return false;
     },
-    retryableFailures(state) {
-      return state.failures.filter(failureShouldBeRetried);
+    /**
+     * Gets all the action instances that should be retried.
+     * @returns {ClientActionFailure[]}
+     */
+    retryableFailures(_state, getters) {
+      const failures = [];
+      /** @type {{currentRun: ActionRun}} */
+      const { currentRun } = getters;
+      if (currentRun) {
+        for (const instanceIds of Object.values(currentRun.instancesByActionId)) {
+          for (const instanceId of instanceIds) {
+            /** @type {ActionInstanceData} */
+            const instance = getters.getInstanceById(instanceId);
+            /** @type {ActionInstanceClass} */
+            const instanceClass = getters.getInstanceClassById(instanceId);
+            if (instanceClass.shouldRetry()) {
+              failures.push({
+                clientId: instance.client.id,
+                actionId: instance.actionId,
+                error: instance.error,
+              });
+            }
+          }
+        }
+      }
+      return failures;
     },
-    retryableFailuresByClient(state, getters) {
+    /**
+     * All the failures that can be retried grouped by client ID.
+     * @returns {ClientActionFailuresByClient}
+     */
+    retryableFailuresByClient(_state, getters) {
+      /** @type {ClientActionFailuresByClient} */
       const clientFailures = {};
       for (const failure of getters.retryableFailures) {
         const { clientId } = failure;
@@ -172,102 +186,173 @@ const module = {
       }
       return clientFailures;
     },
-    anyRetryableFailures(state, getters) {
+    anyRetryableFailures(_state, getters) {
       return getters.retryableFailures.length > 0;
+    },
+    /**
+     * Gets the outputs of all client action runner instances whose action IDs match the one
+     * specified.
+     * @returns {(actionId: string) => ClientActionOutputs}
+     */
+    getOutputsOfAction: (_state, getters) => (actionId) => {
+      /** @type {ClientActionOutputs} */
+      const outputs = {};
+      /** @type {{ currentRun: ActionRun }} */
+      const { currentRun } = getters;
+      if (currentRun) {
+        const instanceIds = currentRun.instancesByActionId[actionId];
+        for (const instanceId of instanceIds) {
+          /** @type {ActionInstanceData} */
+          const instance = getters.getInstanceById(instanceId);
+          // TODO: Don't add so much to the output
+          outputs[instance.client.id] = {
+            actionId,
+            clientId: instance.client.id,
+            value: instance.output,
+            error: instance.error,
+          };
+        }
+      }
+      return outputs;
     },
   },
   mutations: {
     /**
      * Adds a new client action.
-     * @param {any} state
-     * @param {ClientActionObject} payload
+     * @param {ActionObject} payload
      */
     add(state, payload) {
-      const actualPayload = Object.assign({
-        hasOutput: false,
-        usesLoggedInTab: false,
-        requiresTaxTypes: false,
-        // TODO: Consider letting this be set by a parameter
-        logCategory: payload.id,
-        outputs: [],
-        requiredFeatures: [],
-      }, payload);
-      if (actualPayload.requiresTaxTypes) {
-        // A logged in tab is required to get tax types
-        actualPayload.usesLoggedInTab = true;
-      }
-
-      validateActionOptions(actualPayload);
-
-      Vue.set(state.all, payload.id, actualPayload);
+      Vue.set(state.actions, payload.id, payload);
     },
     /**
-     * Sets the output of a client of a client action.
-     * @param {any} state
-     * @param {ClientActionOutput} payload
+     * Initializes a new program run. Each run can have different actions and outputs.
+     * @see {@link ActionRun}
+     * @param {Object} payload
+     * @param {number} payload.taskId ID of the task associated with this run.
      */
-    setOutput(state, {
-      actionId, clientId, value, error = null,
-    }) {
-      const outputId = actionId + clientId;
-      Vue.set(state.outputs, outputId, {
-        actionId,
-        clientId,
-        value,
-        error,
+    startNewRun(state, { taskId }) {
+      const runsLength = state.runs.push({
+        instancesByActionId: {},
+        taskId,
+        running: true,
       });
-      state.all[actionId].outputs.push(outputId);
-    },
-    resetFailures(state) {
-      state.failures = [];
+      const runId = runsLength - 1;
+      state.currentRunId = runId;
     },
     /**
-     * @param {any} state
-     * @param {ClientActionFailure} failure
+     * Sets a run's running status to false.
+     * @param {number} runId
      */
-    addFailure(state, failure) {
-      state.failures.push(failure);
+    completeRun(state, runId) {
+      state.runs[runId].running = false;
+    },
+    /**
+     * Adds a newly created action runner instance to the current run.
+     * @param {State} state
+     * @param {Object} payload
+     * @param {string} payload.instanceId
+     * TODO: Find a better way to keep this constructor in sync with the actual runner constructor.
+     * @param {new (id) => ActionInstanceClass} payload.Runner
+     * @param {Client} payload.client
+     * @param {Object} payload.config
+     */
+    addNewInstance(state, {
+      instanceId,
+      Runner,
+      client,
+      config,
+    }) {
+      // Create a place to store this instances' data.
+      Vue.set(state.instances, instanceId, {});
+
+      // Actually create the instance and store the class whose methods will be called.
+      const instanceClass = new Runner(instanceId);
+      Vue.set(state.instanceClasses, instanceId, instanceClass);
+
+      // Initialize the instance's data.
+      instanceClass.init({ client, config });
+
+      // Add the instance to the current run.
+      const currentRun = state.runs[state.currentRunId];
+      const { actionId } = state.instances[instanceId];
+      if (!(actionId in currentRun.instancesByActionId)) {
+        Vue.set(currentRun.instancesByActionId, actionId, []);
+      }
+      currentRun.instancesByActionId[actionId].push(instanceId);
+    },
+    /**
+     * Changes a client action runner instance's data.
+     * Used in ClientActionRunners to proxy the store.
+     * @param {Object} payload
+     * @param {string} payload.id ID of the instance.
+     * @param {string} payload.prop Property to change.
+     * @param {any} payload.value New value of the property.
+     */
+    setInstanceProperty(state, { id, prop, value }) {
+      Vue.set(state.instances[id], prop, value);
+    },
+    /**
+     * Sets a client action runner instance's error.
+     * @param {Object} payload
+     * @param {string} payload.id ID of the instance.
+     * @param {any} payload.error
+     */
+    setInstanceError(state, { id, error }) {
+      Vue.set(state.instances[id], 'error', error);
     },
   },
   actions: {
-    // TODO: Refer to action IDs as the same thing throughout
     /**
      * Adds a new client action.
-     * @param {ActionContext} context
-     * @param {ClientActionObject} payload
+     * @param {VuexActionContext} context
+     * @param {ActionObject} payload
      */
     async add({ commit }, payload) {
       commit('add', payload);
     },
+    /**
+     * Creates a new client action runner instance.
+     * @param {VuexActionContext} context
+     * @param {Object} payload
+     * @param {ActionObject} payload.action
+     * @param {Client} payload.client
+     * @returns {Promise.<string>} The ID of the newly created instance.
+     */
+    async addNewInstance({ commit, rootState }, { action, client }) {
+      const instanceId = String(lastInstanceId);
+      lastInstanceId++;
 
+      const clientActionConfig = rootState.config.actions[action.id];
+      commit('addNewInstance', {
+        instanceId,
+        Runner: action.Runner,
+        client,
+        config: clientActionConfig,
+      });
+      return instanceId;
+    },
     /**
      * Runs an action on a single client.
-     * @param {ActionContext} context
+     * @param {VuexActionContext} context
      * @param {Object} payload
-     * @param {ClientActionId} payload.actionId
+     * @param {string} payload.instanceId
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      */
-    async runActionOnClient(
-      {
-        rootState,
-        getters,
-        commit,
-      },
-      {
-        actionId,
-        client,
-        mainTask,
-        isSingleAction,
-        loggedInTabId,
-      },
-    ) {
-      /** @type {ClientActionState} */
-      const clientAction = getters.getActionById(actionId);
-      const clientActionConfig = rootState.config.actions[actionId];
+    async runActionOnClient({ commit, getters }, {
+      instanceId,
+      client,
+      mainTask,
+      isSingleAction,
+      loggedInTabId,
+    }) {
+      /** @type {ActionInstanceData} */
+      const instance = getters.getInstanceById(instanceId);
+      /** @type {ActionObject} */
+      const clientAction = getters.getActionById(instance.actionId);
 
       const task = await createTask(store, { title: clientAction.name, parent: mainTask.id });
       let taskHasError = false;
@@ -277,21 +362,16 @@ const module = {
           setState: false,
           async func() {
             if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
-              if (clientAction.func) {
-                log.setCategory(clientAction.logCategory);
+              log.setCategory(clientAction.logCategory);
 
-                const output = await clientAction.func({
-                  client,
-                  parentTask: task,
-                  clientActionConfig,
-                  loggedInTabId,
-                });
-                commit('setOutput', { actionId, clientId: client.id, value: output });
-                if (task.state === taskStates.ERROR) {
-                  taskHasError = true;
-                }
-              } else {
-                task.state = taskStates.SUCCESS;
+              /** @type {ActionInstanceClass} */
+              const instanceClass = getters.getInstanceClassById(instanceId);
+              await instanceClass.run({
+                parentTask: task,
+                loggedInTabId,
+              });
+              if (task.state === taskStates.ERROR) {
+                taskHasError = true;
               }
             } else {
               // eslint-disable-next-line max-len
@@ -309,7 +389,7 @@ const module = {
         } else {
           taskHasError = true;
         }
-        commit('setOutput', { actionId, clientId: client.id, error });
+        commit('setInstanceError', { id: instanceId, error });
       } finally {
         if (taskHasError) {
           if (isSingleAction) {
@@ -320,30 +400,34 @@ const module = {
             // Show a warning on the main task to indicate that one of the actions failed.
             mainTask.state = taskStates.WARNING;
           }
-          commit('addFailure', { clientId: client.id, actionId, error: task.error });
         }
       }
     },
     /**
      * Runs several actions in parallel on a single client.
-     * @param {ActionContext} context
+     * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {Client} payload.client
-     * @param {ClientActionId[]} payload.actionIds
+     * @param {string[]} payload.actionIds
      * @param {number} payload.parentTaskId
      */
     async runActionsOnClient({
-      rootState, commit, getters, dispatch,
+      rootState,
+      commit,
+      getters,
+      dispatch,
     }, { client, actionIds, parentTaskId }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
+
       const clientIdentifier = client.name ? client.name : `Client ${client.id}`;
       let taskTitle = clientIdentifier;
-      // If there is only one action, include it's name in the task's name.
       if (isSingleAction) {
         singleAction = getters.getActionById(actionIds[0]);
+        // If there is only one action, include it's name in the task's name.
         taskTitle = `${clientIdentifier}: ${singleAction.name}`;
       }
+
       const mainTask = await createTask(store, {
         title: taskTitle,
         unknownMaxProgress: false,
@@ -351,9 +435,18 @@ const module = {
         sequential: isSingleAction,
         parent: parentTaskId,
       });
+
+      /** @type {ActionObject[]} */
+      const actions = actionIds.map(id => getters.getActionById(id));
+
+      // Initialize all client action runner instances.
+      const promises = actions.map(action => dispatch('addNewInstance', { action, client }));
+      const instanceIds = await Promise.all(promises);
+
       let loggedInTabId = null;
       let loggedOut = false;
       let anyActionsNeedLoggedInTab = false;
+      // TODO: Reduce complexity. Move some of it into separate functions, it's hard to read.
       try {
         await taskFunction({
           task: mainTask,
@@ -366,13 +459,12 @@ const module = {
                   loggedInTab: [],
                   taxTypes: [],
                 };
-                for (const actionId of actionIds) {
-                  const clientAction = getters.getActionById(actionId);
-                  if (clientAction.usesLoggedInTab) {
-                    actionsThatRequire.loggedInTab.push(actionId);
+                for (const action of actions) {
+                  if (action.usesLoggedInTab) {
+                    actionsThatRequire.loggedInTab.push(action.id);
                   }
-                  if (clientAction.requiresTaxTypes) {
-                    actionsThatRequire.taxTypes.push(actionId);
+                  if (action.requiresTaxTypes) {
+                    actionsThatRequire.taxTypes.push(action.id);
                   }
                 }
 
@@ -418,9 +510,9 @@ const module = {
                   mainTask.status = singleAction.name;
                 }
                 const promises = [];
-                for (const actionId of actionIds) {
+                for (const instanceId of instanceIds) {
                   promises.push(dispatch('runActionOnClient', {
-                    actionId,
+                    instanceId,
                     client,
                     mainTask,
                     isSingleAction,
@@ -429,9 +521,8 @@ const module = {
                 }
                 await Promise.all(promises);
               } catch (error) {
-                for (const actionId of actionIds) {
-                  commit('setOutput', { actionId, clientId: client.id, error });
-                  commit('addFailure', { clientId: client.id, actionId, error });
+                for (const instanceId of instanceIds) {
+                  commit('setInstanceError', { id: instanceId, error });
                 }
                 throw error;
               }
@@ -476,7 +567,7 @@ const module = {
      * basis using the `getClientsActionIds` parameter.
      *
      * A root task is wrapped around each client and a notification is sent once all are complete.
-     * @param {ActionContext} context
+     * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {ClientActionId[]} payload.actionIds
      * @param {number[]} payload.clientIds
@@ -484,6 +575,7 @@ const module = {
      * Function that decides the actions to run on each client.
      */
     async run({
+      state,
       rootState,
       rootGetters,
       commit,
@@ -494,9 +586,6 @@ const module = {
     }) {
       const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       if (clients.length > 0) {
-        // Prepare for this run
-        commit('resetFailures');
-
         if (rootState.config.zraLiteMode) {
           dispatch('setZraLiteMode', true, { root: true });
         }
@@ -506,8 +595,10 @@ const module = {
           progressMax: clients.length,
           unknownMaxProgress: false,
           sequential: true,
+          isRoot: true,
         });
-        await dispatch('tasks/setRootTask', rootTask.id, { root: true });
+
+        commit('startNewRun', { taskId: rootTask.id });
         try {
           await taskFunction({
             task: rootTask,
@@ -532,6 +623,7 @@ const module = {
               message: `Finished running ${clients.length} client(s)`,
             });
           }
+          commit('completeRun', state.currentRunId);
           if (rootState.config.zraLiteMode) {
             dispatch('setZraLiteMode', false, { root: true });
           }
@@ -543,7 +635,7 @@ const module = {
     },
     /**
      * Runs the passed actions on all clients.
-     * @param {ActionContext} context
+     * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {number[]} actionIds
      * @param {number[]} clientIds
@@ -556,7 +648,7 @@ const module = {
     },
     /**
      * Re-runs all the actions that failed on the clients they failed on.
-     * @param {ActionContext} context
+     * @param {VuexActionContext} context
      */
     async retryFailures({ getters, dispatch }) {
       // Use a copy of the failures as they are reset on each run.
