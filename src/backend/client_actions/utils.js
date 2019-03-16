@@ -358,17 +358,26 @@ export function getPagedData({
 }
 
 /**
- * Gets the registered tax types of a client.
+ * @typedef {Object} TaxAccount
+ * @property {string} srNo
+ * @property {import('@/backend/constants').TaxTypeNumericalCode} taxTypeId
+ * @property {string} accountName E.g. "john smith-income tax"
+ * @property {string} effectiveDateOfRegistration E.g. "01/04/1997"
+ * @property {'registered'|'cancelled'|'suspended'} status
+ */
+
+/**
+ * Gets the tax accounts of a client. This includes account names and registered tax types.
  * @param {Object} options
  * @param {import('vuex').Store} options.store
  * @param {number} options.parentTaskId
  * @param {number} options.loggedInTabId
- * The ID of a tab in which the client you wish to get tax types for has been logged into.
- * @returns {Promise.<import('@/backend/constants').TaxTypeNumericalCode[]>}
+ * The ID of a tab that is logged into the client whose tax accounts should be acquired.
+ * @returns {Promise.<TaxAccount[]>}
  */
-export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
+export async function getTaxAccounts({ store, parentTaskId, loggedInTabId }) {
   const task = await createTask(store, {
-    title: 'Get registered tax types',
+    title: 'Get tax accounts',
     parent: parentTaskId,
     progressMax: 4,
   });
@@ -387,18 +396,34 @@ export async function getTaxTypes({ store, parentTaskId, loggedInTabId }) {
       task.addStep('Waiting for taxpayer profile to load');
       await tabLoaded(loggedInTabId);
 
-      task.addStep('Extracting tax types');
-      const { registrationDetails } = await runContentScript(loggedInTabId, 'get_registration_details');
+      task.addStep('Extracting tax account details');
+      const { taxAccounts } = await runContentScript(
+        loggedInTabId,
+        'get_tax_accounts',
+        {
+          columns: [
+            'srNo',
+            'taxType',
+            'accountName',
+            'effectiveDateOfRegistration',
+            'status',
+          ],
+        },
+      );
 
-      // Get only registered tax types
-      const registeredTaxTypes = [];
-      for (const { status, taxType } of registrationDetails) {
-        if (status.toLowerCase() === 'registered') {
-          const taxTypeId = taxTypeNames[taxType.toLowerCase()];
-          registeredTaxTypes.push(taxTypeId);
-        }
-      }
-      return registeredTaxTypes;
+      const processed = taxAccounts.map((account) => {
+        const taxTypeName = account.taxType.toLowerCase();
+        const taxTypeId = taxTypeNames[taxTypeName];
+        return {
+          srNo: account.srNo,
+          taxTypeId,
+          accountName: account.accountName.toLowerCase(),
+          effectiveDateOfRegistration: account.effectiveDateOfRegistration,
+          status: account.status.toLowerCase(),
+        };
+      });
+
+      return processed;
     },
   });
 }

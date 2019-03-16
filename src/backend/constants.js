@@ -67,9 +67,13 @@ export const clientPropValidationErrorMessages = {
  * @property {Object.<string, ClientValidationError[]>} [propErrors]
  * List of validation errors per property
  *
+ * @typedef {import('@/backend/client_actions/utils').TaxAccount[]} TaxAccounts
+ *
  * @typedef {Object} ClientState
  * @property {TaxTypeNumericalCode[]|null} taxTypes
  * List of numerical tax type codes that this client has registered.
+ * @property {TaxAccounts} taxAccounts All the tax accounts this client has.
+ * @property {TaxAccounts} registeredTaxAccounts Tax accounts whose status is 'registered'.
  *
  * @typedef {ParsedClient & ClientState} Client
  */
