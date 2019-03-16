@@ -3,7 +3,13 @@ import config from '@/transitional/config';
 import store from '@/store';
 import { getCurrentBrowser } from '@/utils';
 import { getZraError } from './content_scripts/helpers/zra';
-import { errorFromJson, ExecuteScriptError, SendMessageError, TabError, DownloadError } from './errors';
+import {
+  errorFromJson,
+  ExecuteScriptError,
+  SendMessageError,
+  TabError,
+  DownloadError,
+} from './errors';
 import { browserCodes } from './constants';
 
 /**
@@ -431,14 +437,18 @@ export function waitForDownloadToComplete(id) {
 }
 
 /**
- * Gets a document from the response of an AJAX request.
- * @param {Object} options
- * @param {string} options.url
- * @param {string} [options.method=get] Type of request
- * @param {Object} [options.data] POST request data
- * @returns {Promise.<Document>}
+ * @typedef {Object} RequestOptions
+ * @property {string} url
+ * @property {string} [method=get] Type of request
+ * @property {Object} [data] POST request data
  */
-export async function getDocumentByAjax({ url, method = 'get', data = {} }) {
+
+/**
+ * Makes an HTTP request.
+ * @param {RequestOptions} options
+ * @returns {Promise.<*>}
+ */
+export async function makeRequest({ url, method = 'get', data = {} }) {
   /** @type {import('axios').AxiosRequestConfig} */
   const axiosOptions = {
     url,
@@ -456,12 +466,33 @@ export async function getDocumentByAjax({ url, method = 'get', data = {} }) {
     axiosOptions.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
   }
   const response = await axios(axiosOptions);
+  return response.data;
+}
+
+/**
+ * Parses a string of HTML from the ZRA website into a HTML Document.
+ * @param {string} documentString
+ * @returns {Document}
+ * @throws {import('@/errors').ZraError}
+ */
+export function parseDocument(documentString) {
   const parser = new DOMParser();
-  const doc = parser.parseFromString(response.data, 'text/html');
+  const doc = parser.parseFromString(documentString, 'text/html');
   const zraError = getZraError(doc);
   if (zraError) {
     throw zraError;
   } else {
     return doc;
   }
+}
+
+/**
+ * Gets a document from the response of an AJAX request.
+ * @param {RequestOptions} options
+ * @returns {Promise.<Document>}
+ * @throws {import('@/backend/errors').ZraError}
+ */
+export async function getDocumentByAjax(options) {
+  const data = await makeRequest(options);
+  return parseDocument(data);
 }

@@ -145,6 +145,7 @@ export const taxTypeNames = {
   'mineral royalty': taxTypeNumericalCodes.MINROY,
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
+
 // #endregion
 
 // #region Export
