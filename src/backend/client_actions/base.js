@@ -1,6 +1,5 @@
 import { exportFormatCodes } from '@/backend/constants';
 import { objectHasProperties, joinSpecialLast } from '@/utils';
-import { taskStates } from '@/store/modules/tasks';
 import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
 
@@ -123,15 +122,14 @@ export class ClientActionRunner {
 
   /**
    * Private method that contains the actual business logic of the runner. This is overwritten by
-   * the actual client action runners which extend `ClientActionRunner`. The default implementation
-   * just sets the parent task's state to success.
+   * the actual client action runners which extend `ClientActionRunner`.
    *
    * When run, the client, options and parent task will all be available.
    * @private
+   * @abstract
    */
-  runInternal() {
-    this.storeProxy.parentTask.state = taskStates.SUCCESS;
-  }
+  // eslint-disable-next-line class-methods-use-this
+  runInternal() { }
 
   /**
    * Runs the business logic of the runner.
