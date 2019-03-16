@@ -192,6 +192,16 @@ export class MissingTaxTypesError extends ExtendedError {
     this.setType('MissingTaxTypes');
   }
 }
+export class TaxAccountNameNotFound extends ExtendedError {
+  /**
+   * @param {Object} props
+   * @param {string} props.accountName The name of the account that could not be found.
+   */
+  constructor(message, code = null, props = { accountName: null }) {
+    super(message, code, props);
+    this.setType('TaxAccountNameNotFound');
+  }
+}
 
 /**
  * @typedef JsonError
