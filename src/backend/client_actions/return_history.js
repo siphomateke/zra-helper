@@ -301,6 +301,9 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
     } else {
       parentTask.state = taskStates.SUCCESS;
     }
+    if (parentTask.state === taskStates.ERROR || parentTask.state === taskStates.WARNING) {
+      this.setRetryReason('Some receipts failed to download.');
+    }
   }
 };
 

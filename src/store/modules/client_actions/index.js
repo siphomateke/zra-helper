@@ -204,13 +204,11 @@ const module = {
           for (const instanceId of instanceIds) {
             /** @type {ActionInstanceData} */
             const instance = getters.getInstanceById(instanceId);
-            /** @type {ActionInstanceClass} */
-            const instanceClass = getters.getInstanceClassById(instanceId);
-            if (instanceClass.shouldRetry()) {
+            if (instance.shouldRetry) {
               failures.push({
                 clientId: instance.client.id,
                 actionId: instance.actionId,
-                error: instance.error,
+                error: instance.retryReason,
               });
             }
           }
@@ -442,6 +440,7 @@ const module = {
      * @param {number} payload.parentTaskId
      */
     async runActionsOnClient({
+      state,
       rootState,
       commit,
       getters,
@@ -556,6 +555,10 @@ const module = {
                   commit('setInstanceError', { id: instanceId, error });
                 }
                 throw error;
+              } finally {
+                for (const instanceId of instanceIds) {
+                  state.instanceClasses[instanceId].checkIfShouldRetry();
+                }
               }
 
               mainTask.status = 'Logging out';
