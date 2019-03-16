@@ -13,6 +13,7 @@ import { getElementFromDocument, getHtmlFromNode } from '../content_scripts/help
 import { CaptchaLoadError, LogoutError } from '@/backend/errors';
 import OCRAD from 'ocrad.js';
 import md5 from 'md5';
+import { checkLogin } from '../content_scripts/helpers/check_login';
 
 /**
  * Creates a canvas from a HTML image element
@@ -143,7 +144,6 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
 
   log.setCategory('login');
   log.log(`Logging in client "${client.name}"`);
-  let tabId = null;
 
   return taskFunction({
     task,
@@ -155,36 +155,38 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
       });
       const pwd = getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input').value;
 
-      task.addStep('Initiate login');
+      let tabId = null;
+      task.addStep('Initiating login');
       try {
         const loginRequest = {
-          actionCode: 'loginUser',
-          flag: 'TAXPAYER',
-          userName: client.username,
-          pwd: md5(pwd),
-          xxZTT9p2wQ: md5(client.password),
-          // Note: the ZRA website misspelled captcha
-          captcahText: await getCaptchaText(10),
-        };
-        const tab = await createTabPost({
           url: 'https://www.zra.org.zm/login.htm',
-          data: loginRequest,
-        });
-        tabId = tab.id;
+          data: {
+            actionCode: 'loginUser',
+            flag: 'TAXPAYER',
+            userName: client.username,
+            pwd: md5(pwd),
+            xxZTT9p2wQ: md5(client.password),
+            // Note: the ZRA website misspelled captcha
+            captcahText: await getCaptchaText(10),
+          },
+        };
+
         task.addStep('Waiting for login to complete');
-        try {
+        let doc = null;
+        if (keepTabOpen) {
+          const tab = await createTabPost(loginRequest);
+          tabId = tab.id;
           await tabLoaded(tabId);
           task.addStep('Checking if login was successful');
           await runContentScript(tabId, 'check_login', { client });
-          log.log(`Done logging in "${client.name}"`);
-          return tabId;
-        } finally {
-          if (!keepTabOpen) {
-            // Don't need to wait for the tab to close to carry out logged in actions
-            // TODO: Catch tab close errors
-            closeTab(tabId);
-          }
+        } else {
+          doc = await getDocumentByAjax(Object.assign({ method: 'post' }, loginRequest));
+          task.addStep('Checking if login was successful');
+          checkLogin(doc, client);
         }
+
+        log.log(`Done logging in "${client.name}"`);
+        return tabId;
       } catch (error) {
         /*
         If login doesn't get to the end, the tab ID will never be returned.
