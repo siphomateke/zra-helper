@@ -146,6 +146,22 @@ export const taxTypeNames = {
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
 
+/**
+ * Tax type names found in the results of tax payer searches mapped to their corresponding
+ * numerical codes.
+ * @type {Object.<string, TaxTypeNumericalCode>}
+ */
+export const taxPayerSearchTaxTypeNames = {
+  'income tax': taxTypeNumericalCodes.ITX,
+  vat: taxTypeNumericalCodes.VAT,
+  paye: taxTypeNumericalCodes.PAYE,
+  'turnover tax': taxTypeNumericalCodes.TOT,
+  'withholding tax': taxTypeNumericalCodes.WHT,
+  'property transfer tax': taxTypeNumericalCodes.PTT,
+  'mineral royalty': taxTypeNumericalCodes.MINROY,
+  'medical levy tax': taxTypeNumericalCodes.TLEVY,
+};
+
 // #endregion
 
 // #region Export

@@ -9,11 +9,13 @@ import {
   tabLoaded,
   monitorDownloadProgress,
   closeTab,
-  clickElement,
   runContentScript,
+  getDocumentByAjax,
 } from '../utils';
-import { taxTypeNames, browserCodes } from '../constants';
+import { taxPayerSearchTaxTypeNames, browserCodes } from '../constants';
 import { getCurrentBrowser } from '@/utils';
+import { parseTableAdvanced } from '../content_scripts/helpers/zra';
+import { getElementFromDocument } from '../content_scripts/helpers/elements';
 
 /** @typedef {import('@/transitional/tasks').TaskObject} Task */
 
@@ -366,70 +368,102 @@ export function getPagedData({
  * @property {string} srNo
  * @property {import('@/backend/constants').TaxTypeNumericalCode} taxTypeId
  * @property {string} accountName E.g. "john smith-income tax"
- * @property {string} effectiveDateOfRegistration E.g. "01/04/1997"
- * @property {'registered'|'cancelled'|'suspended'} status
+ * @property {string} effectiveDateOfRegistration E.g. "1997-02-01"
+ * @property {string} effectiveCancellationDate E.g. "2014-07-25"
+ * @property {string} status ("registered"|"cancelled"|"suspended")
  */
+
+/**
+ * Gets a single page of tax accounts.
+ * @param {Object} options
+ * @param {string} options.tpin
+ * @param {number} options.page
+ * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
+ */
+export async function getTaxAccountPage({ tpin, page }) {
+  const doc = await getDocumentByAjax({
+    url: 'https://www.zra.org.zm/WebContentMgmt.htm',
+    method: 'post',
+    data: {
+      actionCode: 'getTaxPayerRegistrationDetail',
+      tpinNo: tpin,
+      currentPage: page,
+    },
+  });
+
+  const tableWrapper = getElementFromDocument(
+    doc,
+    '[name="interestRateForm"] table:nth-of-type(2)>tbody>tr:nth-child(2)>td',
+    'tax account table wrapper',
+  );
+  const parsedTable = await parseTableAdvanced({
+    root: tableWrapper,
+    headers: [
+      'srNo',
+      'accountName',
+      'effectiveDateOfRegistration',
+      'status',
+      'effectiveCancellationDate',
+    ],
+    recordSelector: 'table:nth-of-type(2)>tbody>tr:not(:first-child)',
+    tableInfoSelector: 'table.pagebody>tbody>tr>td',
+    /* TODO: There is always at least one tax account. Because of the this, the no records string
+    should not be checked. */
+  });
+  return parsedTable;
+}
 
 /**
  * Gets the tax accounts of a client. This includes account names and registered tax types.
  * @param {Object} options
  * @param {import('vuex').Store} options.store
  * @param {number} options.parentTaskId
- * @param {number} options.loggedInTabId
+ * @param {string} options.tpin
  * The ID of a tab that is logged into the client whose tax accounts should be acquired.
  * @returns {Promise.<TaxAccount[]>}
  */
-export async function getTaxAccounts({ store, parentTaskId, loggedInTabId }) {
+export async function getTaxAccounts({ store, parentTaskId, tpin }) {
   const task = await createTask(store, {
     title: 'Get tax accounts',
     parent: parentTaskId,
-    progressMax: 4,
   });
 
-  return taskFunction({
+  const getPageSubTask = (page, subTaskParentId) => ({
+    title: `Get tax accounts from page ${page + 1}`,
+    parent: subTaskParentId,
+    indeterminate: true,
+  });
+
+  const allResponses = await getPagedData({
     task,
-    async func() {
-      task.addStep('Navigating to taxpayer profile');
-      await clickElement(
-        loggedInTabId,
-        // eslint-disable-next-line max-len
-        '#leftMainDiv .leftMenuAccordion div.submenu:nth-child(8)>ul:nth-child(1)>li:nth-child(1)>div:nth-child(1)>a:nth-child(1)',
-        'go to taxpayer profile button',
-      );
-
-      task.addStep('Waiting for taxpayer profile to load');
-      await tabLoaded(loggedInTabId);
-
-      task.addStep('Extracting tax account details');
-      const { taxAccounts } = await runContentScript(
-        loggedInTabId,
-        'get_tax_accounts',
-        {
-          columns: [
-            'srNo',
-            'taxType',
-            'accountName',
-            'effectiveDateOfRegistration',
-            'status',
-          ],
-        },
-      );
-
-      const processed = taxAccounts.map((account) => {
-        const taxTypeName = account.taxType.toLowerCase();
-        const taxTypeId = taxTypeNames[taxTypeName];
-        return {
-          srNo: account.srNo,
-          taxTypeId,
-          accountName: account.accountName.toLowerCase(),
-          effectiveDateOfRegistration: account.effectiveDateOfRegistration,
-          status: account.status.toLowerCase(),
-        };
-      });
-
-      return processed;
-    },
+    getPageSubTask,
+    getDataFunction: page => getTaxAccountPage({ tpin, page }),
   });
+
+  const processed = [];
+  for (const response of Object.values(allResponses)) {
+    for (const account of response.records) {
+      const accountName = account.accountName.toLowerCase();
+      // The account name contains the name of the client and the name of the tax type separated by
+      // a hyphen. We can thus figure out the account's tax type ID from the account name.
+      const [, taxTypeName] = accountName.split('-');
+      const taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
+
+      let status = account.status.toLowerCase();
+      // Replace "De-registered" with "Cancelled" since it's the same thing.
+      status = status.replace('de-registered', 'cancelled');
+
+      processed.push({
+        srNo: account.srNo,
+        accountName,
+        effectiveDateOfRegistration: account.effectiveDateOfRegistration,
+        status,
+        effectiveCancellationDate: account.effectiveCancellationDate,
+        taxTypeId,
+      });
+    }
+  }
+  return processed;
 }
 
 const currentBrowser = getCurrentBrowser();

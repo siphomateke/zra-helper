@@ -256,11 +256,6 @@ export function createClientAction(options) {
     logCategory: options.id,
   }, options);
 
-  // A logged in tab is required to get tax types
-  if (clientAction.requiresTaxTypes) {
-    clientAction.usesLoggedInTab = true;
-  }
-
   validateActionOptions(clientAction);
 
   return clientAction;
