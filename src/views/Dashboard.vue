@@ -80,22 +80,24 @@
       </div>
     </section>
     <section
-      v-if="runs.length > 0"
+      v-if="anyRunsWithOutputs"
       class="dashboard-section"
     >
       <h3 class="title is-4">Outputs</h3>
       <div
         v-for="(run, runId) in runs"
         :key="runId">
-        <h4
-          v-if="runs.length > 1"
-          class="title is-5">Run {{ runId + 1 }}</h4>
-        <ClientActionOutput
-          v-for="actionId in actionsWithOutputsInRun(run)"
-          :key="actionId"
-          :run-id="runId"
-          :action-id="actionId"
-        />
+        <template v-if="actionsWithOutputsInRun(run).length > 0">
+          <h4
+            v-if="runs.length > 1"
+            class="title is-5">Run {{ runId + 1 }}</h4>
+          <ClientActionOutput
+            v-for="actionId in actionsWithOutputsInRun(run)"
+            :key="actionId"
+            :run-id="runId"
+            :action-id="actionId"
+          />
+        </template>
       </div>
     </section>
 
@@ -222,6 +224,14 @@ export default {
     },
     shouldPromptToRetryFailures() {
       return this.$store.state.config.promptRetryActions;
+    },
+    anyRunsWithOutputs() {
+      for (const run of this.runs) {
+        if (this.actionsWithOutputsInRun(run).length > 0) {
+          return true;
+        }
+      }
+      return false;
     },
   },
   watch: {
