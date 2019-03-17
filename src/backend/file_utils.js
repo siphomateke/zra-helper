@@ -1,3 +1,4 @@
+import Papa from 'papaparse';
 // TODO: Give this file a better name
 
 /**
@@ -7,9 +8,9 @@
  */
 export function writeCsv(data) {
   if (data.length > 0) {
-    const rows = data.map(row => Object.values(row).join(','));
+    const rows = data.map(row => Object.values(row));
     rows.unshift(Object.keys(data[0]));
-    return rows.join('\n');
+    return Papa.unparse(rows, { quotes: true });
   }
   return '';
 }
