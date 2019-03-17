@@ -386,6 +386,7 @@ const module = {
       try {
         await taskFunction({
           task,
+          setState: false,
           async func() {
             if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
               log.setCategory(clientAction.logCategory);
