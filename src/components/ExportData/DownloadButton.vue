@@ -55,7 +55,8 @@ export default {
   },
   methods: {
     async download() {
-      const data = await this.generateData();
+      let data = await this.generateData();
+      data = data.replace(/\n/g, '\r\n');
       const blob = new Blob([data], { type: `${this.downloadType.mime};charset=utf-8` });
       const fullFilename = `${this.filename}.${this.downloadType.extension}`;
       const downloadId = await browser.downloads.download({
