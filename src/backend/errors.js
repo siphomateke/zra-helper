@@ -267,8 +267,7 @@ export function errorFromJson(json) {
  */
 export function errorToString(error) {
   let errorString = '';
-  // FIXME: Don't assume error is an object. It may be undefined.
-  if (!(error instanceof Error) && error.message) {
+  if (typeof error === 'object' && !(error instanceof Error) && error.message) {
     errorString = error.message;
   } else if (error instanceof ExtendedError) {
     errorString = `${error.type}: ${error.message}`;
