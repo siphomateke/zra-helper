@@ -97,7 +97,7 @@ module.exports = {
           entries: contentScriptEntries,
         },
       },
-      manifestSync: ['version', 'description'],
+      manifestSync: ['description'],
       outputDir: `dist/${browser}`,
       manifestTransformer(originalManifest) {
         const manifest = Object.assign({}, originalManifest);
@@ -108,6 +108,16 @@ module.exports = {
         } else if (browser === 'chrome') {
           delete manifest.applications;
         }
+
+        const fullVersion = process.env.npm_package_version;
+        const numericVersion = fullVersion.split('-')[0];
+        manifest.version = numericVersion;
+
+        // Firefox doesn't support the 'version_name' key
+        if (browser === 'chrome') {
+          manifest.version_name = fullVersion;
+        }
+
         return manifest;
       },
     },
