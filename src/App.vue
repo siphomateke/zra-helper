@@ -8,7 +8,9 @@
       v-model="activeTab"
       @change="tabChanged"
     />
-    <router-view class="page-content"/>
+    <keep-alive>
+      <router-view class="page-content"/>
+    </keep-alive>
   </div>
 </template>
 
