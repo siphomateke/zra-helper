@@ -161,13 +161,15 @@ async function getAllPaymentReceiptNumbers(options, parentTaskId) {
 
   const records = [];
   for (const result of Object.values(results)) {
-    if (result.records.length > 0) {
-      // Remove header rows
-      result.records.shift();
-      for (const record of result.records) {
-        // Ignore all the payment registrations
-        if (record.status.toLowerCase() !== 'prn generated') {
-          records.push(record);
+    if (result && 'records' in result) {
+      if (result.records.length > 0) {
+        // Remove header rows
+        result.records.shift();
+        for (const record of result.records) {
+          // Ignore all the payment registrations
+          if (record.status.toLowerCase() !== 'prn generated') {
+            records.push(record);
+          }
         }
       }
     }
