@@ -87,10 +87,19 @@ export default {
     defaultFormat() {
       return this.action.defaultOutputFormat;
     },
+    anonymizeClientsInExports() {
+      return this.$store.state.config.debug.anonymizeClientsInExports;
+    },
     generators() {
       const generators = {};
       for (const format of this.action.outputFormats) {
-        generators[format] = () => this.formatOutput(format);
+        // `anonymizeClientsInExports` can't just be passed as an argument to formatOutput because
+        // vue.js won't re-compute `generators` when `anonymizeClientsInExports` changes.
+        if (this.anonymizeClientsInExports) {
+          generators[format] = () => this.formatOutput(format, true);
+        } else {
+          generators[format] = () => this.formatOutput(format, false);
+        }
       }
       return generators;
     },
@@ -130,9 +139,14 @@ export default {
     /**
      * @param {import('@/backend/constants').ExportFormatCode} format
      */
-    async formatOutput(format) {
+    async formatOutput(format, anonymizeClients = false) {
       const clients = Object.keys(this.clients).map(id => this.clientFromId(id));
-      return this.action.outputFormatter(clients, this.clientOutputs, format);
+      return this.action.outputFormatter({
+        clients,
+        outputs: this.clientOutputs,
+        format,
+        anonymizeClients,
+      });
     },
     async getDefaultOutput() {
       if (this.clientOutputs) {

@@ -43,7 +43,7 @@
     v-else
     class="bordered-section"
   >
-    <EmptyMessage message="Nothing has been logged yet" />
+    <EmptyMessage message="Nothing has been logged yet"/>
   </div>
 </template>
 
@@ -51,11 +51,10 @@
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
-import { createNamespacedHelpers } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 import renderTable from 'text-table';
 import { exportFormatCodes } from '@/backend/constants';
-
-const { mapState, mapGetters } = createNamespacedHelpers('log');
+import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
 
 /**
  * @typedef {import('@/store/modules/log').LogType} LogType
@@ -103,12 +102,18 @@ export default {
     };
   },
   computed: {
-    ...mapState({
+    ...mapState('log', {
       linesInStore: 'lines',
     }),
-    ...mapGetters(['empty']),
+    ...mapGetters('log', ['empty']),
+    ...mapState({
+      clients: state => Object.values(state.clients.all),
+    }),
     showDateInTimestamp() {
       return this.$store.state.config.log.showDateInTimestamp;
+    },
+    anonymizeClientsInExports() {
+      return this.$store.state.config.debug.anonymizeClientsInExports;
     },
     exportGenerators() {
       const generators = {};
@@ -168,6 +173,7 @@ export default {
       });
     },
     getLogString(type) {
+      let output = null;
       if (type === exportFormatCodes.TXT) {
         const table = this.lines.map((line) => {
           const row = [];
@@ -181,20 +187,21 @@ export default {
           row.push(line.content);
           return row;
         });
-        return renderTable(table);
-      }
-      if (type === exportFormatCodes.CSV) {
-        return writeCsv(this.lines.map(line => ({
+        output = renderTable(table);
+      } else if (type === exportFormatCodes.CSV) {
+        output = writeCsv(this.lines.map(line => ({
           timestamp: line.timestamp,
           type: line.type,
           category: line.category,
           content: line.content,
         })));
+      } else if (type === exportFormatCodes.JSON) {
+        output = writeJson(this.lines);
       }
-      if (type === exportFormatCodes.JSON) {
-        return writeJson(this.lines);
+      if (this.anonymizeClientsInExports) {
+        output = anonymizeClientsInOutput(output, this.clients);
       }
-      return null;
+      return output;
     },
     async getCachedLogString(type) {
       if (this.logChanged[type]) {

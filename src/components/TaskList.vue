@@ -7,8 +7,9 @@
     />
     <div
       v-if="isRoot && tasks.length === 0"
-      class="bordered-section">
-      <EmptyMessage message="No tasks are currently running" />
+      class="bordered-section"
+    >
+      <EmptyMessage message="No tasks are currently running"/>
     </div>
     <div v-if="isRoot">
       <b-checkbox
@@ -34,6 +35,8 @@ import { taskStates } from '@/store/modules/tasks';
 import renderTable from 'text-table';
 import Papa from 'papaparse';
 import { exportFormatCodes } from '@/backend/constants';
+import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
+import { mapState } from 'vuex';
 
 function objectWithoutKey(obj, key) {
   const { [key]: deletedKey, ...otherKeys } = obj;
@@ -84,6 +87,12 @@ export default {
       }
       return generators;
     },
+    ...mapState({
+      clients: state => Object.values(state.clients.all),
+    }),
+    anonymizeClientsInExports() {
+      return this.$store.state.config.debug.anonymizeClientsInExports;
+    },
   },
   beforeCreate() {
     // TODO: Use async import instead of require
@@ -118,6 +127,8 @@ export default {
           // If we are only exporting client tasks, ignore the root task
           tasks.push(...childrenJson);
         } else {
+          taskCopy.title = taskCopy.anonymousTitle;
+          delete taskCopy.anonymousTitle;
           tasks.push(taskCopy);
         }
       }
@@ -220,16 +231,21 @@ export default {
     },
     async getExport(format) {
       const tasksJson = this.tasksToJson(this.tasks);
+      let output = '';
       if (format === exportFormatCodes.TXT || format === exportFormatCodes.CSV) {
         const tasks = this.getTextExportMetadata(tasksJson);
         if (format === exportFormatCodes.TXT) {
-          return this.getTextExport(tasks);
+          output = this.getTextExport(tasks);
+        } else if (format === exportFormatCodes.CSV) {
+          output = this.getCsvExport(tasks);
         }
-        if (format === exportFormatCodes.CSV) {
-          return this.getCsvExport(tasks);
-        }
+      } else {
+        output = writeJson(tasksJson);
       }
-      return writeJson(tasksJson);
+      if (this.anonymizeClientsInExports) {
+        output = anonymizeClientsInOutput(output, this.clients);
+      }
+      return output;
     },
   },
 };

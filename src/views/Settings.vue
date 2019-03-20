@@ -42,6 +42,12 @@
               :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
             >Collect extra information about missing element errors</b-checkbox>
           </div>
+          <div class="control">
+            <b-checkbox
+              v-model="config.debug.anonymizeClientsInExports"
+              title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
+            >Anonymize clients in exports</b-checkbox>
+          </div>
         </div>
 
         <!-- Log -->

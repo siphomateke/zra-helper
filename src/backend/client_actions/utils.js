@@ -17,7 +17,10 @@ import { getCurrentBrowser } from '@/utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
 
-/** @typedef {import('@/transitional/tasks').TaskObject} Task */
+/**
+ * @typedef {import('@/transitional/tasks').TaskObject} Task
+ * @typedef {import('../constants').Client} Client
+ */
 
 /**
  * Sets a task's state, error and completion status based on an async function.
@@ -481,4 +484,44 @@ export function startDownloadingReceipts() {
 
 export async function finishDownloadingReceipts() {
   return changeLiteMode(true);
+}
+
+/**
+ * Gets a human readable client name that uses only the client's ID.
+ * @param {Client} client
+ * @returns {string}
+ */
+export function getClientIdName(client) {
+  return `Client ${client.id}`;
+}
+
+/**
+ * Gets a string that uniquely identifies a client. This is typically the client's name but if
+ * the client has no name or `anonymous` is true, it will be a string containing the client's ID.
+ * @param {Client} client
+ * @param {boolean} [anonymous=false]
+ * @returns {string}
+ */
+export function getClientIdentifier(client, anonymous = false) {
+  if (!client.name || anonymous) {
+    return getClientIdName(client);
+  }
+  return client.name;
+}
+
+/**
+ * Removes all client names, usernames and passwords from an output.
+ * @param {string} output
+ * @param {Client[]} clients
+ * @return {string}
+ */
+export function anonymizeClientsInOutput(output, clients) {
+  // TODO: Measure how much impact this function has on performance.
+  let anonymized = output;
+  for (const client of clients) {
+    anonymized = anonymized.replace(new RegExp(client.name, 'g'), getClientIdName(client));
+    anonymized = anonymized.replace(new RegExp(client.username, 'g'), `client_${client.id}_username`);
+    anonymized = anonymized.replace(new RegExp(client.password, 'g'), '********');
+  }
+  return anonymized;
 }
