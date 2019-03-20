@@ -69,16 +69,38 @@
 
       <!-- Tabs -->
       <div class="columns">
-        <b-field
-          label="Tab load timeout"
-          title="The amount of time to wait for a tab to load (in milliseconds)."
-          class="column"
-        >
-          <b-input
-            v-model="config.tabLoadTimeout"
-            type="number"
-          />
-        </b-field>
+        <div class="column">
+          <b-field
+            label="Tab load timeout"
+            title="The amount of time to wait for a tab to load (in milliseconds)."
+          >
+            <b-field>
+              <b-input
+                v-model="config.tabLoadTimeout"
+                type="number"
+              />
+              <p class="control">
+                <span class="button is-static">ms</span>
+              </p>
+            </b-field>
+          </b-field>
+        </div>
+        <div class="column">
+          <b-field
+            label="HTTP request timeout"
+            title="The amount of time to wait for HTTP requests to complete (in milliseconds). Set to 0 to disable."
+          >
+            <b-field>
+              <b-input
+                v-model="config.requestTimeout"
+                type="number"
+              />
+              <p class="control">
+                <span class="button is-static">ms</span>
+              </p>
+            </b-field>
+          </b-field>
+        </div>
         <b-field
           label="Maximum open tabs"
           title="The maximum number of tabs that can be opened. Set to 0 to disable."
@@ -115,11 +137,15 @@
         <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
       </b-field>
 
-      <b-field title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed.">
+      <b-field
+        title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed."
+      >
         <b-checkbox v-model="config.promptRetryActions">Prompt to retry actions that fail</b-checkbox>
       </b-field>
 
-      <b-field title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable.">
+      <b-field
+        title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable."
+      >
         <b-checkbox v-model="config.zraLiteMode">Use basic HTML version of ZRA when running</b-checkbox>
       </b-field>
 

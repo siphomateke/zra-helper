@@ -22,6 +22,8 @@ import { deepClone, deepReactiveClone } from '@/utils';
 
  * @property {number} tabLoadTimeout
  * The amount of time to wait for a tab to load (in milliseconds).
+ * @property {number} requestTimeout
+ * The amount of time to wait for HTTP requests to complete (in milliseconds). Set to 0 to disable.
  * @property {number} maxOpenTabs
  * The maximum number of tabs that can be opened. Set to 0 to disable.
  * @property {number} tabOpenDelay
@@ -69,6 +71,7 @@ const defaultConfig = {
     missingElementInfo: true,
   },
   tabLoadTimeout: 20000,
+  requestTimeout: 10000,
   maxOpenTabs: 8,
   tabOpenDelay: 0,
   maxLoginAttempts: 3,

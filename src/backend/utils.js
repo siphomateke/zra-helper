@@ -454,6 +454,7 @@ export async function makeRequest({ url, method = 'get', data = {} }) {
     url,
     method,
     responseType: 'text',
+    timeout: config.requestTimeout,
   };
   if (method === 'get') {
     axiosOptions.params = data;
