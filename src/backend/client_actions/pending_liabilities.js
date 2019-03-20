@@ -3,7 +3,7 @@ import createTask from '@/transitional/tasks';
 import Papa from 'papaparse';
 import { exportFormatCodes, taxTypes } from '../constants';
 import { writeJson } from '../file_utils';
-import { taskFunction, parallelTaskMap } from './utils';
+import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import { createClientAction, ClientActionRunner } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { getAccountCodeTask } from '../tax_account_code';
@@ -118,7 +118,12 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   hasOutput: true,
   defaultOutputFormat: exportFormatCodes.CSV,
   outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-  outputFormatter(clients, clientOutputs, format) {
+  outputFormatter({
+    clients,
+    outputs: clientOutputs,
+    format,
+    anonymizeClients,
+  }) {
     if (format === exportFormatCodes.CSV) {
       const rows = [];
       const columnOrder = totalsColumns;
@@ -134,7 +139,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
         for (const taxType of Object.values(taxTypes)) {
           let firstCol = '';
           if (i === 0) {
-            firstCol = client.name ? client.name : `Client ${client.id}`;
+            firstCol = getClientIdentifier(client, anonymizeClients);
           }
           const row = [firstCol, taxType];
           if (value && (taxType in totalsObjects)) {
@@ -170,12 +175,15 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
     for (const client of clients) {
       if (client.id in clientOutputs) {
         const output = clientOutputs[client.id];
-        json[client.id] = {
-          client: {
-            id: client.id,
+        let jsonClient = { id: client.id };
+        if (!anonymizeClients) {
+          jsonClient = Object.assign(jsonClient, {
             name: client.name,
             username: client.username,
-          },
+          });
+        }
+        json[client.id] = {
+          client: jsonClient,
           actionId: output.actionId,
           value: output.value,
           error: output.error,

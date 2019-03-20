@@ -9,7 +9,7 @@ import { featuresSupportedByBrowsers, browserCodes } from '@/backend/constants';
 import { getCurrentBrowser } from '@/utils';
 import notify from '@/backend/notify';
 import { closeTab } from '@/backend/utils';
-import { taskFunction } from '@/backend/client_actions/utils';
+import { taskFunction, getClientIdentifier } from '@/backend/client_actions/utils';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
@@ -454,16 +454,20 @@ const module = {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
 
-      const clientIdentifier = client.name ? client.name : `Client ${client.id}`;
+      const clientIdentifier = getClientIdentifier(client);
       let taskTitle = clientIdentifier;
+      const anonymousClientIdentifier = getClientIdentifier(client, true);
+      let anonymousTaskTitle = anonymousClientIdentifier;
       if (isSingleAction) {
         singleAction = getters.getActionById(actionIds[0]);
         // If there is only one action, include it's name in the task's name.
         taskTitle = `${clientIdentifier}: ${singleAction.name}`;
+        anonymousTaskTitle = `${anonymousClientIdentifier}: ${singleAction.name}`;
       }
 
       const mainTask = await createTask(store, {
         title: taskTitle,
+        anonymousTitle: anonymousTaskTitle,
         unknownMaxProgress: false,
         progressMax: 2 + actionIds.length,
         sequential: isSingleAction,

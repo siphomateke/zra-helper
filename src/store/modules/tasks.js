@@ -16,6 +16,7 @@ export const taskStates = {
 /**
  * @typedef {Object} TaskVuexState
  * @property {string} [title='']
+ * @property {string} [anonymousTitle='']
  * @property {number} [id=lastTaskId]
  * @property {string} [status='']
  * @property {TaskState} [state=null]
@@ -271,6 +272,9 @@ const module = {
         autoUpdateParent: true,
         isRoot: false,
       }, data);
+      if (!('anonymousTitle' in task)) {
+        task.anonymousTitle = task.title;
+      }
       const { id } = task;
       commit('create', { id, task });
       lastTaskId += 1;

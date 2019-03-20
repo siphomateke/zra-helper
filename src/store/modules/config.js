@@ -19,7 +19,10 @@ import { deepClone, deepReactiveClone } from '@/utils';
  * This will be removed if we ever need the config in the content scripts for more than debugging.
  * @property {boolean} debug.missingElementInfo
  * Wether to collect extra information about missing elements.
-
+ * @property {boolean} debug.anonymizeClientsInExports
+ * Enable this to remove sensitive client information such as names, usernames and passwords from
+ * exports.
+ *
  * @property {number} tabLoadTimeout
  * The amount of time to wait for a tab to load (in milliseconds).
  * @property {number} requestTimeout
@@ -69,6 +72,7 @@ const defaultConfig = {
     progressBars: false,
     sendConfigToContentScripts: true,
     missingElementInfo: true,
+    anonymizeClientsInExports: true,
   },
   tabLoadTimeout: 20000,
   requestTimeout: 10000,

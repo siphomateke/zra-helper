@@ -10,13 +10,16 @@ import store from '@/store';
  */
 
 /**
- * @typedef {import('@/store/modules/client_actions').ClientActionOutput} ClientActionOutput
  * @typedef {import('@/store/modules/client_actions').ClientActionOutputs} ClientActionOutputs
  *
+ * @typedef {Object} ClientActionOutputFormatterOptions
+ * @property {Client[]} clients
+ * @property {ClientActionOutputs} outputs
+ * @property {ExportFormatCode} format
+ * @property {boolean} anonymizeClients Whether client data in the output should be anonymized.
+ *
  * @callback ClientActionOutputFormatter
- * @param {Client[]} clients
- * @param {ClientActionOutputs} outputs
- * @param {ExportFormatCode} format
+ * @param {ClientActionOutputFormatterOptions} options
  * @returns {string}
  */
 

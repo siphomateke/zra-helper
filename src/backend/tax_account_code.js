@@ -32,6 +32,16 @@ export function findAccountCodeFromName({ root, accountName }) {
 }
 
 /**
+ * Removes client information from a tax account name.
+ * @param {string} accountName
+ * @return {string} Anonymized account name.
+ */
+export function getAnonymousAccountName(accountName) {
+  // Remove client name from account name
+  return accountName.replace(/.+?-/, '');
+}
+
+/**
  * Gets the code of an account whose name is known. The reason we would want the code of an account
  * is to generate reports for that account.
  *
@@ -45,6 +55,7 @@ export function findAccountCodeFromName({ root, accountName }) {
 export async function getAccountCodeTask({ accountName, parentTaskId }) {
   const task = await createTask(store, {
     title: `Determine ID of account: "${accountName}"`,
+    anonymousTitle: `Determine ID of account: ${getAnonymousAccountName(accountName)}`,
     parent: parentTaskId,
     unknownMaxProgress: false,
     progressMax: 2,
