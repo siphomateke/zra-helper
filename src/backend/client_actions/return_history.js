@@ -143,9 +143,11 @@ async function getAllAcknowledgementReceiptsReferenceNumbers({
 
   const referenceNumbers = [];
   for (const result of Object.values(results)) {
-    for (const record of result.records) {
-      if (record.appliedThrough.toLowerCase() === 'online') {
-        referenceNumbers.push(record.referenceNo);
+    if (result && 'records' in result) {
+      for (const record of result.records) {
+        if (record.appliedThrough.toLowerCase() === 'online') {
+          referenceNumbers.push(record.referenceNo);
+        }
       }
     }
   }
