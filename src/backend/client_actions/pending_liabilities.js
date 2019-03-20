@@ -201,7 +201,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
   }
 
   async runInternal() {
-    const { parentTask, client } = this.storeProxy;
+    const { task: actionTask, client } = this.storeProxy;
     const taxAccounts = client.registeredTaxAccounts;
 
     /**
@@ -211,7 +211,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
      */
     /** @type {Object.<string, TotalsResponses>} */
     const responses = await parallelTaskMap({
-      task: parentTask,
+      task: actionTask,
       count: taxAccounts.length,
       async func(taxAccountKey, parentTaskId) {
         const taxAccount = taxAccounts[taxAccountKey];

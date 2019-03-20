@@ -394,7 +394,7 @@ const module = {
               /** @type {ActionInstanceClass} */
               const instanceClass = getters.getInstanceClassById(instanceId);
               await instanceClass.run({
-                parentTask: task,
+                task,
                 loggedInTabId,
               });
               if (task.state === taskStates.ERROR) {

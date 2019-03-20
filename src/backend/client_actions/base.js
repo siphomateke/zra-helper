@@ -59,7 +59,7 @@ import store from '@/store';
  * @property {Client} client
  * @property {Object} config
  * @property {number} loggedInTabId
- * @property {TaskObject} parentTask
+ * @property {TaskObject} task
  * @property {string} retryReason The reason why this instance should be retried.
  * @property {boolean} shouldRetry Whether this instance should be retried.
  * @property {any} error
@@ -113,7 +113,7 @@ export class ClientActionRunner {
     this.storeProxy.client = data.client;
     this.storeProxy.config = data.config;
     this.storeProxy.loggedInTabId = null;
-    this.storeProxy.parentTask = null;
+    this.storeProxy.task = null;
 
     // Run status data
     this.storeProxy.error = null;
@@ -142,11 +142,11 @@ export class ClientActionRunner {
    * well as setting this runner's error if `runInternal` fails.
    * @param {Object} data
    * @param {number} data.loggedInTabId ID of the logged in tab.
-   * @param {TaskObject} data.parentTask
+   * @param {TaskObject} data.task
    */
   async run(data) {
     this.storeProxy.loggedInTabId = data.loggedInTabId;
-    this.storeProxy.parentTask = data.parentTask;
+    this.storeProxy.task = data.task;
     try {
       this.storeProxy.running = true;
       await this.runInternal();

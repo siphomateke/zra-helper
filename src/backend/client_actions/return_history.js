@@ -235,7 +235,7 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
   }
 
   async runInternal() {
-    const { client, parentTask, config: actionConfig } = this.storeProxy;
+    const { client, task: actionTask, config: actionConfig } = this.storeProxy;
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
 
@@ -244,7 +244,7 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
     await startDownloadingReceipts();
     await parallelTaskMap({
       list: client.taxTypes,
-      task: parentTask,
+      task: actionTask,
       func: async (taxTypeId, parentTaskId) => {
         const taxType = taxTypes[taxTypeId];
 
