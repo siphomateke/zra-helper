@@ -6,7 +6,7 @@ import { writeJson } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import { createClientAction, ClientActionRunner } from './base';
 import { getPendingLiabilityPage } from '../reports';
-import { getAccountCodeTask } from '../tax_account_code';
+import getAccountCodeTask from '../tax_account_code';
 
 /** Columns to get from the pending liabilities table */
 const totalsColumns = [
@@ -57,6 +57,7 @@ async function getPendingLiabilities(client, taxAccount, parentTaskId) {
       const accountCode = await getAccountCodeTask({
         parentTaskId: taxAccountTask.id,
         accountName: taxAccount.accountName,
+        taxTypeId: taxAccount.taxTypeId,
       });
 
       taxAccountTask.addStep('Extracting totals');

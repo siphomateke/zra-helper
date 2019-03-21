@@ -1,7 +1,7 @@
 import { parseReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
 
-const reportCodes = {
+export const reportCodes = {
   PENDING_LIABILITY: '10093',
   TAX_PAYER_LEDGER: '10085',
 };

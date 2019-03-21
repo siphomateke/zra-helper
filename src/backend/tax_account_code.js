@@ -1,35 +1,9 @@
 import { TaxAccountNameNotFound } from '@/backend/errors';
 import createTask from '@/transitional/tasks';
 import { taskFunction } from '@/backend/client_actions/utils';
-import { getDocumentByAjax } from '@/backend/utils';
+import { xmlRequest } from '@/backend/utils';
 import store from '@/store';
-
-/**
- * Finds the option whose title is accountName and returns its value.
- *
- * This must be run on the tax payer ledger report generation page.
- * @param {Object} options
- * @param {Document|Element} options.root Document or Element to search for elements in.
- * @param {string} options.accountName
- * @returns {string} The account code.
- */
-export function findAccountCodeFromName({ root, accountName }) {
-  // FIXME: Use helper function for querySeletorAll. Like getElements
-  const availableOptions = root.querySelectorAll('#prm_acntName>option');
-  let accountCode = null;
-  if (availableOptions.length > 0) {
-    for (const option of availableOptions) {
-      if (option.title.toLowerCase() === accountName) {
-        accountCode = option.value;
-        break;
-      }
-    }
-  }
-  if (accountCode !== null) {
-    return accountCode;
-  }
-  throw new TaxAccountNameNotFound('Cannot find account name', null, { accountName });
-}
+import { reportCodes } from './reports';
 
 /**
  * Removes client information from a tax account name.
@@ -42,38 +16,62 @@ export function getAnonymousAccountName(accountName) {
 }
 
 /**
- * Gets the code of an account whose name is known. The reason we would want the code of an account
- * is to generate reports for that account.
- *
- * The page that is used to generate tax payer ledger reports contains an account name dropdown.
- * The values of the options in this dropdown are the codes of the accounts. This function gets the
- * code of an account by searching for the option whose title is the provided account name.
+ * @typedef {Object} AccountData
+ * @property {string} name The account's code.
+ * @property {string} value The account's name.
+ */
+
+/**
+ * Gets the code of an account whose name and tax type is known. The reason we would want the code
+ * of an account is to generate reports for that account.
  * @param {Object} options
  * @param {string} options.accountName The name of the account whose code we would like to know.
+ * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
+ * The numerical tax type ID of the account whose code we would like to know.
  * @param {number} options.parentTaskId
+ * @returns {Promise.<string>} The account code.
  */
-export async function getAccountCodeTask({ accountName, parentTaskId }) {
+export default async function getAccountCodeTask({ accountName, taxTypeId, parentTaskId }) {
   const task = await createTask(store, {
     title: `Determine ID of account: "${accountName}"`,
     anonymousTitle: `Determine ID of account: ${getAnonymousAccountName(accountName)}`,
     parent: parentTaskId,
     unknownMaxProgress: false,
-    progressMax: 2,
+    progressMax: 1,
   });
   return taskFunction({
     task,
     async func() {
-      task.status = 'Getting tax payer ledger report generator';
-      const doc = await getDocumentByAjax({
-        // eslint-disable-next-line max-len
-        url: 'https://www.zra.org.zm/reportController.htm?actionCode=taxPayerLedgerDetails',
+      task.status = 'Getting tax account information';
+
+      // Get the codes and names of all tax accounts that have the specified tax type.
+      const response = await xmlRequest({
+        url: 'https://www.zra.org.zm/frontController.do?actionCode=RPRTPAJAXCHILDCOMBO',
+        method: 'post',
+        data: {
+          prm_ajaxComboTarget: 'accountName',
+          reportCode: reportCodes.PENDING_LIABILITY,
+          prm_TaxType: taxTypeId,
+        },
       });
 
-      task.addStep('Getting account code');
-      const accountCode = await findAccountCodeFromName({
-        root: doc,
-        accountName,
-      });
+      /** @type {AccountData|AccountData[]} response */
+      let accountData = response['request-params'].param;
+      let accountNameNotFound = false;
+      if (Array.isArray(accountData)) {
+        // If there is more than one tax account with the specified tax type, use the one whose
+        // name matches the `accountName` param.
+        accountData = accountData.find(account => account.value.toLowerCase() === accountName);
+        if (typeof accountData === 'undefined') {
+          accountNameNotFound = true;
+        }
+      } else if (accountData.value.toLowerCase() !== accountName) {
+        accountNameNotFound = true;
+      }
+      if (accountNameNotFound) {
+        throw new TaxAccountNameNotFound(`Cannot find account with name "${accountName}"`, null, { accountName });
+      }
+      const accountCode = accountData.name;
       return accountCode;
     },
   });

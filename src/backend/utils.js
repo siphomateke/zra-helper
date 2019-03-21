@@ -2,6 +2,7 @@ import axios from 'axios';
 import config from '@/transitional/config';
 import store from '@/store';
 import { getCurrentBrowser } from '@/utils';
+import xml2js from 'xml2js';
 import { getZraError } from './content_scripts/helpers/zra';
 import {
   errorFromJson,
@@ -468,6 +469,34 @@ export async function makeRequest({ url, method = 'get', data = {} }) {
   }
   const response = await axios(axiosOptions);
   return response.data;
+}
+
+const xmlParser = new xml2js.Parser({ explicitArray: false });
+
+/**
+ * Converts an XML string to JSON
+ * @param {string} str
+ * @returns {Promise<Object>}
+ */
+async function parseXml(str) {
+  return new Promise((resolve, reject) => {
+    xmlParser.parseString(str, (err, result) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(result);
+    });
+  });
+}
+
+/**
+ * Makes a request that returns XML and parses the XML response.
+ * @param {RequestOptions} options
+ * @returns {Promise.<Object>} The parsed XML.
+ */
+export async function xmlRequest(options) {
+  const xml = await makeRequest(options);
+  return parseXml(xml);
 }
 
 /**
