@@ -10,22 +10,26 @@ import {
   saveAsMHTML,
   tabLoaded,
 } from '../utils';
-import { changeLiteMode, taskFunction } from './utils';
+import { changeLiteMode, parallelTaskMap, taskFunction } from './utils';
 
 /**
- * Downloads a receipt
- * @param {Object} options
- * @param {'return'|'payment'} options.type
- * @param {string|string[]|Function} options.filename
+ * @typedef {Object} DownloadReceiptOptions
+ * @property {'return'|'payment'} type
+ * @property {string|string[]|Function} filename
  * Filename of the downloaded receipt.
  *
  * If an array of filenames is provided, multiple files will be downloaded.
  *
  * If a function is provided, it must return a string or array. It will be called with
  * an object containing information about the receipt such as reference number.
- * @param {string} options.taskTitle
- * @param {number} options.parentTaskId
- * @param {import('../utils').CreateTabPostOptions} options.createTabPostOptions
+ * @property {string} taskTitle
+ * @property {number} parentTaskId
+ * @property {import('../utils').CreateTabPostOptions} createTabPostOptions
+ */
+
+/**
+ * Downloads a receipt
+ * @param {DownloadReceiptOptions} options
  */
 export async function downloadReceipt({
   type, filename, taskTitle, parentTaskId, createTabPostOptions,
@@ -98,6 +102,45 @@ export async function downloadReceipt({
         // TODO: Catch tab close errors
         closeTab(tab.id);
       }
+    },
+  });
+}
+
+/**
+ * @template L
+ * @callback GetDownloadReceiptOptionsFunc
+ * Gets the options to use in downloadReceipts from an item.
+ * @param {L} item
+ * @param {number} parentTaskId
+ * @returns {DownloadReceiptOptions}
+ */
+
+/**
+ * Downloads multiple receipts in parallel.
+ * @template L
+ * @param {Object} options
+ * @param {string} [options.taskTitle]
+ * Title of the task that will be a parent to all the receipt downloading tasks.
+ * @param {number} options.parentTaskId
+ * @param {Array<L>} options.list Array of data to use when downloading receipts.
+ * @param {GetDownloadReceiptOptionsFunc<L>} options.getDownloadReceiptOptions
+ * Function that returns the options that will be passed to `downloadReceipts`. It's called on each
+ * item in the array of data list.
+ */
+export async function downloadReceipts({
+  taskTitle = 'Download receipts',
+  parentTaskId,
+  list,
+  getDownloadReceiptOptions: downloadReceiptFunc,
+}) {
+  const task = await createTask(store, { title: taskTitle, parent: parentTaskId });
+  return parallelTaskMap({
+    list,
+    task,
+    neverReject: true,
+    func: async (item, parentTaskId) => {
+      const downloadOptions = await downloadReceiptFunc(item, parentTaskId);
+      return downloadReceipt(downloadOptions);
     },
   });
 }

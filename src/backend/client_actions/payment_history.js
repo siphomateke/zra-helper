@@ -5,14 +5,13 @@ import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  parallelTaskMap,
   getPagedData,
   taskFunction,
 } from './utils';
 import {
-  downloadReceipt,
   startDownloadingReceipts,
   finishDownloadingReceipts,
+  downloadReceipts,
 } from './receipts';
 import {
   taxTypeNames,
@@ -234,11 +233,12 @@ function getQuarterFromPeriod(from, to) {
  * @param {Client} options.client
  * @param {PaymentReceipt} options.receipt
  * @param {number} options.parentTaskId
+ * @returns {import('./receipts').DownloadReceiptOptions}
  */
-function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
+function getDownloadReceiptOptions({ client, receipt, parentTaskId }) {
   const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
 
-  return downloadReceipt({
+  return {
     type: 'payment',
     filename(receiptData) {
       const uniquePayments = [];
@@ -292,24 +292,7 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
         printReceipt: 'N',
       },
     },
-  });
-}
-
-/**
- * @param {Object} options
- * @param {Client} options.client
- * @param {PaymentReceipt[]} options.receipts
- * @param {number} options.parentTaskId
- * Array of booleans indicating whether each receipt downloaded successfully.
- */
-async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
-  const task = await createTask(store, { title: 'Download payment receipts', parent: parentTaskId });
-  return parallelTaskMap({
-    list: receipts,
-    task,
-    neverReject: true,
-    func: (receipt, parentTaskId) => downloadPaymentReceipt({ client, receipt, parentTaskId }),
-  });
+  };
 }
 
 const GetPaymentReceiptsClientAction = createClientAction({
@@ -356,10 +339,13 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
         if (receipts.length > 0) {
           config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           await startDownloadingReceipts();
-          const allDownloadInfo = await downloadPaymentReceipts({
-            client,
-            receipts,
+          const allDownloadInfo = await downloadReceipts({
+            taskTitle: 'Download payment receipts',
             parentTaskId: actionTask.id,
+            list: receipts,
+            getDownloadReceiptOptions(receipt, parentTaskId) {
+              return getDownloadReceiptOptions({ receipt, parentTaskId, client });
+            },
           });
           const failedReceipt = allDownloadInfo.find(downloadInfo => 'error' in downloadInfo);
           if (typeof failedReceipt !== 'undefined') {

@@ -11,9 +11,9 @@ import {
   taskFunction,
 } from './utils';
 import {
-  downloadReceipt,
   startDownloadingReceipts,
   finishDownloadingReceipts,
+  downloadReceipts,
 } from './receipts';
 import { createClientAction, ClientActionRunner } from './base';
 
@@ -157,17 +157,17 @@ async function getAllAcknowledgementReceiptsReferenceNumbers({
 }
 
 /**
- * Downloads the return history receipt that has the provided reference number.
  * @param {Object} options
  * @param {Client} options.client
  * @param {TaxTypeNumericalCode} options.taxType
  * @param {ReferenceNumber} options.referenceNumber
  * @param {number} options.parentTaskId
+ * @returns {import('./receipts').DownloadReceiptOptions}
  */
-function downloadAcknowledgementReceipt({
+function getDownloadReceiptOptions({
   client, taxType, referenceNumber, parentTaskId,
 }) {
-  return downloadReceipt({
+  return {
     type: 'return',
     filename(receiptData) {
       const date = moment(receiptData.periodFrom, 'DD/MM/YYYY');
@@ -190,30 +190,7 @@ function downloadAcknowledgementReceipt({
         rtnType: taxType,
       },
     },
-  });
-}
-
-/**
- * Downloads all the return history receipts that have the provided reference numbers.
- * @param {Object} options
- * @param {Client} options.client
- * @param {TaxTypeNumericalCode} options.taxType
- * @param {ReferenceNumber[]} options.referenceNumbers
- * @param {number} options.parentTaskId
- * Array of booleans indicating whether each receipt downloaded successfully.
- */
-async function downloadAcknowledgementReceipts({
-  client, taxType, referenceNumbers, parentTaskId,
-}) {
-  const task = await createTask(store, { title: 'Download acknowledgement receipts', parent: parentTaskId });
-  return parallelTaskMap({
-    list: referenceNumbers,
-    task,
-    neverReject: true,
-    func: (referenceNumber, parentTaskId) => downloadAcknowledgementReceipt({
-      client, taxType, referenceNumber, parentTaskId,
-    }),
-  });
+  };
 }
 
 const GetAcknowledgementsOfReturnsClientAction = createClientAction({
@@ -277,11 +254,15 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
             });
             // TODO: Indicate why receipts weren't downloaded
             if (referenceNumbers.length > 0) {
-              const allDownloadInfo = await downloadAcknowledgementReceipts({
-                taxType: taxTypeId,
-                referenceNumbers,
+              const allDownloadInfo = await downloadReceipts({
+                taskTitle: 'Download acknowledgement receipts',
+                list: referenceNumbers,
                 parentTaskId: task.id,
-                client,
+                getDownloadReceiptOptions(referenceNumber, parentTaskId) {
+                  return getDownloadReceiptOptions({
+                    referenceNumber, parentTaskId, client, taxType: taxTypeId,
+                  });
+                },
               });
               const failedReceipt = allDownloadInfo.find(downloadInfo => 'error' in downloadInfo);
               if (typeof failedReceipt !== 'undefined') {
