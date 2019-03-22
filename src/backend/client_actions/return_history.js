@@ -6,13 +6,15 @@ import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  downloadReceipt,
   parallelTaskMap,
   getPagedData,
   taskFunction,
+} from './utils';
+import {
+  downloadReceipt,
   startDownloadingReceipts,
   finishDownloadingReceipts,
-} from './utils';
+} from './receipts';
 import { createClientAction, ClientActionRunner } from './base';
 
 /**
