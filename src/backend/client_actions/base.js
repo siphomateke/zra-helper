@@ -61,6 +61,7 @@ import store from '@/store';
  * @property {number} loggedInTabId
  * @property {TaskObject} task
  * @property {Object} input
+ * @property {Object} retryInput
  * @property {string} retryReason The reason why this instance should be retried.
  * @property {boolean} shouldRetry Whether this instance should be retried.
  * @property {any} error
@@ -104,6 +105,7 @@ export class ClientActionRunner {
     this.storeProxy.actionId = null;
 
     this.storeProxy.input = null;
+    this.storeProxy.retryInput = null;
   }
 
   /**
