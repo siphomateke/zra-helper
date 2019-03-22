@@ -151,7 +151,7 @@ async function getAllPaymentReceiptNumbers(options, parentTaskId) {
     indeterminate: true,
   });
 
-  const results = await getPagedData({
+  const pageResponses = await getPagedData({
     task,
     getPageSubTask,
     getDataFunction: (page) => {
@@ -161,12 +161,13 @@ async function getAllPaymentReceiptNumbers(options, parentTaskId) {
   });
 
   const records = [];
-  for (const result of Object.values(results)) {
-    if (result && 'records' in result) {
-      if (result.records.length > 0) {
+  for (const pageResponse of pageResponses) {
+    if (!('error' in pageResponse)) {
+      const response = pageResponse.value;
+      if (response.records.length > 0) {
         // Remove header rows
-        result.records.shift();
-        for (const record of result.records) {
+        response.records.shift();
+        for (const record of response.records) {
           // Ignore all the payment registrations
           if (record.status.toLowerCase() !== 'prn generated') {
             records.push(record);

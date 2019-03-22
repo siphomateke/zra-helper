@@ -134,7 +134,7 @@ async function getAllAcknowledgementReceiptsReferenceNumbers({
     indeterminate: true,
   });
 
-  const results = await getPagedData({
+  const pageResponses = await getPagedData({
     task,
     getPageSubTask,
     getDataFunction: (page) => {
@@ -144,9 +144,10 @@ async function getAllAcknowledgementReceiptsReferenceNumbers({
   });
 
   const referenceNumbers = [];
-  for (const result of Object.values(results)) {
-    if (result && 'records' in result) {
-      for (const record of result.records) {
+  for (const pageResponse of pageResponses) {
+    if (!('error' in pageResponse)) {
+      const response = pageResponse.value;
+      for (const record of response.records) {
         if (record.appliedThrough.toLowerCase() === 'online') {
           referenceNumbers.push(record.referenceNo);
         }

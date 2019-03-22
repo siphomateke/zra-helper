@@ -68,11 +68,15 @@ export async function taskFunction({
 
 /**
  * @template R
+ * @typedef {Object} MultipleResponses
+ * @property {R} [value] The actual response for this item.
+ * @property {any} [error] The error that occurred getting this item if there was one.
+ */
+
+/**
  * @typedef {Object} ParallelTaskMapResponse
  * @property {string|number} item
  * The corresponding item from the list or index that this response came from.
- * @property {R} [value] The actual response for this item.
- * @property {any} [error] The error that occurred getting this item if there was one.
  */
 
 /**
@@ -96,7 +100,7 @@ export async function taskFunction({
  * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
  * error.
  * @param {boolean} [options.neverReject] Set to true to always resolve even if all tasks failed.
- * @returns {Promise.<ParallelTaskMapResponse<R>[]>}
+ * @returns {Promise.<Array.<MultipleResponses<R> & ParallelTaskMapResponse>>}
  * An array containing responses from `func`. The responses contain the actual values returned
  * or the the errors encountered trying to get the responses.
  */
@@ -169,25 +173,27 @@ export function parallelTaskMap({
  */
 
 /**
+ * @template R
  * @callback GetDataFromPageFunction
  * @param {number} page
- * @returns {Promise.<GetDataFromPageFunctionReturn>}
+ * @returns {Promise.<R & GetDataFromPageFunctionReturn>}
  */
 
 /**
  * Creates a task to get data from a single page.
  * This is mainly used by getPageData
+ * @template R
  * @see getPagedData
  * @param {Object} options
  * @param {GetTaskData} options.getTaskData
  * Function that generates a task's options given a page number and a parent task ID.
- * @param {GetDataFromPageFunction} options.getDataFunction
+ * @param {GetDataFromPageFunction<R>} options.getDataFunction
  * A function that when given a page number will return the data from that page including the total
  * number of pages.
  * @param {number} options.parentTaskId
  * @param {number} options.page The page to get data from.
  * @param {number} [options.firstPage=1] The index of the first page.
- * @returns {Promise.<GetDataFromPageFunctionReturn>}
+ * @returns {Promise.<R & GetDataFromPageFunctionReturn>}
  */
 export async function getDataFromPageTask({
   getTaskData,
@@ -204,18 +210,24 @@ export async function getDataFromPageTask({
 }
 
 /**
+ * @typedef PagedDataResponse
+ * @property {number} page
+ */
+
+/**
  * Gets data from several pages in parallel.
+ * @template R
  * @param {Object} options
  * @param {import('@/transitional/tasks').TaskObject} options.task
  * The task to use to contain all the subtasks that get data from multiple pages.
  * @param {GetTaskData} options.getPageSubTask
- * @param {GetDataFromPageFunction} options.getDataFunction
+ * @param {GetDataFromPageFunction<R>} options.getDataFunction
  * A function that when given a page number will return the data from that page including the total
  * number of pages.
  * @param {number} [options.firstPage] The index of the first page.
- * @returns {Object.<number, any>} Results of the getDataFunction mapped to pages.
+ * @returns {Promise.<Array.<MultipleResponses<R> & PagedDataResponse>>}
  */
-export function getPagedData({
+export async function getPagedData({
   task,
   getPageSubTask,
   getDataFunction,
@@ -231,7 +243,7 @@ export function getPagedData({
         firstPage,
       };
 
-      const allResults = {};
+      const allResults = [];
 
       // Get data from the first page so we know the total number of pages
       // NOTE: The settings set by parallel task map aren't set when this runs
@@ -239,7 +251,7 @@ export function getPagedData({
         page: 0,
         parentTaskId: task.id,
       }, options));
-      allResults[firstPage] = result;
+      allResults.push({ page: firstPage, value: result });
 
       // Then get the rest of the pages in parallel
       const results = await parallelTaskMap({
@@ -255,11 +267,15 @@ export function getPagedData({
       });
 
       for (const result of results) {
+        const page = result.item;
+        const actualPage = Number(page) + firstPage;
+        const response = { page: actualPage };
         if (!('error' in result)) {
-          const page = result.item;
-          const actualPage = Number(page) + firstPage;
-          allResults[actualPage] = result.value;
+          response.value = result.value;
+        } else {
+          response.error = result.error;
         }
+        allResults.push(response);
       }
 
       return allResults;
@@ -338,33 +354,36 @@ export async function getTaxAccounts({ store, parentTaskId, tpin }) {
     indeterminate: true,
   });
 
-  const allResponses = await getPagedData({
+  const pageResponses = await getPagedData({
     task,
     getPageSubTask,
     getDataFunction: page => getTaxAccountPage({ tpin, page }),
   });
 
   const processed = [];
-  for (const response of Object.values(allResponses)) {
-    for (const account of response.records) {
-      const accountName = account.accountName.toLowerCase();
-      // The account name contains the name of the client and the name of the tax type separated by
-      // a hyphen. We can thus figure out the account's tax type ID from the account name.
-      const [, taxTypeName] = accountName.split('-');
-      const taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
+  for (const pageResponse of pageResponses) {
+    if (!('error' in pageResponse)) {
+      const response = pageResponse.value;
+      for (const account of response.records) {
+        const accountName = account.accountName.toLowerCase();
+        // The account name contains the name of the client and the name of the tax type separated
+        // by a hyphen. We can thus figure out the account's tax type ID from the account name.
+        const [, taxTypeName] = accountName.split('-');
+        const taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
 
-      let status = account.status.toLowerCase();
-      // Replace "De-registered" with "Cancelled" since it's the same thing.
-      status = status.replace('de-registered', 'cancelled');
+        let status = account.status.toLowerCase();
+        // Replace "De-registered" with "Cancelled" since it's the same thing.
+        status = status.replace('de-registered', 'cancelled');
 
-      processed.push({
-        srNo: account.srNo,
-        accountName,
-        effectiveDateOfRegistration: account.effectiveDateOfRegistration,
-        status,
-        effectiveCancellationDate: account.effectiveCancellationDate,
-        taxTypeId,
-      });
+        processed.push({
+          srNo: account.srNo,
+          accountName,
+          effectiveDateOfRegistration: account.effectiveDateOfRegistration,
+          status,
+          effectiveCancellationDate: account.effectiveCancellationDate,
+          taxTypeId,
+        });
+      }
     }
   }
   return processed;
