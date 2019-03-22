@@ -197,6 +197,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
 /**
  * @typedef {Object} RunnerInput
  * @property {import('../constants').TaxTypeNumericalCode[]} [taxTypeIds]
+ * @property {string[]} [taxAccountNames]
  */
 
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
@@ -215,6 +216,10 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       if ('taxTypeIds' in input) {
         taxAccounts = taxAccounts.filter(account => input.taxTypeIds.includes(account.taxTypeId));
       }
+      if ('taxAccountNames' in input) {
+        const names = input.taxAccountNames;
+        taxAccounts = taxAccounts.filter(account => names.includes(account.accountName));
+      }
     }
 
     const responses = await parallelTaskMap({
@@ -230,6 +235,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       totals: {},
       retrievalErrors: {},
     };
+    const failedTaxAccountNames = [];
     for (const response of responses) {
       const taxAccountKey = response.item;
       const taxAccount = taxAccounts[taxAccountKey];
@@ -239,12 +245,17 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
         output.totals[taxType] = Object.assign({}, totals);
       } else {
         output.retrievalErrors[taxType] = response.error;
+        failedTaxAccountNames.push(taxAccount.accountName);
       }
     }
     this.storeProxy.output = output;
     const failedTaxTypes = Object.keys(output.retrievalErrors);
+    // FIXME: Handle duplicate tax types
     if (failedTaxTypes.length > 0) {
       this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);
+      /** @type {RunnerInput} */
+      const retryInput = { taxAccountNames: failedTaxAccountNames };
+      this.storeProxy.retryInput = retryInput;
     }
   }
 };
