@@ -264,6 +264,14 @@ export function createTab(url, active = false) {
 }
 
 /**
+ * Closes the tab with the specified ID
+ * @param {number} tabId
+ */
+export function closeTab(tabId) {
+  return browser.tabs.remove(tabId);
+}
+
+/**
  * @typedef CreateTabPostOptions
  * @property {string} url The URL to send a POST request to
  * @property {Object} data The POST parameters
@@ -291,22 +299,33 @@ export async function createTabPost({ url, data, active = false }) {
   const isFirefox = getCurrentBrowser() === browserCodes.FIREFOX;
 
   let tab = null;
-  if (isFirefox) {
-    // Firefox doesn't allow executing data URLs from extensions so we need a workaround.
-    // The current solution is to open a page on the ZRA website, inject a form and then submit it.
-    // We open manageUpload.htm because it's a nice blank page.
-    tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
-    await tabLoaded(tab.id);
-    // Insert the form into the page.
-    await runContentScript(tab.id, 'inject_form', { html: formHtml });
-  } else {
-    formHtml += '<script>document.forms[0].submit();</script>';
-    const generatedUrl = `data:text/html;charset=utf8,${encodeURIComponent(formHtml)}`;
-    tab = await createTab(generatedUrl, active);
-    // wait for form to load
-    await tabLoaded(tab.id);
+  try {
+    if (isFirefox) {
+      /*
+      Firefox doesn't allow executing data URLs from extensions so we need a workaround.
+      The current solution is to open a page on the ZRA website, inject a form and then
+      submit it. We open manageUpload.htm because it's a nice blank page.
+      */
+      tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
+      await tabLoaded(tab.id);
+      // Insert the form into the page.
+      await runContentScript(tab.id, 'inject_form', { html: formHtml });
+    } else {
+      formHtml += '<script>document.forms[0].submit();</script>';
+      const generatedUrl = `data:text/html;charset=utf8,${encodeURIComponent(formHtml)}`;
+      tab = await createTab(generatedUrl, active);
+      // wait for form to load
+      await tabLoaded(tab.id);
+    }
+    return tab;
+  } catch (error) {
+    // If there were any errors but the tab was already opened, make sure it's closed.
+    if (tab && tab.id) {
+      // TODO: Catch tab close errors
+      closeTab(tab.id);
+    }
+    throw error;
   }
-  return tab;
 }
 
 /**
@@ -327,14 +346,6 @@ export function saveAsMHTML(options) {
       reject(new Error('Downloading pages as MHTMLs is only supported in chrome.'));
     }
   });
-}
-
-/**
- * Closes the tab with the specified ID
- * @param {number} tabId
- */
-export function closeTab(tabId) {
-  return browser.tabs.remove(tabId);
 }
 
 /**
