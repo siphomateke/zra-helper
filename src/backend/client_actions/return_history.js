@@ -228,14 +228,26 @@ const GetAcknowledgementsOfReturnsClientAction = createClientAction({
   requiresTaxTypes: true,
 });
 
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('@/backend/constants').Date} [fromDate]
+ * @property {import('@/backend/constants').Date} [toDate]
+ */
+
 GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data);
     this.storeProxy.actionId = GetAcknowledgementsOfReturnsClientAction.id;
+    this.storeProxy.input = {
+      fromDate: '01/01/2013',
+      toDate: moment().format('31/12/YYYY'),
+    };
   }
 
   async runInternal() {
     const { client, task: actionTask, config: actionConfig } = this.storeProxy;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
 
@@ -263,8 +275,8 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
             const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
               tpin: client.username,
               taxType: taxTypeId,
-              fromDate: '01/01/2013',
-              toDate: moment().format('31/12/YYYY'),
+              fromDate: input.fromDate,
+              toDate: input.toDate,
               exciseType: exciseTypes.airtime,
               parentTaskId: task.id,
             });

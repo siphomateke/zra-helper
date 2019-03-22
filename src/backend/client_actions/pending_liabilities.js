@@ -194,6 +194,11 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   },
 });
 
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('../constants').TaxTypeNumericalCode[]} [taxTypeIds]
+ */
+
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data);
@@ -202,7 +207,15 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
 
   async runInternal() {
     const { task: actionTask, client } = this.storeProxy;
-    const taxAccounts = client.registeredTaxAccounts;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+    let taxAccounts = client.registeredTaxAccounts;
+
+    if (input) {
+      if ('taxTypeIds' in input) {
+        taxAccounts = taxAccounts.filter(account => input.taxTypeIds.includes(account.taxTypeId));
+      }
+    }
 
     /**
      * @typedef {Object} TotalsResponses

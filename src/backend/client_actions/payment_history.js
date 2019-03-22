@@ -327,19 +327,26 @@ const GetPaymentReceiptsClientAction = createClientAction({
   requiredFeatures: [browserFeatures.MHTML],
 });
 
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('@/backend/constants').Date} [fromDate]
+ * @property {import('@/backend/constants').Date} [toDate]
+ */
+
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data);
     this.storeProxy.actionId = GetPaymentReceiptsClientAction.id;
-  }
-
-  async runInternal() {
-    const options = {
+    this.storeProxy.input = {
       fromDate: '01/10/2013',
       toDate: moment().format('DD/MM/YYYY'),
     };
+  }
 
+  async runInternal() {
     const { task: actionTask, client, config: actionConfig } = this.storeProxy;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
 
@@ -349,7 +356,10 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        const receipts = await getAllPaymentReceiptNumbers(options, actionTask.id);
+        const receipts = await getAllPaymentReceiptNumbers({
+          fromDate: input.fromDate,
+          toDate: input.toDate,
+        }, actionTask.id);
         const initialMaxOpenTabs = config.maxOpenTabs;
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
