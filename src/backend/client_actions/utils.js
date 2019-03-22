@@ -157,10 +157,21 @@ export async function downloadReceipt({
 }
 
 /**
+ * @template R The type of the returned value.
  * @callback ParallelTaskMapFunction
  * @param {Object|number} item
  * This can either be an item from the list if one is provided, or an index if count is provided.
  * @param {number} parentTaskId
+ * @returns {Promise.<R>}
+ */
+
+/**
+ * @template R
+ * @typedef {Object} ParallelTaskMapResponse
+ * @property {string|number} item
+ * The corresponding item from the list or index that this response came from.
+ * @property {R} [value] The actual response for this item.
+ * @property {any} [error] The error that occurred getting this item if there was one.
  */
 
 /**
@@ -168,13 +179,14 @@ export async function downloadReceipt({
  * on each item in the list or index.
  *
  * The provided parent task will be automatically configured.
+ * @template R
  * @param {Object} options
  * @param {Array} [options.list] The list to loop through
  * @param {number} [options.startIndex] Optional index to start looping from
  * @param {number} [options.count]
  * The number of times to run. This is can be provided instead of a list.
  * @param {Task} options.task The parent task
- * @param {ParallelTaskMapFunction} options.func The function to run on each list item
+ * @param {ParallelTaskMapFunction<R>} options.func The function to run on each list item
  * @param {boolean} [options.autoCalculateTaskState=true]
  * Set this to false to disable the parent task's state from being automatically
  * set when all the async functions have completed.
@@ -182,14 +194,9 @@ export async function downloadReceipt({
  * If this is true, the state will be set based on the task's children by
  * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
  * error.
- * @param {boolean} [options.mapResultsToItemKeys]
- * Returns a map of func results instead of a plain array. The map's keys are the same as the
- * items passed to the functions. If `list` is passed, the items are items of that list. If
- * `count` is passed, the items are indices.
- * @returns {Array|Object}
- * An array containing the return value of each `func` or, if `useItemKeys` is set to true, an
- * object whose keys are the same as the items passed to each `func` and whose values are the
- * return values of the very same `func`s.
+ * @returns {Promise.<ParallelTaskMapResponse<R>[]>}
+ * An array containing responses from `func`. The responses contain the actual values returned
+ * or the the errors encountered trying to get the responses.
  */
 export function parallelTaskMap({
   list = null,
@@ -198,7 +205,6 @@ export function parallelTaskMap({
   task,
   func,
   autoCalculateTaskState = true,
-  mapResultsToItemKeys = false,
 }) {
   return new Promise((resolve, reject) => {
     task.sequential = false;
@@ -224,35 +230,24 @@ export function parallelTaskMap({
       promises.push(new Promise((resolve) => {
         func(item, task.id)
           .then((value) => {
-            if (mapResultsToItemKeys) {
-              resolve({ item, value });
-            } else {
-              resolve(value);
-            }
+            resolve({ item, value });
           })
-          .catch(resolve);
+          .catch((error) => {
+            resolve({ item, error });
+          });
       }));
     }
-    Promise.all(promises).then((values) => {
-      let processedValues;
-      if (mapResultsToItemKeys) {
-        processedValues = {};
-        for (const value of values) {
-          processedValues[value.item] = value.value;
-        }
-      } else {
-        processedValues = values;
-      }
+    Promise.all(promises).then((responses) => {
       task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
         if (task.state === taskStates.ERROR) {
           reject();
         } else {
-          resolve(processedValues);
+          resolve(responses);
         }
       } else {
-        resolve(processedValues);
+        resolve(responses);
       }
     });
   });
@@ -347,7 +342,6 @@ export function getPagedData({
       const results = await parallelTaskMap({
         startIndex: 1,
         count: result.numPages,
-        mapResultsToItemKeys: true,
         task,
         func(page, parentTaskId) {
           return getDataFromPageTask(Object.assign({
@@ -356,9 +350,13 @@ export function getPagedData({
           }, options));
         },
       });
-      for (const page of Object.keys(results)) {
-        const actualPage = Number(page) + firstPage;
-        allResults[actualPage] = results[page];
+
+      for (const result of results) {
+        if (!('error' in result)) {
+          const page = result.item;
+          const actualPage = Number(page) + firstPage;
+          allResults[actualPage] = result.value;
+        }
       }
 
       return allResults;

@@ -205,7 +205,7 @@ async function downloadAcknowledgementReceipts({
   client, taxType, referenceNumbers, parentTaskId,
 }) {
   const task = await createTask(store, { title: 'Download acknowledgement receipts', parent: parentTaskId });
-  return parallelTaskMap({
+  const responses = await parallelTaskMap({
     list: referenceNumbers,
     task,
     async func(referenceNumber, parentTaskId) {
@@ -219,6 +219,7 @@ async function downloadAcknowledgementReceipts({
       }
     },
   });
+  return responses.map(response => response.value);
 }
 
 const GetAcknowledgementsOfReturnsClientAction = createClientAction({

@@ -217,28 +217,12 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       }
     }
 
-    /**
-     * @typedef {Object} TotalsResponses
-     * @property {Totals} totals
-     * @property {Error} retrievalErrors
-     */
-    /** @type {Object.<string, TotalsResponses>} */
     const responses = await parallelTaskMap({
       task: actionTask,
       count: taxAccounts.length,
       async func(taxAccountKey, parentTaskId) {
         const taxAccount = taxAccounts[taxAccountKey];
-
-        const response = {
-          totals: null,
-          retrievalErrors: [],
-        };
-        try {
-          response.totals = await getPendingLiabilities(client, taxAccount, parentTaskId);
-        } catch (error) {
-          response.retrievalErrors = error;
-        }
-        return response;
+        return getPendingLiabilities(client, taxAccount, parentTaskId);
       },
     });
 
@@ -246,14 +230,15 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       totals: {},
       retrievalErrors: {},
     };
-    for (let i = 0; i < taxAccounts.length; i++) {
-      const taxAccount = taxAccounts[i];
+    for (const response of responses) {
+      const taxAccountKey = response.item;
+      const taxAccount = taxAccounts[taxAccountKey];
       const taxType = taxTypes[taxAccount.taxTypeId];
-      const { totals, retrievalErrors } = responses[i];
+      const totals = response.value;
       if (totals) {
         output.totals[taxType] = Object.assign({}, totals);
       } else {
-        output.retrievalErrors[taxType] = retrievalErrors;
+        output.retrievalErrors[taxType] = response.error;
       }
     }
     this.storeProxy.output = output;

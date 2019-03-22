@@ -303,7 +303,7 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
  */
 async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   const task = await createTask(store, { title: 'Download payment receipts', parent: parentTaskId });
-  return parallelTaskMap({
+  const responses = await parallelTaskMap({
     list: receipts,
     task,
     /**
@@ -319,6 +319,7 @@ async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
       }
     },
   });
+  return responses.map(response => response.value);
 }
 
 const GetPaymentReceiptsClientAction = createClientAction({
