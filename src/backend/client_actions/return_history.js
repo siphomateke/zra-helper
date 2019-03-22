@@ -198,28 +198,20 @@ function downloadAcknowledgementReceipt({
  * @param {TaxTypeNumericalCode} options.taxType
  * @param {ReferenceNumber[]} options.referenceNumbers
  * @param {number} options.parentTaskId
- * @returns {Promise<boolean[]>}
  * Array of booleans indicating whether each receipt downloaded successfully.
  */
 async function downloadAcknowledgementReceipts({
   client, taxType, referenceNumbers, parentTaskId,
 }) {
   const task = await createTask(store, { title: 'Download acknowledgement receipts', parent: parentTaskId });
-  const responses = await parallelTaskMap({
+  return parallelTaskMap({
     list: referenceNumbers,
     task,
-    async func(referenceNumber, parentTaskId) {
-      try {
-        await downloadAcknowledgementReceipt({
-          client, taxType, referenceNumber, parentTaskId,
-        });
-        return true;
-      } catch (error) {
-        return false;
-      }
-    },
+    neverReject: true,
+    func: (referenceNumber, parentTaskId) => downloadAcknowledgementReceipt({
+      client, taxType, referenceNumber, parentTaskId,
+    }),
   });
-  return responses.map(response => response.value);
 }
 
 const GetAcknowledgementsOfReturnsClientAction = createClientAction({
@@ -283,13 +275,14 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
             });
             // TODO: Indicate why receipts weren't downloaded
             if (referenceNumbers.length > 0) {
-              const downloadSuccesses = await downloadAcknowledgementReceipts({
+              const allDownloadInfo = await downloadAcknowledgementReceipts({
                 taxType: taxTypeId,
                 referenceNumbers,
                 parentTaskId: task.id,
                 client,
               });
-              if (downloadSuccesses.includes(false)) {
+              const failedReceipt = allDownloadInfo.find(downloadInfo => 'error' in downloadInfo);
+              if (typeof failedReceipt !== 'undefined') {
                 anyReceiptsFailedToDownload = true;
               }
             }

@@ -194,6 +194,7 @@ export async function downloadReceipt({
  * If this is true, the state will be set based on the task's children by
  * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
  * error.
+ * @param {boolean} [options.neverReject] Set to true to always resolve even if all tasks failed.
  * @returns {Promise.<ParallelTaskMapResponse<R>[]>}
  * An array containing responses from `func`. The responses contain the actual values returned
  * or the the errors encountered trying to get the responses.
@@ -205,6 +206,7 @@ export function parallelTaskMap({
   task,
   func,
   autoCalculateTaskState = true,
+  neverReject = false,
 }) {
   return new Promise((resolve, reject) => {
     task.sequential = false;
@@ -241,7 +243,7 @@ export function parallelTaskMap({
       task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
-        if (task.state === taskStates.ERROR) {
+        if (!neverReject && task.state === taskStates.ERROR) {
           reject();
         } else {
           resolve(responses);

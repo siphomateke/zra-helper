@@ -298,28 +298,16 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
  * @param {Client} options.client
  * @param {PaymentReceipt[]} options.receipts
  * @param {number} options.parentTaskId
- * @returns {Promise<boolean[]>}
  * Array of booleans indicating whether each receipt downloaded successfully.
  */
 async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
   const task = await createTask(store, { title: 'Download payment receipts', parent: parentTaskId });
-  const responses = await parallelTaskMap({
+  return parallelTaskMap({
     list: receipts,
     task,
-    /**
-     * @param {PaymentReceipt} receipt
-     * @param {number} parentTaskId
-     */
-    async func(receipt, parentTaskId) {
-      try {
-        await downloadPaymentReceipt({ client, receipt, parentTaskId });
-        return true;
-      } catch (error) {
-        return false;
-      }
-    },
+    neverReject: true,
+    func: (receipt, parentTaskId) => downloadPaymentReceipt({ client, receipt, parentTaskId }),
   });
-  return responses.map(response => response.value);
 }
 
 const GetPaymentReceiptsClientAction = createClientAction({
@@ -351,7 +339,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
 
-    let anyReceiptsFailedToDownload;
+    let anyReceiptsFailedToDownload = false;
 
     await taskFunction({
       task: actionTask,
@@ -366,12 +354,15 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
         if (receipts.length > 0) {
           config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           await startDownloadingReceipts();
-          const downloadSuccesses = await downloadPaymentReceipts({
+          const allDownloadInfo = await downloadPaymentReceipts({
             client,
             receipts,
             parentTaskId: actionTask.id,
           });
-          anyReceiptsFailedToDownload = downloadSuccesses.includes(false);
+          const failedReceipt = allDownloadInfo.find(downloadInfo => 'error' in downloadInfo);
+          if (typeof failedReceipt !== 'undefined') {
+            anyReceiptsFailedToDownload = true;
+          }
           await finishDownloadingReceipts();
           config.maxOpenTabs = initialMaxOpenTabs;
         }
