@@ -65,7 +65,7 @@ export default async function getAccountCodeTask({ accountName, taxTypeId, paren
         if (typeof accountData === 'undefined') {
           accountNameNotFound = true;
         }
-      } else if (accountData.value.toLowerCase() !== accountName) {
+      } else if (!accountData || accountData.value.toLowerCase() !== accountName) {
         accountNameNotFound = true;
       }
       if (accountNameNotFound) {
