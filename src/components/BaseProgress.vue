@@ -99,9 +99,9 @@ export default {
     type() {
       if (this.state === taskStates.SUCCESS) {
         return 'is-success';
-      } else if (this.state === taskStates.WARNING) {
+      } if (this.state === taskStates.WARNING) {
         return 'is-warning';
-      } else if (this.state === taskStates.ERROR) {
+      } if (this.state === taskStates.ERROR) {
         return 'is-danger';
       }
       return 'is-info';

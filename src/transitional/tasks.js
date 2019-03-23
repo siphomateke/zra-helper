@@ -62,6 +62,7 @@ class Task {
   constructor() {
     this.listStoreTask = null;
   }
+
   /**
    * Creates a new task.
    * @param {VuexStore} store

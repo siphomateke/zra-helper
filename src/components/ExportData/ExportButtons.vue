@@ -161,7 +161,7 @@ export default {
       if (this.formats.includes(this.defaultFormat)) {
         // Make sure the default format exists.
         return this.defaultFormat;
-      } else if (this.formats.length > 0) {
+      } if (this.formats.length > 0) {
         // If it doesn't, just use the first format.
         return this.formats[0];
       }

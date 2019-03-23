@@ -64,21 +64,27 @@ export class ListItemStore {
     this.id = id;
     this.module = getModuleByNamespace(this.store, this.namespace);
   }
+
   getState() {
     return getStateByNamespace(this.store.state, this.namespace)[this.list][this.id];
   }
+
   propInState(prop) {
     return prop in this.getState();
   }
+
   propInGetters(prop) {
     return `${this.namespace}/${prop}` in this.store.getters;
   }
+
   propInActions(prop) {
     return prop in this.module.actions;
   }
+
   getStateByProp(prop) {
     return this.getState()[prop];
   }
+
   /**
    * Calls a getter using this list item's ID.
    * @param {string} prop
@@ -86,6 +92,7 @@ export class ListItemStore {
   getters(prop) {
     return this.store.getters[`${this.namespace}/${prop}`](this.id);
   }
+
   /**
    * Commits a mutation with this list item's ID.
    * @param {string} prop
@@ -94,6 +101,7 @@ export class ListItemStore {
   commit(prop, value) {
     this.store.commit(`${this.namespace}/set${toPascalCase(prop)}`, { id: this.id, value });
   }
+
   /**
    * Dispatches an action with this list item's ID.
    * @param {string} prop
@@ -102,6 +110,7 @@ export class ListItemStore {
   dispatch(prop, payload) {
     return this.store.dispatch(`${this.namespace}/${prop}`, Object.assign({ id: this.id }, payload));
   }
+
   /**
    * Generates a dispatch function with a preset property.
    * Used in `listItemHandler` to re-assign a setter to an action.

@@ -10,7 +10,7 @@ export function getHtmlFromNode(node) {
   if (config && config.debug.missingElementInfo) {
     if (node instanceof HTMLElement) {
       return node.innerHTML;
-    } else if (node instanceof Document) {
+    } if (node instanceof Document) {
       return node.documentElement.innerHTML;
     }
   }
