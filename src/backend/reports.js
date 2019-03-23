@@ -109,14 +109,16 @@ async function getReportPage({
  * Gets a single page of pending liabilities.
  * @param {Object} options
  * @param {string} options.tpin Same as client's username.
- * @param {string} options.accountCode E.g. 119608 or 405534
+ * @param {string} [options.accountCode]
+ * ID of the tax account to get pending liability totals from. E.g. 119608 or 405534. If this is not
+ * provided, all the accounts with the provided tax type will be retrieved instead.
  * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {number} options.page The page to get.
  * @returns {Promise.<ReportPage>}
  */
 export function getPendingLiabilityPage({
   tpin,
-  accountCode,
+  accountCode = '',
   taxTypeId,
   page,
 }) {
