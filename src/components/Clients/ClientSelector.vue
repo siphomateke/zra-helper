@@ -16,6 +16,11 @@
       <template slot-scope="{ row }">
         <b-table-column
           :sortable="true"
+          field="id"
+          label="ID"
+        >{{ row.id }}</b-table-column>
+        <b-table-column
+          :sortable="true"
           field="name"
           label="Name"
         >{{ row.name }}</b-table-column>
