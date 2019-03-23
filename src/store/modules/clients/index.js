@@ -82,7 +82,12 @@ const module = {
         const registeredTaxAccounts = taxAccounts.filter(account => account.status === 'registered');
         commit('setRegisteredTaxAccounts', { id, value: registeredTaxAccounts });
 
-        const taxTypes = registeredTaxAccounts.map(account => account.taxTypeId);
+        const taxTypes = [];
+        for (const account of registeredTaxAccounts) {
+          if (!taxTypes.includes(account.taxTypeId)) {
+            taxTypes.push(account.taxTypeId);
+          }
+        }
         commit('setTaxTypes', { id, value: taxTypes });
 
         return taxAccounts;
