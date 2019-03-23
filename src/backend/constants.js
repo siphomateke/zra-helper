@@ -158,6 +158,7 @@ export const taxPayerSearchTaxTypeNames = {
   'turnover tax': taxTypeNumericalCodes.TOT,
   'withholding tax': taxTypeNumericalCodes.WHT,
   'property transfer tax': taxTypeNumericalCodes.PTT,
+  ptt: taxTypeNumericalCodes.PTT,
   'mineral royalty': taxTypeNumericalCodes.MINROY,
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
