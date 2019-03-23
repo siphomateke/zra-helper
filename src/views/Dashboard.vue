@@ -16,7 +16,7 @@
               @click="parsedClientsViewerVisible = true"
             />
             <OpenModalButton
-              v-if="validClientIds.length > 0"
+              v-if="clients.length > 0"
               label="Select clients"
               @click="clientSelectorVisible = true"
             />
@@ -86,11 +86,13 @@
       <h3 class="title is-4">Outputs</h3>
       <div
         v-for="(run, runId) in runs"
-        :key="runId">
+        :key="runId"
+      >
         <template v-if="actionsWithOutputsInRun(run).length > 0">
           <h4
             v-if="runs.length > 1"
-            class="title is-5">Run {{ runId + 1 }}</h4>
+            class="title is-5"
+          >Run {{ runId + 1 }}</h4>
           <ClientActionOutput
             v-for="actionId in actionsWithOutputsInRun(run)"
             :key="actionId"
@@ -101,33 +103,34 @@
       </div>
     </section>
 
-    <ClientListModal
-      v-if="clients.length > 0"
-      :client-ids="clientIds"
-      :active.sync="parsedClientsViewerVisible"
-      title="Parsed clients"
-    >
-      <template slot-scope="{ clientIds }">
-        <ParsedClientsViewer :client-ids="clientIds"/>
-      </template>
-    </ClientListModal>
-    <ClientListModal
-      v-if="validClientIds.length > 0"
-      :client-ids="validClientIds"
-      :active.sync="clientSelectorVisible"
-      title="Valid clients"
-    >
-      <template slot-scope="{ clientIds }">
-        <ClientSelector
-          v-model="selectedClientIds"
-          :client-ids="clientIds"
-          :disabled="clientActionsRunning"
-        />
-      </template>
-    </ClientListModal>
+    <template v-if="clients.length > 0">
+      <ClientListModal
+        :client-ids="clientIds"
+        :active.sync="parsedClientsViewerVisible"
+        title="Parsed clients"
+      >
+        <template slot-scope="{ clientIds }">
+          <ParsedClientsViewer :client-ids="clientIds"/>
+        </template>
+      </ClientListModal>
+      <ClientListModal
+        :client-ids="clientIds"
+        :active.sync="clientSelectorVisible"
+        title="Client selector"
+      >
+        <template slot-scope="{ clientIds }">
+          <ClientSelector
+            v-model="selectedClientIds"
+            :client-ids="clientIds"
+            :disabled="clientActionsRunning"
+          />
+        </template>
+      </ClientListModal>
+    </template>
     <CardModal
       :active.sync="failuresModalVisible"
-      title="Client failures">
+      title="Client failures"
+    >
       <ClientActionFailures slot="body"/>
     </CardModal>
   </div>
@@ -195,15 +198,6 @@ export default {
     clientIds() {
       return Object.keys(this.clientsObj);
     },
-    validClientIds() {
-      const valid = [];
-      for (const client of this.clients) {
-        if (client.valid) {
-          valid.push(client.id);
-        }
-      }
-      return valid;
-    },
     noActionsSelected() {
       return this.selectedClientActions.length === 0;
     },
@@ -235,12 +229,12 @@ export default {
     },
   },
   watch: {
-    validClientIds() {
-      // Remove all the selected clients which are no longer valid or don't exist.
+    clientIds() {
+      // Remove all the selected clients which no longer exist.
       for (let i = this.selectedClientIds.length - 1; i >= 0; i--) {
         const id = this.selectedClientIds[i];
         const client = this.getClientById(id);
-        if (!client || !client.valid) {
+        if (!client) {
           this.selectedClientIds.splice(i);
         }
       }
@@ -270,7 +264,7 @@ export default {
       await this.$store.dispatch('clients/update', clients);
 
       // Select all clients by default
-      this.selectedClientIds = this.validClientIds;
+      this.selectedClientIds = this.clientIds;
     },
     async retryFailures() {
       await this.$store.dispatch('clientActions/retryFailures');

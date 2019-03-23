@@ -615,7 +615,10 @@ const module = {
         dispatch,
       } = context;
 
-      const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
+      /** All clients including the invalid ones. */
+      const allClients = clientIds.map(id => rootGetters['clients/getClientById'](id));
+      /** Just the valid clients. */
+      const clients = allClients.filter(client => client.valid);
       if (clients.length > 0) {
         if (rootState.config.zraLiteMode) {
           dispatch('setZraLiteMode', true, { root: true });
@@ -629,7 +632,7 @@ const module = {
           isRoot: true,
         });
 
-        commit('startNewRun', { taskId: rootTask.id, clients });
+        commit('startNewRun', { taskId: rootTask.id, clients: allClients });
         rootTask.title += ` #${state.currentRunId + 1}`;
         try {
           await taskFunction({
