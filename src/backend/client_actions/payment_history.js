@@ -1,17 +1,15 @@
 import moment from 'moment';
-import store from '@/store';
-import createTask from '@/transitional/tasks';
 import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  getPagedData,
   taskFunction,
 } from './utils';
 import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
   downloadReceipts,
+  getPagedReceiptData,
 } from './receipts';
 import {
   taxTypeNames,
@@ -27,7 +25,12 @@ import { createClientAction, ClientActionRunner } from './base';
  */
 
 /**
- * @typedef GetAllPaymentReceiptNumbersOptions
+ * @template R
+ * @typedef {import('./utils').GetDataFromPageFunctionReturn<R>} GetDataFromPageFunctionReturn
+ */
+
+/**
+ * @typedef GetPaymentReceiptsOptions
  * @property {Date} fromDate
  * @property {Date} toDate
  * @property {string} [receiptNumber]
@@ -35,29 +38,22 @@ import { createClientAction, ClientActionRunner } from './base';
  */
 
 /**
- * @typedef GetPaymentReceiptNumbersOptions.Temp
- * @property {number} page
+ * @typedef {Object} PrnNo
+ * @property {string} innerText E.g. '118019903987'
+ * @property {string} onclick
+ * Contains information about the payment such as search code, reference number and payment type
+ * in the following format:
+ * `payementHistory('<search code>','<reference number>','<payment type>')`
+ * E.g.
+ * `payementHistory('123456789','123456789','ABC')`
  */
-
-/* eslint-disable max-len */
-/**
- * @typedef {GetAllPaymentReceiptNumbersOptions & GetPaymentReceiptNumbersOptions.Temp} GetPaymentReceiptNumbersOptions
- */
-/* eslint-enable max-len */
 
 /**
  * @typedef PaymentReceipt
- * @property {string} srNo Serial nubmer
- * @property {Object} prnNo PRN number
- * @property {string} prnNo.innerText
- * @property {string} prnNo.onclick
- * Contains information about the payment such as search code, reference number and payment type
- * in the following format:
- * payementHistory('<search code>','<reference number>','<payment type>')
- * E.g.
- * payementHistory('123456789','123456789','ABC')
+ * @property {string} srNo Serial number
+ * @property {PrnNo} prnNo PRN number
  * @property {string} amount Amount in Kwacha
- * @property {string} status
+ * @property {string} status E.g. 'Payment received'
  * @property {Date} prnDate
  * @property {Date} paymentDate
  * @property {string} type Payment type. E.g. 'Electronic'
@@ -74,43 +70,16 @@ const recordHeaders = [
 ];
 
 /**
- * @typedef {Object} PrnNo
- * @property {string} innerText '118019903987'
- * @property {string} onclick "payementHistory('0617620366056', '1051185712615', 'WCO')"
+ * Gets payment receipts from a single page.
+ * @param {number} page
+ * @param {GetPaymentReceiptsOptions} options
+ * @returns {Promise.<GetDataFromPageFunctionReturn<PaymentReceipt[]>>}
  */
-
-/**
- * @typedef {Object} PaymentReceiptNumbers
- * ```js
-  {
-  srNo: '1',
-  prnNo: {
-    innerText: '118019903987',
-    onclick: "payementHistory('0617620366056', '1051185712615', 'WCO')",
-  },
-  amount: '365.00',
-  status: 'Payment Received',
-  prnDate: '12 / 05 / 2018',
-  paymentDate: '16 / 05 / 2018',
-  type: 'Without Cash Office',
-  }
- ```
- * @property {string} srNo '1'
- * @property {PrnNo} prnNo
- * @property {string} amount '365.00'
- * @property {string} status 'Payment Received'
- * @property {string} prnDate '12 / 05 / 2018'
- * @property {string} paymentDate '16 / 05 / 2018'
- * @property {string} type 'Without Cash Office'
- */
-
-/**
- * Gets payment receipt numbers from a single page.
- * @param {GetPaymentReceiptNumbersOptions} options
- * TODO: Document return type
- */
-async function getPaymentReceiptNumbers({
-  receiptNumber = '', referenceNumber = '', page, fromDate, toDate,
+async function getPaymentReceipts(page, {
+  fromDate,
+  toDate,
+  referenceNumber = '',
+  receiptNumber = '',
 }) {
   const doc = await getDocumentByAjax({
     url: 'https://www.zra.org.zm/ePaymentController.htm?actionCode=SearchPmtDetails',
@@ -123,7 +92,7 @@ async function getPaymentReceiptNumbers({
       prnNo: receiptNumber,
     },
   });
-  return parseTableAdvanced({
+  const table = await parseTableAdvanced({
     root: doc,
     headers: recordHeaders,
     tableInfoSelector: '#contentDiv>table>tbody>tr>td',
@@ -131,52 +100,31 @@ async function getPaymentReceiptNumbers({
     noRecordsString: 'No Records Found',
     parseLinks: true,
   });
+  let { records } = table;
+  if (records.length > 0) {
+    // Remove header row
+    records.shift();
+    // Ignore all the payment registrations
+    records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
+  }
+  return {
+    numPages: table.numPages,
+    value: records,
+  };
 }
 
 /**
- * Gets payment receipt numbers from all pages.
- * @param {GetAllPaymentReceiptNumbersOptions} options
+ * Gets payment receipts from all pages.
+ * @param {GetPaymentReceiptsOptions} options
  * @param {number} parentTaskId
- * @returns {Promise<PaymentReceiptNumbers[]>}
  */
-async function getAllPaymentReceiptNumbers(options, parentTaskId) {
-  const task = await createTask(store, {
-    title: 'Get payment receipt numbers',
-    parent: parentTaskId,
+async function getAllPaymentReceipts(options, parentTaskId) {
+  return getPagedReceiptData({
+    parentTaskId,
+    taskTitle: 'Get payment receipt numbers',
+    getPageTaskTitle: page => `Get payment receipt numbers from page ${page}`,
+    getDataFunction: page => getPaymentReceipts(page, options),
   });
-
-  const getPageSubTask = (page, subTaskParentId) => ({
-    title: `Get payment receipt numbers from page ${page + 1}`,
-    parent: subTaskParentId,
-    indeterminate: true,
-  });
-
-  const pageResponses = await getPagedData({
-    task,
-    getPageSubTask,
-    getDataFunction: (page) => {
-      const optionsWithPage = Object.assign({ page }, options);
-      return getPaymentReceiptNumbers(optionsWithPage);
-    },
-  });
-
-  const records = [];
-  for (const pageResponse of pageResponses) {
-    if (!('error' in pageResponse)) {
-      const response = pageResponse.value;
-      if (response.records.length > 0) {
-        // Remove header rows
-        response.records.shift();
-        for (const record of response.records) {
-          // Ignore all the payment registrations
-          if (record.status.toLowerCase() !== 'prn generated') {
-            records.push(record);
-          }
-        }
-      }
-    }
-  }
-  return records;
 }
 
 /**
@@ -331,10 +279,16 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        const receipts = await getAllPaymentReceiptNumbers({
+        const responses = await getAllPaymentReceipts({
           fromDate: input.fromDate,
           toDate: input.toDate,
         }, actionTask.id);
+        const receipts = [];
+        for (const response of responses) {
+          if (!('error' in response)) {
+            receipts.push(...response.value);
+          }
+        }
         const initialMaxOpenTabs = config.maxOpenTabs;
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {

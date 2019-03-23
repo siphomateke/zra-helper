@@ -7,13 +7,13 @@ import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
   parallelTaskMap,
-  getPagedData,
   taskFunction,
 } from './utils';
 import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
   downloadReceipts,
+  getPagedReceiptData,
 } from './receipts';
 import { createClientAction, ClientActionRunner } from './base';
 
@@ -23,6 +23,11 @@ import { createClientAction, ClientActionRunner } from './base';
  * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
  * @typedef {import('../constants').Date} Date
  * @typedef {import('../constants').ReferenceNumber} ReferenceNumber
+ */
+
+/**
+ * @template R
+ * @typedef {import('./utils').GetDataFromPageFunctionReturn<R>} GetDataFromPageFunctionReturn
  */
 
 /**
@@ -60,21 +65,27 @@ const recordHeaders = [
   'submittedForm',
 ];
 
-// TODO: Document functions
+/**
+ * @typedef {Object} GetReferenceNumbersOptions
+ * @property {TPIN} tpin
+ * @property {TaxTypeNumericalCode} taxType
+ * @property {Date} fromDate
+ * @property {Date} toDate
+ * @property {ExciseTypeCode} exciseType
+ */
 
 /**
  * Gets return history reference numbers that match the given criteria.
- * @param {Object} options
- * @param {TPIN} options.tpin
- * @param {TaxTypeNumericalCode} options.taxType
- * @param {Date} options.fromDate
- * @param {Date} options.toDate
- * @param {number} options.page
- * @param {ExciseTypeCode} options.exciseType
- * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
+ * @param {number} page
+ * @param {GetReferenceNumbersOptions} options
+ * @returns {Promise.<GetDataFromPageFunctionReturn<ReferenceNumber[]>>}
  */
-async function getAcknowledgementReceiptsReferenceNumbers({
-  tpin, taxType, fromDate, toDate, page, exciseType,
+async function getAcknowledgementReceiptsReferenceNumbers(page, {
+  tpin,
+  taxType,
+  fromDate,
+  toDate,
+  exciseType,
 }) {
   const doc = await getDocumentByAjax({
     url: 'https://www.zra.org.zm/retHist.htm',
@@ -92,69 +103,37 @@ async function getAcknowledgementReceiptsReferenceNumbers({
     },
   });
 
-  return parseTableAdvanced({
+  const table = await parseTableAdvanced({
     root: doc,
     headers: recordHeaders,
     tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
     recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
     noRecordsString: 'No Data Found',
   });
+  const referenceNumbers = [];
+  for (const record of table.records) {
+    if (record.appliedThrough.toLowerCase() === 'online') {
+      referenceNumbers.push(record.referenceNo);
+    }
+  }
+  return {
+    numPages: table.numPages,
+    value: referenceNumbers,
+  };
 }
 
 /**
  * Gets return history reference numbers from all the pages that match the given criteria.
- * @param {Object} options
- * @param {TPIN} options.tpin
- * @param {TaxTypeNumericalCode} options.taxType
- * @param {Date} options.fromDate
- * @param {Date} options.toDate
- * @param {ExciseTypeCode} options.exciseType
- * @param {number} options.parentTaskId
- * @returns {Promise.<ReferenceNumber[]>}
+ * @param {GetReferenceNumbersOptions} options
+ * @param {number} parentTaskId
  */
-async function getAllAcknowledgementReceiptsReferenceNumbers({
-  tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
-}) {
-  const options = {
-    tpin,
-    taxType,
-    fromDate,
-    toDate,
-    exciseType,
-  };
-
-  const task = await createTask(store, {
-    title: "Get acknowledgement receipts' reference numbers",
-    parent: parentTaskId,
+async function getAllAcknowledgementReceiptsReferenceNumbers(options, parentTaskId) {
+  return getPagedReceiptData({
+    parentTaskId,
+    taskTitle: "Get acknowledgement receipts' reference numbers",
+    getPageTaskTitle: page => `Getting reference numbers from page ${page}`,
+    getDataFunction: page => getAcknowledgementReceiptsReferenceNumbers(page, options),
   });
-
-  const getPageSubTask = (page, subTaskParentId) => ({
-    title: `Getting reference numbers from page ${page + 1}`,
-    parent: subTaskParentId,
-    indeterminate: true,
-  });
-
-  const pageResponses = await getPagedData({
-    task,
-    getPageSubTask,
-    getDataFunction: (page) => {
-      const optionsWithPage = Object.assign({ page }, options);
-      return getAcknowledgementReceiptsReferenceNumbers(optionsWithPage);
-    },
-  });
-
-  const referenceNumbers = [];
-  for (const pageResponse of pageResponses) {
-    if (!('error' in pageResponse)) {
-      const response = pageResponse.value;
-      for (const record of response.records) {
-        if (record.appliedThrough.toLowerCase() === 'online') {
-          referenceNumbers.push(record.referenceNo);
-        }
-      }
-    }
-  }
-  return referenceNumbers;
 }
 
 /**
@@ -245,14 +224,19 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
           catchErrors: true,
           setStateBasedOnChildren: true,
           func: async () => {
-            const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
+            const responses = await getAllAcknowledgementReceiptsReferenceNumbers({
               tpin: client.username,
               taxType: taxTypeId,
               fromDate: input.fromDate,
               toDate: input.toDate,
               exciseType: exciseTypes.airtime,
-              parentTaskId: task.id,
-            });
+            }, task.id);
+            const referenceNumbers = [];
+            for (const response of responses) {
+              if (!('error' in response)) {
+                referenceNumbers.push(...response.value);
+              }
+            }
             // TODO: Indicate why receipts weren't downloaded
             if (referenceNumbers.length > 0) {
               const allDownloadInfo = await downloadReceipts({

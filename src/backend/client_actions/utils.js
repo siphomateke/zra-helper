@@ -11,6 +11,7 @@ import { getElementFromDocument } from '../content_scripts/helpers/elements';
 /**
  * @typedef {import('@/transitional/tasks').TaskObject} Task
  * @typedef {import('../constants').Client} Client
+ * @typedef {import('../content_scripts/helpers/zra').ParsedTableRecord} ParsedTableRecord
  */
 
 /**
@@ -168,15 +169,17 @@ export function parallelTaskMap({
  */
 
 /**
+ * @template R
  * @typedef {Object} GetDataFromPageFunctionReturn
  * @property {number} numPages
+ * @property {R} value
  */
 
 /**
  * @template R
  * @callback GetDataFromPageFunction
  * @param {number} page
- * @returns {Promise.<R & GetDataFromPageFunctionReturn>}
+ * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
  */
 
 /**
@@ -193,7 +196,7 @@ export function parallelTaskMap({
  * @param {number} options.parentTaskId
  * @param {number} options.page The page to get data from.
  * @param {number} [options.firstPage=1] The index of the first page.
- * @returns {Promise.<R & GetDataFromPageFunctionReturn>}
+ * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
  */
 export async function getDataFromPageTask({
   getTaskData,
@@ -251,7 +254,7 @@ export async function getPagedData({
         page: 0,
         parentTaskId: task.id,
       }, options));
-      allResults.push({ page: firstPage, value: result });
+      allResults.push({ page: firstPage, value: result.value });
 
       // Then get the rest of the pages in parallel
       const results = await parallelTaskMap({
@@ -271,7 +274,7 @@ export async function getPagedData({
         const actualPage = Number(page) + firstPage;
         const response = { page: actualPage };
         if (!('error' in result)) {
-          response.value = result.value;
+          response.value = result.value.value;
         } else {
           response.error = result.error;
         }
@@ -298,7 +301,7 @@ export async function getPagedData({
  * @param {Object} options
  * @param {string} options.tpin
  * @param {number} options.page
- * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
+ * @returns {Promise.<GetDataFromPageFunctionReturn<ParsedTableRecord[]>>}
  */
 export async function getTaxAccountPage({ tpin, page }) {
   const doc = await getDocumentByAjax({
@@ -330,7 +333,10 @@ export async function getTaxAccountPage({ tpin, page }) {
     /* TODO: There is always at least one tax account. Because of the this, the no records string
     should not be checked. */
   });
-  return parsedTable;
+  return {
+    numPages: parsedTable.numPages,
+    value: parsedTable.records,
+  };
 }
 
 /**
@@ -363,8 +369,8 @@ export async function getTaxAccounts({ store, parentTaskId, tpin }) {
   const processed = [];
   for (const pageResponse of pageResponses) {
     if (!('error' in pageResponse)) {
-      const response = pageResponse.value;
-      for (const account of response.records) {
+      const records = pageResponse.value;
+      for (const account of records) {
         const accountName = account.accountName.toLowerCase();
         // The account name contains the name of the client and the name of the tax type separated
         // by a hyphen. We can thus figure out the account's tax type ID from the account name.

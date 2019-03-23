@@ -10,7 +10,12 @@ import {
   saveAsMHTML,
   tabLoaded,
 } from '../utils';
-import { changeLiteMode, parallelTaskMap, taskFunction } from './utils';
+import {
+  changeLiteMode,
+  parallelTaskMap,
+  taskFunction,
+  getPagedData,
+} from './utils';
 
 /**
  * @typedef {Object} DownloadReceiptOptions
@@ -151,4 +156,39 @@ export function startDownloadingReceipts() {
 
 export async function finishDownloadingReceipts() {
   return changeLiteMode(true);
+}
+
+/**
+ * Gets data from multiple pages that is required to download receipts.
+ * @template Response
+ * @param {Object} options
+ * @param {number} options.parentTaskId
+ * @param {string} options.taskTitle
+ * Title of the main task.
+ * @param {(page: number) => string} options.getPageTaskTitle
+ * Function that generates the title of a page task using a page number.
+ * @param {import('./utils').GetDataFromPageFunction<Response>} options.getDataFunction
+ */
+export async function getPagedReceiptData({
+  parentTaskId,
+  taskTitle,
+  getPageTaskTitle: pageTaskTitle,
+  getDataFunction,
+}) {
+  const task = await createTask(store, {
+    title: taskTitle,
+    parent: parentTaskId,
+  });
+
+  const getPageSubTask = (page, subTaskParentId) => ({
+    title: pageTaskTitle(page + 1),
+    parent: subTaskParentId,
+    indeterminate: true,
+  });
+
+  return getPagedData({
+    task,
+    getPageSubTask,
+    getDataFunction,
+  });
 }
