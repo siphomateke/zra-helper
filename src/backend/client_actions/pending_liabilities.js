@@ -6,6 +6,7 @@ import { writeJson } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import { createClientAction, ClientActionRunner } from './base';
 import { getPendingLiabilityPage } from '../reports';
+import { errorToString } from '../errors';
 
 /** Columns to get from the pending liabilities table */
 const totalsColumns = [
@@ -162,10 +163,17 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
             username: client.username,
           });
         }
+        const outputValue = output.value;
+        const taxTypeErrors = {};
+        for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
+          const error = outputValue.retrievalErrors[taxTypeCode];
+          taxTypeErrors[taxTypeCode] = errorToString(error);
+        }
         json[client.id] = {
           client: jsonClient,
           actionId: output.actionId,
-          value: output.value,
+          totals: outputValue.totals,
+          taxTypeErrors,
           error: output.error,
         };
       }
