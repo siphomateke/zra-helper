@@ -181,7 +181,7 @@ export async function getPagedReceiptData({
   });
 
   const getPageSubTask = (page, subTaskParentId) => ({
-    title: pageTaskTitle(page + 1),
+    title: pageTaskTitle(page),
     parent: subTaskParentId,
     indeterminate: true,
   });

@@ -195,7 +195,6 @@ export function parallelTaskMap({
  * number of pages.
  * @param {number} options.parentTaskId
  * @param {number} options.page The page to get data from.
- * @param {number} [options.firstPage=1] The index of the first page.
  * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
  */
 export async function getDataFromPageTask({
@@ -203,12 +202,11 @@ export async function getDataFromPageTask({
   getDataFunction,
   parentTaskId,
   page,
-  firstPage = 1,
 }) {
   const childTask = await createTask(store, getTaskData(page, parentTaskId));
   return taskFunction({
     task: childTask,
-    func: () => getDataFunction(page + firstPage),
+    func: () => getDataFunction(page),
   });
 }
 
@@ -243,7 +241,6 @@ export async function getPagedData({
       const options = {
         getTaskData: getPageSubTask,
         getDataFunction,
-        firstPage,
       };
 
       const allResults = [];
@@ -251,15 +248,15 @@ export async function getPagedData({
       // Get data from the first page so we know the total number of pages
       // NOTE: The settings set by parallel task map aren't set when this runs
       const result = await getDataFromPageTask(Object.assign({
-        page: 0,
+        page: firstPage,
         parentTaskId: task.id,
       }, options));
       allResults.push({ page: firstPage, value: result.value });
 
       // Then get the rest of the pages in parallel
       const results = await parallelTaskMap({
-        startIndex: 1,
-        count: result.numPages,
+        startIndex: firstPage + 1,
+        count: result.numPages + firstPage,
         task,
         func(page, parentTaskId) {
           return getDataFromPageTask(Object.assign({
@@ -270,9 +267,7 @@ export async function getPagedData({
       });
 
       for (const result of results) {
-        const page = result.item;
-        const actualPage = Number(page) + firstPage;
-        const response = { page: actualPage };
+        const response = { page: Number(result.item) };
         if (!('error' in result)) {
           response.value = result.value.value;
         } else {
@@ -355,7 +350,7 @@ export async function getTaxAccounts({ store, parentTaskId, tpin }) {
   });
 
   const getPageSubTask = (page, subTaskParentId) => ({
-    title: `Get tax accounts from page ${page + 1}`,
+    title: `Get tax accounts from page ${page}`,
     parent: subTaskParentId,
     indeterminate: true,
   });
