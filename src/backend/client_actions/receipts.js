@@ -168,12 +168,14 @@ export async function finishDownloadingReceipts() {
  * @param {(page: number) => string} options.getPageTaskTitle
  * Function that generates the title of a page task using a page number.
  * @param {import('./utils').GetDataFromPageFunction<Response>} options.getDataFunction
+ * @param {number[]} [options.pages] Specific pages to fetch.
  */
 export async function getPagedReceiptData({
   parentTaskId,
   taskTitle,
   getPageTaskTitle: pageTaskTitle,
   getDataFunction,
+  pages = [],
 }) {
   const task = await createTask(store, {
     title: taskTitle,
@@ -190,5 +192,6 @@ export async function getPagedReceiptData({
     task,
     getPageSubTask,
     getDataFunction,
+    pages,
   });
 }
