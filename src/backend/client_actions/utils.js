@@ -226,6 +226,8 @@ export async function getDataFromPageTask({
  * A function that when given a page number will return the data from that page including the total
  * number of pages.
  * @param {number} [options.firstPage] The index of the first page.
+ * @param {number[]} [options.pages]
+ * Specific page numbers to get. If not set, all pages will be fetched.
  * @returns {Promise.<Array.<MultipleResponses<R> & PagedDataResponse>>}
  */
 export async function getPagedData({
@@ -233,38 +235,50 @@ export async function getPagedData({
   getPageSubTask,
   getDataFunction,
   firstPage = 1,
+  pages = [],
 }) {
+  const options = {
+    getTaskData: getPageSubTask,
+    getDataFunction,
+  };
+
+  const parallelTaskMapOptions = {
+    task,
+    func: (page, parentTaskId) => getDataFromPageTask(Object.assign({
+      page,
+      parentTaskId,
+    }, options)),
+  };
+
   return taskFunction({
     task,
     setState: false,
     async func() {
-      const options = {
-        getTaskData: getPageSubTask,
-        getDataFunction,
-      };
-
       const allResults = [];
+      let results = null;
 
-      // Get data from the first page so we know the total number of pages
-      // NOTE: The settings set by parallel task map aren't set when this runs
-      const result = await getDataFromPageTask(Object.assign({
-        page: firstPage,
-        parentTaskId: task.id,
-      }, options));
-      allResults.push({ page: firstPage, value: result.value });
+      // If no specific pages have been requested, figure out how many pages there are and get all
+      // of them.
+      if (pages.length === 0) {
+        // Get data from the first page so we know the total number of pages
+        // NOTE: The settings set by parallel task map aren't set when this runs
+        const result = await getDataFromPageTask(Object.assign({
+          page: firstPage,
+          parentTaskId: task.id,
+        }, options));
+        allResults.push({ page: firstPage, value: result.value });
 
-      // Then get the rest of the pages in parallel
-      const results = await parallelTaskMap({
-        startIndex: firstPage + 1,
-        count: result.numPages + firstPage,
-        task,
-        func(page, parentTaskId) {
-          return getDataFromPageTask(Object.assign({
-            page,
-            parentTaskId,
-          }, options));
-        },
-      });
+        // Then get the rest of the pages in parallel.
+        results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
+          startIndex: firstPage + 1,
+          count: result.numPages + firstPage,
+        }));
+      } else {
+        // Get only the requested pages.
+        results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
+          list: pages,
+        }));
+      }
 
       for (const result of results) {
         const response = { page: Number(result.item) };
