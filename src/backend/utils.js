@@ -280,7 +280,14 @@ export function closeTab(tabId) {
 
 /**
  * Creates a tab with the result of a POST request.
+ *
+ * To open a new tab with the results of a POST request to the ZRA website, we can't just use an
+ * extension page with an auto submitting form. This is because the ZRA website expects the request
+ * to be made from the same origin as the website. Thus, we must open a page on the ZRA website,
+ * inject the form and then submit it. 'https://www.zra.org.zm/manageUpload.htm' works well for
+ * this because it's a blank page and loads fast.
  * @param {CreateTabPostOptions} options
+ * @returns {Promise.<browser.tabs.Tab>}
  */
 export async function createTabPost({ url, data, active = false }) {
   const form = document.createElement('form');
@@ -294,29 +301,14 @@ export async function createTabPost({ url, data, active = false }) {
     form.appendChild(input);
   }
 
-  let formHtml = form.outerHTML;
-
-  const isFirefox = getCurrentBrowser() === browserCodes.FIREFOX;
+  const formHtml = form.outerHTML;
 
   let tab = null;
   try {
-    if (isFirefox) {
-      /*
-      Firefox doesn't allow executing data URLs from extensions so we need a workaround.
-      The current solution is to open a page on the ZRA website, inject a form and then
-      submit it. We open manageUpload.htm because it's a nice blank page.
-      */
-      tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
-      await tabLoaded(tab.id);
-      // Insert the form into the page.
-      await runContentScript(tab.id, 'inject_form', { html: formHtml });
-    } else {
-      formHtml += '<script>document.forms[0].submit();</script>';
-      const generatedUrl = `data:text/html;charset=utf8,${encodeURIComponent(formHtml)}`;
-      tab = await createTab(generatedUrl, active);
-      // wait for form to load
-      await tabLoaded(tab.id);
-    }
+    tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
+    await tabLoaded(tab.id);
+    // Insert the form into the page.
+    await runContentScript(tab.id, 'inject_form', { html: formHtml });
     return tab;
   } catch (error) {
     // If there were any errors but the tab was already opened, make sure it's closed.
