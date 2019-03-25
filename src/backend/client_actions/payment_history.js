@@ -271,24 +271,25 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        let receipts = null;
+        let receipts = [];
         // If specific receipts have been requested to be downloaded, use those.
-        if (inInput(input, 'receipts')) {
+        const receiptsInInput = inInput(input, 'receipts');
+        if (receiptsInInput) {
           const inputReceipts = input.receipts;
           if (Array.isArray(inputReceipts) && inputReceipts.length > 0) {
             receipts = inputReceipts;
           }
         }
-        // Otherwise, get all receipts.
-        if (receipts === null) {
-          let pages = [];
-          // If getting certain receipt data pages failed last time, only get those pages.
-          if (inInput(input, 'receiptDataPages')) {
-            const inputReceiptDataPages = input.receiptDataPages;
-            if (Array.isArray(inputReceiptDataPages) && inputReceiptDataPages.length > 0) {
-              pages = inputReceiptDataPages;
-            }
+
+        let pages = [];
+        // If getting certain receipt data pages failed last time, only get those pages.
+        if (inInput(input, 'receiptDataPages')) {
+          const inputReceiptDataPages = input.receiptDataPages;
+          if (Array.isArray(inputReceiptDataPages) && inputReceiptDataPages.length > 0) {
+            pages = inputReceiptDataPages;
           }
+        }
+        if (pages.length > 0 || receipts.length === 0) {
           actionTask.status = 'Getting payment receipt numbers';
           const { data, failedPages } = await getReceiptData({
             taskTitle: 'Get payment receipt numbers',
@@ -300,7 +301,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
             parentTaskId: actionTask.id,
             pages,
           });
-          receipts = data;
+          receipts.push(...data);
           failed.receiptDataPages = failedPages;
         }
 

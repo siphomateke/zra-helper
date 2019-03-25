@@ -205,18 +205,13 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
    * @param {Object} options
    * @param {import('@/transitional/tasks').TaskObject} options.task
    * @param {TaxTypeNumericalCode} options.taxTypeId
+   * @param {number[]} options.pages
    */
-  async getReferenceNumbers({ task, taxTypeId }) {
+  async getReferenceNumbers({ task, taxTypeId, pages }) {
     const { client } = this.storeProxy;
     // eslint-disable-next-line prefer-destructuring
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
 
-    let pages = [];
-    // If getting certain receipt data pages failed last time, only get those pages.
-    const inputPages = getTaxTypeInput(input, taxTypeId, 'receiptDataPages');
-    if (Array.isArray(inputPages) && inputPages.length > 0) {
-      pages = inputPages;
-    }
     const response = await getReceiptData({
       parentTaskId: task.id,
       taskTitle: "Get acknowledgement receipts' reference numbers",
@@ -300,16 +295,23 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
       func: async () => {
         let failedPages = [];
 
-        let referenceNumbers = null;
+        let referenceNumbers = [];
         // If only certain reference numbers failed in the last run, use those.
         const inputRefNumbers = getTaxTypeInput(input, taxTypeId, 'receipts');
         if (Array.isArray(inputRefNumbers) && inputRefNumbers.length > 0) {
           referenceNumbers = inputRefNumbers;
         }
-        // Otherwise, get all reference numbers.
-        if (referenceNumbers === null) {
+        let pages = [];
+        // If getting certain receipt data pages failed last time, only get those pages.
+        const inputPages = getTaxTypeInput(input, taxTypeId, 'receiptDataPages');
+        if (Array.isArray(inputPages) && inputPages.length > 0) {
+          pages = inputPages;
+        }
+        if (inputPages !== null || inputRefNumbers === null) {
           task.status = 'Getting reference numbers';
-          ({ referenceNumbers, failedPages } = await this.getReferenceNumbers({ task, taxTypeId }));
+          const data = await this.getReferenceNumbers({ task, taxTypeId, pages });
+          ({ failedPages } = data);
+          referenceNumbers.push(...data.referenceNumbers);
         }
 
         let failedReferenceNumbers = [];
