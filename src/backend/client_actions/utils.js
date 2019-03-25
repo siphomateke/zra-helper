@@ -248,6 +248,7 @@ export async function getPagedData({
       page,
       parentTaskId,
     }, options)),
+    neverReject: true,
   };
 
   return taskFunction({
