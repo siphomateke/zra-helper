@@ -246,7 +246,7 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
   async downloadReceipts({ referenceNumbers, task, taxTypeId }) {
     const { client } = this.storeProxy;
     const downloadResponses = await downloadReceipts({
-      taskTitle: 'Download acknowledgement receipts',
+      taskTitle: `Download ${referenceNumbers.length} acknowledgement receipt(s)`,
       list: referenceNumbers,
       parentTaskId: task.id,
       getDownloadReceiptOptions(referenceNumber, parentTaskId) {
@@ -308,12 +308,14 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
         }
         // Otherwise, get all reference numbers.
         if (referenceNumbers === null) {
+          task.status = 'Getting reference numbers';
           ({ referenceNumbers, failedPages } = await this.getReferenceNumbers({ task, taxTypeId }));
         }
 
         let failedReferenceNumbers = [];
         // TODO: Indicate why receipts weren't downloaded
         if (referenceNumbers.length > 0) {
+          task.status = `Downloading ${referenceNumbers.length} receipt(s)`;
           failedReferenceNumbers = await this.downloadReceipts({
             referenceNumbers,
             task,

@@ -271,12 +271,14 @@ export async function getPagedData({
         allResults.push({ page: firstPage, value: result.value });
 
         // Then get the rest of the pages in parallel.
+        task.status = `Getting data from ${result.numPages} page(s)`;
         results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
           startIndex: firstPage + 1,
           count: result.numPages + firstPage,
         }));
       } else {
         // Get only the requested pages.
+        task.status = `Getting data from ${pages.length} page(s)`;
         results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
           list: pages,
         }));

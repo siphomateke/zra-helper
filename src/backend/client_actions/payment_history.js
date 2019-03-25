@@ -289,6 +289,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
               pages = inputReceiptDataPages;
             }
           }
+          actionTask.status = 'Getting payment receipt numbers';
           const { data, failedPages } = await getReceiptData({
             taskTitle: 'Get payment receipt numbers',
             getPageTaskTitle: page => `Get payment receipt numbers from page ${page}`,
@@ -307,9 +308,10 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
         if (receipts.length > 0) {
           const initialMaxOpenTabs = config.maxOpenTabs;
           config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
+          actionTask.status = `Downloading ${receipts.length} payment receipt(s)`;
           await startDownloadingReceipts();
           const downloadResponses = await downloadReceipts({
-            taskTitle: 'Download payment receipts',
+            taskTitle: `Download ${receipts.length} payment receipt(s)`,
             parentTaskId: actionTask.id,
             list: receipts,
             getDownloadReceiptOptions(receipt, parentTaskId) {
