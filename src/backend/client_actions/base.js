@@ -266,3 +266,16 @@ export function createClientAction(options) {
 
   return clientAction;
 }
+
+/**
+ * Checks if a key is set in a runner's input
+ * @param {Object} input
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function inInput(input, key) {
+  if (input && (key in input)) {
+    return true;
+  }
+  return false;
+}

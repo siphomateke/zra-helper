@@ -9,7 +9,8 @@ import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
   downloadReceipts,
-  getPagedReceiptData,
+  getFailedResponseItems,
+  getReceiptData,
 } from './receipts';
 import {
   taxTypeNames,
@@ -17,7 +18,7 @@ import {
   taxTypes,
   browserFeatures,
 } from '../constants';
-import { createClientAction, ClientActionRunner } from './base';
+import { createClientAction, ClientActionRunner, inInput } from './base';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -111,20 +112,6 @@ async function getPaymentReceipts(page, {
     numPages: table.numPages,
     value: records,
   };
-}
-
-/**
- * Gets payment receipts from all pages.
- * @param {GetPaymentReceiptsOptions} options
- * @param {number} parentTaskId
- */
-async function getAllPaymentReceipts(options, parentTaskId) {
-  return getPagedReceiptData({
-    parentTaskId,
-    taskTitle: 'Get payment receipt numbers',
-    getPageTaskTitle: page => `Get payment receipt numbers from page ${page}`,
-    getDataFunction: page => getPaymentReceipts(page, options),
-  });
 }
 
 /**
@@ -254,6 +241,8 @@ const GetPaymentReceiptsClientAction = createClientAction({
  * @typedef {Object} RunnerInput
  * @property {import('@/backend/constants').Date} [fromDate]
  * @property {import('@/backend/constants').Date} [toDate]
+ * @property {PaymentReceipt[]} receipts
+ * @property {number[]} receiptDataPages
  */
 
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
@@ -273,28 +262,53 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
 
-    let anyReceiptsFailedToDownload = false;
+    const failed = {
+      receipts: [],
+      receiptDataPages: [],
+    };
 
     await taskFunction({
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        const responses = await getAllPaymentReceipts({
-          fromDate: input.fromDate,
-          toDate: input.toDate,
-        }, actionTask.id);
-        const receipts = [];
-        for (const response of responses) {
-          if (!('error' in response)) {
-            receipts.push(...response.value);
+        let receipts = null;
+        // If specific receipts have been requested to be downloaded, use those.
+        if (inInput(input, 'receipts')) {
+          const inputReceipts = input.receipts;
+          if (Array.isArray(inputReceipts) && inputReceipts.length > 0) {
+            receipts = inputReceipts;
           }
         }
-        const initialMaxOpenTabs = config.maxOpenTabs;
+        // Otherwise, get all receipts.
+        if (receipts === null) {
+          let pages = [];
+          // If getting certain receipt data pages failed last time, only get those pages.
+          if (inInput(input, 'receiptDataPages')) {
+            const inputReceiptDataPages = input.receiptDataPages;
+            if (Array.isArray(inputReceiptDataPages) && inputReceiptDataPages.length > 0) {
+              pages = inputReceiptDataPages;
+            }
+          }
+          const { data, failedPages } = await getReceiptData({
+            taskTitle: 'Get payment receipt numbers',
+            getPageTaskTitle: page => `Get payment receipt numbers from page ${page}`,
+            getDataFunction: page => getPaymentReceipts(page, {
+              fromDate: input.fromDate,
+              toDate: input.toDate,
+            }),
+            parentTaskId: actionTask.id,
+            pages,
+          });
+          receipts = data;
+          failed.receiptDataPages = failedPages;
+        }
+
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
+          const initialMaxOpenTabs = config.maxOpenTabs;
           config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           await startDownloadingReceipts();
-          const allDownloadInfo = await downloadReceipts({
+          const downloadResponses = await downloadReceipts({
             taskTitle: 'Download payment receipts',
             parentTaskId: actionTask.id,
             list: receipts,
@@ -302,18 +316,22 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
               return getDownloadReceiptOptions({ receipt, parentTaskId, client });
             },
           });
-          const failedReceipt = allDownloadInfo.find(downloadInfo => 'error' in downloadInfo);
-          if (typeof failedReceipt !== 'undefined') {
-            anyReceiptsFailedToDownload = true;
-          }
           await finishDownloadingReceipts();
+          failed.receipts = getFailedResponseItems(downloadResponses);
           config.maxOpenTabs = initialMaxOpenTabs;
         }
       },
     });
 
-    if (anyReceiptsFailedToDownload) {
+    if (failed.receipts.length > 0 || failed.receiptDataPages.length > 0) {
       this.setRetryReason('Some receipts failed to download.');
+      this.storeProxy.retryInput = {};
+      if (failed.receipts.length > 0) {
+        this.storeProxy.retryInput.receipts = failed.receipts;
+      }
+      if (failed.receiptDataPages.length > 0) {
+        this.storeProxy.retryInput.receiptDataPages = failed.receiptDataPages;
+      }
     }
   }
 };
