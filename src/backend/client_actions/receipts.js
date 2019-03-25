@@ -49,18 +49,25 @@ export async function downloadReceipt({
     task,
     async func() {
       const tab = await createTabPost(createTabPostOptions);
+      let receiptData = null;
+      let blob = null;
       try {
         task.addStep('Waiting for receipt to load');
         await tabLoaded(tab.id);
 
-        const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
+        receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
 
         if (!receiptData.referenceNumber) {
           throw new InvalidReceiptError('Invalid receipt; missing reference number.');
         }
 
         task.addStep('Converting receipt to MHTML');
-        const blob = await saveAsMHTML({ tabId: tab.id });
+        blob = await saveAsMHTML({ tabId: tab.id });
+      } finally {
+        // TODO: Catch tab close errors
+        closeTab(tab.id);
+      }
+      if (receiptData !== null && blob !== null) {
         const url = URL.createObjectURL(blob);
         task.addStep('Downloading generated MHTML');
 
@@ -102,10 +109,6 @@ export async function downloadReceipt({
         } else {
           throw new Error('Invalid filename attribute; filename must be a string, array or function.');
         }
-      } finally {
-        // Don't need to wait for the tab to close to carry out logged in actions
-        // TODO: Catch tab close errors
-        closeTab(tab.id);
       }
     },
   });
