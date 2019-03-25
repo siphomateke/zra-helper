@@ -1,4 +1,5 @@
 import moment from 'moment';
+import set from 'lodash.set';
 import store from '@/store';
 import config from '@/transitional/config';
 import createTask from '@/transitional/tasks';
@@ -6,14 +7,17 @@ import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  downloadReceipt,
   parallelTaskMap,
-  getPagedData,
   taskFunction,
+} from './utils';
+import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
-} from './utils';
-import { createClientAction, ClientActionRunner } from './base';
+  downloadReceipts,
+  getFailedResponseItems,
+  getReceiptData,
+} from './receipts';
+import { createClientAction, ClientActionRunner, inInput } from './base';
 
 /**
  * @typedef {import('../constants').Client} Client
@@ -21,6 +25,11 @@ import { createClientAction, ClientActionRunner } from './base';
  * @typedef {import('../constants').TaxTypeNumericalCode} TaxTypeNumericalCode
  * @typedef {import('../constants').Date} Date
  * @typedef {import('../constants').ReferenceNumber} ReferenceNumber
+ */
+
+/**
+ * @template R
+ * @typedef {import('./utils').GetDataFromPageFunctionReturn<R>} GetDataFromPageFunctionReturn
  */
 
 /**
@@ -58,21 +67,27 @@ const recordHeaders = [
   'submittedForm',
 ];
 
-// TODO: Document functions
+/**
+ * @typedef {Object} GetReferenceNumbersOptions
+ * @property {TPIN} tpin
+ * @property {TaxTypeNumericalCode} taxType
+ * @property {Date} fromDate
+ * @property {Date} toDate
+ * @property {ExciseTypeCode} exciseType
+ */
 
 /**
  * Gets return history reference numbers that match the given criteria.
- * @param {Object} options
- * @param {TPIN} options.tpin
- * @param {TaxTypeNumericalCode} options.taxType
- * @param {Date} options.fromDate
- * @param {Date} options.toDate
- * @param {number} options.page
- * @param {ExciseTypeCode} options.exciseType
- * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
+ * @param {number} page
+ * @param {GetReferenceNumbersOptions} options
+ * @returns {Promise.<GetDataFromPageFunctionReturn<ReferenceNumber[]>>}
  */
-async function getAcknowledgementReceiptsReferenceNumbers({
-  tpin, taxType, fromDate, toDate, page, exciseType,
+async function getAcknowledgementReceiptsReferenceNumbers(page, {
+  tpin,
+  taxType,
+  fromDate,
+  toDate,
+  exciseType,
 }) {
   const doc = await getDocumentByAjax({
     url: 'https://www.zra.org.zm/retHist.htm',
@@ -90,82 +105,37 @@ async function getAcknowledgementReceiptsReferenceNumbers({
     },
   });
 
-  return parseTableAdvanced({
+  const table = await parseTableAdvanced({
     root: doc,
     headers: recordHeaders,
     tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
     recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
     noRecordsString: 'No Data Found',
   });
-}
-
-/**
- * Gets return history reference numbers from all the pages that match the given criteria.
- * @param {Object} options
- * @param {TPIN} options.tpin
- * @param {TaxTypeNumericalCode} options.taxType
- * @param {Date} options.fromDate
- * @param {Date} options.toDate
- * @param {ExciseTypeCode} options.exciseType
- * @param {number} options.parentTaskId
- * @returns {Promise.<ReferenceNumber[]>}
- */
-async function getAllAcknowledgementReceiptsReferenceNumbers({
-  tpin, taxType, fromDate, toDate, exciseType, parentTaskId,
-}) {
-  const options = {
-    tpin,
-    taxType,
-    fromDate,
-    toDate,
-    exciseType,
-  };
-
-  const task = await createTask(store, {
-    title: "Get acknowledgement receipts' reference numbers",
-    parent: parentTaskId,
-  });
-
-  const getPageSubTask = (page, subTaskParentId) => ({
-    title: `Getting reference numbers from page ${page + 1}`,
-    parent: subTaskParentId,
-    indeterminate: true,
-  });
-
-  const results = await getPagedData({
-    task,
-    getPageSubTask,
-    getDataFunction: (page) => {
-      const optionsWithPage = Object.assign({ page }, options);
-      return getAcknowledgementReceiptsReferenceNumbers(optionsWithPage);
-    },
-  });
-
   const referenceNumbers = [];
-  for (const result of Object.values(results)) {
-    if (result && 'records' in result) {
-      for (const record of result.records) {
-        if (record.appliedThrough.toLowerCase() === 'online') {
-          referenceNumbers.push(record.referenceNo);
-        }
-      }
+  for (const record of table.records) {
+    if (record.appliedThrough.toLowerCase() === 'online') {
+      referenceNumbers.push(record.referenceNo);
     }
   }
-  return referenceNumbers;
+  return {
+    numPages: table.numPages,
+    value: referenceNumbers,
+  };
 }
 
 /**
- * Downloads the return history receipt that has the provided reference number.
  * @param {Object} options
  * @param {Client} options.client
  * @param {TaxTypeNumericalCode} options.taxType
  * @param {ReferenceNumber} options.referenceNumber
  * @param {number} options.parentTaskId
+ * @returns {import('./receipts').DownloadReceiptOptions}
  */
-function downloadAcknowledgementReceipt({
+function getDownloadReceiptOptions({
   client, taxType, referenceNumber, parentTaskId,
 }) {
-  return downloadReceipt({
+  return {
     type: 'return',
     filename(receiptData) {
       const date = moment(receiptData.periodFrom, 'DD/MM/YYYY');
@@ -188,37 +158,7 @@ function downloadAcknowledgementReceipt({
         rtnType: taxType,
       },
     },
-  });
-}
-
-/**
- * Downloads all the return history receipts that have the provided reference numbers.
- * @param {Object} options
- * @param {Client} options.client
- * @param {TaxTypeNumericalCode} options.taxType
- * @param {ReferenceNumber[]} options.referenceNumbers
- * @param {number} options.parentTaskId
- * @returns {Promise<boolean[]>}
- * Array of booleans indicating whether each receipt downloaded successfully.
- */
-async function downloadAcknowledgementReceipts({
-  client, taxType, referenceNumbers, parentTaskId,
-}) {
-  const task = await createTask(store, { title: 'Download acknowledgement receipts', parent: parentTaskId });
-  return parallelTaskMap({
-    list: referenceNumbers,
-    task,
-    async func(referenceNumber, parentTaskId) {
-      try {
-        await downloadAcknowledgementReceipt({
-          client, taxType, referenceNumber, parentTaskId,
-        });
-        return true;
-      } catch (error) {
-        return false;
-      }
-    },
-  });
+  };
 }
 
 const GetAcknowledgementsOfReturnsClientAction = createClientAction({
@@ -228,67 +168,228 @@ const GetAcknowledgementsOfReturnsClientAction = createClientAction({
   requiresTaxTypes: true,
 });
 
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('@/backend/constants').Date} [fromDate]
+ * @property {import('@/backend/constants').Date} [toDate]
+ * @property {TaxTypeNumericalCode[]} [taxTypeIds]
+ * @property {Object.<string, ReferenceNumber[]>} [receipts] Reference numbers by tax type ID.
+ * @property {Object.<string, number[]>} [receiptDataPages] Receipt data pages by tax type ID.
+ */
+
+/**
+ * Gets input that is only used under a particular tax type.
+ * @param {Object} input
+ * @param {TaxTypeNumericalCode} taxTypeId
+ * @param {string} key
+ * @returns {Array}
+ */
+function getTaxTypeInput(input, taxTypeId, key) {
+  if (inInput(input, key)) {
+    return input[key][taxTypeId];
+  }
+  return null;
+}
+
 GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data);
     this.storeProxy.actionId = GetAcknowledgementsOfReturnsClientAction.id;
+    this.storeProxy.input = {
+      fromDate: '01/01/2013',
+      toDate: moment().format('31/12/YYYY'),
+    };
+  }
+
+  /**
+   * @param {Object} options
+   * @param {import('@/transitional/tasks').TaskObject} options.task
+   * @param {TaxTypeNumericalCode} options.taxTypeId
+   */
+  async getReferenceNumbers({ task, taxTypeId }) {
+    const { client } = this.storeProxy;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+
+    let pages = [];
+    // If getting certain receipt data pages failed last time, only get those pages.
+    const inputPages = getTaxTypeInput(input, taxTypeId, 'receiptDataPages');
+    if (Array.isArray(inputPages) && inputPages.length > 0) {
+      pages = inputPages;
+    }
+    const response = await getReceiptData({
+      parentTaskId: task.id,
+      taskTitle: "Get acknowledgement receipts' reference numbers",
+      getPageTaskTitle: page => `Getting reference numbers from page ${page}`,
+      getDataFunction: page => getAcknowledgementReceiptsReferenceNumbers(page, {
+        tpin: client.username,
+        taxType: taxTypeId,
+        fromDate: input.fromDate,
+        toDate: input.toDate,
+        exciseType: exciseTypes.airtime,
+      }),
+      pages,
+    });
+    return {
+      referenceNumbers: response.data,
+      failedPages: response.failedPages,
+    };
+  }
+
+  /**
+   * @param {Object} options
+   * @param {string[]} options.referenceNumbers
+   * @param {import('@/transitional/tasks').TaskObject} options.task
+   * @param {TaxTypeNumericalCode} options.taxTypeId
+   * @returns {Promise.<ReferenceNumber[]>} Reference numbers that could not be retrieved.
+   */
+  async downloadReceipts({ referenceNumbers, task, taxTypeId }) {
+    const { client } = this.storeProxy;
+    const downloadResponses = await downloadReceipts({
+      taskTitle: 'Download acknowledgement receipts',
+      list: referenceNumbers,
+      parentTaskId: task.id,
+      getDownloadReceiptOptions(referenceNumber, parentTaskId) {
+        return getDownloadReceiptOptions({
+          referenceNumber, parentTaskId, client, taxType: taxTypeId,
+        });
+      },
+    });
+    const failedReferenceNumbers = getFailedResponseItems(downloadResponses);
+    return failedReferenceNumbers;
+  }
+
+  /**
+  * @typedef {Object} TaxTypeFailure
+  * @property {ReferenceNumber[]} [receipts]
+  * @property {number[]} [receiptDataPages]
+  */
+
+  /**
+   * @typedef {Object.<string, TaxTypeFailure>} TaxTypeFailures
+   */
+
+  /**
+   * Downloads the receipts of a certain tax type.
+   * @param {Object} options
+   * @param {TaxTypeNumericalCode} options.taxTypeId
+   * @param {number} options.parentTaskId
+   * @returns {Promise.<TaxTypeFailure>} Any failures encountered downloading the receipts.
+   */
+  async downloadTaxTypeReceipts({ taxTypeId, parentTaskId }) {
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+    const taxType = taxTypes[taxTypeId];
+
+    /** @type {TaxTypeFailure} */
+    const failed = {
+      receiptDataPages: [],
+      receipts: [],
+    };
+
+    const task = await createTask(store, {
+      title: `Get ${taxType} acknowledgement receipts`,
+      parent: parentTaskId,
+      unknownMaxProgress: false,
+      progressMax: 2,
+    });
+    await taskFunction({
+      task,
+      catchErrors: true,
+      setStateBasedOnChildren: true,
+      func: async () => {
+        let failedPages = [];
+
+        let referenceNumbers = null;
+        // If only certain reference numbers failed in the last run, use those.
+        const inputRefNumbers = getTaxTypeInput(input, taxTypeId, 'receipts');
+        if (Array.isArray(inputRefNumbers) && inputRefNumbers.length > 0) {
+          referenceNumbers = inputRefNumbers;
+        }
+        // Otherwise, get all reference numbers.
+        if (referenceNumbers === null) {
+          ({ referenceNumbers, failedPages } = await this.getReferenceNumbers({ task, taxTypeId }));
+        }
+
+        let failedReferenceNumbers = [];
+        // TODO: Indicate why receipts weren't downloaded
+        if (referenceNumbers.length > 0) {
+          failedReferenceNumbers = await this.downloadReceipts({
+            referenceNumbers,
+            task,
+            taxTypeId,
+          });
+        }
+
+        failed.receiptDataPages = failedPages;
+        failed.receipts = failedReferenceNumbers;
+      },
+    });
+    return failed;
   }
 
   async runInternal() {
     const { client, task: actionTask, config: actionConfig } = this.storeProxy;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+
+    let taxTypeIds = client.taxTypes;
+
+    // Filter tax type IDs using input
+    if (inInput(input, 'taxTypeIds')) {
+      taxTypeIds = taxTypeIds.filter(id => input.taxTypeIds.includes(id));
+    }
+    const receiptsInInput = inInput(input, 'receipts');
+    const receiptDataPagesInInput = inInput(input, 'receiptDataPages');
+    if (receiptsInInput || receiptDataPagesInInput) {
+      // Note: This array will have duplicate tax type IDs.
+      const desiredTaxTypeIds = [];
+      if (receiptsInInput) {
+        desiredTaxTypeIds.push(...Object.keys(input.receipts));
+      }
+      if (receiptDataPagesInInput) {
+        desiredTaxTypeIds.push(...Object.keys(input.receiptDataPages));
+      }
+      taxTypeIds = taxTypeIds.filter(id => desiredTaxTypeIds.includes(id));
+    }
+
+    /** @type {TaxTypeFailures} */
+    const failures = {};
+    let anyFailures = false;
+
     const initialMaxOpenTabs = config.maxOpenTabs;
     config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
-
-    let anyReceiptsFailedToDownload = false;
-
     await startDownloadingReceipts();
     await parallelTaskMap({
-      list: client.taxTypes,
+      list: taxTypeIds,
       task: actionTask,
       func: async (taxTypeId, parentTaskId) => {
-        const taxType = taxTypes[taxTypeId];
-
-        const task = await createTask(store, {
-          title: `Get ${taxType} acknowledgement receipts`,
-          parent: parentTaskId,
-          unknownMaxProgress: false,
-          progressMax: 2,
-        });
-
-        return taskFunction({
-          task,
-          catchErrors: true,
-          setStateBasedOnChildren: true,
-          func: async () => {
-            const referenceNumbers = await getAllAcknowledgementReceiptsReferenceNumbers({
-              tpin: client.username,
-              taxType: taxTypeId,
-              fromDate: '01/01/2013',
-              toDate: moment().format('31/12/YYYY'),
-              exciseType: exciseTypes.airtime,
-              parentTaskId: task.id,
-            });
-            // TODO: Indicate why receipts weren't downloaded
-            if (referenceNumbers.length > 0) {
-              const downloadSuccesses = await downloadAcknowledgementReceipts({
-                taxType: taxTypeId,
-                referenceNumbers,
-                parentTaskId: task.id,
-                client,
-              });
-              if (downloadSuccesses.includes(false)) {
-                anyReceiptsFailedToDownload = true;
-              }
-            }
-          },
-        });
+        const taxTypeFailure = await this.downloadTaxTypeReceipts({ taxTypeId, parentTaskId });
+        failures[taxTypeId] = taxTypeFailure;
+        if (
+          taxTypeFailure.receiptDataPages.length > 0
+          || taxTypeFailure.receipts.length > 0
+        ) {
+          anyFailures = true;
+        }
       },
     });
     await finishDownloadingReceipts();
-
     config.maxOpenTabs = initialMaxOpenTabs;
-    if (anyReceiptsFailedToDownload) {
+
+    if (anyFailures) {
       this.setRetryReason('Some receipts failed to download.');
+      const retryInput = {};
+      for (const taxTypeId of Object.keys(failures)) {
+        const failure = failures[taxTypeId];
+        if (failure.receipts.length > 0) {
+          set(retryInput, ['receipts', taxTypeId], failure.receipts);
+        }
+        if (failure.receiptDataPages.length > 0) {
+          set(retryInput, ['receiptDataPages', taxTypeId], failure.receiptDataPages);
+        }
+      }
+      this.storeProxy.retryInput = retryInput;
     }
   }
 };

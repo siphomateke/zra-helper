@@ -2,16 +2,7 @@ import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
 import createTask from '@/transitional/tasks';
 import config from '@/transitional/config';
-import { InvalidReceiptError } from '../errors';
-import {
-  createTabPost,
-  saveAsMHTML,
-  tabLoaded,
-  monitorDownloadProgress,
-  closeTab,
-  runContentScript,
-  getDocumentByAjax,
-} from '../utils';
+import { getDocumentByAjax } from '../utils';
 import { taxPayerSearchTaxTypeNames, browserCodes } from '../constants';
 import { getCurrentBrowser } from '@/utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
@@ -20,6 +11,7 @@ import { getElementFromDocument } from '../content_scripts/helpers/elements';
 /**
  * @typedef {import('@/transitional/tasks').TaskObject} Task
  * @typedef {import('../constants').Client} Client
+ * @typedef {import('../content_scripts/helpers/zra').ParsedTableRecord} ParsedTableRecord
  */
 
 /**
@@ -67,100 +59,26 @@ export async function taskFunction({
 }
 
 /**
- * Downloads a receipt
- * @param {Object} options
- * @param {'return'|'payment'} options.type
- * @param {string|string[]|Function} options.filename
- * Filename of the downloaded receipt.
- *
- * If an array of filenames is provided, multiple files will be downloaded.
- *
- * If a function is provided, it must return a string or array. It will be called with
- * an object containing information about the receipt such as reference number.
- * @param {string} options.taskTitle
- * @param {number} options.parentTaskId
- * @param {import('../utils').CreateTabPostOptions} options.createTabPostOptions
- */
-export async function downloadReceipt({
-  type, filename, taskTitle, parentTaskId, createTabPostOptions,
-}) {
-  const task = await createTask(store, {
-    title: taskTitle,
-    parent: parentTaskId,
-    progressMax: 4,
-    status: 'Opening receipt tab',
-  });
-  return taskFunction({
-    task,
-    async func() {
-      const tab = await createTabPost(createTabPostOptions);
-      try {
-        task.addStep('Waiting for receipt to load');
-        await tabLoaded(tab.id);
-
-        const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
-
-        if (!receiptData.referenceNumber) {
-          throw new InvalidReceiptError('Invalid receipt; missing reference number.');
-        }
-
-        task.addStep('Converting receipt to MHTML');
-        const blob = await saveAsMHTML({ tabId: tab.id });
-        const url = URL.createObjectURL(blob);
-        task.addStep('Downloading generated MHTML');
-
-        let generatedFilename;
-        if (typeof filename === 'function') {
-          generatedFilename = filename(receiptData);
-        } else {
-          generatedFilename = filename;
-        }
-        let generatedFilenames;
-        if (typeof generatedFilename === 'string') {
-          generatedFilenames = [generatedFilename];
-        } else {
-          generatedFilenames = generatedFilename;
-        }
-        const taskProgressBeforeDownload = task.progress;
-        if (Array.isArray(generatedFilenames)) {
-          const promises = [];
-          for (const generatedFilename of generatedFilenames) {
-            promises.push(new Promise(async (resolve) => {
-              let downloadFilename = generatedFilename;
-              if (!config.export.removeMhtmlExtension) {
-                downloadFilename += '.mhtml';
-              }
-              const downloadId = await browser.downloads.download({
-                url,
-                filename: downloadFilename,
-              });
-              // FIXME: Catch and handle download errors
-              await monitorDownloadProgress(downloadId, (downloadProgress) => {
-                if (downloadProgress !== -1) {
-                  task.progress = taskProgressBeforeDownload + downloadProgress;
-                }
-              });
-              resolve();
-            }));
-          }
-          await Promise.all(promises);
-        } else {
-          throw new Error('Invalid filename attribute; filename must be a string, array or function.');
-        }
-      } finally {
-        // Don't need to wait for the tab to close to carry out logged in actions
-        // TODO: Catch tab close errors
-        closeTab(tab.id);
-      }
-    },
-  });
-}
-
-/**
+ * @template R The type of the returned value.
  * @callback ParallelTaskMapFunction
  * @param {Object|number} item
  * This can either be an item from the list if one is provided, or an index if count is provided.
  * @param {number} parentTaskId
+ * @returns {Promise.<R>}
+ */
+
+/**
+ * @template R
+ * @typedef {Object} MultipleResponses
+ * @property {R} [value] The actual response for this item.
+ * @property {any} [error] The error that occurred getting this item if there was one.
+ */
+
+/**
+ * @template ListItem
+ * @typedef {Object} ParallelTaskMapResponse
+ * @property {ListItem|number} item
+ * The corresponding item from the list or index that this response came from.
  */
 
 /**
@@ -168,13 +86,14 @@ export async function downloadReceipt({
  * on each item in the list or index.
  *
  * The provided parent task will be automatically configured.
+ * @template R, ListItem
  * @param {Object} options
- * @param {Array} [options.list] The list to loop through
+ * @param {Array<ListItem>} [options.list] The list to loop through
  * @param {number} [options.startIndex] Optional index to start looping from
  * @param {number} [options.count]
  * The number of times to run. This is can be provided instead of a list.
  * @param {Task} options.task The parent task
- * @param {ParallelTaskMapFunction} options.func The function to run on each list item
+ * @param {ParallelTaskMapFunction<R>} options.func The function to run on each list item
  * @param {boolean} [options.autoCalculateTaskState=true]
  * Set this to false to disable the parent task's state from being automatically
  * set when all the async functions have completed.
@@ -182,14 +101,10 @@ export async function downloadReceipt({
  * If this is true, the state will be set based on the task's children by
  * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
  * error.
- * @param {boolean} [options.mapResultsToItemKeys]
- * Returns a map of func results instead of a plain array. The map's keys are the same as the
- * items passed to the functions. If `list` is passed, the items are items of that list. If
- * `count` is passed, the items are indices.
- * @returns {Array|Object}
- * An array containing the return value of each `func` or, if `useItemKeys` is set to true, an
- * object whose keys are the same as the items passed to each `func` and whose values are the
- * return values of the very same `func`s.
+ * @param {boolean} [options.neverReject] Set to true to always resolve even if all tasks failed.
+ * @returns {Promise.<Array.<MultipleResponses<R> & ParallelTaskMapResponse<ListItem>>>}
+ * An array containing responses from `func`. The responses contain the actual values returned
+ * or the the errors encountered trying to get the responses.
  */
 export function parallelTaskMap({
   list = null,
@@ -198,7 +113,7 @@ export function parallelTaskMap({
   task,
   func,
   autoCalculateTaskState = true,
-  mapResultsToItemKeys = false,
+  neverReject = false,
 }) {
   return new Promise((resolve, reject) => {
     task.sequential = false;
@@ -224,35 +139,24 @@ export function parallelTaskMap({
       promises.push(new Promise((resolve) => {
         func(item, task.id)
           .then((value) => {
-            if (mapResultsToItemKeys) {
-              resolve({ item, value });
-            } else {
-              resolve(value);
-            }
+            resolve({ item, value });
           })
-          .catch(resolve);
+          .catch((error) => {
+            resolve({ item, error });
+          });
       }));
     }
-    Promise.all(promises).then((values) => {
-      let processedValues;
-      if (mapResultsToItemKeys) {
-        processedValues = {};
-        for (const value of values) {
-          processedValues[value.item] = value.value;
-        }
-      } else {
-        processedValues = values;
-      }
+    Promise.all(promises).then((responses) => {
       task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
-        if (task.state === taskStates.ERROR) {
+        if (!neverReject && task.state === taskStates.ERROR) {
           reject();
         } else {
-          resolve(processedValues);
+          resolve(responses);
         }
       } else {
-        resolve(processedValues);
+        resolve(responses);
       }
     });
   });
@@ -266,99 +170,126 @@ export function parallelTaskMap({
  */
 
 /**
+ * @template R
  * @typedef {Object} GetDataFromPageFunctionReturn
  * @property {number} numPages
+ * @property {R} value
  */
 
 /**
+ * @template R
  * @callback GetDataFromPageFunction
  * @param {number} page
- * @returns {Promise.<GetDataFromPageFunctionReturn>}
+ * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
  */
 
 /**
  * Creates a task to get data from a single page.
  * This is mainly used by getPageData
+ * @template R
  * @see getPagedData
  * @param {Object} options
  * @param {GetTaskData} options.getTaskData
  * Function that generates a task's options given a page number and a parent task ID.
- * @param {GetDataFromPageFunction} options.getDataFunction
+ * @param {GetDataFromPageFunction<R>} options.getDataFunction
  * A function that when given a page number will return the data from that page including the total
  * number of pages.
  * @param {number} options.parentTaskId
  * @param {number} options.page The page to get data from.
- * @param {number} [options.firstPage=1] The index of the first page.
- * @returns {Promise.<GetDataFromPageFunctionReturn>}
+ * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
  */
 export async function getDataFromPageTask({
   getTaskData,
   getDataFunction,
   parentTaskId,
   page,
-  firstPage = 1,
 }) {
   const childTask = await createTask(store, getTaskData(page, parentTaskId));
   return taskFunction({
     task: childTask,
-    func: () => getDataFunction(page + firstPage),
+    func: () => getDataFunction(page),
   });
 }
 
 /**
+ * @typedef PagedDataResponse
+ * @property {number} page
+ */
+
+/**
  * Gets data from several pages in parallel.
+ * @template R
  * @param {Object} options
  * @param {import('@/transitional/tasks').TaskObject} options.task
  * The task to use to contain all the subtasks that get data from multiple pages.
  * @param {GetTaskData} options.getPageSubTask
- * @param {GetDataFromPageFunction} options.getDataFunction
+ * @param {GetDataFromPageFunction<R>} options.getDataFunction
  * A function that when given a page number will return the data from that page including the total
  * number of pages.
  * @param {number} [options.firstPage] The index of the first page.
- * @returns {Object.<number, any>} Results of the getDataFunction mapped to pages.
+ * @param {number[]} [options.pages]
+ * Specific page numbers to get. If not set, all pages will be fetched.
+ * @returns {Promise.<Array.<MultipleResponses<R> & PagedDataResponse>>}
  */
-export function getPagedData({
+export async function getPagedData({
   task,
   getPageSubTask,
   getDataFunction,
   firstPage = 1,
+  pages = [],
 }) {
+  const options = {
+    getTaskData: getPageSubTask,
+    getDataFunction,
+  };
+
+  const parallelTaskMapOptions = {
+    task,
+    func: (page, parentTaskId) => getDataFromPageTask(Object.assign({
+      page,
+      parentTaskId,
+    }, options)),
+    neverReject: true,
+  };
+
   return taskFunction({
     task,
     setState: false,
     async func() {
-      const options = {
-        getTaskData: getPageSubTask,
-        getDataFunction,
-        firstPage,
-      };
+      const allResults = [];
+      let results = null;
 
-      const allResults = {};
+      // If no specific pages have been requested, figure out how many pages there are and get all
+      // of them.
+      if (pages.length === 0) {
+        // Get data from the first page so we know the total number of pages
+        // NOTE: The settings set by parallel task map aren't set when this runs
+        const result = await getDataFromPageTask(Object.assign({
+          page: firstPage,
+          parentTaskId: task.id,
+        }, options));
+        allResults.push({ page: firstPage, value: result.value });
 
-      // Get data from the first page so we know the total number of pages
-      // NOTE: The settings set by parallel task map aren't set when this runs
-      const result = await getDataFromPageTask(Object.assign({
-        page: 0,
-        parentTaskId: task.id,
-      }, options));
-      allResults[firstPage] = result;
+        // Then get the rest of the pages in parallel.
+        results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
+          startIndex: firstPage + 1,
+          count: result.numPages + firstPage,
+        }));
+      } else {
+        // Get only the requested pages.
+        results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
+          list: pages,
+        }));
+      }
 
-      // Then get the rest of the pages in parallel
-      const results = await parallelTaskMap({
-        startIndex: 1,
-        count: result.numPages,
-        mapResultsToItemKeys: true,
-        task,
-        func(page, parentTaskId) {
-          return getDataFromPageTask(Object.assign({
-            page,
-            parentTaskId,
-          }, options));
-        },
-      });
-      for (const page of Object.keys(results)) {
-        const actualPage = Number(page) + firstPage;
-        allResults[actualPage] = results[page];
+      for (const result of results) {
+        const response = { page: Number(result.item) };
+        if (!('error' in result)) {
+          response.value = result.value.value;
+        } else {
+          response.error = result.error;
+        }
+        allResults.push(response);
       }
 
       return allResults;
@@ -381,7 +312,7 @@ export function getPagedData({
  * @param {Object} options
  * @param {string} options.tpin
  * @param {number} options.page
- * @returns {Promise.<import('../content_scripts/helpers/zra').ParsedTable>}
+ * @returns {Promise.<GetDataFromPageFunctionReturn<ParsedTableRecord[]>>}
  */
 export async function getTaxAccountPage({ tpin, page }) {
   const doc = await getDocumentByAjax({
@@ -413,7 +344,10 @@ export async function getTaxAccountPage({ tpin, page }) {
     /* TODO: There is always at least one tax account. Because of the this, the no records string
     should not be checked. */
   });
-  return parsedTable;
+  return {
+    numPages: parsedTable.numPages,
+    value: parsedTable.records,
+  };
 }
 
 /**
@@ -432,58 +366,53 @@ export async function getTaxAccounts({ store, parentTaskId, tpin }) {
   });
 
   const getPageSubTask = (page, subTaskParentId) => ({
-    title: `Get tax accounts from page ${page + 1}`,
+    title: `Get tax accounts from page ${page}`,
     parent: subTaskParentId,
     indeterminate: true,
   });
 
-  const allResponses = await getPagedData({
+  const pageResponses = await getPagedData({
     task,
     getPageSubTask,
     getDataFunction: page => getTaxAccountPage({ tpin, page }),
   });
 
   const processed = [];
-  for (const response of Object.values(allResponses)) {
-    for (const account of response.records) {
-      const accountName = account.accountName.toLowerCase();
-      // The account name contains the name of the client and the name of the tax type separated by
-      // a hyphen. We can thus figure out the account's tax type ID from the account name.
-      const [, taxTypeName] = accountName.split('-');
-      const taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
+  for (const pageResponse of pageResponses) {
+    if (!('error' in pageResponse)) {
+      const records = pageResponse.value;
+      for (const account of records) {
+        const accountName = account.accountName.toLowerCase();
+        // The account name contains the name of the client and the name of the tax type separated
+        // by a hyphen. We can thus figure out the account's tax type ID from the account name.
+        const [, taxTypeName] = accountName.split('-');
+        const taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
 
-      let status = account.status.toLowerCase();
-      // Replace "De-registered" with "Cancelled" since it's the same thing.
-      status = status.replace('de-registered', 'cancelled');
+        let status = account.status.toLowerCase();
+        // Replace "De-registered" with "Cancelled" since it's the same thing.
+        status = status.replace('de-registered', 'cancelled');
 
-      processed.push({
-        srNo: account.srNo,
-        accountName,
-        effectiveDateOfRegistration: account.effectiveDateOfRegistration,
-        status,
-        effectiveCancellationDate: account.effectiveCancellationDate,
-        taxTypeId,
-      });
+        processed.push({
+          srNo: account.srNo,
+          accountName,
+          effectiveDateOfRegistration: account.effectiveDateOfRegistration,
+          status,
+          effectiveCancellationDate: account.effectiveCancellationDate,
+          taxTypeId,
+        });
+      }
     }
   }
   return processed;
 }
 
 const currentBrowser = getCurrentBrowser();
-async function changeLiteMode(mode) {
+export async function changeLiteMode(mode) {
   // Firefox has a better way of controlling which resources are blocked so we don't need
   // to disable all resource loading.
   if (currentBrowser !== browserCodes.FIREFOX && config.zraLiteMode) {
     await store.dispatch('setZraLiteMode', mode);
   }
-}
-
-export function startDownloadingReceipts() {
-  return changeLiteMode(false);
-}
-
-export async function finishDownloadingReceipts() {
-  return changeLiteMode(true);
 }
 
 /**

@@ -60,6 +60,8 @@ import store from '@/store';
  * @property {Object} config
  * @property {number} loggedInTabId
  * @property {TaskObject} task
+ * @property {Object} input
+ * @property {Object} retryInput
  * @property {string} retryReason The reason why this instance should be retried.
  * @property {boolean} shouldRetry Whether this instance should be retried.
  * @property {any} error
@@ -101,6 +103,9 @@ export class ClientActionRunner {
 
     this.storeProxy.id = this.id;
     this.storeProxy.actionId = null;
+
+    this.storeProxy.input = null;
+    this.storeProxy.retryInput = null;
   }
 
   /**
@@ -260,4 +265,17 @@ export function createClientAction(options) {
   validateActionOptions(clientAction);
 
   return clientAction;
+}
+
+/**
+ * Checks if a key is set in a runner's input
+ * @param {Object} input
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function inInput(input, key) {
+  if (input && (key in input)) {
+    return true;
+  }
+  return false;
 }

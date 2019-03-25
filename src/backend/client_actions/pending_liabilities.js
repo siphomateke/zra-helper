@@ -182,6 +182,11 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   },
 });
 
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('../constants').TaxTypeNumericalCode[]} [taxTypeIds]
+ */
+
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data);
@@ -190,28 +195,19 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
 
   async runInternal() {
     const { task: actionTask, client } = this.storeProxy;
-    const { taxTypes: taxTypeIds } = client;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+    let { taxTypes: taxTypeIds } = client;
 
-    /**
-     * @typedef {Object} TotalsResponses
-     * @property {Totals} totals
-     * @property {Error} retrievalErrors
-     */
-    /** @type {Object.<string, TotalsResponses>} */
+    if (input && 'taxTypeIds' in input) {
+      taxTypeIds = taxTypeIds.filter(id => input.taxTypeIds.includes(id));
+    }
+
     const responses = await parallelTaskMap({
       task: actionTask,
       list: taxTypeIds,
       async func(taxTypeId, parentTaskId) {
-        const response = {
-          totals: null,
-          retrievalErrors: [],
-        };
-        try {
-          response.totals = await getPendingLiabilities(client, taxTypeId, parentTaskId);
-        } catch (error) {
-          response.retrievalErrors = error;
-        }
-        return response;
+        return getPendingLiabilities(client, taxTypeId, parentTaskId);
       },
     });
 
@@ -219,20 +215,25 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       totals: {},
       retrievalErrors: {},
     };
-    for (let i = 0; i < taxTypeIds.length; i++) {
-      const taxTypeId = taxTypeIds[i];
+    const failedTaxTypeIds = [];
+    for (const response of responses) {
+      const taxTypeId = response.item;
       const taxType = taxTypes[taxTypeId];
-      const { totals, retrievalErrors } = responses[i];
+      const totals = response.value;
       if (totals) {
         output.totals[taxType] = Object.assign({}, totals);
       } else {
-        output.retrievalErrors[taxType] = retrievalErrors;
+        output.retrievalErrors[taxType] = response.error;
+        failedTaxTypeIds.push(taxTypeId);
       }
     }
     this.storeProxy.output = output;
     const failedTaxTypes = Object.keys(output.retrievalErrors);
     if (failedTaxTypes.length > 0) {
       this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);
+      /** @type {RunnerInput} */
+      const retryInput = { taxTypeIds: failedTaxTypeIds };
+      this.storeProxy.retryInput = retryInput;
     }
   }
 };

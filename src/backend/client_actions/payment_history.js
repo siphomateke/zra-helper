@@ -1,24 +1,24 @@
 import moment from 'moment';
-import store from '@/store';
-import createTask from '@/transitional/tasks';
 import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  downloadReceipt,
-  parallelTaskMap,
-  getPagedData,
   taskFunction,
+} from './utils';
+import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
-} from './utils';
+  downloadReceipts,
+  getFailedResponseItems,
+  getReceiptData,
+} from './receipts';
 import {
   taxTypeNames,
   taxTypeNumericalCodes,
   taxTypes,
   browserFeatures,
 } from '../constants';
-import { createClientAction, ClientActionRunner } from './base';
+import { createClientAction, ClientActionRunner, inInput } from './base';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -26,7 +26,12 @@ import { createClientAction, ClientActionRunner } from './base';
  */
 
 /**
- * @typedef GetAllPaymentReceiptNumbersOptions
+ * @template R
+ * @typedef {import('./utils').GetDataFromPageFunctionReturn<R>} GetDataFromPageFunctionReturn
+ */
+
+/**
+ * @typedef GetPaymentReceiptsOptions
  * @property {Date} fromDate
  * @property {Date} toDate
  * @property {string} [receiptNumber]
@@ -34,29 +39,22 @@ import { createClientAction, ClientActionRunner } from './base';
  */
 
 /**
- * @typedef GetPaymentReceiptNumbersOptions.Temp
- * @property {number} page
+ * @typedef {Object} PrnNo
+ * @property {string} innerText E.g. '118019903987'
+ * @property {string} onclick
+ * Contains information about the payment such as search code, reference number and payment type
+ * in the following format:
+ * `payementHistory('<search code>','<reference number>','<payment type>')`
+ * E.g.
+ * `payementHistory('123456789','123456789','ABC')`
  */
-
-/* eslint-disable max-len */
-/**
- * @typedef {GetAllPaymentReceiptNumbersOptions & GetPaymentReceiptNumbersOptions.Temp} GetPaymentReceiptNumbersOptions
- */
-/* eslint-enable max-len */
 
 /**
  * @typedef PaymentReceipt
- * @property {string} srNo Serial nubmer
- * @property {Object} prnNo PRN number
- * @property {string} prnNo.innerText
- * @property {string} prnNo.onclick
- * Contains information about the payment such as search code, reference number and payment type
- * in the following format:
- * payementHistory('<search code>','<reference number>','<payment type>')
- * E.g.
- * payementHistory('123456789','123456789','ABC')
+ * @property {string} srNo Serial number
+ * @property {PrnNo} prnNo PRN number
  * @property {string} amount Amount in Kwacha
- * @property {string} status
+ * @property {string} status E.g. 'Payment received'
  * @property {Date} prnDate
  * @property {Date} paymentDate
  * @property {string} type Payment type. E.g. 'Electronic'
@@ -73,43 +71,16 @@ const recordHeaders = [
 ];
 
 /**
- * @typedef {Object} PrnNo
- * @property {string} innerText '118019903987'
- * @property {string} onclick "payementHistory('0617620366056', '1051185712615', 'WCO')"
+ * Gets payment receipts from a single page.
+ * @param {number} page
+ * @param {GetPaymentReceiptsOptions} options
+ * @returns {Promise.<GetDataFromPageFunctionReturn<PaymentReceipt[]>>}
  */
-
-/**
- * @typedef {Object} PaymentReceiptNumbers
- * ```js
-  {
-  srNo: '1',
-  prnNo: {
-    innerText: '118019903987',
-    onclick: "payementHistory('0617620366056', '1051185712615', 'WCO')",
-  },
-  amount: '365.00',
-  status: 'Payment Received',
-  prnDate: '12 / 05 / 2018',
-  paymentDate: '16 / 05 / 2018',
-  type: 'Without Cash Office',
-  }
- ```
- * @property {string} srNo '1'
- * @property {PrnNo} prnNo
- * @property {string} amount '365.00'
- * @property {string} status 'Payment Received'
- * @property {string} prnDate '12 / 05 / 2018'
- * @property {string} paymentDate '16 / 05 / 2018'
- * @property {string} type 'Without Cash Office'
- */
-
-/**
- * Gets payment receipt numbers from a single page.
- * @param {GetPaymentReceiptNumbersOptions} options
- * TODO: Document return type
- */
-async function getPaymentReceiptNumbers({
-  receiptNumber = '', referenceNumber = '', page, fromDate, toDate,
+async function getPaymentReceipts(page, {
+  fromDate,
+  toDate,
+  referenceNumber = '',
+  receiptNumber = '',
 }) {
   const doc = await getDocumentByAjax({
     url: 'https://www.zra.org.zm/ePaymentController.htm?actionCode=SearchPmtDetails',
@@ -122,7 +93,7 @@ async function getPaymentReceiptNumbers({
       prnNo: receiptNumber,
     },
   });
-  return parseTableAdvanced({
+  const table = await parseTableAdvanced({
     root: doc,
     headers: recordHeaders,
     tableInfoSelector: '#contentDiv>table>tbody>tr>td',
@@ -130,51 +101,17 @@ async function getPaymentReceiptNumbers({
     noRecordsString: 'No Records Found',
     parseLinks: true,
   });
-}
-
-/**
- * Gets payment receipt numbers from all pages.
- * @param {GetAllPaymentReceiptNumbersOptions} options
- * @param {number} parentTaskId
- * @returns {Promise<PaymentReceiptNumbers[]>}
- */
-async function getAllPaymentReceiptNumbers(options, parentTaskId) {
-  const task = await createTask(store, {
-    title: 'Get payment receipt numbers',
-    parent: parentTaskId,
-  });
-
-  const getPageSubTask = (page, subTaskParentId) => ({
-    title: `Get payment receipt numbers from page ${page + 1}`,
-    parent: subTaskParentId,
-    indeterminate: true,
-  });
-
-  const results = await getPagedData({
-    task,
-    getPageSubTask,
-    getDataFunction: (page) => {
-      const optionsWithPage = Object.assign({ page }, options);
-      return getPaymentReceiptNumbers(optionsWithPage);
-    },
-  });
-
-  const records = [];
-  for (const result of Object.values(results)) {
-    if (result && 'records' in result) {
-      if (result.records.length > 0) {
-        // Remove header rows
-        result.records.shift();
-        for (const record of result.records) {
-          // Ignore all the payment registrations
-          if (record.status.toLowerCase() !== 'prn generated') {
-            records.push(record);
-          }
-        }
-      }
-    }
+  let { records } = table;
+  if (records.length > 0) {
+    // Remove header row
+    records.shift();
+    // Ignore all the payment registrations
+    records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
   }
-  return records;
+  return {
+    numPages: table.numPages,
+    value: records,
+  };
 }
 
 /**
@@ -232,11 +169,12 @@ function getQuarterFromPeriod(from, to) {
  * @param {Client} options.client
  * @param {PaymentReceipt} options.receipt
  * @param {number} options.parentTaskId
+ * @returns {import('./receipts').DownloadReceiptOptions}
  */
-function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
+function getDownloadReceiptOptions({ client, receipt, parentTaskId }) {
   const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
 
-  return downloadReceipt({
+  return {
     type: 'payment',
     filename(receiptData) {
       const uniquePayments = [];
@@ -290,35 +228,7 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
         printReceipt: 'N',
       },
     },
-  });
-}
-
-/**
- * @param {Object} options
- * @param {Client} options.client
- * @param {PaymentReceipt[]} options.receipts
- * @param {number} options.parentTaskId
- * @returns {Promise<boolean[]>}
- * Array of booleans indicating whether each receipt downloaded successfully.
- */
-async function downloadPaymentReceipts({ client, receipts, parentTaskId }) {
-  const task = await createTask(store, { title: 'Download payment receipts', parent: parentTaskId });
-  return parallelTaskMap({
-    list: receipts,
-    task,
-    /**
-     * @param {PaymentReceipt} receipt
-     * @param {number} parentTaskId
-     */
-    async func(receipt, parentTaskId) {
-      try {
-        await downloadPaymentReceipt({ client, receipt, parentTaskId });
-        return true;
-      } catch (error) {
-        return false;
-      }
-    },
-  });
+  };
 }
 
 const GetPaymentReceiptsClientAction = createClientAction({
@@ -327,48 +237,101 @@ const GetPaymentReceiptsClientAction = createClientAction({
   requiredFeatures: [browserFeatures.MHTML],
 });
 
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('@/backend/constants').Date} [fromDate]
+ * @property {import('@/backend/constants').Date} [toDate]
+ * @property {PaymentReceipt[]} receipts
+ * @property {number[]} receiptDataPages
+ */
+
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data);
     this.storeProxy.actionId = GetPaymentReceiptsClientAction.id;
-  }
-
-  async runInternal() {
-    const options = {
+    this.storeProxy.input = {
       fromDate: '01/10/2013',
       toDate: moment().format('DD/MM/YYYY'),
     };
+  }
 
+  async runInternal() {
     const { task: actionTask, client, config: actionConfig } = this.storeProxy;
+    // eslint-disable-next-line prefer-destructuring
+    const input = /** @type {RunnerInput} */(this.storeProxy.input);
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
 
-    let anyReceiptsFailedToDownload;
+    const failed = {
+      receipts: [],
+      receiptDataPages: [],
+    };
 
     await taskFunction({
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        const receipts = await getAllPaymentReceiptNumbers(options, actionTask.id);
-        const initialMaxOpenTabs = config.maxOpenTabs;
+        let receipts = null;
+        // If specific receipts have been requested to be downloaded, use those.
+        if (inInput(input, 'receipts')) {
+          const inputReceipts = input.receipts;
+          if (Array.isArray(inputReceipts) && inputReceipts.length > 0) {
+            receipts = inputReceipts;
+          }
+        }
+        // Otherwise, get all receipts.
+        if (receipts === null) {
+          let pages = [];
+          // If getting certain receipt data pages failed last time, only get those pages.
+          if (inInput(input, 'receiptDataPages')) {
+            const inputReceiptDataPages = input.receiptDataPages;
+            if (Array.isArray(inputReceiptDataPages) && inputReceiptDataPages.length > 0) {
+              pages = inputReceiptDataPages;
+            }
+          }
+          const { data, failedPages } = await getReceiptData({
+            taskTitle: 'Get payment receipt numbers',
+            getPageTaskTitle: page => `Get payment receipt numbers from page ${page}`,
+            getDataFunction: page => getPaymentReceipts(page, {
+              fromDate: input.fromDate,
+              toDate: input.toDate,
+            }),
+            parentTaskId: actionTask.id,
+            pages,
+          });
+          receipts = data;
+          failed.receiptDataPages = failedPages;
+        }
+
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
+          const initialMaxOpenTabs = config.maxOpenTabs;
           config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           await startDownloadingReceipts();
-          const downloadSuccesses = await downloadPaymentReceipts({
-            client,
-            receipts,
+          const downloadResponses = await downloadReceipts({
+            taskTitle: 'Download payment receipts',
             parentTaskId: actionTask.id,
+            list: receipts,
+            getDownloadReceiptOptions(receipt, parentTaskId) {
+              return getDownloadReceiptOptions({ receipt, parentTaskId, client });
+            },
           });
-          anyReceiptsFailedToDownload = downloadSuccesses.includes(false);
           await finishDownloadingReceipts();
+          failed.receipts = getFailedResponseItems(downloadResponses);
           config.maxOpenTabs = initialMaxOpenTabs;
         }
       },
     });
 
-    if (anyReceiptsFailedToDownload) {
+    if (failed.receipts.length > 0 || failed.receiptDataPages.length > 0) {
       this.setRetryReason('Some receipts failed to download.');
+      this.storeProxy.retryInput = {};
+      if (failed.receipts.length > 0) {
+        this.storeProxy.retryInput.receipts = failed.receipts;
+      }
+      if (failed.receiptDataPages.length > 0) {
+        this.storeProxy.retryInput.receiptDataPages = failed.receiptDataPages;
+      }
     }
   }
 };

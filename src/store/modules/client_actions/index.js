@@ -113,6 +113,7 @@ const module = {
     getInstanceClassById: state => id => state.instanceClasses[id],
     getRunById: state => id => state.runs[id],
     currentRun: state => state.runs[state.currentRunId],
+    previousRun: state => state.runs[state.currentRunId - 1],
     /**
      * Gets the IDs of all the actions in the specified run.
      * @returns {(runId: string) => string[]} IDs of the actions in run.
@@ -236,6 +237,34 @@ const module = {
       return getters.retryableFailures.length > 0;
     },
     /**
+     * Gets the instance that matches the provided run, action and client IDs.
+     * @returns {(runId: number, actionId: string, clientId: number) => ActionInstanceData}
+     */
+    getInstance: (_state, getters) => (runId, actionId, clientId) => {
+      /** @type {ActionRun} */
+      const run = getters.getRunById(runId);
+      if (run) {
+        const instanceIds = run.instancesByActionId[actionId];
+        for (const instanceId of instanceIds) {
+          /** @type {ActionInstanceData} */
+          const instance = getters.getInstanceById(instanceId);
+          if (instance.client.id === clientId) {
+            return instance;
+          }
+        }
+      }
+      return null;
+    },
+    /**
+     * Gets the instance from the previous run that matches the provided one.
+     * @returns {(instanceId: string) => ActionInstanceData}
+     */
+    getPreviousInstance: (state, getters) => (instanceId) => {
+      /** @type {ActionInstanceData} */
+      const instance = getters.getInstanceById(instanceId);
+      return getters.getInstance(state.currentRunId - 1, instance.actionId, instance.client.id);
+    },
+    /**
      * Gets the outputs of all client action runner instances whose action IDs match the one
      * specified.
      * @returns {(runId: string, actionId: string) => ClientActionOutputs}
@@ -348,6 +377,15 @@ const module = {
     setInstanceError(state, { id, error }) {
       Vue.set(state.instances[id], 'error', error);
     },
+    /**
+     * Sets a client action runner instance's input.
+     * @param {Object} payload
+     * @param {string} payload.id ID of the instance.
+     * @param {Object} payload.input
+     */
+    setInstanceInput(state, { id, input }) {
+      Vue.set(state.instances[id], 'input', input);
+    },
   },
   actions: {
     /**
@@ -368,6 +406,7 @@ const module = {
      * @param {boolean} payload.isSingleAction
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
+     * @param {boolean} payload.retry If this run is just a retry of a previous one.
      */
     async runActionOnClient({ commit, getters }, {
       instanceId,
@@ -375,6 +414,7 @@ const module = {
       mainTask,
       isSingleAction,
       loggedInTabId,
+      retry,
     }) {
       /** @type {ActionInstanceData} */
       const instance = getters.getInstanceById(instanceId);
@@ -390,6 +430,19 @@ const module = {
           async func() {
             if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
               log.setCategory(clientAction.logCategory);
+
+              if (retry) {
+                /** @type {ActionInstanceData} */
+                const prevInstance = getters.getPreviousInstance(instanceId);
+                if (prevInstance.retryInput) {
+                  // Make sure the last instance's original input is used as well as the input to
+                  // retry the specific parts of the action that failed. For example, if a date
+                  // range was specified the last time the action was run, make sure we use the same
+                  // one when retrying.
+                  const newInput = Object.assign(prevInstance.input, prevInstance.retryInput);
+                  commit('setInstanceInput', { id: instanceId, input: newInput });
+                }
+              }
 
               /** @type {ActionInstanceClass} */
               const instanceClass = getters.getInstanceClassById(instanceId);
@@ -438,6 +491,7 @@ const module = {
      * @param {string[]} payload.actionIds
      * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
+     * @param {boolean} payload.retry If this run is just a retry of a previous one.
      */
     async runActionsOnClient({
       state,
@@ -450,6 +504,7 @@ const module = {
       actionIds,
       instanceIds,
       parentTaskId,
+      retry,
     }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
@@ -549,6 +604,7 @@ const module = {
                     mainTask,
                     isSingleAction,
                     loggedInTabId,
+                    retry,
                   }));
                 }
                 await Promise.all(promises);
@@ -602,10 +658,12 @@ const module = {
      * @param {number[]} payload.clientIds
      * @param {GetClientsActionIds} payload.getClientsActionIds
      * Function that decides the actions to run on each client.
+     * @param {boolean} [payload.retry] If this run is just a retry of a previous one.
      */
     async run(context, {
       clientIds,
       getClientsActionIds,
+      retry = false,
     }) {
       const {
         state,
@@ -665,6 +723,7 @@ const module = {
                   actionIds,
                   instanceIds,
                   parentTaskId: rootTask.id,
+                  retry,
                 });
               }
               /* eslint-enable no-await-in-loop */
@@ -709,9 +768,11 @@ const module = {
       const retryableFailuresByClient = Object.assign({}, getters.retryableFailuresByClient);
       await dispatch('run', {
         clientIds: Object.keys(retryableFailuresByClient),
+        // TODO: Consider getting action IDs within 'run' itself.
         getClientsActionIds(client) {
           return retryableFailuresByClient[client.id].map(failure => failure.actionId);
         },
+        retry: true,
       });
     },
   },
