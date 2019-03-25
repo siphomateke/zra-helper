@@ -2,6 +2,7 @@ import { exportFormatCodes } from '@/backend/constants';
 import { objectHasProperties, joinSpecialLast } from '@/utils';
 import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
+import { taskStates } from '@/store/modules/tasks';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
@@ -136,8 +137,9 @@ export class ClientActionRunner {
    * @private
    * @abstract
    */
-  // eslint-disable-next-line class-methods-use-this
-  runInternal() { }
+  runInternal() {
+    this.storeProxy.task.state = taskStates.SUCCESS;
+  }
 
   /**
    * Runs the business logic of the runner.
