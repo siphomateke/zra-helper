@@ -75,8 +75,9 @@ export async function taskFunction({
  */
 
 /**
+ * @template ListItem
  * @typedef {Object} ParallelTaskMapResponse
- * @property {string|number} item
+ * @property {ListItem|number} item
  * The corresponding item from the list or index that this response came from.
  */
 
@@ -85,9 +86,9 @@ export async function taskFunction({
  * on each item in the list or index.
  *
  * The provided parent task will be automatically configured.
- * @template R
+ * @template R, ListItem
  * @param {Object} options
- * @param {Array} [options.list] The list to loop through
+ * @param {Array<ListItem>} [options.list] The list to loop through
  * @param {number} [options.startIndex] Optional index to start looping from
  * @param {number} [options.count]
  * The number of times to run. This is can be provided instead of a list.
@@ -101,7 +102,7 @@ export async function taskFunction({
  * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
  * error.
  * @param {boolean} [options.neverReject] Set to true to always resolve even if all tasks failed.
- * @returns {Promise.<Array.<MultipleResponses<R> & ParallelTaskMapResponse>>}
+ * @returns {Promise.<Array.<MultipleResponses<R> & ParallelTaskMapResponse<ListItem>>>}
  * An array containing responses from `func`. The responses contain the actual values returned
  * or the the errors encountered trying to get the responses.
  */
