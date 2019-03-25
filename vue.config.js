@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const packageJson = require('./package.json');
 
 const contentScriptEntries = {};
 
@@ -109,7 +110,7 @@ module.exports = {
           delete manifest.applications;
         }
 
-        const fullVersion = process.env.npm_package_version;
+        const fullVersion = packageJson.version;
         const numericVersion = fullVersion.split('-')[0];
         manifest.version = numericVersion;
 
