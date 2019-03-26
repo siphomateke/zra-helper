@@ -271,10 +271,10 @@ export function errorToString(error) {
     errorString = error.message;
   } else if (error instanceof ExtendedError) {
     errorString = `${error.type}: ${error.message}`;
-  } else if (typeof error !== 'string') {
-    errorString = error.toString();
-  } else {
+  } else if (typeof error === 'string') {
     errorString = `Error: ${error}`;
+  } else if (typeof error !== 'undefined' && error !== null) {
+    errorString = error.toString();
   }
   return errorString;
 }
