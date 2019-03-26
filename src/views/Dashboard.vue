@@ -58,25 +58,40 @@
       />
     </section>
     <section class="dashboard-section">
-      <div
-        v-if="!clientActionsRunning && anyRetryableFailures"
-        class="buttons has-addons"
-      >
-        <button
-          class="button"
-          type="button"
-          @click="retryFailures"
-        >
-          <b-icon
-            icon="redo"
-            size="is-small"
-          />
-          <span>Retry failed clients</span>
-        </button>
-        <OpenModalButton
-          label="View failures"
-          @click="showFailures"
-        />
+      <div v-if="runsWithFailures.length > 0">
+        <b-field>
+          <p class="control">
+            <span class="button is-static">Run No.</span>
+          </p>
+          <b-select v-model="failuresRunId">
+            <option
+              v-for="runId in runsWithFailures"
+              :key="runId"
+              :value="runId"
+            >{{ runId + 1 }}</option>
+          </b-select>
+          <p class="control">
+            <button
+              :disabled="clientActionsRunning"
+              class="button"
+              type="button"
+              @click="retryFailures(failuresRunId)"
+            >
+              <b-icon
+                icon="redo"
+                size="is-small"
+              />
+              <span>Retry failed clients</span>
+            </button>
+          </p>
+          <p class="control">
+            <OpenModalButton
+              :disabled="failuresRunId === null"
+              label="View failures"
+              @click="showFailures"
+            />
+          </p>
+        </b-field>
       </div>
     </section>
     <section
@@ -131,7 +146,10 @@
       :active.sync="failuresModalVisible"
       title="Client failures"
     >
-      <ClientActionFailures slot="body"/>
+      <ClientActionFailures
+        slot="body"
+        :run-id="failuresRunId"
+      />
     </CardModal>
   </div>
 </template>
@@ -173,6 +191,7 @@ export default {
       selectedClientActions: [],
       parsedClientsViewerVisible: false,
       clientSelectorVisible: false,
+      failuresRunId: null,
       failuresModalVisible: false,
     };
   },
@@ -186,12 +205,17 @@ export default {
       clientActionsObject: 'actions',
       runs: 'runs',
       instancesByActionId: 'instancesByActionId',
+      currentRunId: 'currentRunId',
     }),
     ...mapGetters('clients', ['getClientById']),
     ...mapGetters('clientActions', {
-      anyRetryableFailures: 'anyRetryableFailures',
       clientActionsRunning: 'running',
+      getAnyRetryableFailures: 'getAnyRetryableFailures',
+      runsWithFailures: 'runsWithFailures',
     }),
+    currentRunFailed() {
+      return this.runsWithFailures.includes(this.currentRunId);
+    },
     clients() {
       return Object.values(this.clientsObj);
     },
@@ -240,13 +264,18 @@ export default {
       }
     },
     clientActionsRunning(running) {
-      if (this.shouldPromptToRetryFailures && !running && this.anyRetryableFailures) {
-        this.$dialog.confirm({
-          message: 'Some actions failed to run. Would you like to retry those that failed?',
-          onConfirm: this.retryFailures,
-          confirmText: 'Retry failed actions',
-          cancelText: 'Cancel',
-        });
+      if (!running && this.currentRunFailed) {
+        if (this.shouldPromptToRetryFailures) {
+          this.$dialog.confirm({
+            message: 'Some actions failed to run. Would you like to retry those that failed?',
+            onConfirm: () => {
+              this.retryFailures(this.currentRunId);
+            },
+            confirmText: 'Retry failed actions',
+            cancelText: 'Cancel',
+          });
+        }
+        this.failuresRunId = this.currentRunId;
       }
     },
   },
@@ -266,8 +295,8 @@ export default {
       // Select all clients by default
       this.selectedClientIds = this.clientIds;
     },
-    async retryFailures() {
-      await this.$store.dispatch('clientActions/retryFailures');
+    async retryFailures(runId) {
+      await this.$store.dispatch('clientActions/retryFailures', { runId });
     },
     showFailures() {
       this.failuresModalVisible = true;

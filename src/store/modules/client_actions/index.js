@@ -193,15 +193,15 @@ const module = {
       return false;
     },
     /**
-     * Gets all the action instances that should be retried.
-     * @returns {ClientActionFailure[]}
+     * Gets all the action instances in a run that should be retried.
+     * @returns {(runId: number) => ClientActionFailure[]}
      */
-    retryableFailures(_state, getters) {
+    getRetryableFailures: (_state, getters) => (runId) => {
       const failures = [];
-      /** @type {{currentRun: ActionRun}} */
-      const { currentRun } = getters;
-      if (currentRun) {
-        for (const instanceIds of Object.values(currentRun.instancesByActionId)) {
+      /** @type {ActionRun} */
+      const run = getters.getRunById(runId);
+      if (run) {
+        for (const instanceIds of Object.values(run.instancesByActionId)) {
           for (const instanceId of instanceIds) {
             /** @type {ActionInstanceData} */
             const instance = getters.getInstanceById(instanceId);
@@ -218,13 +218,13 @@ const module = {
       return failures;
     },
     /**
-     * All the failures that can be retried grouped by client ID.
-     * @returns {ClientActionFailuresByClient}
+     * All the failures that can be retried in a run grouped by client ID.
+     * @returns {(runId: number) => ClientActionFailuresByClient}
      */
-    retryableFailuresByClient(_state, getters) {
+    getRetryableFailuresByClient: (_state, getters) => (runId) => {
       /** @type {ClientActionFailuresByClient} */
       const clientFailures = {};
-      for (const failure of getters.retryableFailures) {
+      for (const failure of getters.getRetryableFailures(runId)) {
         const { clientId } = failure;
         if (!(clientId in clientFailures)) {
           clientFailures[clientId] = [];
@@ -233,8 +233,34 @@ const module = {
       }
       return clientFailures;
     },
-    anyRetryableFailures(_state, getters) {
-      return getters.retryableFailures.length > 0;
+    /**
+     * Gets all the clients from a run that should be retried.
+     * @returns {(runId: number) => Client[]}
+     */
+    getClientsToRetry: (_state, getters) => (runId) => {
+      const retryableFailuresByClient = getters.getRetryableFailuresByClient(runId);
+      const clientIds = Object.keys(retryableFailuresByClient);
+      return clientIds.map(id => getters.getClientFromRun(runId, id));
+    },
+    /**
+     * Checks whether any failures from a run can be retried.
+     * @returns {(runId: number) => boolean}
+     */
+    getAnyRetryableFailures(_state, getters) {
+      return runId => getters.getRetryableFailures(runId).length > 0;
+    },
+    /**
+     * Gets the IDs of all runs with retryable failures.
+     * @returns {number[]}
+     */
+    runsWithFailures(state, getters) {
+      const runIds = [];
+      for (const runId of Object.keys(state.runs)) {
+        if (getters.getAnyRetryableFailures(Number(runId))) {
+          runIds.push(Number(runId));
+        }
+      }
+      return runIds;
     },
     /**
      * Gets the instance that matches the provided run, action and client IDs.
@@ -289,6 +315,15 @@ const module = {
         }
       }
       return outputs;
+    },
+    /**
+     * Finds a client in a run using a run and client ID.
+     * @returns {(runId: number, clientId: (string|number)) => Client}
+     */
+    getClientFromRun: (_state, getters) => (runId, clientId) => {
+      /** @type {ActionRun} */
+      const run = getters.getRunById(runId);
+      return run.clients.find(client => client.id === Number(clientId));
     },
   },
   mutations: {
@@ -654,43 +689,38 @@ const module = {
      * A root task is wrapped around each client and a notification is sent once all are complete.
      * @param {VuexActionContext} context
      * @param {Object} payload
-     * @param {ClientActionId[]} payload.actionIds
-     * @param {number[]} payload.clientIds
+     * @param {Client[]} payload.clients
      * @param {GetClientsActionIds} payload.getClientsActionIds
      * Function that decides the actions to run on each client.
      * @param {boolean} [payload.retry] If this run is just a retry of a previous one.
      */
     async run(context, {
-      clientIds,
+      clients,
       getClientsActionIds,
       retry = false,
     }) {
       const {
         state,
         rootState,
-        rootGetters,
         commit,
         dispatch,
       } = context;
-
-      /** All clients including the invalid ones. */
-      const allClients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       /** Just the valid clients. */
-      const clients = allClients.filter(client => client.valid);
-      if (clients.length > 0) {
+      const validClients = clients.filter(client => client.valid);
+      if (validClients.length > 0) {
         if (rootState.config.zraLiteMode) {
           dispatch('setZraLiteMode', true, { root: true });
         }
 
         const rootTask = await createTask(store, {
           title: 'Run actions on clients',
-          progressMax: clients.length,
+          progressMax: validClients.length,
           unknownMaxProgress: false,
           sequential: true,
           isRoot: true,
         });
 
-        commit('startNewRun', { taskId: rootTask.id, clients: allClients });
+        commit('startNewRun', { taskId: rootTask.id, clients });
         rootTask.title += ` #${state.currentRunId + 1}`;
         try {
           await taskFunction({
@@ -700,7 +730,7 @@ const module = {
             async func() {
               const allInstanceIds = [];
               const clientActionIds = [];
-              for (const client of clients) {
+              for (const client of validClients) {
                 const actionIds = getClientsActionIds(client);
                 clientActionIds.push(actionIds);
 
@@ -711,8 +741,8 @@ const module = {
                 allInstanceIds.push(instanceIds);
               }
               /* eslint-disable no-await-in-loop */
-              for (let i = 0; i < clients.length; i++) {
-                const client = clients[i];
+              for (let i = 0; i < validClients.length; i++) {
+                const client = validClients[i];
                 const instanceIds = allInstanceIds[i];
                 rootTask.status = client.name;
                 // TODO: Consider checking if a tab has been closed prematurely all the time.
@@ -733,7 +763,7 @@ const module = {
           if (rootState.config.sendNotifications) {
             notify({
               title: 'All tasks complete',
-              message: `Finished running ${clients.length} client(s)`,
+              message: `Finished running ${validClients.length} client(s)`,
             });
           }
           commit('completeRun', state.currentRunId);
@@ -753,21 +783,24 @@ const module = {
      * @param {number[]} actionIds
      * @param {number[]} clientIds
      */
-    async runSelectedActionsOnAllClients({ dispatch }, { actionIds, clientIds }) {
+    async runSelectedActionsOnAllClients({ dispatch, rootGetters }, { actionIds, clientIds }) {
+      /** All clients including the invalid ones. */
+      const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       await dispatch('run', {
-        clientIds,
+        clients,
         getClientsActionIds: () => actionIds,
       });
     },
     /**
      * Re-runs all the actions that failed on the clients they failed on.
      * @param {VuexActionContext} context
+     * @param {{runId: number}} payload
      */
-    async retryFailures({ getters, dispatch }) {
-      // Use a copy of the failures as they are reset on each run.
-      const retryableFailuresByClient = Object.assign({}, getters.retryableFailuresByClient);
+    async retryFailures({ getters, dispatch }, { runId }) {
+      const clients = getters.getClientsToRetry(runId);
+      const retryableFailuresByClient = getters.getRetryableFailuresByClient(runId);
       await dispatch('run', {
-        clientIds: Object.keys(retryableFailuresByClient),
+        clients,
         // TODO: Consider getting action IDs within 'run' itself.
         getClientsActionIds(client) {
           return retryableFailuresByClient[client.id].map(failure => failure.actionId);
