@@ -47,6 +47,7 @@ function taskFromId(store, id) {
  * @property {Task.setError} setError
  * @property {Task.addStep} addStep
  * @property {function} setStateBasedOnChildren
+ * @property {function} setErrorBasedOnChildren
  */
 
 /**

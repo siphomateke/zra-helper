@@ -347,6 +347,19 @@ const module = {
       }
       commit('setState', { id, value: state });
     },
+    /**
+     * Sets this tasks error to be the same as it's child's error if it only has one child.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     */
+    async setErrorBasedOnChildren({ getters, dispatch }, { id }) {
+      const children = getters.children(id);
+      if (children.length === 1) {
+        const childTask = children[0];
+        await dispatch('setError', { id, error: childTask.error });
+      }
+    },
   },
 };
 export default module;

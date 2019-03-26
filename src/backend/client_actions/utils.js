@@ -150,8 +150,11 @@ export function parallelTaskMap({
       task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
+        if (task.state === taskStates.ERROR) {
+          task.setErrorBasedOnChildren();
+        }
         if (!neverReject && task.state === taskStates.ERROR) {
-          reject();
+          reject(task.error);
         } else {
           resolve(responses);
         }
