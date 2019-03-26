@@ -30,7 +30,6 @@
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import { writeJson } from '@/backend/file_utils';
-import { errorToString } from '@/backend/errors';
 import { taskStates } from '@/store/modules/tasks';
 import renderTable from 'text-table';
 import Papa from 'papaparse';
@@ -170,7 +169,7 @@ export default {
           isRoot: task.isRoot,
         };
         if (task.error) {
-          row.error = errorToString(task.error);
+          row.error = task.errorString;
         }
         if (!this.onlyExportClientTasks && task.children) {
           row.children = this.getTextExportMetadata(task.children, indent + 1);
