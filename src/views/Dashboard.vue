@@ -58,25 +58,42 @@
       />
     </section>
     <section class="dashboard-section">
-      <div
-        v-if="!clientActionsRunning && anyRetryableFailures"
-        class="buttons has-addons"
-      >
-        <button
-          class="button"
-          type="button"
-          @click="retryFailures"
-        >
-          <b-icon
-            icon="redo"
-            size="is-small"
-          />
-          <span>Retry failed clients</span>
-        </button>
-        <OpenModalButton
-          label="View failures"
-          @click="showFailures"
-        />
+      <div v-if="!clientActionsRunning && anyRetryableFailures">
+        <b-field>
+          <p class="control">
+            <span class="button is-static">Run No.</span>
+          </p>
+          <b-select
+            v-model="failuresRunId"
+            type="number"
+            style="width:60px;"
+          >
+            <option
+              v-for="(run, runId) in runs"
+              :key="runId"
+              :value="runId"
+            >{{ runId + 1 }}</option>
+          </b-select>
+          <p class="control">
+            <button
+              class="button"
+              type="button"
+              @click="retryFailures"
+            >
+              <b-icon
+                icon="redo"
+                size="is-small"
+              />
+              <span>Retry failed clients</span>
+            </button>
+          </p>
+          <p class="control">
+            <OpenModalButton
+              label="View failures"
+              @click="showFailures"
+            />
+          </p>
+        </b-field>
       </div>
     </section>
     <section
@@ -133,7 +150,7 @@
     >
       <ClientActionFailures
         slot="body"
-        :run-id="failuresModalRunId"
+        :run-id="failuresRunId"
       />
     </CardModal>
   </div>
@@ -176,8 +193,8 @@ export default {
       selectedClientActions: [],
       parsedClientsViewerVisible: false,
       clientSelectorVisible: false,
+      failuresRunId: null,
       failuresModalVisible: false,
-      failuresModalRunId: null,
     };
   },
   computed: {
@@ -276,10 +293,9 @@ export default {
       this.selectedClientIds = this.clientIds;
     },
     async retryFailures() {
-      await this.$store.dispatch('clientActions/retryFailures', { runId: this.currentRunId });
+      await this.$store.dispatch('clientActions/retryFailures', { runId: this.failuresRunId });
     },
     showFailures() {
-      this.failuresModalRunId = this.currentRunId;
       this.failuresModalVisible = true;
     },
     actionsWithOutputsInRun(run) {
