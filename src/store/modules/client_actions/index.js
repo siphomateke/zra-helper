@@ -250,6 +250,19 @@ const module = {
       return runId => getters.getRetryableFailures(runId).length > 0;
     },
     /**
+     * Gets the IDs of all runs with retryable failures.
+     * @returns {number[]}
+     */
+    runsWithFailures(state, getters) {
+      const runIds = [];
+      for (const runId of Object.keys(state.runs)) {
+        if (getters.getAnyRetryableFailures(Number(runId))) {
+          runIds.push(Number(runId));
+        }
+      }
+      return runIds;
+    },
+    /**
      * Gets the instance that matches the provided run, action and client IDs.
      * @returns {(runId: number, actionId: string, clientId: number) => ActionInstanceData}
      */

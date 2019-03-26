@@ -58,24 +58,21 @@
       />
     </section>
     <section class="dashboard-section">
-      <div v-if="!clientActionsRunning && anyRetryableFailures">
+      <div v-if="runsWithFailures.length > 0">
         <b-field>
           <p class="control">
             <span class="button is-static">Run No.</span>
           </p>
-          <b-select
-            v-model="failuresRunId"
-            type="number"
-            style="width:60px;"
-          >
+          <b-select v-model="failuresRunId">
             <option
-              v-for="(run, runId) in runs"
+              v-for="runId in runsWithFailures"
               :key="runId"
               :value="runId"
             >{{ runId + 1 }}</option>
           </b-select>
           <p class="control">
             <button
+              :disabled="clientActionsRunning"
               class="button"
               type="button"
               @click="retryFailures(failuresRunId)"
@@ -89,6 +86,7 @@
           </p>
           <p class="control">
             <OpenModalButton
+              :disabled="failuresRunId === null"
               label="View failures"
               @click="showFailures"
             />
@@ -213,10 +211,10 @@ export default {
     ...mapGetters('clientActions', {
       clientActionsRunning: 'running',
       getAnyRetryableFailures: 'getAnyRetryableFailures',
+      runsWithFailures: 'runsWithFailures',
     }),
-    anyRetryableFailures() {
-      const { currentRunId } = this.$store.state.clientActions;
-      return this.getAnyRetryableFailures(currentRunId);
+    currentRunFailed() {
+      return this.runsWithFailures.includes(this.currentRunId);
     },
     clients() {
       return Object.values(this.clientsObj);
@@ -266,15 +264,18 @@ export default {
       }
     },
     clientActionsRunning(running) {
-      if (this.shouldPromptToRetryFailures && !running && this.anyRetryableFailures) {
-        this.$dialog.confirm({
-          message: 'Some actions failed to run. Would you like to retry those that failed?',
-          onConfirm: () => {
-            this.retryFailures(this.currentRunId);
-          },
-          confirmText: 'Retry failed actions',
-          cancelText: 'Cancel',
-        });
+      if (!running && this.currentRunFailed) {
+        if (this.shouldPromptToRetryFailures) {
+          this.$dialog.confirm({
+            message: 'Some actions failed to run. Would you like to retry those that failed?',
+            onConfirm: () => {
+              this.retryFailures(this.currentRunId);
+            },
+            confirmText: 'Retry failed actions',
+            cancelText: 'Cancel',
+          });
+        }
+        this.failuresRunId = this.currentRunId;
       }
     },
   },
