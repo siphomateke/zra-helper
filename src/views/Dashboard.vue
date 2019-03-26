@@ -78,7 +78,7 @@
             <button
               class="button"
               type="button"
-              @click="retryFailures"
+              @click="retryFailures(failuresRunId)"
             >
               <b-icon
                 icon="redo"
@@ -269,7 +269,9 @@ export default {
       if (this.shouldPromptToRetryFailures && !running && this.anyRetryableFailures) {
         this.$dialog.confirm({
           message: 'Some actions failed to run. Would you like to retry those that failed?',
-          onConfirm: this.retryFailures,
+          onConfirm: () => {
+            this.retryFailures(this.currentRunId);
+          },
           confirmText: 'Retry failed actions',
           cancelText: 'Cancel',
         });
@@ -292,8 +294,8 @@ export default {
       // Select all clients by default
       this.selectedClientIds = this.clientIds;
     },
-    async retryFailures() {
-      await this.$store.dispatch('clientActions/retryFailures', { runId: this.failuresRunId });
+    async retryFailures(runId) {
+      await this.$store.dispatch('clientActions/retryFailures', { runId });
     },
     showFailures() {
       this.failuresModalVisible = true;
