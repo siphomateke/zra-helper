@@ -131,7 +131,10 @@
       :active.sync="failuresModalVisible"
       title="Client failures"
     >
-      <ClientActionFailures slot="body"/>
+      <ClientActionFailures
+        slot="body"
+        :run-id="failuresModalRunId"
+      />
     </CardModal>
   </div>
 </template>
@@ -174,6 +177,7 @@ export default {
       parsedClientsViewerVisible: false,
       clientSelectorVisible: false,
       failuresModalVisible: false,
+      failuresModalRunId: null,
     };
   },
   computed: {
@@ -186,12 +190,17 @@ export default {
       clientActionsObject: 'actions',
       runs: 'runs',
       instancesByActionId: 'instancesByActionId',
+      currentRunId: 'currentRunId',
     }),
     ...mapGetters('clients', ['getClientById']),
     ...mapGetters('clientActions', {
-      anyRetryableFailures: 'anyRetryableFailures',
       clientActionsRunning: 'running',
+      getAnyRetryableFailures: 'getAnyRetryableFailures',
     }),
+    anyRetryableFailures() {
+      const { currentRunId } = this.$store.state.clientActions;
+      return this.getAnyRetryableFailures(currentRunId);
+    },
     clients() {
       return Object.values(this.clientsObj);
     },
@@ -267,9 +276,10 @@ export default {
       this.selectedClientIds = this.clientIds;
     },
     async retryFailures() {
-      await this.$store.dispatch('clientActions/retryFailures');
+      await this.$store.dispatch('clientActions/retryFailures', { runId: this.currentRunId });
     },
     showFailures() {
+      this.failuresModalRunId = this.currentRunId;
       this.failuresModalVisible = true;
     },
     actionsWithOutputsInRun(run) {

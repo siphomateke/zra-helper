@@ -2,13 +2,17 @@
   <ul>
     <li
       v-for="client of clients"
-      :key="client.id">
+      :key="client.id"
+    >
       <b>{{ client.name }}</b>
       <ul>
         <li
           v-for="(failure, index) of clientFailures[client.id]"
-          :key="index">
-          <span>{{ failure.action }}</span>{{ ` - ` }}<span class="error">{{ failure.error }}</span>
+          :key="index"
+        >
+          <span>{{ failure.action }}</span>
+          {{ ` - ` }}
+          <span class="error">{{ failure.error }}</span>
         </li>
       </ul>
     </li>
@@ -20,12 +24,24 @@ import { mapGetters } from 'vuex';
 
 export default {
   name: 'ClientActionFailures',
+  props: {
+    runId: {
+      type: Number,
+      required: true,
+    },
+  },
   computed: {
-    ...mapGetters('clientActions', ['getActionById', 'retryableFailuresByClient']),
-    ...mapGetters('clients', ['getClientById']),
+    ...mapGetters('clientActions', [
+      'getActionById',
+      'getRetryableFailuresByClient',
+      'getClientsToRetry',
+      'getClientFromRun',
+    ]),
+    retryableFailuresByClient() {
+      return this.getRetryableFailuresByClient(this.runId);
+    },
     clients() {
-      const clientIds = Object.keys(this.retryableFailuresByClient);
-      return clientIds.map(id => this.getClientById(id));
+      return this.getClientsToRetry(this.runId);
     },
     clientFailures() {
       const clientFailures = {};
