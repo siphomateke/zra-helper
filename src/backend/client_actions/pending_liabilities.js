@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import { exportFormatCodes, taxTypes } from '../constants';
 import { writeJson } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
-import { createClientAction, ClientActionRunner } from './base';
+import { createClientAction, ClientActionRunner, inInput } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
 
@@ -199,7 +199,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
     let { taxTypes: taxTypeIds } = client;
 
-    if (input && 'taxTypeIds' in input) {
+    if (inInput(input, 'taxTypeIds')) {
       taxTypeIds = taxTypeIds.filter(id => input.taxTypeIds.includes(id));
     }
 
