@@ -105,8 +105,8 @@ export class ClientActionRunner {
     this.storeProxy.id = this.id;
     this.storeProxy.actionId = null;
 
-    this.storeProxy.input = null;
-    this.storeProxy.retryInput = null;
+    this.storeProxy.input = {};
+    this.storeProxy.retryInput = {};
   }
 
   /**

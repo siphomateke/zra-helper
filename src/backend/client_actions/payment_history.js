@@ -328,7 +328,6 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
 
     if (failed.receipts.length > 0 || failed.receiptDataPages.length > 0) {
       this.setRetryReason('Some receipts failed to download.');
-      this.storeProxy.retryInput = {};
       if (failed.receipts.length > 0) {
         this.storeProxy.retryInput.receipts = failed.receipts;
       }
