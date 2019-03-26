@@ -45,7 +45,10 @@ module.exports = {
   chainWebpack: (config) => {
     config
       .plugin('copy')
-      .tap(([paths]) => [paths.concat(copy)]);
+      .tap((args) => {
+        const paths = args[0] || [];
+        return [paths.concat(copy)];
+      });
     config.resolve.alias.set('styles', path.resolve(__dirname, './src/assets/scss'));
 
     config
