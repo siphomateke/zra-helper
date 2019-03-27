@@ -1,29 +1,19 @@
 {
   "name": "zra-helper",
-  "repository": "github:siphomateke/zra-helper",
-  "homepage": "https://github.com/siphomateke/zra-helper",
-  "bugs": {
-    "url": "https://github.com/siphomateke/zra-helper/issues"
-  },
   "version": "1.4.0-beta.2",
   "description": "A browser extension that automates various aspects of the ZRA website.",
   "scripts": {
     "serve": "vue-cli-service build --mode development --watch",
-    "serve:firefox": "cross-env BROWSER=firefox yarn run serve",
-    "serve:chrome": "cross-env BROWSER=chrome yarn run serve",
     "build": "vue-cli-service build",
-    "build:firefox": "cross-env BROWSER=firefox yarn run build",
-    "build:chrome": "cross-env BROWSER=chrome yarn run build",
-    "build:all": "yarn run build:firefox && yarn run build:chrome",
     "lint": "vue-cli-service lint --format stylish --mode production",
+    "build:all": "yarn run build:firefox && yarn run build:chrome",
+    "build:chrome": "cross-env BROWSER=chrome yarn run build",
+    "build:firefox": "cross-env BROWSER=firefox yarn run build",
     "devtools": "vue-devtools",
-    "postversion": "concurrently \"git push --tags\" \"yarn run build:all\""
+    "postversion": "concurrently \"git push --tags\" \"yarn run build:all\"",
+    "serve:chrome": "cross-env BROWSER=chrome yarn run serve",
+    "serve:firefox": "cross-env BROWSER=firefox yarn run serve"
   },
-  "contributors": [
-    "rahensonzam",
-    "siphomateke"
-  ],
-  "license": "MIT",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.2.0",
     "axios": "^0.18.0",
@@ -37,7 +27,9 @@
     "papaparse": "^4.5.0",
     "text-table": "^0.2.0",
     "vue": "^2.5.17",
+    "vue-class-component": "^6.0.0",
     "vue-clipboard2": "^0.2.1",
+    "vue-property-decorator": "^8.0.0",
     "vue-router": "^3.0.1",
     "vuedraggable": "^2.18.1",
     "vuex": "^3.0.1",
@@ -48,10 +40,14 @@
     "@types/firefox-webext-browser": "^65.0.0",
     "@vue/cli-plugin-babel": "^3.4.1",
     "@vue/cli-plugin-eslint": "^3.4.1",
+    "@vue/cli-plugin-typescript": "^3.5.2",
     "@vue/cli-service": "^3.4.1",
     "@vue/devtools": "^4.1.5",
     "@vue/eslint-config-airbnb": "^4.0.0",
+    "@vue/eslint-config-typescript": "^4.0.0",
     "concurrently": "^4.1.0",
+    "eslint": "^5.8.0",
+    "eslint-plugin-vue": "^5.0.0",
     "cross-env": "^5.2.0",
     "imports-loader": "^0.8.0",
     "lint-staged": "^7.2.0",
@@ -61,9 +57,23 @@
     "vue-cli-plugin-browser-extension": "https://github.com/siphomateke/vue-cli-plugin-browser-extension#add-manifest-transformer",
     "vue-template-compiler": "^2.5.17"
   },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 8"
+  ],
+  "bugs": {
+    "url": "https://github.com/siphomateke/zra-helper/issues"
+  },
+  "contributors": [
+    "rahensonzam",
+    "siphomateke"
+  ],
   "gitHooks": {
     "pre-commit": "lint-staged"
   },
+  "homepage": "https://github.com/siphomateke/zra-helper",
+  "license": "MIT",
   "lint-staged": {
     "*.js": [
       "yarn run lint"
@@ -72,9 +82,5 @@
       "yarn run lint"
     ]
   },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not ie <= 8"
-  ]
+  "repository": "github:siphomateke/zra-helper"
 }
