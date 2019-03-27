@@ -10,6 +10,7 @@ module.exports = {
   extends: [
     'plugin:vue/recommended',
     '@vue/airbnb',
+    '@vue/typescript',
   ],
   rules: {
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
@@ -30,6 +31,6 @@ module.exports = {
     },
   ],
   parserOptions: {
-    parser: 'babel-eslint',
+    parser: '@typescript-eslint/parser',
   },
 };
