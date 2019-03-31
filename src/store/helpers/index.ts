@@ -3,17 +3,19 @@ import { mapObject } from '@/utils';
 
 export function mapGettersById(...args) {
   const getters = mapGetters(...args);
-  return mapObject(getters, getter => function mappedIdGetter() {
-    return getter.call(this)(this.id);
-  });
+  return mapObject(
+    getters,
+    getter =>
+      function mappedIdGetter() {
+        return getter.call(this)(this.id);
+      }
+  );
 }
 
 /**
  * Normalize the map. Same as Vuex's normalizeMap.
- * @param {Array|Object} map
- * @return {Object}
  */
-function normalizeMap(map) {
+function normalizeMap(map: Array | Object) {
   return Array.isArray(map)
     ? map.map(key => ({ key, val: key }))
     : Object.keys(map).map(key => ({ key, val: map[key] }));

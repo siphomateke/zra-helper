@@ -13,7 +13,9 @@
           :disabled="actionIsDisabled(action.id)"
           :title="actionIsDisabled(action.id) ? actionDisabledReason(action.id) : ''"
           name="actions"
-        >{{ action.name }}</b-checkbox>
+        >
+          {{ action.name }}
+        </b-checkbox>
       </div>
     </div>
 
@@ -49,7 +51,7 @@
 
 <script>
 import { mapGetters, mapState } from 'vuex';
-import { browserNames } from '@/backend/constants';
+import { BrowserName } from '@/backend/constants';
 import { joinSpecialLast } from '@/utils';
 import DraggableList from '@/components/DraggableList.vue';
 
@@ -107,7 +109,7 @@ export default {
       return !this.actionSupportsCurrentBrowser(actionId) || this.disabled;
     },
     getNamesOfBrowsersActionSupports(actionId) {
-      return this.getBrowsersActionSupports(actionId).map(browserCode => browserNames[browserCode]);
+      return this.getBrowsersActionSupports(actionId).map(browserCode => BrowserName[browserCode]);
     },
     getUnsupportedBrowserMessage(actionId) {
       const browsers = this.getNamesOfBrowsersActionSupports(actionId);

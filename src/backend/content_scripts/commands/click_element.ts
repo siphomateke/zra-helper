@@ -2,15 +2,7 @@ import { getElement } from '@/backend/content_scripts/helpers/elements';
 import { getZraError } from '@/backend/content_scripts/helpers/zra';
 import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
-/**
- * @param {Object} message
- * @param {import('../../utils').IgnoreZraError} message.ignoreZraErrors
- * Whether errors from the ZRA website should be ignored.
- * @param {string} message.selector The selector of the element.
- * @param {string} message.name A descriptive name of the element used when generating errors.
- * For example, "generate report button".
- */
-function listener(message) {
+addContentScriptListener('click_element', message => {
   return new Promise((resolve, reject) => {
     try {
       if (!message.ignoreZraErrors) {
@@ -31,5 +23,4 @@ function listener(message) {
       reject(error);
     }
   });
-}
-addContentScriptListener('click_element', listener);
+});

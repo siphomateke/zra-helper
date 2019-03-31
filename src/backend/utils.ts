@@ -11,16 +11,19 @@ import {
   TabError,
   DownloadError,
 } from './errors';
-import { browserCodes } from './constants';
+import { BrowserCode } from './constants';
+import {
+  ContentScriptCommand,
+  ContentScriptMessageFromCommand,
+} from './content_scripts/commands/types';
 
 /**
  * Waits for a specific message.
- *
- * @param {function} validator Function that checks if a message is the one we are waiting for
+ * @param validator Function that checks if a message is the one we are waiting for
  */
-export function waitForMessage(validator) {
-  return new Promise(async (resolve) => {
-    function listener(message) {
+export function waitForMessage(validator: Function) {
+  return new Promise(async resolve => {
+    function listener(message: string) {
       if (validator(message)) {
         browser.runtime.onMessage.removeListener(listener);
         resolve(message);
@@ -33,18 +36,19 @@ export function waitForMessage(validator) {
 /**
  * Sends a single message to the content script(s) in the specified tab.
  * Also throws any errors received as messages.
- *
- * @param {number} tabId
- * @param {any} message
  * @throws {SendMessageError}
  */
-export async function sendMessage(tabId, message) {
+export async function sendMessage(tabId: number, message: any) {
   let response;
   try {
     response = await browser.tabs.sendMessage(tabId, message);
   } catch (error) {
     const errorString = error.message ? error.message : error.toString();
-    throw new SendMessageError(`Failed to send message to tab with ID ${tabId}: "${errorString}"`);
+    throw new SendMessageError(
+      `Failed to send message to tab with ID ${tabId}: "${errorString}"`,
+      null,
+      { tabId: tabId }
+    );
   }
   if (response.error) {
     throw errorFromJson(response.error);
@@ -54,13 +58,10 @@ export async function sendMessage(tabId, message) {
 
 /**
  * Executes a script in a particular tab
- *
- * @param {number} tabId
- * @param {string} filename The name of the script to execute excluding the extension.
- * @param {boolean} vendor
+ * @param filename The name of the script to execute excluding the extension.
  * @throws {ExecuteScriptError}
  */
-export async function executeScript(tabId, filename, vendor = false) {
+export async function executeScript(tabId: number, filename: string, vendor: boolean = false) {
   if (filename) {
     if (!vendor) {
       filename = `content_scripts/commands/${filename}`;
@@ -79,10 +80,12 @@ export async function executeScript(tabId, filename, vendor = false) {
         });
       } catch (e) {
         // Don't worry if the message isn't received.
-        if (!(
-          e.type === 'SendMessageError'
-          && e.message.toLowerCase().includes('receiving end does not exist')
-        )) {
+        if (
+          !(
+            e.type === 'SendMessageError' &&
+            e.message.toLowerCase().includes('receiving end does not exist')
+          )
+        ) {
           throw e;
         }
       }
@@ -94,13 +97,13 @@ export async function executeScript(tabId, filename, vendor = false) {
     // shows up when the user is offline.
     if (error.message) {
       if (
-        error.message.includes('Cannot access contents of url "chrome-error://chromewebdata/"')
-        || error.message.includes('Missing host permission for the tab')
+        error.message.includes('Cannot access contents of url "chrome-error://chromewebdata/"') ||
+        error.message.includes('Missing host permission for the tab')
       ) {
         throw new ExecuteScriptError(
           `Cannot access tab with ID ${tabId}. Please check your internet connection and try again.`,
           'NoAccess',
-          { tabId },
+          { tabId }
         );
       }
     }
@@ -110,14 +113,19 @@ export async function executeScript(tabId, filename, vendor = false) {
 
 /**
  * Executes a script in a tab and sends a message to it.
- * @param {number} tabId
- * @param {string} id
  * A string that is both the filename of the script and the command that will be sent to trigger
  * the script.
- * @param {Object} message Message that will be sent to the script.
+ * @param id ID of the content script command. The command is also the filename of the content script.
+ * @param message Message that will be sent to the script.
  */
-export async function runContentScript(tabId, id, message = {}) {
+export async function runContentScript<C extends ContentScriptCommand>(
+  tabId: number,
+  id: C,
+  // FIXME: Make message type not include command
+  message: ContentScriptMessageFromCommand<C> | object = {}
+) {
   await executeScript(tabId, id);
+  // FIXME: Type response
   const response = await sendMessage(tabId, {
     command: id,
     ...message,
@@ -126,19 +134,16 @@ export async function runContentScript(tabId, id, message = {}) {
 }
 
 class TabCreator {
+  /** Array of IDs of tabs created by the extension which are currently open. */
+  tabs: number[] = [];
+  /** The number of tabs that are currently open. */
+  openTabsCount: number = 0;
+  lastTabOpenTime: number | null = null;
+  /** Queued callbacks. */
+  queue: Function[] = [];
+  drainingQueue: boolean = false;
   constructor() {
-    /**
-     * Array of IDs of tabs created by the extension which are currently open.
-     * @type {number[]}
-     */
-    this.tabs = [];
-    /** The number of tabs that are currently open. */
-    this.openTabsCount = 0;
-    this.lastTabOpenTime = null;
-    this.queue = [];
-    this.drainingQueue = false;
-
-    browser.tabs.onRemoved.addListener((tabId) => {
+    browser.tabs.onRemoved.addListener(tabId => {
       if (this.tabs.includes(tabId)) {
         this.openTabsCount--;
         this.tabs.splice(this.tabs.indexOf(tabId), 1);
@@ -154,10 +159,8 @@ class TabCreator {
   slotFree() {
     const notMaxOpenTabs = config.maxOpenTabs === 0 || this.openTabsCount < config.maxOpenTabs;
     const timeSinceLastTabOpened = Date.now() - this.lastTabOpenTime;
-    const delayLargeEnough = (
-      this.lastTabOpenTime === null
-      || timeSinceLastTabOpened >= config.tabOpenDelay
-    );
+    const delayLargeEnough =
+      this.lastTabOpenTime === null || timeSinceLastTabOpened >= config.tabOpenDelay;
     return notMaxOpenTabs && delayLargeEnough;
   }
 
@@ -168,7 +171,7 @@ class TabCreator {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
       while (this.queue.length > 0 && this.slotFree()) {
-        const callback = this.queue.shift();
+        const callback = <Function>this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
         this.startDrainQueueTimer();
@@ -190,12 +193,13 @@ class TabCreator {
   }
 
   waitForFreeTabSlot() {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.queue.push(resolve);
       this.drainQueue();
     });
   }
 
+  // FIXME: Figure out how to extract tab create properties from firefox-webext-browser
   async create(createProperties) {
     await this.waitForFreeTabSlot();
     const tab = await browser.tabs.create(createProperties);
@@ -209,32 +213,31 @@ export const tabCreator = new TabCreator();
 /**
  * Waits for a tab with a specific ID to load
  *
- * @param {number} desiredTabId
- * @param {number} [timeout]
  * The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in
  * config.
  * @returns {Promise}
  * @throws {TabError} Throws an error if the tab is closed before it loads
  */
-export function tabLoaded(desiredTabId, timeout = null) {
-  if (timeout === null) timeout = config.tabLoadTimeout;
-
+export function tabLoaded(desiredTabId: number, timeout: number = config.tabLoadTimeout) {
   return new Promise((resolve, reject) => {
-    let removeListeners;
-    function updatedListener(tabId, changeInfo) {
+    let removeListeners: Function;
+    // FIXME: Figure out how to extract changeInfo type from firefox-webext-browser
+    function updatedListener(tabId: number, changeInfo) {
       if (tabId === desiredTabId && changeInfo.status === 'complete') {
         removeListeners();
         resolve();
       }
     }
-    function removedListener(tabId) {
+    function removedListener(tabId: number) {
       if (tabId === desiredTabId) {
         removeListeners();
-        reject(new TabError(
-          `Tab with ID ${tabId} was closed before it could finish loading.`,
-          'Closed',
-          { tabId },
-        ));
+        reject(
+          new TabError(
+            `Tab with ID ${tabId} was closed before it could finish loading.`,
+            'Closed',
+            { tabId }
+          )
+        );
       }
     }
     removeListeners = function removeListeners() {
@@ -247,42 +250,47 @@ export function tabLoaded(desiredTabId, timeout = null) {
 
     setTimeout(() => {
       removeListeners();
-      reject(new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut', {
-        tabId: desiredTabId,
-      }));
+      reject(
+        new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut', {
+          tabId: desiredTabId,
+        })
+      );
     }, timeout);
   });
 }
 
 /**
  * Creates a new tab.
- * @param {string} url The URL to navigate the tab to initially
- * @param {boolean} active Whether the tab should become the active tab in the window.
+ * @param url The URL to navigate the tab to initially
+ * @param active Whether the tab should become the active tab in the window.
  */
-export function createTab(url, active = false) {
+export function createTab(url: string, active: boolean = false) {
   return tabCreator.create({ url, active });
 }
 
 /**
  * Closes the tab with the specified ID
- * @param {number} tabId
  */
-export function closeTab(tabId) {
+export function closeTab(tabId: number) {
   return browser.tabs.remove(tabId);
 }
 
-/**
- * @typedef CreateTabPostOptions
- * @property {string} url The URL to send a POST request to
- * @property {Object} data The POST parameters
- * @property {boolean} [active=false] Whether the tab should become the active tab in the window
- */
-
+export interface CreateTabPostOptions {
+  /** The URL to send a POST request to */
+  url: string;
+  /** The POST parameters */
+  data: Object;
+  /** Whether the tab should become the active tab in the window */
+  active?: boolean;
+}
 /**
  * Creates a tab with the result of a POST request.
- * @param {CreateTabPostOptions} options
  */
-export async function createTabPost({ url, data, active = false }) {
+export async function createTabPost({
+  url,
+  data,
+  active = false,
+}: CreateTabPostOptions): Promise<browser.tabs.Tab> {
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = url;
@@ -296,7 +304,7 @@ export async function createTabPost({ url, data, active = false }) {
 
   let formHtml = form.outerHTML;
 
-  const isFirefox = getCurrentBrowser() === browserCodes.FIREFOX;
+  const isFirefox = getCurrentBrowser() === BrowserCode.FIREFOX;
 
   let tab = null;
   try {
@@ -330,12 +338,11 @@ export async function createTabPost({ url, data, active = false }) {
 
 /**
  * Promise version of chrome.pageCapture.saveAsMHTML
- * @param {Object} options
  */
-export function saveAsMHTML(options) {
+export function saveAsMHTML(options: chrome.pageCapture.SaveDetails): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    if (getCurrentBrowser() === browserCodes.CHROME) {
-      chrome.pageCapture.saveAsMHTML(options, (blob) => {
+    if (getCurrentBrowser() === BrowserCode.CHROME) {
+      chrome.pageCapture.saveAsMHTML(options, (blob: Blob) => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
         } else {
@@ -350,10 +357,8 @@ export function saveAsMHTML(options) {
 
 /**
  * Gets the active tab in the current window
- *
- * @returns {Promise.<browser.tabs.Tab>}
  */
-export async function getActiveTab() {
+export async function getActiveTab(): Promise<browser.tabs.Tab | null> {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   if (tabs.length > 0) {
     return tabs[0];
@@ -361,20 +366,22 @@ export async function getActiveTab() {
   return null;
 }
 
-/**
- * @typedef {boolean} IgnoreZraError
- * Whether errors from the ZRA website should be ignored.
- */
+/** Whether errors from the ZRA website should be ignored. */
+export type IgnoreZraError = boolean;
 
 /**
  * Clicks on an element with the specified selector that is in a tab with the specified ID.
- * @param {number} tabId The ID of the tab on which the element resides.
- * @param {string} selector The selector of the element.
- * @param {string} name A descriptive name of the element used when generating errors.
+ * @param tabId The ID of the tab on which the element resides.
+ * @param selector The selector of the element.
+ * @param name A descriptive name of the element used when generating errors.
  * For example, "generate report button".
- * @param {IgnoreZraError} [ignoreZraErrors=false]
  */
-export async function clickElement(tabId, selector, name = null, ignoreZraErrors = false) {
+export async function clickElement(
+  tabId: number,
+  selector: string,
+  name: string = '',
+  ignoreZraErrors: IgnoreZraError = false
+) {
   await runContentScript(tabId, 'click_element', {
     selector,
     name,
@@ -383,55 +390,68 @@ export async function clickElement(tabId, selector, name = null, ignoreZraErrors
 }
 
 /**
- * @callback monitorDownloadProgressCallback
- * @param {number} downloadProgress
- * The normalized progress of the download. -1 if progress cannot be determined.
+ * @param downloadProgress The normalized progress of the download. -1 if progress cannot be determined.
  */
+// FIXME: Fix this TSDoc
+type MonitorDownloadProgressCallback = (downloadProgress: number) => void;
 
 /**
  * Checks a download's progress every once in a while and passes the progress to the provided
  * callback. Once the download is complete, the promise resolves.
- * @param {number} downloadId The ID of the download whose progress we wish to monitor.
- * @param {monitorDownloadProgressCallback} callback
- * @param {number} pollFrequency How frequently to check the download's progress.
+ * @param downloadId The ID of the download whose progress we wish to monitor.
+ * @param callback
+ * @param pollFrequency How frequently to check the download's progress.
  */
-export async function monitorDownloadProgress(downloadId, callback, pollFrequency = 1000) {
+export async function monitorDownloadProgress(
+  downloadId: number,
+  callback: MonitorDownloadProgressCallback,
+  pollFrequency: number = 1000
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    browser.downloads.search({ id: downloadId }).then(([item]) => {
-      if (item.state === 'complete' || item.state === 'interrupted') {
-        if (item.state === 'interrupted') {
-          reject(new DownloadError(`Download with ID ${downloadId} was interrupted: ${item.error}`, item.error, {
-            downloadItem: item,
-          }));
+    browser.downloads
+      .search({ id: downloadId })
+      .then(([item]) => {
+        if (item.state === 'complete' || item.state === 'interrupted') {
+          if (item.state === 'interrupted') {
+            reject(
+              new DownloadError(
+                `Download with ID ${downloadId} was interrupted: ${item.error}`,
+                item.error,
+                {
+                  downloadItem: item,
+                }
+              )
+            );
+          } else {
+            resolve();
+          }
         } else {
-          resolve();
-        }
-      } else {
-        let downloadProgress = null;
-        if (item.totalBytes > 0) {
-          downloadProgress = item.bytesReceived / item.totalBytes;
-        } else {
-          downloadProgress = -1;
-        }
-        callback(downloadProgress);
+          let downloadProgress: number;
+          if (item.totalBytes > 0) {
+            downloadProgress = item.bytesReceived / item.totalBytes;
+          } else {
+            downloadProgress = -1;
+          }
+          callback(downloadProgress);
 
-        setTimeout(() => {
-          monitorDownloadProgress(downloadId, callback)
-            .then(resolve)
-            .catch(reject);
-        }, pollFrequency);
-      }
-    }).catch(reject);
+          setTimeout(() => {
+            monitorDownloadProgress(downloadId, callback)
+              .then(resolve)
+              .catch(reject);
+          }, pollFrequency);
+        }
+      })
+      .catch(reject);
   });
 }
 
 /**
  * Wait's for a download with the specified ID to finish
- * @param {number} id Download ID
+ * @param id Download ID
  */
-export function waitForDownloadToComplete(id) {
+export function waitForDownloadToComplete(id: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    browser.downloads.onChanged.addListener(async (downloadDelta) => {
+    browser.downloads.onChanged.addListener(async downloadDelta => {
       if (downloadDelta.id === id && downloadDelta.state) {
         const state = downloadDelta.state.current;
         if (state === 'complete') {
@@ -439,28 +459,33 @@ export function waitForDownloadToComplete(id) {
         }
         if (state === 'interrupted') {
           const [download] = await browser.downloads.search({ id });
-          reject(new DownloadError(`Download with ID ${id} was interrupted: ${download.error}`, download.error, {
-            downloadItem: download,
-          }));
+          reject(
+            new DownloadError(
+              `Download with ID ${id} was interrupted: ${download.error}`,
+              download.error,
+              {
+                downloadItem: download,
+              }
+            )
+          );
         }
       }
     });
   });
 }
 
-/**
- * @typedef {Object} RequestOptions
- * @property {string} url
- * @property {string} [method=get] Type of request
- * @property {Object} [data] POST request data
- */
+interface RequestOptions {
+  url: string;
+  /** Type of request */
+  method?: 'get' | 'post';
+  /** POST request data */
+  data?: Object;
+}
 
 /**
  * Makes an HTTP request.
- * @param {RequestOptions} options
- * @returns {Promise.<*>}
  */
-export async function makeRequest({ url, method = 'get', data = {} }) {
+export async function makeRequest({ url, method = 'get', data = {} }: RequestOptions) {
   /** @type {import('axios').AxiosRequestConfig} */
   const axiosOptions = {
     url,
@@ -476,7 +501,9 @@ export async function makeRequest({ url, method = 'get', data = {} }) {
       params.append(key, data[key]);
     }
     axiosOptions.data = params;
-    axiosOptions.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    axiosOptions.headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
   }
   const response = await axios(axiosOptions);
   return response.data;
@@ -486,12 +513,10 @@ const xmlParser = new xml2js.Parser({ explicitArray: false });
 
 /**
  * Converts an XML string to JSON
- * @param {string} str
- * @returns {Promise<Object>}
  */
-async function parseXml(str) {
+async function parseXml(str: string): Promise<Object> {
   return new Promise((resolve, reject) => {
-    xmlParser.parseString(str, (err, result) => {
+    xmlParser.parseString(str, (err, result: Object) => {
       if (err) {
         reject(err);
       }
@@ -502,21 +527,18 @@ async function parseXml(str) {
 
 /**
  * Makes a request that returns XML and parses the XML response.
- * @param {RequestOptions} options
- * @returns {Promise.<Object>} The parsed XML.
+ * @returns The parsed XML.
  */
-export async function xmlRequest(options) {
-  const xml = await makeRequest(options);
+export async function xmlRequest(options: RequestOptions): Promise<Object> {
+  const xml: string = await makeRequest(options);
   return parseXml(xml);
 }
 
 /**
  * Parses a string of HTML from the ZRA website into a HTML Document.
- * @param {string} documentString
- * @returns {Document}
  * @throws {import('@/errors').ZraError}
  */
-export function parseDocument(documentString) {
+export function parseDocument(documentString: string): Document {
   const parser = new DOMParser();
   const doc = parser.parseFromString(documentString, 'text/html');
   const zraError = getZraError(doc);
@@ -529,11 +551,9 @@ export function parseDocument(documentString) {
 
 /**
  * Gets a document from the response of an AJAX request.
- * @param {RequestOptions} options
- * @returns {Promise.<Document>}
  * @throws {import('@/backend/errors').ZraError}
  */
-export async function getDocumentByAjax(options) {
+export async function getDocumentByAjax(options: RequestOptions): Promise<Document> {
   const data = await makeRequest(options);
   return parseDocument(data);
 }

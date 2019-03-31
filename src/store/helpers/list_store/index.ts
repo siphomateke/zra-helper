@@ -1,15 +1,16 @@
 import { toPascalCase } from '@/utils';
+import { RootState } from '@/store/types';
+import { Store } from 'vuex';
 
 /** @typedef {import('vuex').Store} VuexStore */
 
 /**
  * Gets a nested object property using a Vuex namespace.
- * @param {Object} obj
- * @param {string} namespace Vuex namespace
+ * @param namespace Vuex namespace
  */
-function getByNamespace(obj, namespace) {
+function getByNamespace(obj: RootState, namespace: string) {
   const namespaces = namespace.split('/');
-  return namespaces.reduce((accumulator, name) => accumulator[name], obj);
+  return namespaces.reduce((accumulator, name: string) => accumulator[name], obj);
 }
 
 /**
@@ -23,9 +24,9 @@ function getStateByNamespace(rootState, namespace) {
 
 /**
  * Converts a namespace to the format that `store._modulesNamespaceMap` expects
- * @param {string} namespace The namespace to convert
+ * @param namespace The namespace to convert
  */
-function normalizeNamespace(namespace) {
+function normalizeNamespace(namespace: string): string {
   if (typeof namespace === 'string' && namespace.charAt(namespace.length - 1) !== '/') {
     namespace += '/';
   }
@@ -34,10 +35,8 @@ function normalizeNamespace(namespace) {
 
 /**
  * Gets a store module by namespace.
- * @param {VuexStore} store
- * @param {string} namespace
  */
-function getModuleByNamespace(store, namespace) {
+function getModuleByNamespace<S>(store: Store<S>, namespace: string) {
   // eslint-disable-next-line no-underscore-dangle
   return store._modulesNamespaceMap[normalizeNamespace(namespace)]._rawModule;
 }
@@ -108,7 +107,10 @@ export class ListItemStore {
    * @param {Object} payload
    */
   dispatch(prop, payload) {
-    return this.store.dispatch(`${this.namespace}/${prop}`, Object.assign({ id: this.id }, payload));
+    return this.store.dispatch(
+      `${this.namespace}/${prop}`,
+      Object.assign({ id: this.id }, payload)
+    );
   }
 
   /**

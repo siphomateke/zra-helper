@@ -2,21 +2,23 @@
   <div :class="[isRoot ? 'tasks' : 'sub-tasks']">
     <TaskListItem
       v-for="id in tasks"
-      :key="id"
       :id="id"
+      :key="id"
     />
     <div
       v-if="isRoot && tasks.length === 0"
       class="bordered-section"
     >
-      <EmptyMessage message="No tasks are currently running"/>
+      <EmptyMessage message="No tasks are currently running" />
     </div>
     <div v-if="isRoot">
       <b-checkbox
         v-model="onlyExportClientTasks"
         :disabled="tasks.length === 0"
         title="Whether only the top level client tasks should be included in the export."
-      >Only export client tasks</b-checkbox>
+      >
+        Only export client tasks
+      </b-checkbox>
       <ExportButtons
         :generators="exportGenerators"
         :disabled="tasks.length === 0"
@@ -30,10 +32,10 @@
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import { writeJson } from '@/backend/file_utils';
-import { taskStates } from '@/store/modules/tasks';
+import { TaskState } from '@/store/modules/tasks';
 import renderTable from 'text-table';
 import Papa from 'papaparse';
-import { exportFormatCodes } from '@/backend/constants';
+import { ExportFormatCode } from '@/backend/constants';
 import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
 import { mapState } from 'vuex';
 
@@ -43,7 +45,7 @@ function objectWithoutKey(obj, key) {
 }
 
 /** @type {import('@/backend/constants').ExportFormatCode[]} */
-const exportFormats = [exportFormatCodes.TXT, exportFormatCodes.CSV, exportFormatCodes.JSON];
+const exportFormats = [ExportFormatCode.TXT, ExportFormatCode.CSV, ExportFormatCode.JSON];
 
 const taskGettersToExport = [
   'hasParent',
@@ -149,8 +151,8 @@ export default {
       const rows = [];
       for (const task of tasks) {
         let childStates = '';
-        if (Object.values(taskStates).length > 0) {
-          for (const state of Object.values(taskStates)) {
+        if (Object.values(TaskState).length > 0) {
+          for (const state of Object.values(TaskState)) {
             if (state in task.childStateCounts) {
               const count = task.childStateCounts[state];
               if (count > 0) {
@@ -231,11 +233,11 @@ export default {
     async getExport(format) {
       const tasksJson = this.tasksToJson(this.tasks);
       let output = '';
-      if (format === exportFormatCodes.TXT || format === exportFormatCodes.CSV) {
+      if (format === ExportFormatCode.TXT || format === ExportFormatCode.CSV) {
         const tasks = this.getTextExportMetadata(tasksJson);
-        if (format === exportFormatCodes.TXT) {
+        if (format === ExportFormatCode.TXT) {
           output = this.getTextExport(tasks);
-        } else if (format === exportFormatCodes.CSV) {
+        } else if (format === ExportFormatCode.CSV) {
           output = this.getCsvExport(tasks);
         }
       } else {

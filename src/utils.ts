@@ -1,12 +1,27 @@
 import Vue from 'vue';
+import { BrowserCode } from './backend/constants';
+
+export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+
+// FIXME: Fix typing
+export function objectFlip<K, V>(obj: { [key in K]: V }): { [key in V]: K } {
+  const ret = {};
+  Object.keys(obj).forEach(key => {
+    ret[obj[key]] = key;
+  });
+  return ret;
+}
 
 /**
  * Array.map for Objects
- * @param {Object} obj
- * @param {Function} callback
+ * @param obj
+ * @param callback
  */
-export function mapObject(obj, callback) {
-  const result = {};
+export function mapObject<O, K extends keyof O, R>(
+  obj: O,
+  callback: (value: O[K], key: K, obj: O) => R
+) {
+  const result: { [key in K]: R } = {};
   for (const key of Object.keys(obj)) {
     result[key] = callback.call(obj, obj[key], key, obj);
   }
@@ -15,26 +30,23 @@ export function mapObject(obj, callback) {
 
 /**
  * Converts a string to PascalCase.
- * @param {string} string The string to convert
+ * @param string The string to convert
  */
-export function toPascalCase(string) {
+export function toPascalCase(string: string) {
   return string[0].toUpperCase() + string.substring(1, string.length);
 }
 
 /**
  * Performs a deep copy of an object.
- * @param {*} object
  */
-export function deepClone(object) {
+export function deepClone(object: Object) {
   return JSON.parse(JSON.stringify(object));
 }
 
 /**
  * Recursively clones an object while preserving reactivity.
- * @param {Object} toCopy
- * @param {Object} copyTo
  */
-export function deepReactiveClone(toCopy, copyTo) {
+export function deepReactiveClone<Obj1, Obj2>(toCopy: Obj1, copyTo: Obj2) {
   for (const key of Object.keys(toCopy)) {
     const value = toCopy[key];
     // if the current value has more nested properties
@@ -51,20 +63,17 @@ export function deepReactiveClone(toCopy, copyTo) {
 
 /**
  * Gets the browser code of the current browser.
- * @returns {import('./backend/constants').BrowserCode}
  */
-export function getCurrentBrowser() {
+export function getCurrentBrowser(): BrowserCode {
   return process.env.BROWSER;
 }
 
 /**
  * Checks which properties are missing from an object.
- * @param {Object} obj
- * @param {string[]} properties
- * @return {string[]} The missing properties.
+ * @returns The missing properties.
  */
-export function objectHasProperties(obj, properties) {
-  const missing = [];
+export function objectHasProperties<O, P extends keyof O>(obj: O, properties: P[]) {
+  const missing: P[] = [];
   for (const property of properties) {
     if (!(property in obj)) {
       missing.push(property);
@@ -75,13 +84,9 @@ export function objectHasProperties(obj, properties) {
 
 /**
  * Standard array join except a different character can be provided for the last separator.
- * @param {Array} arr
- * @param {string} separator
- * @param {string} lastSeparator
- * @returns {string}
  */
-export function joinSpecialLast(arr, separator, lastSeparator) {
-  let output = '';
+export function joinSpecialLast(arr: string[], separator: string, lastSeparator: string) {
+  let output: string = '';
   if (arr.length > 1) {
     output = `${arr.slice(0, -1).join(separator)}${lastSeparator}${arr.slice(-1)}`;
   } else if (arr.length > 0) {
@@ -94,8 +99,7 @@ export function joinSpecialLast(arr, separator, lastSeparator) {
 
 /**
  * Async setTimeout
- * @param {number} timeout
  */
-export async function delay(timeout) {
+export async function delay(timeout: number) {
   return new Promise(resolve => setTimeout(resolve, timeout));
 }

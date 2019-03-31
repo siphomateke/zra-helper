@@ -1,14 +1,14 @@
 import { ZraError } from '../../errors';
-import { getElementFromDocument } from './elements';
+import { getElementFromDocument, RootElement } from './elements';
 
 /**
  * Gets error message from page if it exists
- * @param {Document} document
- * @returns {ZraError|null}
  */
-export function getZraError(document) {
+export function getZraError(document: HTMLDocument): ZraError | null {
   // eslint-disable-next-line max-len
-  const errorTable = document.querySelector('#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>div>table>tbody>tr>td>table');
+  const errorTable = document.querySelector(
+    '#maincontainer>tbody>tr:nth-child(4)>td:nth-child(3)>form>div>table>tbody>tr>td>table'
+  );
   if (errorTable !== null) {
     const errorTableHeader = errorTable.querySelector('tbody>tr.tdborder>td');
     if (errorTableHeader !== null && errorTableHeader.innerText.includes('An Error has occurred')) {
@@ -23,36 +23,49 @@ export function getZraError(document) {
   return null;
 }
 
-/**
- * @typedef {Object} ParsedTableLinkCell
- * @property {string} innerText
- * @property {string} onclick
- */
+interface ParsedTableLinkCell {
+  innerText: string;
+  onclick: string;
+}
 
 /**
- * @typedef {Object.<string, string>} ParsedTableRecord
  * Object representing a single row whose keys are column headers and whose values are the
  * corresponding cell values.
  */
+export type ParsedTableRecord<C extends string> = { [key in C]: string | ParsedTableLinkCell };
+
+export interface ParsedTable<C extends string> {
+  /** Array of records */
+  records: ParsedTableRecord<C>[];
+  /** The current page */
+  currentPage: number;
+  /** The total number of pages */
+  numPages: number;
+}
+
+interface ParseTableOptions<H extends string> {
+  /** Document to get records from */
+  root: RootElement;
+  headers: H[];
+  /** Selector of a single table data row. This shouldn't match any header rows. */
+  recordSelector: string;
+  /**
+   * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
+   * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
+   */
+  parseLinks?: boolean;
+}
 
 /**
  * Parses ZRA tables and returns the records.
- * @param {Object} options
- * @param {Document|Element} options.root Document to get records from
- * @param {string[]} options.headers Column headers
- * @param {string} options.recordSelector
- * Selector of a single table data row. This shouldn't match any header rows.
- * @param {boolean} [options.parseLinks]
- * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
- * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
- * @returns {ParsedTableRecord[]}
  */
-export function parseTable({
+// FIXME: Fix return value sometimes having links even when parseLinks is false.
+export function parseTable<H extends string>({
   root,
   headers,
   recordSelector,
   parseLinks = false,
-}) {
+}: ParseTableOptions<H>): ParsedTableRecord<H>[] {
   const records = [];
   const recordElements = root.querySelectorAll(recordSelector);
   for (const recordElement of recordElements) {
@@ -80,41 +93,29 @@ export function parseTable({
   return records;
 }
 
-/**
- * @typedef ParsedTable
- * @property {ParsedTableRecord[]} records Array of records
- * @property {number} currentPage The current page
- * @property {number} numPages The total number of pages
- */
+interface ParseTableAdvancedOptions<H extends string> extends ParseTableOptions<H> {
+  /** Selector of the element that contains information about the table such as the current page. */
+  tableInfoSelector: string;
+  /** String that will exist when there are no records */
+  noRecordsString?: string;
+}
 
 /**
  * Parses ZRA tables and returns the records, current page and number of pages.
- * @param {Object} options
- * @param {Document|Element} options.root Document to get elements from
- * @param {string[]} options.headers Column headers
- * @param {string} options.tableInfoSelector
- * Selector of the element that contains information about the table such as the current page.
- * @param {string} options.recordSelector
- * Selector of a single table data row. This shouldn't match header rows.
- * @param {string} [options.noRecordsString] String that will exist when there are no records
- * @param {boolean} [options.parseLinks]
- * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
- * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
- * @returns {Promise.<ParsedTable>}
  */
-export async function parseTableAdvanced({
+export async function parseTableAdvanced<H extends string>({
   root,
   headers,
   tableInfoSelector,
   recordSelector,
   noRecordsString = 'No Records Found',
-  parseLinks = false,
-}) {
+  parseLinks,
+}: ParseTableAdvancedOptions<H>): Promise<ParsedTable<H>> {
   const tableInfoElement = getElementFromDocument(root, tableInfoSelector, 'table info');
   const tableInfo = tableInfoElement.innerText;
   let currentPage = 1;
   let numPages = 0;
-  let records = [];
+  let records: ParsedTableRecord[] = [];
   if (!tableInfo.includes(noRecordsString)) {
     const tableInfoMatches = tableInfo.match(/Current Page : (\d+)\s*\/\s*(\d+)/);
     currentPage = Number(tableInfoMatches[1]);
@@ -133,25 +134,24 @@ export async function parseTableAdvanced({
   };
 }
 
-/**
- * @typedef {Object} ParsedReportTable
- * @property {ParsedTableRecord[]} records
- * @property {number} numPages
- * @property {number} currentPage
- */
+export interface ParsedReportTable<H extends string> extends ParsedTable<H> {}
+
+interface ParseReportTableOptions<H extends string> {
+  root: RootElement;
+  headers: H[];
+}
 
 /**
  * Parses rslt report tables.
  * These are used by the pending liabilities and the tax payer ledger reports.
- * @param {Object} options
- * @param {Document|Element} options.root
- * @param {string[]} options.headers
- * @returns {Promise.<ParsedReportTable>}
  */
-export async function parseReportTable({ root, headers }) {
-  let numPages = null;
-  let currentPage = null;
-  let records = null;
+export async function parseReportTable<H extends string>({
+  root,
+  headers,
+}: ParseReportTableOptions<H>): Promise<ParsedReportTable<H>> {
+  let numPages: number;
+  let currentPage: number;
+  let records: ParsedTableRecord<H>[];
   // Check if the element that contains "No data found" exists
   if (root.querySelector('table>tbody>tr:nth-child(2)>td>center.Label3')) {
     numPages = 0;
@@ -161,7 +161,7 @@ export async function parseReportTable({ root, headers }) {
     const numRecordsEl = getElementFromDocument(
       root,
       '#navTable>tbody>tr:nth-child(1)>td.Label3',
-      'number of records',
+      'number of records'
     );
     /**
      * String that contains the number of records.
@@ -176,7 +176,7 @@ export async function parseReportTable({ root, headers }) {
       const currentPageEl = getElementFromDocument(
         root,
         '#navTable>tbody>tr:nth-child(2) .rptNavigationSelected',
-        'current page',
+        'current page'
       );
       currentPage = Number(currentPageEl.innerText);
 

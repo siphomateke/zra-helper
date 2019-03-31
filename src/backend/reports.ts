@@ -1,38 +1,43 @@
-import { parseReportTable } from './content_scripts/helpers/zra';
+import { parseReportTable, ParsedReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
+import { TPIN, TaxTypeNumericalCode, Date, TaxAccountCode } from './constants';
 
-export const reportCodes = {
-  PENDING_LIABILITY: '10093',
-  TAX_PAYER_LEDGER: '10085',
-};
+export enum ReportCode {
+  PENDING_LIABILITY = '10093',
+  TAX_PAYER_LEDGER = '10085',
+}
 
-/**
- * @typedef {Object} ReportData
- * @property {string} rsltTableHtml String containing the actual HTML of the table.
- * @property {string} conf_str A string that just seems to contain "ZRA Confidential".
- * @property {string} rprtExprtFileCnt
- * Unknown value. Seems to be short for "Report export file count". E.g. "1"
- * @property {string} noOfPages The total number of pages in the report. E.g. "7"
- * @property {string} exportRowSize E.g. "1000"
- * @property {string} totalRowCnt The total number of records in the report. E.g. "129"
- * @property {string} recpReq Unknown value. Seems to be short for "Receipt required". E.g. "Y"
- */
+interface ReportData {
+  /** String containing the actual HTML of the table. */
+  rsltTableHtml: string;
+  /** A string that just seems to contain "ZRA Confidential". */
+  conf_str: string;
+  /** Unknown value. Seems to be short for "Report export file count". E.g. "1" */
+  rprtExprtFileCnt: string;
+  /** The total number of pages in the report. E.g. "7" */
+  noOfPages: string;
+  /** E.g. "1000" */
+  exportRowSize: string;
+  /** The total number of records in the report. E.g. "129" */
+  totalRowCnt: string;
+  /** Unknown value. Seems to be short for "Receipt required". E.g. "Y" */
+  recpReq: string;
+}
 
 /**
  * The response of the request to get a single report page is in a custom format. It contains the
  * HTML of the report as well as some meta data such as the total number of pages and records.
  * This converts the response to a JSON format that is actually usable.
- * @param {string} response The page to parse.
- * @returns {ReportData}
+ * @param response The page to parse.
  */
-export function parseReportPage(response) {
+export function parseReportPage(response: string): ReportData {
   // Since there is often a new-line at the beginning of the response and whitespaces at the end,
   // make sure to trim the response first.
   const trimmedResponse = response.trim();
   // The response contains "rprt" keys and values. Each key is prefixed by a "<rprt-key-ends>" tag
   // while each value is prefixed by a "<rprt-value-ends>" tag
   const split = trimmedResponse.split('<rprt-value-ends>');
-  const data = {};
+  const data: { [key: string]: string } = {};
   for (const item of split) {
     const [key, value] = item.split('<rprt-key-ends>');
     if (key) {
@@ -43,30 +48,34 @@ export function parseReportPage(response) {
   return data;
 }
 
-/**
- * @typedef {Object} ReportPage
- * @property {number} numPages
- * @property {number} numRecords
- * @property {import('@/backend/content_scripts/helpers/zra').ParsedReportTable} parsedTable
- */
+interface ReportPage<H extends string> {
+  numPages: number;
+  numRecords: number;
+  parsedTable: ParsedReportTable<H>;
+}
+
+interface GetReportPageFnOptions<H extends string> {
+  tpin: TPIN;
+  /** The ID of the type of report to get. */
+  reportCode: ReportCode;
+  /** Parameters to pass to the HTTP request. */
+  request: Object;
+  /** The columns in the report table. */
+  reportHeaders: H[];
+  /** The page of the report to get. */
+  page: number;
+}
 
 /**
  * Gets a particular page of a report.
- * @param {Object} options
- * @param {string} options.tpin Same as client's username.
- * @param {string} options.reportCode The ID of the type of report to get.
- * @param {Object} options.request Parameters to pass to the HTTP request.
- * @param {string[]} options.reportHeaders The columns in the report table.
- * @param {number} options.page The page of the report to get.
- * @returns {Promise.<ReportPage>}
  */
-async function getReportPage({
+async function getReportPage<H extends string>({
   reportCode,
   tpin,
   request,
   reportHeaders,
   page,
-}) {
+}: GetReportPageFnOptions<H>): Promise<ReportPage<H>> {
   const response = await makeRequest({
     url: 'https://www.zra.org.zm/frontController.do',
     method: 'post',
@@ -105,26 +114,31 @@ async function getReportPage({
   };
 }
 
+interface GetPendingLiabilityPageFnOptions {
+  tpin: TPIN;
+  /**
+   * ID of the tax account to get pending liability totals from. E.g. 119608 or 405534. If this is not
+   * provided, all the accounts with the provided tax type will be retrieved instead.
+   */
+  accountCode?: TaxAccountCode;
+  taxTypeId: TaxTypeNumericalCode;
+  /** The page to get */
+  page: number;
+}
+
 /**
  * Gets a single page of pending liabilities.
- * @param {Object} options
- * @param {string} options.tpin Same as client's username.
- * @param {string} [options.accountCode]
- * ID of the tax account to get pending liability totals from. E.g. 119608 or 405534. If this is not
- * provided, all the accounts with the provided tax type will be retrieved instead.
- * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
- * @param {number} options.page The page to get.
- * @returns {Promise.<ReportPage>}
  */
+// FIXME: Fix table headers typing.
 export function getPendingLiabilityPage({
   tpin,
   accountCode = '',
   taxTypeId,
   page,
-}) {
+}: GetPendingLiabilityPageFnOptions): Promise<ReportPage> {
   return getReportPage({
     tpin,
-    reportCode: reportCodes.PENDING_LIABILITY,
+    reportCode: ReportCode.PENDING_LIABILITY,
     page,
     request: {
       prm1_accountName: accountCode,
@@ -144,15 +158,17 @@ export function getPendingLiabilityPage({
   });
 }
 
+interface GetTaxPayerLedgerPageFnOptions {
+  tpin: TPIN;
+  accountCode: TaxAccountCode;
+  fromDate: Date;
+  toDate: Date;
+  /** The page to get. */
+  page: number;
+}
+
 /**
  * Gets a single page from the tax payer ledger.
- * @param {Object} options
- * @param {string} options.tpin Same as client's username.
- * @param {string} options.accountCode E.g. 119608 or 405534
- * @param {string} options.fromDate Format must be DD/MM/YYYY
- * @param {string} options.toDate Format must be DD/MM/YYYY
- * @param {number} options.page The page to get.
- * @returns {Promise.<ReportPage>}
  */
 export function getTaxPayerLedgerPage({
   tpin,
@@ -160,10 +176,10 @@ export function getTaxPayerLedgerPage({
   fromDate,
   toDate,
   page,
-}) {
+}: GetTaxPayerLedgerPageFnOptions): Promise<ReportPage> {
   return getReportPage({
     tpin,
-    reportCode: reportCodes.TAX_PAYER_LEDGER,
+    reportCode: ReportCode.TAX_PAYER_LEDGER,
     page,
     request: {
       prm1_Dtto: toDate,

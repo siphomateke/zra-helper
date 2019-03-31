@@ -43,7 +43,7 @@
     v-else
     class="bordered-section"
   >
-    <EmptyMessage message="Nothing has been logged yet"/>
+    <EmptyMessage message="Nothing has been logged yet" />
   </div>
 </template>
 
@@ -53,7 +53,7 @@ import EmptyMessage from '@/components/EmptyMessage.vue';
 import { writeCsv, writeJson } from '@/backend/file_utils';
 import { mapState, mapGetters } from 'vuex';
 import renderTable from 'text-table';
-import { exportFormatCodes } from '@/backend/constants';
+import { ExportFormatCode } from '@/backend/constants';
 import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
 
 /**
@@ -76,7 +76,7 @@ export const typeTooltips = {
 };
 
 /** @type {import('@/backend/constants').ExportFormatCode[]} */
-const exportTypes = [exportFormatCodes.TXT, exportFormatCodes.CSV, exportFormatCodes.JSON];
+const exportTypes = [ExportFormatCode.TXT, ExportFormatCode.CSV, ExportFormatCode.JSON];
 
 export default {
   name: 'TheLog',
@@ -174,7 +174,7 @@ export default {
     },
     getLogString(type) {
       let output = null;
-      if (type === exportFormatCodes.TXT) {
+      if (type === ExportFormatCode.TXT) {
         const table = this.lines.map((line) => {
           const row = [];
           row.push(line.timestamp);
@@ -188,14 +188,14 @@ export default {
           return row;
         });
         output = renderTable(table);
-      } else if (type === exportFormatCodes.CSV) {
+      } else if (type === ExportFormatCode.CSV) {
         output = writeCsv(this.lines.map(line => ({
           timestamp: line.timestamp,
           type: line.type,
           category: line.category,
           content: line.content,
         })));
-      } else if (type === exportFormatCodes.JSON) {
+      } else if (type === ExportFormatCode.JSON) {
         output = writeJson(this.lines);
       }
       if (this.anonymizeClientsInExports) {

@@ -1,8 +1,9 @@
 import addContentScriptListener from './listener';
+import { ConfigState } from '@/store/modules/config';
 
-let config = null;
+let config: ConfigState;
 
-addContentScriptListener('receive_config', async (message) => {
+addContentScriptListener('receive_config', async message => {
   ({ config } = message);
 });
 

@@ -1,7 +1,8 @@
 import { getListItemStore } from '@/store/helpers/list_store';
 import log from '@/transitional/log';
-
-/** @typedef {import('vuex').Store} VuexStore */
+import { TaskVuexState, TaskState, TaskVuexStateOptional } from '@/store/modules/tasks';
+import { Omit } from '@/utils';
+import { Store } from 'vuex';
 
 /**
  * Gets a task's ListItemStore from an ID.
@@ -17,47 +18,24 @@ function taskFromId(store, id) {
   });
 }
 
-/** @typedef {import('@/store/modules/tasks').TaskState} TaskState */
-
-/**
- * @typedef {function} Task.setError
- * @param {Error} error
- */
-
-/**
- * @typedef {function} Task.addStep
- * @param {string} status
- * @param {number} increment
- */
-
-/**
- * @typedef TaskObject.Temp
- * @property {boolean} hasParent
- * @property {TaskObject} parent
- * @property {boolean} hasChildren
- * @property {TaskObject[]} children
- * @property {Object.<TaskState, number>} childStateCounts
- * Total number of child states per state type
- * @property {string} childStateString
- * @property {boolean} complete
- * @property {number} progress
- * @property {number} progressMax
- *
- * @property {function} markAsComplete
- * @property {Task.setError} setError
- * @property {Task.addStep} addStep
- * @property {function} setStateBasedOnChildren
- * @property {function} setErrorBasedOnChildren
- */
-
-/**
- * @typedef {import('@/store/modules/tasks').TaskVuexState} TaskVuexState
- */
-
-/**
- * @typedef {TaskVuexState & TaskObject.Temp} TaskObject
- * Wrapper around the task Vuex module to make it compatible with legacy code.
- */
+/** Wrapper around the task Vuex module to make it compatible with legacy code. */
+export interface TaskObject extends Omit<TaskVuexState, 'children' | 'parent'> {
+  hasParent: boolean;
+  parent: TaskObject;
+  hasChildren: boolean;
+  children: TaskObject[];
+  /** Total number of child states per state type */
+  childStateCounts: { [key in TaskState]?: number };
+  childStateString: string;
+  complete: boolean;
+  progress: number;
+  progressMax: number;
+  markAsComplete: Function;
+  setError: (error: Error) => void;
+  addStep: (status: string, increment?: number) => void;
+  setStateBasedOnChildren: Function;
+  setErrorBasedOnChildren: Function;
+}
 
 class Task {
   constructor() {
@@ -83,10 +61,10 @@ class Task {
          * methods.
          */
         if (
-          typeof prop === 'string'
-          && prop !== 'addStep'
-          && prop !== 'setError'
-          && prop !== 'listStoreTask'
+          typeof prop === 'string' &&
+          prop !== 'addStep' &&
+          prop !== 'setError' &&
+          prop !== 'listStoreTask'
         ) {
           return obj.listStoreTask[prop];
         }
@@ -119,11 +97,12 @@ class Task {
 
 /**
  * TODO: Document this
- * @param {VuexStore} store
- * @param {TaskVuexState} data
- * @returns {Promise.<TaskObject>}
  */
-export default async function createTask(store, data) {
+// FIXME: Make sure the right properties are marked as optional.
+export default async function createTask<S>(
+  store: Store<S>,
+  data: TaskVuexStateOptional
+): Promise<TaskObject> {
   try {
     const task = new Task();
     const taskProxy = await task.init(store, data);

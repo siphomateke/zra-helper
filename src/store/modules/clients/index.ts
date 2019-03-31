@@ -2,55 +2,44 @@ import Vue from 'vue';
 import store from '@/store';
 import { getTaxAccounts } from '@/backend/client_actions/utils';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
+import { ParsedClient } from '@/backend/constants';
+import { Module } from 'vuex';
+import { RootState } from '@/store/types';
+import { ClientsState } from './types';
 
-let lastClientId = 0;
-
-/**
- * @typedef {import('vuex').ActionContext} ActionContext
- * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('@/backend/constants').ParsedClient} ParsedClient
- */
-
-/**
- * @typedef {Object} State
- * @property {Object.<string, Client>} all
- */
+let lastClientId: number = 0;
 
 const listStoreHelper = new ListStoreHelper('all', 'client', 'getClientById');
 
-/** @type {import('vuex').Module} */
-const module = {
+const module: Module<ClientsState, RootState> = {
   namespaced: true,
-  /** @type {State} */
   state: {
     all: {},
   },
   getters: {
-    getClientById: state => id => state.all[id],
+    getClientById: state => (id: number) => state.all[id],
   },
   mutations: {
-    /**
-     *
-     * @param {State} state
-     * @param {ParsedClient} payload
-     */
-    add(state, payload) {
-      Vue.set(state.all, lastClientId, Object.assign({
-        id: lastClientId,
-        taxTypes: null,
-        taxAccounts: null,
-        registeredTaxAccounts: null,
-      }, payload));
+    add(state, payload: ParsedClient) {
+      Vue.set(
+        state.all,
+        lastClientId,
+        Object.assign(
+          {
+            id: lastClientId,
+            taxTypes: [],
+            taxAccounts: [],
+            registeredTaxAccounts: [],
+          },
+          payload
+        )
+      );
       lastClientId++;
     },
     clear(state) {
       state.all = {};
     },
-    ...listStoreHelper.itemMutations([
-      'taxTypes',
-      'taxAccounts',
-      'registeredTaxAccounts',
-    ]),
+    ...listStoreHelper.itemMutations(['taxTypes', 'taxAccounts', 'registeredTaxAccounts']),
   },
   actions: {
     /**
@@ -79,7 +68,9 @@ const module = {
         const taxAccounts = await getTaxAccounts({ store, parentTaskId, tpin: client.username });
         commit('setTaxAccounts', { id, value: taxAccounts });
 
-        const registeredTaxAccounts = taxAccounts.filter(account => account.status === 'registered');
+        const registeredTaxAccounts = taxAccounts.filter(
+          account => account.status === 'registered'
+        );
         commit('setRegisteredTaxAccounts', { id, value: registeredTaxAccounts });
 
         const taxTypes = [];

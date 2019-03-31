@@ -2,11 +2,7 @@ import { getElement, getElementFromDocument } from '@/backend/content_scripts/he
 import { parseTable } from '@/backend/content_scripts/helpers/zra';
 import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
-/**
- * @param {Object} message
- * @param {'payment'|'return'} message.type The type of receipt data to get.
- */
-async function listener(message) {
+addContentScriptListener('get_receipt_data', async message => {
   let column = '';
   if (message.type === 'payment') {
     column = '4';
@@ -15,22 +11,22 @@ async function listener(message) {
   }
   const mainTable = getElement(
     'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
-    'main table',
+    'main table'
   );
   const infoTable = getElementFromDocument(
     mainTable,
     `tr:nth-child(5)>td:nth-child(${column})>table>tbody`,
-    'info table',
+    'info table'
   );
   const registrationDate = getElementFromDocument(
     infoTable,
     'tr:nth-child(2)>td:nth-child(3)',
-    'registration date',
+    'registration date'
   ).innerText;
   const referenceNumber = getElementFromDocument(
     infoTable,
     'tr:nth-child(3)>td:nth-child(3)',
-    'reference number',
+    'reference number'
   ).innerText;
 
   const data = {
@@ -48,7 +44,7 @@ async function listener(message) {
       data[name] = getElementFromDocument(
         infoTable,
         `tr:nth-child(${rows[name]})>td:nth-child(3)`,
-        name,
+        name
       ).innerText;
     }
 
@@ -75,11 +71,13 @@ async function listener(message) {
     data.payments = payments;
   } else if (message.type === 'return') {
     // eslint-disable-next-line max-len
-    const periodInfo = getElement('#ReturnHistoryForm>table>tbody>tr:nth-child(2)>td:nth-child(2)>table>tbody>tr:nth-child(11)>td:nth-child(4)').innerText;
+    const periodInfo = getElement(
+      '#ReturnHistoryForm>table>tbody>tr:nth-child(2)>td:nth-child(2)>table>tbody>tr:nth-child(11)>td:nth-child(4)'
+    ).innerText;
     const periodDateMatches = periodInfo.match(/Period\s+:\s+(.+)\s+to\s+(.+)/);
     [, data.periodFrom, data.periodTo] = periodDateMatches;
   }
 
+  // FIXME: Document return value
   return data;
-}
-addContentScriptListener('get_receipt_data', listener);
+});

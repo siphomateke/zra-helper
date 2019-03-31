@@ -9,36 +9,46 @@ import {
   runContentScript,
   saveAsMHTML,
   tabLoaded,
+  CreateTabPostOptions,
 } from '../utils';
 import {
   changeLiteMode,
   parallelTaskMap,
   taskFunction,
   getPagedData,
+  GetDataFromPageFunction,
+  MultipleResponses,
+  ParallelTaskMapResponse,
+  GetTaskData,
 } from './utils';
+import { TaskId } from '@/store/modules/tasks';
 
-/**
- * @typedef {Object} DownloadReceiptOptions
- * @property {'return'|'payment'} type
- * @property {string|string[]|Function} filename
- * Filename of the downloaded receipt.
- *
- * If an array of filenames is provided, multiple files will be downloaded.
- *
- * If a function is provided, it must return a string or array. It will be called with
- * an object containing information about the receipt such as reference number.
- * @property {string} taskTitle
- * @property {number} parentTaskId
- * @property {import('../utils').CreateTabPostOptions} createTabPostOptions
- */
+export interface DownloadReceiptOptions {
+  type: 'return' | 'payment';
+  /**
+   * Filename of the downloaded receipt.
+   *
+   * If an array of filenames is provided, multiple files will be downloaded.
+   *
+   * If a function is provided, it must return a string or array. It will be called with
+   * an object containing information about the receipt such as reference number.
+   */
+  filename: string | string[] | Function;
+  taskTitle: string;
+  parentTaskId: TaskId;
+  createTabPostOptions: CreateTabPostOptions;
+}
 
 /**
  * Downloads a receipt
- * @param {DownloadReceiptOptions} options
  */
 export async function downloadReceipt({
-  type, filename, taskTitle, parentTaskId, createTabPostOptions,
-}) {
+  type,
+  filename,
+  taskTitle,
+  parentTaskId,
+  createTabPostOptions,
+}: DownloadReceiptOptions): Promise<void> {
   const task = await createTask(store, {
     title: taskTitle,
     parent: parentTaskId,
@@ -49,13 +59,16 @@ export async function downloadReceipt({
     task,
     async func() {
       const tab = await createTabPost(createTabPostOptions);
+      // FIXME: Add a type to this
       let receiptData = null;
-      let blob = null;
+      let blob: Blob | null = null;
       try {
         task.addStep('Waiting for receipt to load');
         await tabLoaded(tab.id);
 
-        receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
+        receiptData = await runContentScript(tab.id, 'get_receipt_data', {
+          type,
+        });
 
         if (!receiptData.referenceNumber) {
           throw new InvalidReceiptError('Invalid receipt; missing reference number.');
@@ -71,13 +84,13 @@ export async function downloadReceipt({
         const url = URL.createObjectURL(blob);
         task.addStep('Downloading generated MHTML');
 
-        let generatedFilename;
+        let generatedFilename: string | string[];
         if (typeof filename === 'function') {
           generatedFilename = filename(receiptData);
         } else {
           generatedFilename = filename;
         }
-        let generatedFilenames;
+        let generatedFilenames: string[];
         if (typeof generatedFilename === 'string') {
           generatedFilenames = [generatedFilename];
         } else {
@@ -85,63 +98,71 @@ export async function downloadReceipt({
         }
         const taskProgressBeforeDownload = task.progress;
         if (Array.isArray(generatedFilenames)) {
-          const promises = [];
+          const promises: Promise<void>[] = [];
           for (const generatedFilename of generatedFilenames) {
-            promises.push(new Promise(async (resolve) => {
-              let downloadFilename = generatedFilename;
-              if (!config.export.removeMhtmlExtension) {
-                downloadFilename += '.mhtml';
-              }
-              const downloadId = await browser.downloads.download({
-                url,
-                filename: downloadFilename,
-              });
-              // FIXME: Catch and handle download errors
-              await monitorDownloadProgress(downloadId, (downloadProgress) => {
-                if (downloadProgress !== -1) {
-                  task.progress = taskProgressBeforeDownload + downloadProgress;
+            promises.push(
+              new Promise(async resolve => {
+                let downloadFilename = generatedFilename;
+                if (!config.export.removeMhtmlExtension) {
+                  downloadFilename += '.mhtml';
                 }
-              });
-              resolve();
-            }));
+                const downloadId = await browser.downloads.download({
+                  url,
+                  filename: downloadFilename,
+                });
+                // FIXME: Catch and handle download errors
+                await monitorDownloadProgress(downloadId, downloadProgress => {
+                  if (downloadProgress !== -1) {
+                    task.progress = taskProgressBeforeDownload + downloadProgress;
+                  }
+                });
+                resolve();
+              })
+            );
           }
           await Promise.all(promises);
         } else {
-          throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+          throw new Error(
+            'Invalid filename attribute; filename must be a string, array or function.'
+          );
         }
       }
     },
   });
 }
 
-/**
- * @template L
- * @callback GetDownloadReceiptOptionsFunc
- * Gets the options to use in downloadReceipts from an item.
- * @param {L} item
- * @param {number} parentTaskId
- * @returns {DownloadReceiptOptions}
- */
+/** Gets the options to use in downloadReceipts from an item. */
+type GetDownloadReceiptOptionsFunc<ListItem> = (
+  item: ListItem,
+  parentTaskId: TaskId
+) => DownloadReceiptOptions;
+
+interface DownloadReceiptsOptions<ListItem> {
+  /** Title of the task that will be a parent to all the receipt downloading tasks. */
+  taskTitle: string;
+  parentTaskId: TaskId;
+  /** Array of data to use when downloading receipts. */
+  list: Array<ListItem>;
+  /**
+   * Function that returns the options that will be passed to `downloadReceipts`. It's called on each
+   * item in the array of data list.
+   */
+  getDownloadReceiptOptions: GetDownloadReceiptOptionsFunc<ListItem>;
+}
 
 /**
  * Downloads multiple receipts in parallel.
- * @template L
- * @param {Object} options
- * @param {string} [options.taskTitle]
- * Title of the task that will be a parent to all the receipt downloading tasks.
- * @param {number} options.parentTaskId
- * @param {Array<L>} options.list Array of data to use when downloading receipts.
- * @param {GetDownloadReceiptOptionsFunc<L>} options.getDownloadReceiptOptions
- * Function that returns the options that will be passed to `downloadReceipts`. It's called on each
- * item in the array of data list.
  */
-export async function downloadReceipts({
+export async function downloadReceipts<ListItem>({
   taskTitle = 'Download receipts',
   parentTaskId,
   list,
   getDownloadReceiptOptions: downloadReceiptFunc,
-}) {
-  const task = await createTask(store, { title: taskTitle, parent: parentTaskId });
+}: DownloadReceiptsOptions<ListItem>) {
+  const task = await createTask(store, {
+    title: taskTitle,
+    parent: parentTaskId,
+  });
   return parallelTaskMap({
     list,
     task,
@@ -161,39 +182,40 @@ export async function finishDownloadingReceipts() {
   return changeLiteMode(true);
 }
 
-/**
- * @template R
- * @typedef {Object} GetReceiptDataResponse
- * @property {R} data The receipt data fetched from all pages in a single flat array.
- * @property {number[]} failedPages Pages from which receipt data could not be fetched.
- */
+interface GetReceiptDataResponse<R> {
+  /** The receipt data fetched from all pages in a single flat array. */
+  data: R;
+  /** Pages from which receipt data could not be fetched. */
+  failedPages: number[];
+}
+
+interface GetReceiptDataFnOptions<Response> {
+  parentTaskId: TaskId;
+  /** Title of the main task. */
+  taskTitle: string;
+  /** Function that generates the title of a page task using a page number. */
+  getPageTaskTitle: (page: number) => string;
+  getDataFunction: GetDataFromPageFunction<Response[]>;
+  /** Specific pages to fetch. */
+  pages: number[];
+}
 
 /**
  * Gets data from multiple pages that is required to download receipts.
- * @template Response
- * @param {Object} options
- * @param {number} options.parentTaskId
- * @param {string} options.taskTitle
- * Title of the main task.
- * @param {(page: number) => string} options.getPageTaskTitle
- * Function that generates the title of a page task using a page number.
- * @param {import('./utils').GetDataFromPageFunction<Response[]>} options.getDataFunction
- * @param {number[]} [options.pages] Specific pages to fetch.
- * @returns {Promise.<GetReceiptDataResponse<Response[]>>}
  */
-export async function getReceiptData({
+export async function getReceiptData<Response>({
   parentTaskId,
   taskTitle,
   getPageTaskTitle,
   getDataFunction,
   pages = [],
-}) {
+}: GetReceiptDataFnOptions<Response>): Promise<GetReceiptDataResponse<Response[]>> {
   const task = await createTask(store, {
     title: taskTitle,
     parent: parentTaskId,
   });
 
-  const getPageSubTask = (page, subTaskParentId) => ({
+  const getPageSubTask: GetTaskData = (page, subTaskParentId) => ({
     title: getPageTaskTitle(page),
     parent: subTaskParentId,
     indeterminate: true,
@@ -206,14 +228,16 @@ export async function getReceiptData({
     pages,
   });
 
-  const data = [];
-  const failedPages = [];
+  const data: Response[] = [];
+  const failedPages: number[] = [];
   for (const response of responses) {
     if (!('error' in response)) {
       if (Array.isArray(response.value)) {
         data.push(...response.value);
       } else {
-        throw new Error('Receipt data fetched from a page must be an array. For example, an array of reference numbers.');
+        throw new Error(
+          'Receipt data fetched from a page must be an array. For example, an array of reference numbers.'
+        );
       }
     } else {
       failedPages.push(response.page);
@@ -225,7 +249,7 @@ export async function getReceiptData({
 /**
  * Gets the items of all responses that failed from an array of parallel task map responses.
  */
-export function getFailedResponseItems(downloadResponses) {
+export function getFailedResponseItems<R, I>(downloadResponses: ParallelTaskMapResponse<R, I>[]) {
   const items = [];
   for (const response of downloadResponses) {
     if ('error' in response) {

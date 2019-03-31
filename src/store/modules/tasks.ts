@@ -1,17 +1,59 @@
 import Vue from 'vue';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
 import { errorToString } from '@/backend/errors';
+import { Module } from 'vuex';
+import { RootState } from '../types';
 
 let lastTaskId = 0;
 
-/** @typedef {string} TaskState */
+export enum TaskState {
+  ERROR = 'error',
+  SUCCESS = 'success',
+  WARNING = 'warning',
+}
 
-/** @enum {TaskState} */
-export const taskStates = {
-  ERROR: 'error',
-  SUCCESS: 'success',
-  WARNING: 'warning',
-};
+export type TaskId = number;
+
+// TODO: Indicate default values?
+export interface TaskVuexState {
+  title: string;
+  anonymousTitle: string;
+  id: TaskId;
+  status: string;
+  state: TaskState;
+  progress: number;
+  progressMax: number;
+  indeterminate: Boolean;
+  /** Child IDs */
+  children: number[];
+  complete: boolean;
+  error: Error;
+  errorString: string;
+  /** Parent ID */
+  parent: number;
+  /**
+   * Whether the maximum progress of this task can be determined.
+   *
+   * This is used to determine this task's progress from it's children
+   * and is thus only used if it has children.
+   *
+   * Only set this to false if the total number of children that this
+   * task can ever have and their maximum progress' are known.
+   * If set to false then `progressMax` must also be set.
+   */
+  unknownMaxProgress: boolean;
+  /** Whether only one child task will be running at a time. */
+  sequential: boolean;
+  /** Whether this task will automatically update it's parent progress and status. */
+  autoUpdateParent: boolean;
+  /**
+   * Whether this task is at the highest level and has no parents. Root tasks are generally
+   * associated with a single client action run.
+   */
+  isRoot: boolean;
+}
+
+export type TaskVuexStateOptional = Partial<TaskVuexState>;
 
 /**
  * @typedef {Object} TaskVuexState
@@ -89,21 +131,19 @@ function getChildProgress(type, { getters, task, id }) {
   return null;
 }
 
+interface TasksState {
+  /** Top-level list of tasks. */
+  all: number[];
+  /** Object containing tasks as values and their corresponding IDs as keys. */
+  tasks: { [key: string]: TaskVuexState };
+}
+
 const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');
 
-/** @type {import('vuex').Module} */
-const module = {
+const module: Module<TasksState, RootState> = {
   namespaced: true,
   state: {
-    /**
-     * Top-level list of tasks.
-     * @type {number[]}
-     */
     all: [],
-    /**
-     * Object containing tasks as values and their corresponding IDs as keys.
-     * @type {Object.<string, TaskVuexState>}
-     */
     tasks: {},
   },
   getters: {
@@ -212,12 +252,14 @@ const module = {
      * @param {TaskState} payload.value The task state
      */
     setState(state, { id, value }) {
-      if (Object.values(taskStates).includes(value)) {
+      if (Object.values(TaskState).includes(value)) {
         Vue.set(state.tasks[id], 'state', value);
       } else {
-        const validStates = `['${Object.values(taskStates).join("', '")}']`;
+        const validStates = `['${Object.values(TaskState).join("', '")}']`;
         // eslint-disable-next-line max-len
-        throw new Error(`Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`);
+        throw new Error(
+          `Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`
+        );
       }
     },
     /**
@@ -249,29 +291,30 @@ const module = {
   actions: {
     /**
      * Creates a new task and returns its ID.
-     * @param {import('vuex').ActionContext} store
-     * @param {TaskVuexState} data
-     * @returns {number} The newly-created task's ID.
+     * @returns The newly-created task's ID.
      */
-    create({ commit }, data = {}) {
-      const task = Object.assign({
-        id: lastTaskId,
-        title: '',
-        status: '',
-        state: null,
-        progress: 0,
-        progressMax: 1,
-        indeterminate: false,
-        children: [],
-        complete: false,
-        error: null,
-        errorString: '',
-        parent: null,
-        unknownMaxProgress: true,
-        sequential: true,
-        autoUpdateParent: true,
-        isRoot: false,
-      }, data);
+    create({ commit }, data: TaskVuexStateOptional = {}): number {
+      const task = Object.assign(
+        {
+          id: lastTaskId,
+          title: '',
+          status: '',
+          state: null,
+          progress: 0,
+          progressMax: 1,
+          indeterminate: false,
+          children: [],
+          complete: false,
+          error: null,
+          errorString: '',
+          parent: null,
+          unknownMaxProgress: true,
+          sequential: true,
+          autoUpdateParent: true,
+          isRoot: false,
+        },
+        data
+      );
       if (!('anonymousTitle' in task)) {
         task.anonymousTitle = task.title;
       }
@@ -308,7 +351,7 @@ const module = {
      */
     setError({ commit }, { id, error }) {
       commit('setError', { id, value: error });
-      commit('setState', { id, value: taskStates.ERROR });
+      commit('setState', { id, value: TaskState.ERROR });
     },
     /**
      * Increments progress and sets status.
@@ -335,15 +378,12 @@ const module = {
       const childStateCounts = getters.childStateCounts(id);
       const children = getters.children(id);
       let state;
-      if (childStateCounts[taskStates.ERROR] === children.length) {
-        state = taskStates.ERROR;
-      } else if (
-        childStateCounts[taskStates.ERROR] > 0
-        || childStateCounts[taskStates.WARNING] > 0
-      ) {
-        state = taskStates.WARNING;
+      if (childStateCounts[TaskState.ERROR] === children.length) {
+        state = TaskState.ERROR;
+      } else if (childStateCounts[TaskState.ERROR] > 0 || childStateCounts[TaskState.WARNING] > 0) {
+        state = TaskState.WARNING;
       } else {
-        state = taskStates.SUCCESS;
+        state = TaskState.SUCCESS;
       }
       commit('setState', { id, value: state });
     },

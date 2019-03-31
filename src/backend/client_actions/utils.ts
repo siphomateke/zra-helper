@@ -1,18 +1,29 @@
 import store from '@/store';
-import { taskStates } from '@/store/modules/tasks';
-import createTask from '@/transitional/tasks';
+import { TaskState, TaskVuexState, TaskId } from '@/store/modules/tasks';
+import createTask, { TaskObject } from '@/transitional/tasks';
 import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
-import { taxPayerSearchTaxTypeNames, browserCodes } from '../constants';
+import {
+  taxPayerSearchTaxTypeNames,
+  BrowserCode,
+  TaxTypeNumericalCode,
+  TPIN,
+  Client,
+  TaxAccountName,
+} from '../constants';
 import { getCurrentBrowser } from '@/utils';
-import { parseTableAdvanced } from '../content_scripts/helpers/zra';
+import { parseTableAdvanced, ParsedTableRecord } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
+import { Store } from 'vuex';
 
-/**
- * @typedef {import('@/transitional/tasks').TaskObject} Task
- * @typedef {import('../constants').Client} Client
- * @typedef {import('../content_scripts/helpers/zra').ParsedTableRecord} ParsedTableRecord
- */
+interface TaskFunctionOptions<R> {
+  task: TaskObject;
+  func: () => R;
+  /** Whether the task's state should be set after completing without errors. */
+  setState?: boolean;
+  setStateBasedOnChildren?: boolean;
+  catchErrors?: boolean;
+}
 
 /**
  * Sets a task's state, error and completion status based on an async function.
@@ -20,36 +31,28 @@ import { getElementFromDocument } from '../content_scripts/helpers/elements';
  * If the function throws an error, the task's error is set. Otherwise, the task's state is set to
  * success or is determined from it's sub tasks. Regardless of whether an error was thrown, the
  * task's completion status is set to true once the function is done running.
- * @template AsyncFunctionReturn
- * @param {Object} options
- * @param {import('@/transitional/tasks').TaskObject} options.task
- * @param {() => AsyncFunctionReturn} options.func
- * @param {boolean} [options.setState]
- * Whether the task's state should be set after completing without errors.
- * @param {boolean} [options.setStateBasedOnChildren]
- * @param {boolean} [options.catchErrors]
- * @returns {Promise<AsyncFunctionReturn>}
  */
-export async function taskFunction({
+export async function taskFunction<R>({
   task,
   func,
   setState = true,
   setStateBasedOnChildren = false,
   catchErrors = false,
-}) {
+}: TaskFunctionOptions<R>): Promise<R> {
   try {
     const response = await func();
     if (setState) {
       if (setStateBasedOnChildren) {
         task.setStateBasedOnChildren();
       } else {
-        task.state = taskStates.SUCCESS;
+        task.state = TaskState.SUCCESS;
       }
     }
     return response;
   } catch (error) {
     task.setError(error);
     if (catchErrors) {
+      // FIXME: Conditionally allow null return type if `catchErrors` is true.
       return null;
     }
     throw error;
@@ -59,101 +62,114 @@ export async function taskFunction({
 }
 
 /**
- * @template R The type of the returned value.
- * @callback ParallelTaskMapFunction
- * @param {Object|number} item
- * This can either be an item from the list if one is provided, or an index if count is provided.
- * @param {number} parentTaskId
- * @returns {Promise.<R>}
+ * @template R The type of the return value.
+ * @param item This can either be an item from the list if one is provided, or an index if count is provided.
+ * FIXME: Document parameters somehow.
  */
+type ParallelTaskMapFunction<R, ListItem> = (item: ListItem, parentTaskId: number) => Promise<R>;
 
-/**
- * @template R
- * @typedef {Object} MultipleResponses
- * @property {R} [value] The actual response for this item.
- * @property {any} [error] The error that occurred getting this item if there was one.
- */
+interface MultipleResponsesError {
+  /** The error that occurred getting this item if there was one. */
+  error: any;
+}
 
-/**
- * @template ListItem
- * @typedef {Object} ParallelTaskMapResponse
- * @property {ListItem|number} item
- * The corresponding item from the list or index that this response came from.
- */
+interface MultipleResponsesValue<R> {
+  /** The actual response for this item. */
+  value: R;
+}
+
+export type MultipleResponses<R> = MultipleResponsesError | MultipleResponsesValue<R>;
+
+export type ParallelTaskMapResponse<R, ListItem> = MultipleResponses<R> & {
+  /** The corresponding item from the list or index that this response came from. */
+  item: ListItem | number;
+};
+
+interface ParallelTaskMapFnOptions<R, ListItem> {
+  /** The list to loop through */
+  list?: Array<ListItem>;
+  /** Optional index to start looping from */
+  startIndex?: number;
+  /** The number of times to run. This is can be provided instead of a list. */
+  count?: number;
+  /** The parent task */
+  task: TaskObject;
+  /** The function to run on each list item */
+  func: ParallelTaskMapFunction<R, ListItem>;
+  /**
+   * Set this to false to disable the parent task's state from being automatically
+   * set when all the async functions have completed.
+   *
+   * If this is true, the state will be set based on the task's children by
+   * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
+   * error.
+   */
+  autoCalculateTaskState?: boolean;
+  /** Set to true to always resolve even if all tasks failed. */
+  neverReject?: boolean;
+}
 
 /**
  * Loops through a list or `count` number of times and runs a provided function asynchronously
  * on each item in the list or index.
  *
  * The provided parent task will be automatically configured.
- * @template R, ListItem
- * @param {Object} options
- * @param {Array<ListItem>} [options.list] The list to loop through
- * @param {number} [options.startIndex] Optional index to start looping from
- * @param {number} [options.count]
- * The number of times to run. This is can be provided instead of a list.
- * @param {Task} options.task The parent task
- * @param {ParallelTaskMapFunction<R>} options.func The function to run on each list item
- * @param {boolean} [options.autoCalculateTaskState=true]
- * Set this to false to disable the parent task's state from being automatically
- * set when all the async functions have completed.
- *
- * If this is true, the state will be set based on the task's children by
- * `task.setStateBasedOnChildren()` and the promise will be rejected if the state evaluates to
- * error.
- * @param {boolean} [options.neverReject] Set to true to always resolve even if all tasks failed.
- * @returns {Promise.<Array.<MultipleResponses<R> & ParallelTaskMapResponse<ListItem>>>}
+ * @returns
  * An array containing responses from `func`. The responses contain the actual values returned
  * or the the errors encountered trying to get the responses.
  */
-export function parallelTaskMap({
-  list = null,
+export function parallelTaskMap<R, ListItem>({
+  list,
   startIndex = 0,
-  count = null,
+  count,
   task,
   func,
   autoCalculateTaskState = true,
   neverReject = false,
-}) {
+}: ParallelTaskMapFnOptions<R, ListItem>): Promise<Array<ParallelTaskMapResponse<R, ListItem>>> {
   return new Promise((resolve, reject) => {
     task.sequential = false;
     task.unknownMaxProgress = false;
 
     let listMode = true;
     let loopCount = null;
-    if (list !== null) {
+    if (typeof list !== 'undefined') {
       loopCount = list.length;
-    } else if (count !== null) {
+    } else if (typeof count !== 'undefined') {
       loopCount = count;
       listMode = false;
     } else {
       // eslint-disable-next-line max-len
-      throw new Error("Invalid parameters: Please provide either a 'list' to loop over or a 'count' as the number of times to loop.");
+      throw new Error(
+        "Invalid parameters: Please provide either a 'list' to loop over or a 'count' as the number of times to loop."
+      );
     }
 
     task.progressMax = loopCount;
-    const promises = [];
+    const promises: Promise<ParallelTaskMapResponse<R, ListItem>>[] = [];
     for (let i = startIndex; i < loopCount; i++) {
       // if not in list mode, item is the index
-      const item = listMode ? list[i] : i;
-      promises.push(new Promise((resolve) => {
-        func(item, task.id)
-          .then((value) => {
-            resolve({ item, value });
-          })
-          .catch((error) => {
-            resolve({ item, error });
-          });
-      }));
+      const item = listMode ? list![i] : i;
+      promises.push(
+        new Promise(resolve => {
+          func(item, task.id)
+            .then(value => {
+              resolve({ item, value });
+            })
+            .catch(error => {
+              resolve({ item, error });
+            });
+        })
+      );
     }
-    Promise.all(promises).then((responses) => {
+    Promise.all(promises).then(responses => {
       task.markAsComplete();
       if (autoCalculateTaskState) {
         task.setStateBasedOnChildren();
-        if (task.state === taskStates.ERROR) {
+        if (task.state === TaskState.ERROR) {
           task.setErrorBasedOnChildren();
         }
-        if (!neverReject && task.state === taskStates.ERROR) {
+        if (!neverReject && task.state === TaskState.ERROR) {
           reject(task.error);
         } else {
           resolve(responses);
@@ -166,47 +182,41 @@ export function parallelTaskMap({
 }
 
 /**
- * @callback GetTaskData
- * @param {number} page
- * @param {number} parentTaskId
- * @returns {import('@/store/modules/tasks').TaskVuexState}
+ * Function that generates a task's options given a page number and a parent task ID.
  */
+export type GetTaskData = (page: number, parentTaskId: TaskId) => TaskVuexState;
 
-/**
- * @template R
- * @typedef {Object} GetDataFromPageFunctionReturn
- * @property {number} numPages
- * @property {R} value
- */
+export interface GetDataFromPageFunctionReturn<R> {
+  numPages: number;
+  value: R;
+}
 
-/**
- * @template R
- * @callback GetDataFromPageFunction
- * @param {number} page
- * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
- */
+export type GetDataFromPageFunction<R> = (
+  page: number
+) => Promise<GetDataFromPageFunctionReturn<R>>;
+
+interface GetDataFromPageTaskFnOptions<R> {
+  getTaskData: GetTaskData;
+  /**
+   * A function that when given a page number will return the data from that page including the total
+   * number of pages.
+   */
+  getDataFunction: GetDataFromPageFunction<R>;
+  parentTaskId: TaskId;
+  page: number;
+}
 
 /**
  * Creates a task to get data from a single page.
  * This is mainly used by getPageData
- * @template R
  * @see getPagedData
- * @param {Object} options
- * @param {GetTaskData} options.getTaskData
- * Function that generates a task's options given a page number and a parent task ID.
- * @param {GetDataFromPageFunction<R>} options.getDataFunction
- * A function that when given a page number will return the data from that page including the total
- * number of pages.
- * @param {number} options.parentTaskId
- * @param {number} options.page The page to get data from.
- * @returns {Promise.<GetDataFromPageFunctionReturn<R>>}
  */
-export async function getDataFromPageTask({
+export async function getDataFromPageTask<R>({
   getTaskData,
   getDataFunction,
   parentTaskId,
   page,
-}) {
+}: GetDataFromPageTaskFnOptions<R>): Promise<GetDataFromPageFunctionReturn<R>> {
   const childTask = await createTask(store, getTaskData(page, parentTaskId));
   return taskFunction({
     task: childTask,
@@ -214,44 +224,53 @@ export async function getDataFromPageTask({
   });
 }
 
-/**
- * @typedef PagedDataResponse
- * @property {number} page
- */
+type PagedDataResponse<R> = MultipleResponses<R> & {
+  page: number;
+};
+
+interface GetPagedDataFnOptions<R> {
+  /** The task to use to contain all the subtasks that get data from multiple pages. */
+  task: TaskObject;
+  getPageSubTask: GetTaskData;
+  /**
+   *  A function that when given a page number will return the data from that page including the total
+   * number of pages.
+   */
+  getDataFunction: GetDataFromPageFunction<R>;
+  /** The index of the first page. */
+  firstPage?: number;
+  /** Specific page numbers to get. If not set, all pages will be fetched. */
+  pages?: number[];
+}
 
 /**
  * Gets data from several pages in parallel.
- * @template R
- * @param {Object} options
- * @param {import('@/transitional/tasks').TaskObject} options.task
- * The task to use to contain all the subtasks that get data from multiple pages.
- * @param {GetTaskData} options.getPageSubTask
- * @param {GetDataFromPageFunction<R>} options.getDataFunction
- * A function that when given a page number will return the data from that page including the total
- * number of pages.
- * @param {number} [options.firstPage] The index of the first page.
- * @param {number[]} [options.pages]
- * Specific page numbers to get. If not set, all pages will be fetched.
- * @returns {Promise.<Array.<MultipleResponses<R> & PagedDataResponse>>}
  */
-export async function getPagedData({
+export async function getPagedData<R>({
   task,
   getPageSubTask,
   getDataFunction,
   firstPage = 1,
   pages = [],
-}) {
+}: GetPagedDataFnOptions<R>): Promise<PagedDataResponse<R>[]> {
   const options = {
     getTaskData: getPageSubTask,
     getDataFunction,
   };
 
+  // FIXME: Type this
   const parallelTaskMapOptions = {
     task,
-    func: (page, parentTaskId) => getDataFromPageTask(Object.assign({
-      page,
-      parentTaskId,
-    }, options)),
+    func: (page, parentTaskId) =>
+      getDataFromPageTask(
+        Object.assign(
+          {
+            page,
+            parentTaskId,
+          },
+          options
+        )
+      ),
     neverReject: true,
   };
 
@@ -267,28 +286,38 @@ export async function getPagedData({
       if (pages.length === 0) {
         // Get data from the first page so we know the total number of pages
         // NOTE: The settings set by parallel task map aren't set when this runs
-        const result = await getDataFromPageTask(Object.assign({
-          page: firstPage,
-          parentTaskId: task.id,
-        }, options));
+        const result = await getDataFromPageTask(
+          Object.assign(
+            {
+              page: firstPage,
+              parentTaskId: task.id,
+            },
+            options
+          )
+        );
         allResults.push({ page: firstPage, value: result.value });
 
         // Then get the rest of the pages in parallel.
         task.status = `Getting data from ${result.numPages} page(s)`;
-        results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
-          startIndex: firstPage + 1,
-          count: result.numPages + firstPage,
-        }));
+        results = await parallelTaskMap(
+          Object.assign(parallelTaskMapOptions, {
+            startIndex: firstPage + 1,
+            count: result.numPages + firstPage,
+          })
+        );
       } else {
         // Get only the requested pages.
         task.status = `Getting data from ${pages.length} page(s)`;
-        results = await parallelTaskMap(Object.assign(parallelTaskMapOptions, {
-          list: pages,
-        }));
+        results = await parallelTaskMap(
+          Object.assign(parallelTaskMapOptions, {
+            list: pages,
+          })
+        );
       }
 
       for (const result of results) {
-        const response = { page: Number(result.item) };
+        // FIXME: Define this properly to allow missing keys.
+        const response: PagedDataResponse<R> = { page: Number(result.item) };
         if (!('error' in result)) {
           response.value = result.value.value;
         } else {
@@ -302,24 +331,32 @@ export async function getPagedData({
   });
 }
 
-/**
- * @typedef {Object} TaxAccount
- * @property {string} srNo
- * @property {import('@/backend/constants').TaxTypeNumericalCode} taxTypeId
- * @property {string} accountName E.g. "john smith-income tax"
- * @property {string} effectiveDateOfRegistration E.g. "1997-02-01"
- * @property {string} effectiveCancellationDate E.g. "2014-07-25"
- * @property {string} status ("registered"|"cancelled"|"suspended")
- */
+export interface TaxAccount {
+  srNo: string;
+  taxTypeId: TaxTypeNumericalCode;
+  /** E.g. "john smith-income tax" */
+  accountName: TaxAccountName;
+  /** E.g. "1997-02-01" */
+  effectiveDateOfRegistration: string;
+  /** E.g. "2014-07-25" */
+  effectiveCancellationDate: string;
+  /**  ("registered"|"cancelled"|"suspended") */
+  status: string;
+}
+
+interface GetTaxAccountPageFnOptions {
+  tpin: TPIN;
+  page: number;
+}
 
 /**
  * Gets a single page of tax accounts.
- * @param {Object} options
- * @param {string} options.tpin
- * @param {number} options.page
- * @returns {Promise.<GetDataFromPageFunctionReturn<ParsedTableRecord[]>>}
  */
-export async function getTaxAccountPage({ tpin, page }) {
+// FIXME: Use proper record type.
+export async function getTaxAccountPage({
+  tpin,
+  page,
+}: GetTaxAccountPageFnOptions): Promise<GetDataFromPageFunctionReturn<ParsedTableRecord[]>> {
   const doc = await getDocumentByAjax({
     url: 'https://www.zra.org.zm/WebContentMgmt.htm',
     method: 'post',
@@ -333,7 +370,7 @@ export async function getTaxAccountPage({ tpin, page }) {
   const tableWrapper = getElementFromDocument(
     doc,
     '[name="interestRateForm"] table:nth-of-type(2)>tbody>tr:nth-child(2)>td',
-    'tax account table wrapper',
+    'tax account table wrapper'
   );
   const parsedTable = await parseTableAdvanced({
     root: tableWrapper,
@@ -355,22 +392,26 @@ export async function getTaxAccountPage({ tpin, page }) {
   };
 }
 
+interface GetTaxAccountsFnOptions<S> {
+  store: Store<S>;
+  parentTaskId: TaskId;
+  tpin: TPIN;
+}
+
 /**
  * Gets the tax accounts of a client. This includes account names and registered tax types.
- * @param {Object} options
- * @param {import('vuex').Store} options.store
- * @param {number} options.parentTaskId
- * @param {string} options.tpin
- * The ID of a tab that is logged into the client whose tax accounts should be acquired.
- * @returns {Promise.<TaxAccount[]>}
  */
-export async function getTaxAccounts({ store, parentTaskId, tpin }) {
+export async function getTaxAccounts<S>({
+  store,
+  parentTaskId,
+  tpin,
+}: GetTaxAccountsFnOptions<S>): Promise<TaxAccount[]> {
   const task = await createTask(store, {
     title: 'Get tax accounts',
     parent: parentTaskId,
   });
 
-  const getPageSubTask = (page, subTaskParentId) => ({
+  const getPageSubTask: GetTaskData = (page, subTaskParentId) => ({
     title: `Get tax accounts from page ${page}`,
     parent: subTaskParentId,
     indeterminate: true,
@@ -412,31 +453,30 @@ export async function getTaxAccounts({ store, parentTaskId, tpin }) {
 }
 
 const currentBrowser = getCurrentBrowser();
-export async function changeLiteMode(mode) {
+/**
+ * Enables or disables lite mode for the ZRA website.
+ * @param mode True is enabled. False is disabled.
+ */
+export async function changeLiteMode(mode: boolean) {
   // Firefox has a better way of controlling which resources are blocked so we don't need
   // to disable all resource loading.
-  if (currentBrowser !== browserCodes.FIREFOX && config.zraLiteMode) {
+  if (currentBrowser !== BrowserCode.FIREFOX && config.zraLiteMode) {
     await store.dispatch('setZraLiteMode', mode);
   }
 }
 
 /**
  * Gets a human readable client name that uses only the client's ID.
- * @param {Client} client
- * @returns {string}
  */
-export function getClientIdName(client) {
+export function getClientIdName(client: Client) {
   return `Client ${client.id}`;
 }
 
 /**
  * Gets a string that uniquely identifies a client. This is typically the client's name but if
  * the client has no name or `anonymous` is true, it will be a string containing the client's ID.
- * @param {Client} client
- * @param {boolean} [anonymous=false]
- * @returns {string}
  */
-export function getClientIdentifier(client, anonymous = false) {
+export function getClientIdentifier(client: Client, anonymous: boolean = false): string {
   if (!client.name || anonymous) {
     return getClientIdName(client);
   }
@@ -445,16 +485,17 @@ export function getClientIdentifier(client, anonymous = false) {
 
 /**
  * Removes all client names, usernames and passwords from an output.
- * @param {string} output
- * @param {Client[]} clients
- * @return {string}
+ * @return The output with clients anonymized.
  */
-export function anonymizeClientsInOutput(output, clients) {
+export function anonymizeClientsInOutput(output: string, clients: Client[]): string {
   // TODO: Measure how much impact this function has on performance.
   let anonymized = output;
   for (const client of clients) {
     anonymized = anonymized.replace(new RegExp(client.name, 'g'), getClientIdName(client));
-    anonymized = anonymized.replace(new RegExp(client.username, 'g'), `client_${client.id}_username`);
+    anonymized = anonymized.replace(
+      new RegExp(client.username, 'g'),
+      `client_${client.id}_username`
+    );
     anonymized = anonymized.replace(new RegExp(client.password, 'g'), '********');
   }
   return anonymized;

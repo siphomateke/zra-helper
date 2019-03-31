@@ -1,20 +1,21 @@
 import { LoginError } from '../../errors';
 import { getHtmlFromNode, getElementText } from './elements';
+import { Client } from '@/backend/constants';
 
 /**
  * Client's name and username in the format: "<name>  (<username>)""
  *
  * For example, "JOHN DOE  (1000000000)"
- * @typedef {string} ClientInfo
  */
+type ClientInfo = string;
 
 /**
  * Gets the currently logged in client's information.
- * @param {Document|HTMLElement} root
- * @returns {ClientInfo|null}
  */
-export function getClientInfo(root) {
-  const clientEl = root.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(27)>b>label');
+export function getClientInfo(root: Document | HTMLElement): ClientInfo | null {
+  const clientEl = root.querySelector(
+    '#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(27)>b>label'
+  );
   if (clientEl) {
     return clientEl.innerText;
   }
@@ -23,30 +24,26 @@ export function getClientInfo(root) {
 
 /**
  * Checks if the specified username exists in a client's information.
- * @param {string} username
- * @param {ClientInfo} clientInfo
  */
-export function usernameInClientInfo(username, clientInfo) {
+export function usernameInClientInfo(username: string, clientInfo: ClientInfo): boolean {
   return clientInfo.indexOf(username) > -1;
 }
 
 /**
  * Creates a WrongClient error.
- * @param {ClientInfo} clientInfo Currently logged in client's information.
- * @returns {LoginError}
+ * @param clientInfo Currently logged in client's information.
  */
-export function getWrongClientError(clientInfo) {
+export function getWrongClientError(clientInfo: ClientInfo): LoginError {
   return new LoginError(`Still logged in as another client "${clientInfo}"`, 'WrongClient', {
     loggedInClient: clientInfo,
   });
 }
 
 /**
- *
- * @param {Document|HTMLElement} root
- * @param {import('@/backend/constants').Client} client
+ * Checks to see if a client was logged in successfully.
+ * @throws {LoginError}
  */
-export function checkLogin(root, client) {
+export function checkLogin(root: Document | HTMLElement, client: Client) {
   // Detect login errors such as expired password, invalid username and invalid password
   const expiredPasswordErrorEl = root.querySelector('#loginAdminForm>p.tablerowhead');
   const errorEl = root.querySelector('.error');
@@ -72,7 +69,9 @@ export function checkLogin(root, client) {
 
         // Add extra information about the error if it's available.
         // This is mainly used to show the number of attempts left.
-        const loginErrorDetailsEl = root.querySelector('#loginForm #layer1>table>tbody>tr.whitepapartdBig');
+        const loginErrorDetailsEl = root.querySelector(
+          '#loginForm #layer1>table>tbody>tr.whitepapartdBig'
+        );
         if (loginErrorDetailsEl) {
           const loginErrorDetails = loginErrorDetailsEl.innerText.toLowerCase();
           if (loginErrorDetails) {

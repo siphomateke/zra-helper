@@ -37,7 +37,7 @@
 
 <script>
 import { stateIcons } from '@/components/TaskListItem.vue';
-import { taskStates } from '@/store/modules/tasks';
+import { TaskState } from '@/store/modules/tasks';
 
 // TODO: Make this less tightly linked to tasks
 export default {
@@ -97,11 +97,11 @@ export default {
       return stateIcons[this.state];
     },
     type() {
-      if (this.state === taskStates.SUCCESS) {
+      if (this.state === TaskState.SUCCESS) {
         return 'is-success';
-      } if (this.state === taskStates.WARNING) {
+      } if (this.state === TaskState.WARNING) {
         return 'is-warning';
-      } if (this.state === taskStates.ERROR) {
+      } if (this.state === TaskState.ERROR) {
         return 'is-danger';
       }
       return 'is-info';

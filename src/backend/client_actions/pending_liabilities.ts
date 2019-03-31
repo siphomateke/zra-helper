@@ -1,33 +1,36 @@
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import Papa from 'papaparse';
-import { exportFormatCodes, taxTypes } from '../constants';
+import {
+  ExportFormatCode,
+  taxTypes,
+  Client,
+  TaxTypeNumericalCode,
+  TaxTypeIdMap,
+  TaxTypeCodeMap,
+} from '../constants';
 import { writeJson } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import { createClientAction, ClientActionRunner, inInput } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
+import { TaskId } from '@/store/modules/tasks';
+
+// FIXME: Fix these types
+type TotalsColumn = 'principal' | 'interest' | 'penalty' | 'total';
 
 /** Columns to get from the pending liabilities table */
-const totalsColumns = [
-  'principal',
-  'interest',
-  'penalty',
-  'total',
-];
+const totalsColumns = ['principal', 'interest', 'penalty', 'total'];
 
 /**
- * @typedef {Object.<string, string>} Totals
  * Totals with two decimal places. The possible totals are all the items in `totalsColumns`.
  */
+type Totals = { [K in TotalsColumn]: string };
 
 /**
  * Generates an object with totals that are all one value.
- * @param {string[]} columns
- * @param {string} value
- * @returns {Totals}
  */
-function generateTotals(columns, value) {
+function generateTotals(columns: TotalsColumn[], value: string): Totals {
   const totals = {};
   for (const column of columns) {
     totals[column] = value;
@@ -37,12 +40,12 @@ function generateTotals(columns, value) {
 
 /**
  * Gets the pending liability totals of a tax type.
- * @param {import('../constants').Client} client
- * @param {import('../constants').TaxTypeNumericalCode} taxTypeId
- * @param {number} parentTaskId
- * @returns {Promise<Totals|null>}
  */
-async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
+async function getPendingLiabilities(
+  client: Client,
+  taxTypeId: TaxTypeNumericalCode,
+  parentTaskId: TaskId
+): Promise<Totals | null> {
   const taxType = taxTypes[taxTypeId];
 
   const task = await createTask(store, {
@@ -92,20 +95,20 @@ async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
   });
 }
 
+interface Output {
+  totals: TaxTypeCodeMap<Totals>;
+  retrievalErrors: TaxTypeCodeMap<any>;
+}
+
 const GetAllPendingLiabilitiesClientAction = createClientAction({
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
   hasOutput: true,
-  defaultOutputFormat: exportFormatCodes.CSV,
-  outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-  outputFormatter({
-    clients,
-    outputs: clientOutputs,
-    format,
-    anonymizeClients,
-  }) {
-    if (format === exportFormatCodes.CSV) {
+  defaultOutputFormat: ExportFormatCode.CSV,
+  outputFormats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
+  outputFormatter({ clients, outputs: clientOutputs, format, anonymizeClients }) {
+    if (format === ExportFormatCode.CSV) {
       const rows = [];
       const columnOrder = totalsColumns;
       // Columns are: client identifier, ...totals, error
@@ -123,7 +126,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
             firstCol = getClientIdentifier(client, anonymizeClients);
           }
           const row = [firstCol, taxType];
-          if (value && (taxType in totalsObjects)) {
+          if (value && taxType in totalsObjects) {
             const totalsObject = totalsObjects[taxType];
             const totals = [];
             for (const column of columnOrder) {
@@ -135,7 +138,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
               row.push('');
             }
             // Indicate that this tax type had an error
-            if (value && (taxType in value.retrievalErrors)) {
+            if (value && taxType in value.retrievalErrors) {
               row.push('!');
             }
           }
@@ -196,7 +199,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
   async runInternal() {
     const { task: actionTask, client } = this.storeProxy;
     // eslint-disable-next-line prefer-destructuring
-    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+    const input = /** @type {RunnerInput} */ (this.storeProxy.input);
     let { taxTypes: taxTypeIds } = client;
 
     if (inInput(input, 'taxTypeIds')) {
@@ -211,7 +214,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       },
     });
 
-    const output = {
+    const output: Output = {
       totals: {},
       retrievalErrors: {},
     };
@@ -219,9 +222,8 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
     for (const response of responses) {
       const taxTypeId = response.item;
       const taxType = taxTypes[taxTypeId];
-      const totals = response.value;
-      if (totals) {
-        output.totals[taxType] = Object.assign({}, totals);
+      if ('value' in response) {
+        output.totals[taxType] = Object.assign({}, response.value);
       } else {
         output.retrievalErrors[taxType] = response.error;
         failedTaxTypeIds.push(taxTypeId);

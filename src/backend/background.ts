@@ -1,5 +1,5 @@
 import { getCurrentBrowser } from '@/utils';
-import { browserCodes } from './constants';
+import { BrowserCode } from './constants';
 
 const currentBrowser = getCurrentBrowser();
 
@@ -29,7 +29,14 @@ const blacklistPages = [
   'https://www.zra.org.zm/retHist.htm?',
 ];
 
-function webRequestListener(details) {
+// FIXME: Remove this once the actual details can be extracted from @types/firefox-webext-browser
+interface WebRequestOnBeforeRequestEventCallbackDetails {
+  url: string;
+  /** URL of the page into which the requested resource will be loaded. */
+  documentUrl?: string;
+}
+
+function webRequestListener(details: WebRequestOnBeforeRequestEventCallbackDetails) {
   let cancel = true;
   for (const url of blacklist) {
     if (details.url.includes(url)) {
@@ -41,9 +48,9 @@ function webRequestListener(details) {
   // Firefox supports checking the URL of the document trying to load the resource.
   // We can use this to specifically allow loading all resources in pages that will be downloaded
   // such as payment receipts and acknowledgment of returns receipts.
-  if (currentBrowser === browserCodes.FIREFOX) {
+  if (currentBrowser === BrowserCode.FIREFOX) {
     for (const url of blacklistPages) {
-      if (details.documentUrl.includes(url)) {
+      if (details.documentUrl!.includes(url)) {
         cancel = false;
         break;
       }
@@ -61,15 +68,9 @@ function enableZraLiteMode() {
     webRequestListener,
     {
       urls: ['https://www.zra.org.zm/*'],
-      types: [
-        'image',
-        'font',
-        'media',
-        'script',
-        'stylesheet',
-      ],
+      types: ['image', 'font', 'media', 'script', 'stylesheet'],
     },
-    ['blocking'],
+    ['blocking']
   );
 }
 
@@ -77,18 +78,21 @@ function disableZraLiteMode() {
   browser.webRequest.onBeforeRequest.removeListener(webRequestListener);
 }
 
-browser.runtime.onMessage.addListener((message, sender) => new Promise((resolve) => {
-  if (sender.id === browser.runtime.id) {
-    if (message.command === 'setZraLiteMode') {
-      const enable = message.mode;
-      if (enable) {
-        enableZraLiteMode();
-      } else {
-        disableZraLiteMode();
+browser.runtime.onMessage.addListener(
+  (message, sender) =>
+    new Promise(resolve => {
+      if (sender.id === browser.runtime.id) {
+        if (message.command === 'setZraLiteMode') {
+          const enable = message.mode;
+          if (enable) {
+            enableZraLiteMode();
+          } else {
+            disableZraLiteMode();
+          }
+          resolve();
+        }
       }
-      resolve();
-    }
-  }
-}));
+    })
+);
 
 // #endregion
