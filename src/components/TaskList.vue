@@ -127,7 +127,9 @@ export default {
           // If we are only exporting client tasks, ignore the root task
           tasks.push(...childrenJson);
         } else {
-          taskCopy.title = taskCopy.anonymousTitle;
+          if (this.anonymizeClientsInExports) {
+            taskCopy.title = taskCopy.anonymousTitle;
+          }
           delete taskCopy.anonymousTitle;
           tasks.push(taskCopy);
         }
