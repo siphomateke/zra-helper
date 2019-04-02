@@ -1,4 +1,8 @@
-import { deepClone, deepReactiveClone } from '@/utils';
+import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
+
+/**
+ * @typedef {'auto'|'CRLF'|'LF'} EolConfig
+ */
 
 /**
  * @typedef {Object} State
@@ -61,6 +65,9 @@ import { deepClone, deepReactiveClone } from '@/utils';
  * @property {boolean} export.removeMhtmlExtension
  * Removes the .mhtml file extension from all downloaded receipts.
  * Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.
+ * @property {EolConfig} export.eol
+ * The default end of line character. If set to 'auto', the end of line character will be
+ * automatically determined based on the operating system.
  */
 
 /** @type {State} */
@@ -96,6 +103,7 @@ const defaultConfig = {
   export: {
     showSaveAsDialog: true,
     removeMhtmlExtension: true,
+    eol: 'auto',
   },
 };
 
@@ -121,11 +129,18 @@ const module = {
     async load({ dispatch }) {
       const items = await browser.storage.sync.get('config');
       if ('config' in items) {
-        await dispatch('set', items.config);
+        /** @type {State} */
+        const config = deepAssign(defaultConfig, items.config);
+        await dispatch('set', config);
+        await dispatch('updateConfig');
       }
     },
-    async save({ state }) {
+    async save({ state, dispatch }) {
       await browser.storage.sync.set({ config: state });
+      await dispatch('updateConfig');
+    },
+    async updateConfig({ dispatch }) {
+      await dispatch('updateEolCharacter', null, { root: true });
     },
   },
 };

@@ -1,4 +1,5 @@
 import Vue from 'vue';
+import assignDeep from 'assign-deep';
 
 /**
  * Array.map for Objects
@@ -47,6 +48,17 @@ export function deepReactiveClone(toCopy, copyTo) {
       Vue.set(copyTo, key, value);
     }
   }
+}
+
+/**
+ * Deeply assign the values of all enumerable properties from a source objects to a target object.
+ * @template T, S
+ * @param {T} target
+ * @param {S} source
+ * @returns {T & S} The target object
+ */
+export function deepAssign(target, source) {
+  return assignDeep(target, source);
 }
 
 /**

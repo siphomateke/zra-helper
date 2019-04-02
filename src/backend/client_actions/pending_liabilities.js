@@ -1,8 +1,7 @@
 import store from '@/store';
 import createTask from '@/transitional/tasks';
-import Papa from 'papaparse';
 import { exportFormatCodes, taxTypes } from '../constants';
-import { writeJson } from '../file_utils';
+import { writeJson, unparseCsv } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import { createClientAction, ClientActionRunner, inInput } from './base';
 import { getPendingLiabilityPage } from '../reports';
@@ -148,9 +147,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
         }
       }
       // TODO: Make output options configurable by user
-      return Papa.unparse(rows, {
-        quotes: true,
-      });
+      return unparseCsv(rows);
     }
     const json = {};
     for (const client of clients) {
