@@ -233,6 +233,7 @@ const module = {
     },
     ...listStoreHelper.itemMutations([
       'title',
+      'anonymousTitle',
       'status',
       'progress',
       'progressMax',

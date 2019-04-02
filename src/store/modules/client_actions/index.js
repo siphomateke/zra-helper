@@ -722,6 +722,7 @@ const module = {
 
         commit('startNewRun', { taskId: rootTask.id, clients });
         rootTask.title += ` #${state.currentRunId + 1}`;
+        rootTask.anonymousTitle = rootTask.title;
         try {
           await taskFunction({
             task: rootTask,
