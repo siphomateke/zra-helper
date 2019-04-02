@@ -124,9 +124,10 @@ export default {
   },
   watch: {
     lines() {
-      for (const key of Object.keys(this.logChanged)) {
-        this.logChanged[key] = true;
-      }
+      this.invalidateLogStringCache();
+    },
+    anonymizeClientsInExports() {
+      this.invalidateLogStringCache();
     },
   },
   created() {
@@ -208,6 +209,11 @@ export default {
         this.logChanged[type] = false;
       }
       return this.cachedLog[type];
+    },
+    invalidateLogStringCache() {
+      for (const key of Object.keys(this.logChanged)) {
+        this.logChanged[key] = true;
+      }
     },
   },
 };
