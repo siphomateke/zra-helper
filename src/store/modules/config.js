@@ -1,4 +1,4 @@
-import { deepClone, deepReactiveClone } from '@/utils';
+import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
 
 /**
  * @typedef {Object} State
@@ -121,7 +121,9 @@ const module = {
     async load({ dispatch }) {
       const items = await browser.storage.sync.get('config');
       if ('config' in items) {
-        await dispatch('set', items.config);
+        /** @type {State} */
+        const config = deepAssign(defaultConfig, items.config);
+        await dispatch('set', config);
       }
     },
     async save({ state }) {
