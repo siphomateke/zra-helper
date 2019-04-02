@@ -29,10 +29,8 @@
 <script>
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import { writeJson } from '@/backend/file_utils';
+import { writeJson, unparseCsv, renderTable } from '@/backend/file_utils';
 import { taskStates } from '@/store/modules/tasks';
-import renderTable from 'text-table';
-import Papa from 'papaparse';
 import { exportFormatCodes } from '@/backend/constants';
 import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
 import { mapState } from 'vuex';
@@ -91,6 +89,9 @@ export default {
     }),
     anonymizeClientsInExports() {
       return this.$store.state.config.debug.anonymizeClientsInExports;
+    },
+    eolCharacter() {
+      return this.$store.state.eol;
     },
   },
   beforeCreate() {
@@ -204,7 +205,7 @@ export default {
         if (task.error) {
           string += ` | ${task.error}`;
         }
-        string += '\n';
+        string += this.eolCharacter;
         if (task.children.length > 0) {
           string += this.getTextExportAllLevels(task.children);
         }
@@ -226,7 +227,7 @@ export default {
         'Child states',
         'Error',
       ]);
-      return Papa.unparse(table, { quotes: true });
+      return unparseCsv(table);
     },
     async getExport(format) {
       const tasksJson = this.tasksToJson(this.tasks);

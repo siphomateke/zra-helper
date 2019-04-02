@@ -50,9 +50,8 @@
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
-import { writeCsv, writeJson } from '@/backend/file_utils';
+import { writeCsv, writeJson, renderTable } from '@/backend/file_utils';
 import { mapState, mapGetters } from 'vuex';
-import renderTable from 'text-table';
 import { exportFormatCodes } from '@/backend/constants';
 import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
 
