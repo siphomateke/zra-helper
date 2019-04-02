@@ -4,72 +4,94 @@
     <form @submit.prevent="save">
       <div class="columns">
         <!-- Debug -->
-        <div class="field column">
-          <label class="label">Debug options</label>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.devtools"
-              title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect."
-            >Devtools</b-checkbox>
-          </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.logToConsole"
-              title="Show all user-side logs in the console."
-            >Mirror log to developer console</b-checkbox>
-          </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.errors"
-              title="Show detailed information about errors if available."
-            >Detailed error information</b-checkbox>
-          </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.progressBars"
-              :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`"
-            >Progress bars</b-checkbox>
-          </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.sendConfigToContentScripts"
-              title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging."
-            >Send settings to content scripts</b-checkbox>
-          </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.missingElementInfo"
-              :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
-            >Collect extra information about missing element errors</b-checkbox>
-          </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.debug.anonymizeClientsInExports"
-              title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
-            >Anonymize clients in exports</b-checkbox>
+        <div class="column">
+          <h5 class="title is-5">Debug options</h5>
+          <div class="field">
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.devtools"
+                title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect."
+              >Devtools</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.logToConsole"
+                title="Show all user-side logs in the console."
+              >Mirror log to developer console</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.errors"
+                title="Show detailed information about errors if available."
+              >Detailed error information</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.progressBars"
+                :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`"
+              >Progress bars</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.sendConfigToContentScripts"
+                title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging."
+              >Send settings to content scripts</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.missingElementInfo"
+                :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
+              >Collect extra information about missing element errors</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.debug.anonymizeClientsInExports"
+                title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
+              >Anonymize clients in exports</b-checkbox>
+            </div>
           </div>
         </div>
 
         <!-- Log -->
-        <div class="field column">
-          <label class="label">Log</label>
-          <div class="control">
-            <b-checkbox v-model="config.log.showDateInTimestamp">Show date in timestamp</b-checkbox>
+        <div class="column">
+          <h5 class="title is-5">Log</h5>
+          <div class="field">
+            <div class="control">
+              <b-checkbox v-model="config.log.showDateInTimestamp">Show date in timestamp</b-checkbox>
+            </div>
           </div>
         </div>
 
         <!-- Export -->
-        <div class="field column">
-          <label class="label">Export</label>
-          <div class="control">
-            <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+        <div class="column">
+          <h5 class="title is-5">Export</h5>
+          <div class="field">
+            <div class="control">
+              <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+            </div>
+            <div class="control">
+              <b-checkbox
+                v-model="config.export.removeMhtmlExtension"
+                title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
+              >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
+            </div>
           </div>
-          <div class="control">
-            <b-checkbox
-              v-model="config.export.removeMhtmlExtension"
-              title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
-            >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
-          </div>
+          <b-field label="End of line character">
+            <b-select v-model="config.export.eol">
+              <option
+                title="Automatically detect end of line character based on operating system."
+                value="auto"
+              >Auto</option>
+              <option
+                title="\n"
+                value="LF"
+              >LF</option>
+              <option
+                title="\r\n"
+                value="CRLF"
+              >CRLF</option>
+            </b-select>
+          </b-field>
         </div>
       </div>
 
