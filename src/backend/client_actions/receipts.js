@@ -8,7 +8,7 @@ import {
 } from './utils';
 
 /**
- * @typedef {'return'|'payment'} ReceiptType
+ * @typedef {'payment'} ReceiptType
  */
 
 /**
