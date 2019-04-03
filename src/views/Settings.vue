@@ -5,178 +5,185 @@
       <div class="columns">
         <!-- Debug -->
         <div class="column">
-          <h5 class="title is-5">Debug options</h5>
-          <div class="field">
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.devtools"
-                title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect."
-              >Devtools</b-checkbox>
+          <BaseCard title="Debug options">
+            <div class="field">
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.devtools"
+                  title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect."
+                >Devtools</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.logToConsole"
+                  title="Show all user-side logs in the console."
+                >Mirror log to developer console</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.errors"
+                  title="Show detailed information about errors if available."
+                >Detailed error information</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.progressBars"
+                  :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`"
+                >Progress bars</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.sendConfigToContentScripts"
+                  title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging."
+                >Send settings to content scripts</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.missingElementInfo"
+                  :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
+                >Collect extra information about missing element errors</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.anonymizeClientsInExports"
+                  title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
+                >Anonymize clients in exports</b-checkbox>
+              </div>
             </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.logToConsole"
-                title="Show all user-side logs in the console."
-              >Mirror log to developer console</b-checkbox>
-            </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.errors"
-                title="Show detailed information about errors if available."
-              >Detailed error information</b-checkbox>
-            </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.progressBars"
-                :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`"
-              >Progress bars</b-checkbox>
-            </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.sendConfigToContentScripts"
-                title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging."
-              >Send settings to content scripts</b-checkbox>
-            </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.missingElementInfo"
-                :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
-              >Collect extra information about missing element errors</b-checkbox>
-            </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.debug.anonymizeClientsInExports"
-                title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
-              >Anonymize clients in exports</b-checkbox>
-            </div>
-          </div>
-        </div>
-
-        <!-- Log -->
-        <div class="column">
-          <h5 class="title is-5">Log</h5>
-          <div class="field">
-            <div class="control">
-              <b-checkbox v-model="config.log.showDateInTimestamp">Show date in timestamp</b-checkbox>
-            </div>
-          </div>
+          </BaseCard>
         </div>
 
         <!-- Export -->
         <div class="column">
-          <h5 class="title is-5">Export</h5>
-          <div class="field">
-            <div class="control">
-              <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+          <BaseCard title="Export">
+            <div class="field">
+              <div class="control">
+                <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.export.removeMhtmlExtension"
+                  title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
+                >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
+              </div>
             </div>
-            <div class="control">
-              <b-checkbox
-                v-model="config.export.removeMhtmlExtension"
-                title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
-              >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
+            <b-field label="End of line character">
+              <b-select v-model="config.export.eol">
+                <option
+                  title="Automatically detect end of line character based on operating system."
+                  value="auto"
+                >Auto</option>
+                <option
+                  title="\n"
+                  value="LF"
+                >LF</option>
+                <option
+                  title="\r\n"
+                  value="CRLF"
+                >CRLF</option>
+              </b-select>
+            </b-field>
+          </BaseCard>
+        </div>
+
+        <!-- Log -->
+        <div class="column">
+          <BaseCard title="Log">
+            <div class="field">
+              <div class="control">
+                <b-checkbox v-model="config.log.showDateInTimestamp">Show date in timestamp</b-checkbox>
+              </div>
             </div>
-          </div>
-          <b-field label="End of line character">
-            <b-select v-model="config.export.eol">
-              <option
-                title="Automatically detect end of line character based on operating system."
-                value="auto"
-              >Auto</option>
-              <option
-                title="\n"
-                value="LF"
-              >LF</option>
-              <option
-                title="\r\n"
-                value="CRLF"
-              >CRLF</option>
-            </b-select>
-          </b-field>
+          </BaseCard>
         </div>
       </div>
 
-      <!-- Tabs -->
+      <!-- Performance -->
       <div class="columns">
         <div class="column">
-          <b-field
-            label="Tab load timeout"
-            title="The amount of time to wait for a tab to load (in milliseconds)."
-          >
-            <b-field>
+          <BaseCard title="Performance">
+            <b-field
+              title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable."
+            >
+              <b-checkbox v-model="config.zraLiteMode">Use basic HTML version of ZRA when running</b-checkbox>
+            </b-field>
+            <b-field
+              label="HTTP request timeout"
+              title="The amount of time to wait for HTTP requests to complete (in milliseconds). Set to 0 to disable."
+              horizontal
+            >
+              <b-field>
+                <b-input
+                  v-model="config.requestTimeout"
+                  type="number"
+                />
+                <p class="control">
+                  <span class="button is-static">ms</span>
+                </p>
+              </b-field>
+            </b-field>
+            <b-field
+              label="Tab load timeout"
+              title="The amount of time to wait for a tab to load (in milliseconds)."
+              horizontal
+            >
+              <b-field>
+                <b-input
+                  v-model="config.tabLoadTimeout"
+                  type="number"
+                />
+                <p class="control">
+                  <span class="button is-static">ms</span>
+                </p>
+              </b-field>
+            </b-field>
+            <b-field
+              label="Maximum open tabs"
+              title="The maximum number of tabs that can be opened. Set to 0 to disable."
+              horizontal
+            >
               <b-input
-                v-model="config.tabLoadTimeout"
+                v-model="config.maxOpenTabs"
                 type="number"
               />
-              <p class="control">
-                <span class="button is-static">ms</span>
-              </p>
             </b-field>
-          </b-field>
+            <b-field
+              label="Tab open delay"
+              title="The time to wait after creating a tab before creating another one (in milliseconds)."
+              horizontal
+            >
+              <b-input
+                v-model="config.tabOpenDelay"
+                type="number"
+              />
+            </b-field>
+          </BaseCard>
         </div>
         <div class="column">
-          <b-field
-            label="HTTP request timeout"
-            title="The amount of time to wait for HTTP requests to complete (in milliseconds). Set to 0 to disable."
-          >
-            <b-field>
+          <BaseCard title="Misc">
+            <b-field title="Whether to send a notification when all running tasks have completed.">
+              <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
+            </b-field>
+
+            <b-field
+              title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed."
+            >
+              <b-checkbox v-model="config.promptRetryActions">Prompt to retry actions that fail</b-checkbox>
+            </b-field>
+
+            <b-field
+              label="Max login attempts"
+              title="The maximum number of times an attempt should be made to login to a client."
+              horizontal
+            >
               <b-input
-                v-model="config.requestTimeout"
+                v-model="config.maxLoginAttempts"
                 type="number"
               />
-              <p class="control">
-                <span class="button is-static">ms</span>
-              </p>
             </b-field>
-          </b-field>
+          </BaseCard>
         </div>
-        <b-field
-          label="Maximum open tabs"
-          title="The maximum number of tabs that can be opened. Set to 0 to disable."
-          class="column"
-        >
-          <b-input
-            v-model="config.maxOpenTabs"
-            type="number"
-          />
-        </b-field>
-        <b-field
-          label="Tab open delay"
-          title="The time to wait after creating a tab before creating another one (in milliseconds)."
-          class="column"
-        >
-          <b-input
-            v-model="config.tabOpenDelay"
-            type="number"
-          />
-        </b-field>
       </div>
-
-      <b-field
-        label="Max login attempts"
-        title="The maximum number of times an attempt should be made to login to a client."
-      >
-        <b-input
-          v-model="config.maxLoginAttempts"
-          type="number"
-        />
-      </b-field>
-
-      <b-field title="Whether to send a notification when all running tasks have completed.">
-        <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
-      </b-field>
-
-      <b-field
-        title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed."
-      >
-        <b-checkbox v-model="config.promptRetryActions">Prompt to retry actions that fail</b-checkbox>
-      </b-field>
-
-      <b-field
-        title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable."
-      >
-        <b-checkbox v-model="config.zraLiteMode">Use basic HTML version of ZRA when running</b-checkbox>
-      </b-field>
-
       <div class="field is-grouped">
         <span class="control">
           <button
@@ -211,9 +218,13 @@
 <script>
 import { deepReactiveClone } from '@/utils';
 import configMixin from '@/mixins/config';
+import BaseCard from '@/components/BaseCard.vue';
 
 export default {
   name: 'Settings',
+  components: {
+    BaseCard,
+  },
   mixins: [configMixin],
   data() {
     return {
