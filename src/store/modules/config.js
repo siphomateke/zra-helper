@@ -33,6 +33,9 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * The amount of time to wait for HTTP requests to complete (in milliseconds). Set to 0 to disable.
  * @property {number} maxOpenTabs
  * The maximum number of tabs that can be opened. Set to 0 to disable.
+ * @property {number} maxOpenTabsWhenDownloading
+ * The maximum number of tabs that can be opened when downloading pages one after another. Set to 0
+ * to disable.
  * @property {number} tabOpenDelay
  * The time to wait after creating a tab before creating another one (in milliseconds).
  * @property {number} maxLoginAttempts
@@ -47,13 +50,7 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * increase performance. This means that while the extension is running, the ZRA website may not
  * be usable.
  *
- * @property {Object} actions
- * @property {Object} actions.getAcknowledgementsOfReturns
- * @property {number} actions.getAcknowledgementsOfReturns.maxOpenTabsWhenDownloading
- * The maximum number of tabs that can be opened when downloading return receipts.
- * @property {Object} actions.getPaymentReceipts
- * @property {number} actions.getPaymentReceipts.maxOpenTabsWhenDownloading
- * The maximum number of tabs that can be opened when downloading payment receipts.
+ * @property {Object} actions Action options stored by action ID.
  *
  * @property {Object} log
  * @property {boolean} log.showDateInTimestamp
@@ -84,19 +81,13 @@ const defaultConfig = {
   tabLoadTimeout: 20000,
   requestTimeout: 10000,
   maxOpenTabs: 8,
+  maxOpenTabsWhenDownloading: 3,
   tabOpenDelay: 0,
   maxLoginAttempts: 3,
   sendNotifications: true,
   promptRetryActions: true,
   zraLiteMode: true,
-  actions: {
-    getAcknowledgementsOfReturns: {
-      maxOpenTabsWhenDownloading: 3,
-    },
-    getPaymentReceipts: {
-      maxOpenTabsWhenDownloading: 3,
-    },
-  },
+  actions: {},
   log: {
     showDateInTimestamp: true,
   },

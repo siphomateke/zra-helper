@@ -148,6 +148,16 @@
               />
             </b-field>
             <b-field
+              label="Max open tabs when downloading"
+              title="The maximum number of tabs that can be opened when downloading receipts. Set to 0 to disable."
+              horizontal
+            >
+              <b-input
+                v-model="config.maxOpenTabsWhenDownloading"
+                type="number"
+              />
+            </b-field>
+            <b-field
               label="Tab open delay"
               title="The time to wait after creating a tab before creating another one (in milliseconds)."
               horizontal

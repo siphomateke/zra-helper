@@ -1,5 +1,4 @@
 import moment from 'moment';
-import config from '@/transitional/config';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
@@ -256,7 +255,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
   }
 
   async runInternal() {
-    const { task: actionTask, client, config: actionConfig } = this.storeProxy;
+    const { task: actionTask, client } = this.storeProxy;
     // eslint-disable-next-line prefer-destructuring
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
     actionTask.unknownMaxProgress = false;
@@ -307,8 +306,6 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
 
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
-          const initialMaxOpenTabs = config.maxOpenTabs;
-          config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
           actionTask.status = `Downloading ${receipts.length} payment receipt(s)`;
           await startDownloadingReceipts();
           const downloadResponses = await downloadReceipts({
@@ -321,7 +318,6 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
           });
           await finishDownloadingReceipts();
           failed.receipts = getFailedResponseItems(downloadResponses);
-          config.maxOpenTabs = initialMaxOpenTabs;
         }
       },
     });
