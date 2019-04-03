@@ -4,7 +4,8 @@ import addContentScriptListener from '@/backend/content_scripts/helpers/listener
 
 /**
  * @param {Object} message
- * @param {'payment'|'return'} message.type The type of receipt data to get.
+ * @param {import('@/backend/client_actions/receipts').ReceiptType} message.type
+ * The type of receipt data to get.
  */
 async function listener(message) {
   let column = '';

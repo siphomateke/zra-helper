@@ -8,13 +8,15 @@ import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
   parallelTaskMap,
   taskFunction,
+  downloadPages,
+  downloadPage,
 } from './utils';
 import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
-  downloadReceipts,
   getFailedResponseItems,
   getReceiptData,
+  getDataFromReceipt,
 } from './receipts';
 import { createClientAction, ClientActionRunner, inInput } from './base';
 
@@ -129,14 +131,13 @@ async function getAcknowledgementReceiptsReferenceNumbers(page, {
  * @param {TaxTypeNumericalCode} options.taxType
  * @param {ReferenceNumber} options.referenceNumber
  * @param {number} options.parentTaskId
- * @returns {import('./receipts').DownloadReceiptOptions}
  */
-function getDownloadReceiptOptions({
+function downloadReceipt({
   client, taxType, referenceNumber, parentTaskId,
 }) {
-  return {
-    type: 'return',
-    filename(receiptData) {
+  return downloadPage({
+    async filename(tab) {
+      const receiptData = await getDataFromReceipt(tab, 'return');
       const date = moment(receiptData.periodFrom, 'DD/MM/YYYY');
       let dateString = '';
       if (taxType === taxTypeNumericalCodes.ITX) {
@@ -157,7 +158,7 @@ function getDownloadReceiptOptions({
         rtnType: taxType,
       },
     },
-  };
+  });
 }
 
 const GetAcknowledgementsOfReturnsClientAction = createClientAction({
@@ -239,12 +240,12 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
    */
   async downloadReceipts({ referenceNumbers, task, taxTypeId }) {
     const { client } = this.storeProxy;
-    const downloadResponses = await downloadReceipts({
+    const downloadResponses = await downloadPages({
       taskTitle: `Download ${referenceNumbers.length} acknowledgement receipt(s)`,
       list: referenceNumbers,
       parentTaskId: task.id,
-      getDownloadReceiptOptions(referenceNumber, parentTaskId) {
-        return getDownloadReceiptOptions({
+      downloadPageFn(referenceNumber, parentTaskId) {
+        return downloadReceipt({
           referenceNumber, parentTaskId, client, taxType: taxTypeId,
         });
       },

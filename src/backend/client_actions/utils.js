@@ -2,7 +2,14 @@ import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
 import createTask from '@/transitional/tasks';
 import config from '@/transitional/config';
-import { getDocumentByAjax } from '../utils';
+import {
+  getDocumentByAjax,
+  createTabPost,
+  tabLoaded,
+  saveAsMHTML,
+  closeTab,
+  monitorDownloadProgress,
+} from '../utils';
 import { taxPayerSearchTaxTypeNames, browserCodes } from '../constants';
 import { getCurrentBrowser } from '@/utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
@@ -475,4 +482,149 @@ export function anonymizeClientsInOutput(output, clients) {
     }
   }
   return anonymized;
+}
+
+/**
+ * @typedef {(tab: browser.tabs.Tab) => Promise.<string|string[]>} FilenameGenerator
+ */
+
+/**
+ * @typedef {Object} DownloadPageOptions
+ * @property {string|string[]|FilenameGenerator} filename
+ * Filename of the downloaded page.
+ *
+ * If an array of filenames is provided, multiple files will be downloaded.
+ *
+ * If a function is provided, it must return a string or array. It will be called with
+ * the tab object of the page to be downloaded.
+ * @property {string} taskTitle
+ * @property {number} parentTaskId
+ * @property {import('@/backend/utils').CreateTabPostOptions} createTabPostOptions
+ */
+
+/**
+ * Downloads a page generated from a POST request.
+ * @param {DownloadPageOptions} options
+ */
+export async function downloadPage({
+  filename,
+  taskTitle,
+  parentTaskId,
+  createTabPostOptions,
+}) {
+  /** Whether the filename of the downloaded page will be based on data within the page. */
+  const filenameUsesPage = typeof filename === 'function';
+
+  const task = await createTask(store, {
+    title: taskTitle,
+    parent: parentTaskId,
+    progressMax: 4,
+    status: 'Opening tab',
+  });
+  if (filenameUsesPage) {
+    task.progressMax += 1;
+  }
+
+  let generatedFilename;
+  return taskFunction({
+    task,
+    async func() {
+      // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
+      const initialMaxOpenTabs = config.maxOpenTabs;
+      config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
+      const tab = await createTabPost(createTabPostOptions);
+      config.maxOpenTabs = initialMaxOpenTabs;
+      let blob = null;
+      try {
+        task.addStep('Waiting for page to load');
+        await tabLoaded(tab.id);
+        if (filenameUsesPage) {
+          task.addStep('Generating filename');
+          generatedFilename = await filename(tab);
+        } else {
+          generatedFilename = filename;
+        }
+        task.addStep('Converting page to MHTML');
+        blob = await saveAsMHTML({ tabId: tab.id });
+      } finally {
+        // TODO: Catch tab close errors
+        closeTab(tab.id);
+      }
+      if (blob !== null) {
+        const url = URL.createObjectURL(blob);
+        task.addStep('Downloading generated MHTML');
+
+        let generatedFilenames;
+        if (typeof generatedFilename === 'string') {
+          generatedFilenames = [generatedFilename];
+        } else {
+          generatedFilenames = generatedFilename;
+        }
+        const taskProgressBeforeDownload = task.progress;
+        if (Array.isArray(generatedFilenames)) {
+          const promises = [];
+          for (const generatedFilename of generatedFilenames) {
+            promises.push(new Promise(async (resolve) => {
+              let downloadFilename = generatedFilename;
+              if (!config.export.removeMhtmlExtension) {
+                downloadFilename += '.mhtml';
+              }
+              const downloadId = await browser.downloads.download({
+                url,
+                filename: downloadFilename,
+              });
+              // FIXME: Catch and handle download errors
+              await monitorDownloadProgress(downloadId, (downloadProgress) => {
+                if (downloadProgress !== -1) {
+                  task.progress = taskProgressBeforeDownload + downloadProgress;
+                }
+              });
+              resolve();
+            }));
+          }
+          await Promise.all(promises);
+        } else {
+          throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+        }
+      }
+    },
+  });
+}
+
+/**
+ * @template L, R
+ * @callback DownloadPageFn
+ * @param {L} item
+ * @param {number} parentTaskId
+ * @returns {Promise.<R>}
+ */
+
+/**
+ * Downloads multiple pages in parallel.
+ * @template L, R
+ * @param {Object} options
+ * @param {string} [options.taskTitle]
+ * Title of the task that will be a parent to all the page downloading tasks.
+ * @param {number} options.parentTaskId
+ * @param {Array<L>} options.list Array of data to use when downloading pages.
+ * @param {DownloadPageFn<L, R>} options.downloadPageFn
+ * Function called on each item in the array of data list that should download a page.
+ */
+export async function downloadPages({
+  taskTitle = 'Download pages',
+  parentTaskId,
+  list,
+  downloadPageFn,
+}) {
+  const task = await createTask(store, { title: taskTitle, parent: parentTaskId });
+  const initialMaxOpenTabs = config.maxOpenTabs;
+  config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
+  const response = await parallelTaskMap({
+    list,
+    task,
+    neverReject: true,
+    func: downloadPageFn,
+  });
+  config.maxOpenTabs = initialMaxOpenTabs;
+  return response;
 }

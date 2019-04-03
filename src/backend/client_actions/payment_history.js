@@ -2,14 +2,14 @@ import moment from 'moment';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  taskFunction,
+  taskFunction, downloadPages, downloadPage,
 } from './utils';
 import {
   startDownloadingReceipts,
   finishDownloadingReceipts,
-  downloadReceipts,
   getFailedResponseItems,
   getReceiptData,
+  getDataFromReceipt,
 } from './receipts';
 import {
   taxTypeNames,
@@ -164,56 +164,88 @@ function getQuarterFromPeriod(from, to) {
 }
 
 /**
+ * @typedef {Object} PaymentReceiptPayment
+ * @property {string} taxType
+ * @property {string} accountName
+ * @property {string} liabilityType
+ * @property {string} periodFrom
+ * @property {string} periodTo
+ * @property {string} chargeYear
+ * @property {string} chargeQuater
+ * @property {string} alternativeNumber
+ * @property {string} amount
+ */
+
+/**
+ * @typedef PaymentReceiptData
+ * @property {string} registrationDate
+ * @property {string} referenceNumber
+ * @property {string} prn
+ * @property {string} paymentDate
+ * @property {string} searchCode
+ * @property {string} paymentType
+ * @property {PaymentReceiptPayment[]} payments
+ */
+
+/**
+ * @param {Client} client
+ * @param {PaymentReceiptData} receiptData
+ * @returns {string[]}
+ */
+function getPaymentReceiptFilenames(client, receiptData) {
+  const uniquePayments = [];
+  for (const payment of receiptData.payments) {
+    let unique = true;
+    for (const paymentCompare of uniquePayments) {
+      if (!paymentsDifferent(payment, paymentCompare)) {
+        unique = false;
+        break;
+      }
+    }
+    if (unique) {
+      uniquePayments.push(payment);
+    }
+  }
+
+  return uniquePayments.map((payment) => {
+    const taxTypeId = taxTypeNames[payment.taxType.toLowerCase()];
+    const periodFrom = moment(payment.periodFrom, 'DD/MM/YYYY');
+    const periodTo = moment(payment.periodTo, 'DD/MM/YYYY');
+    let filename = `receipt-${client.username}-${taxTypes[taxTypeId]}`;
+    if (taxTypeId === taxTypeNumericalCodes.ITX) {
+      const chargeYear = periodTo.format('YYYY');
+      filename += `-${chargeYear}`;
+
+      const periodFromMonth = periodFrom.format('MM');
+      const periodToMonth = periodTo.format('MM');
+      // Don't add quarter if the period is a whole year
+      if (Number(periodToMonth) - Number(periodFromMonth) < 11) {
+        const chargeQuater = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+        if (chargeQuater !== null) {
+          filename += `-${chargeQuater}`;
+        }
+      }
+    } else {
+      filename += `-${periodTo.format('YYYY')}-${periodTo.format('MM')}`;
+    }
+    filename += `-${receiptData.prn}`;
+    return filename;
+  });
+}
+
+/**
  * @param {Object} options
  * @param {Client} options.client
  * @param {PaymentReceipt} options.receipt
  * @param {number} options.parentTaskId
- * @returns {import('./receipts').DownloadReceiptOptions}
  */
-function getDownloadReceiptOptions({ client, receipt, parentTaskId }) {
+function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
   const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
 
-  return {
-    type: 'payment',
-    filename(receiptData) {
-      const uniquePayments = [];
-      for (const payment of receiptData.payments) {
-        let unique = true;
-        for (const paymentCompare of uniquePayments) {
-          if (!paymentsDifferent(payment, paymentCompare)) {
-            unique = false;
-            break;
-          }
-        }
-        if (unique) {
-          uniquePayments.push(payment);
-        }
-      }
-
-      return uniquePayments.map((payment) => {
-        const taxTypeId = taxTypeNames[payment.taxType.toLowerCase()];
-        const periodFrom = moment(payment.periodFrom, 'DD/MM/YYYY');
-        const periodTo = moment(payment.periodTo, 'DD/MM/YYYY');
-        let filename = `receipt-${client.username}-${taxTypes[taxTypeId]}`;
-        if (taxTypeId === taxTypeNumericalCodes.ITX) {
-          const chargeYear = periodTo.format('YYYY');
-          filename += `-${chargeYear}`;
-
-          const periodFromMonth = periodFrom.format('MM');
-          const periodToMonth = periodTo.format('MM');
-          // Don't add quarter if the period is a whole year
-          if (Number(periodToMonth) - Number(periodFromMonth) < 11) {
-            const chargeQuater = getQuarterFromPeriod(periodFromMonth, periodToMonth);
-            if (chargeQuater !== null) {
-              filename += `-${chargeQuater}`;
-            }
-          }
-        } else {
-          filename += `-${periodTo.format('YYYY')}-${periodTo.format('MM')}`;
-        }
-        filename += `-${receiptData.prn}`;
-        return filename;
-      });
+  return downloadPage({
+    async filename(tab) {
+      const receiptData = await getDataFromReceipt(tab, 'payment');
+      return getPaymentReceiptFilenames(client, receiptData);
     },
     taskTitle: `Download receipt ${refNo}`,
     parentTaskId,
@@ -227,7 +259,7 @@ function getDownloadReceiptOptions({ client, receipt, parentTaskId }) {
         printReceipt: 'N',
       },
     },
-  };
+  });
 }
 
 const GetPaymentReceiptsClientAction = createClientAction({
@@ -308,12 +340,12 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
         if (receipts.length > 0) {
           actionTask.status = `Downloading ${receipts.length} payment receipt(s)`;
           await startDownloadingReceipts();
-          const downloadResponses = await downloadReceipts({
+          const downloadResponses = await downloadPages({
             taskTitle: `Download ${receipts.length} payment receipt(s)`,
             parentTaskId: actionTask.id,
             list: receipts,
-            getDownloadReceiptOptions(receipt, parentTaskId) {
-              return getDownloadReceiptOptions({ receipt, parentTaskId, client });
+            downloadPageFn(receipt, parentTaskId) {
+              return downloadPaymentReceipt({ receipt, parentTaskId, client });
             },
           });
           await finishDownloadingReceipts();
