@@ -142,7 +142,9 @@ export async function downloadReceipts({
   getDownloadReceiptOptions: downloadReceiptFunc,
 }) {
   const task = await createTask(store, { title: taskTitle, parent: parentTaskId });
-  return parallelTaskMap({
+  const initialMaxOpenTabs = config.maxOpenTabs;
+  config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
+  const response = await parallelTaskMap({
     list,
     task,
     neverReject: true,
@@ -151,13 +153,15 @@ export async function downloadReceipts({
       return downloadReceipt(downloadOptions);
     },
   });
+  config.maxOpenTabs = initialMaxOpenTabs;
+  return response;
 }
 
 export function startDownloadingReceipts() {
   return changeLiteMode(false);
 }
 
-export async function finishDownloadingReceipts() {
+export function finishDownloadingReceipts() {
   return changeLiteMode(true);
 }
 

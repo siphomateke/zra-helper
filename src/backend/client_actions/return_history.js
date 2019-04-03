@@ -1,7 +1,6 @@
 import moment from 'moment';
 import set from 'lodash.set';
 import store from '@/store';
-import config from '@/transitional/config';
 import createTask from '@/transitional/tasks';
 import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../constants';
 import { getDocumentByAjax } from '../utils';
@@ -333,7 +332,7 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
   }
 
   async runInternal() {
-    const { client, task: actionTask, config: actionConfig } = this.storeProxy;
+    const { client, task: actionTask } = this.storeProxy;
     // eslint-disable-next-line prefer-destructuring
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
 
@@ -361,8 +360,6 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
     const failures = {};
     let anyFailures = false;
 
-    const initialMaxOpenTabs = config.maxOpenTabs;
-    config.maxOpenTabs = actionConfig.maxOpenTabsWhenDownloading;
     await startDownloadingReceipts();
     await parallelTaskMap({
       list: taxTypeIds,
@@ -379,7 +376,6 @@ GetAcknowledgementsOfReturnsClientAction.Runner = class extends ClientActionRunn
       },
     });
     await finishDownloadingReceipts();
-    config.maxOpenTabs = initialMaxOpenTabs;
 
     if (anyFailures) {
       this.setRetryReason('Some receipts failed to download.');
