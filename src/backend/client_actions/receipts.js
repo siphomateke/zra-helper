@@ -55,6 +55,7 @@ export function finishDownloadingReceipts() {
  * @param {number[]} [options.pages] Specific pages to fetch.
  * @returns {Promise.<GetReceiptDataResponse<Response[]>>}
  */
+// TODO: Rename this to apply to downloading returns as well as return receipts.
 export async function getReceiptData({
   parentTaskId,
   taskTitle,
