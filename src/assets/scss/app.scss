@@ -29,6 +29,13 @@
 .message .message-body {
   padding: 0.5em 0.75em;
 }
+
+.card-content {
+  padding: 0.75rem;
+}
+.card-header-title {
+  padding: 0.3rem 0.75rem;
+}
 // #endregion
 
 .bordered-section {
@@ -60,4 +67,9 @@ $spinner-size: 2;
     margin-left: auto;
     margin-right: auto;
   }
+}
+
+// Fix horizontal form labels being really small
+.field-label {
+  flex-grow: 5;
 }
