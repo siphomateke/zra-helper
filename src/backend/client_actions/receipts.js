@@ -48,7 +48,12 @@ export async function downloadReceipt({
   return taskFunction({
     task,
     async func() {
+      // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
+      const initialMaxOpenTabs = config.maxOpenTabs;
+      config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
       const tab = await createTabPost(createTabPostOptions);
+      config.maxOpenTabs = initialMaxOpenTabs;
+
       let receiptData = null;
       let blob = null;
       try {
@@ -142,8 +147,6 @@ export async function downloadReceipts({
   getDownloadReceiptOptions: downloadReceiptFunc,
 }) {
   const task = await createTask(store, { title: taskTitle, parent: parentTaskId });
-  const initialMaxOpenTabs = config.maxOpenTabs;
-  config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
   const response = await parallelTaskMap({
     list,
     task,
@@ -153,7 +156,6 @@ export async function downloadReceipts({
       return downloadReceipt(downloadOptions);
     },
   });
-  config.maxOpenTabs = initialMaxOpenTabs;
   return response;
 }
 
