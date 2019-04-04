@@ -124,6 +124,9 @@ const module = {
         const config = deepAssign(defaultConfig, items.config);
         await dispatch('set', config);
         await dispatch('updateConfig');
+      } else {
+        // If no config exists, save the default one.
+        await dispatch('save');
       }
     },
     async save({ state, dispatch }) {
