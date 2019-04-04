@@ -453,9 +453,15 @@ export function anonymizeClientsInOutput(output, clients) {
   // TODO: Measure how much impact this function has on performance.
   let anonymized = output;
   for (const client of clients) {
-    anonymized = anonymized.replace(new RegExp(client.name, 'g'), getClientIdName(client));
-    anonymized = anonymized.replace(new RegExp(client.username, 'g'), `client_${client.id}_username`);
-    anonymized = anonymized.replace(new RegExp(client.password, 'g'), '********');
+    if (client.name) {
+      anonymized = anonymized.replace(new RegExp(client.name, 'g'), getClientIdName(client));
+    }
+    if (client.username) {
+      anonymized = anonymized.replace(new RegExp(client.username, 'g'), `client_${client.id}_username`);
+    }
+    if (client.password) {
+      anonymized = anonymized.replace(new RegExp(client.password, 'g'), '********');
+    }
   }
   return anonymized;
 }
