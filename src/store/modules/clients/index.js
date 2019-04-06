@@ -2,6 +2,8 @@ import Vue from 'vue';
 import store from '@/store';
 import { getTaxAccounts } from '@/backend/client_actions/utils';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
+import { taxTypes } from '@/backend/constants';
+import { InvalidTaxType } from '@/backend/errors';
 
 let lastClientId = 0;
 
@@ -82,13 +84,18 @@ const module = {
         const registeredTaxAccounts = taxAccounts.filter(account => account.status === 'registered');
         commit('setRegisteredTaxAccounts', { id, value: registeredTaxAccounts });
 
-        const taxTypes = [];
+        const taxTypeIds = [];
         for (const account of registeredTaxAccounts) {
-          if (!taxTypes.includes(account.taxTypeId)) {
-            taxTypes.push(account.taxTypeId);
+          const { taxTypeId } = account;
+          if (taxTypeId in taxTypes) {
+            if (!taxTypeIds.includes(taxTypeId)) {
+              taxTypeIds.push(taxTypeId);
+            }
+          } else {
+            throw new InvalidTaxType(`Invalid tax type ID: ${taxTypeId}`);
           }
         }
-        commit('setTaxTypes', { id, value: taxTypes });
+        commit('setTaxTypes', { id, value: taxTypeIds });
 
         return taxAccounts;
       }
