@@ -197,6 +197,12 @@ export class DownloadError extends ExtendedError {
   }
 }
 
+export class InvalidTaxType extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('InvalidTaxType');
+  }
+}
 export class MissingTaxTypesError extends ExtendedError {
   constructor(...args) {
     super(...args);
