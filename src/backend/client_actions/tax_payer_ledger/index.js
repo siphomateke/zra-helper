@@ -1,7 +1,7 @@
 import { getPagedData, parallelTaskMap, taskFunction } from '@/backend/client_actions/utils';
 import { taxTypes } from '@/backend/constants';
 import { getTaxPayerLedgerPage } from '@/backend/reports';
-import { getAccountCodeTask } from '@/backend/tax_account_code';
+import getAccountCodeTask from '@/backend/tax_account_code';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { createClientAction, ClientActionRunner } from '../base';
@@ -17,14 +17,17 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
     super(data);
     this.storeProxy.actionId = TaxPayerLedgerClientAction.id;
     this.records = [];
+
+    // FIXME: Use proper dates
+    this.storeProxy.input = {
+      fromDate: '01/01/2013',
+      toDate: '11/03/2019',
+    };
   }
 
   async runInternal() {
-    const { parentTask, client } = this.storeProxy;
-
-    // FIXME: Use proper dates
-    const fromDate = '01/01/2013';
-    const toDate = '11/03/2019';
+    const { task: parentTask, client, input } = this.storeProxy;
+    const { fromDate, toDate } = input;
 
     // Get data for each tax account
     this.records = await parallelTaskMap({
@@ -45,6 +48,7 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
             const accountCode = await getAccountCodeTask({
               parentTaskId: taxAccountTask.id,
               accountName: taxAccount.accountName,
+              taxTypeId: taxAccount.taxTypeId,
             });
 
             const task = await createTask(store, {
@@ -62,18 +66,24 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
             const allResponses = await getPagedData({
               task,
               getPageSubTask,
-              getDataFunction: page => getTaxPayerLedgerPage({
-                accountCode,
-                fromDate,
-                toDate,
-                page,
-                tpin: client.username,
-              }),
+              getDataFunction: async (page) => {
+                const reportPage = await getTaxPayerLedgerPage({
+                  accountCode,
+                  fromDate,
+                  toDate,
+                  page,
+                  tpin: client.username,
+                });
+                return {
+                  numPages: reportPage.numPages,
+                  value: reportPage.parsedTable,
+                };
+              },
             });
 
             const records = [];
             for (const response of Object.values(allResponses)) {
-              for (const record of response.parsedTable.records) {
+              for (const record of response.value.records) {
                 records.push(record);
               }
             }
