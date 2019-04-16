@@ -57,7 +57,7 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
             });
 
             const getPageSubTask = (page, subTaskParentId) => ({
-              title: `Extract data from page ${page + 1} of the ledger`,
+              title: `Extract data from page ${page} of the ledger`,
               parent: subTaskParentId,
               indeterminate: true,
             });
