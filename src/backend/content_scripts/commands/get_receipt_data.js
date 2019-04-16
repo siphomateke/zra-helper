@@ -4,14 +4,13 @@ import addContentScriptListener from '@/backend/content_scripts/helpers/listener
 
 /**
  * @param {Object} message
- * @param {'payment'|'return'} message.type The type of receipt data to get.
+ * @param {import('@/backend/client_actions/receipts').ReceiptType} message.type
+ * The type of receipt data to get.
  */
 async function listener(message) {
   let column = '';
   if (message.type === 'payment') {
     column = '4';
-  } else if (message.type === 'return') {
-    column = '3';
   }
   const mainTable = getElement(
     'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
@@ -73,11 +72,6 @@ async function listener(message) {
       payments.pop();
     }
     data.payments = payments;
-  } else if (message.type === 'return') {
-    // eslint-disable-next-line max-len
-    const periodInfo = getElement('#ReturnHistoryForm>table>tbody>tr:nth-child(2)>td:nth-child(2)>table>tbody>tr:nth-child(11)>td:nth-child(4)').innerText;
-    const periodDateMatches = periodInfo.match(/Period\s+:\s+(.+)\s+to\s+(.+)/);
-    [, data.periodFrom, data.periodTo] = periodDateMatches;
   }
 
   return data;
