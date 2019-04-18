@@ -3,6 +3,7 @@ import devtools from '@vue/devtools'; // eslint-disable-line import/no-extraneou
 import Vue from 'vue';
 import Buefy from 'buefy';
 import VueClipboard from 'vue-clipboard2';
+import moment from 'moment';
 import store from './store';
 import initClientActions from './store/modules/client_actions/init';
 import initClientsModule from './store/modules/clients/init';
@@ -15,6 +16,8 @@ Vue.config.productionTip = false;
 
 Vue.use(Buefy, {
   defaultIconPack: 'fas',
+  defaultDateParser: date => moment(date, 'DD/MM/YYYY').toDate(),
+  defaultDateFormatter: date => moment(date).format('DD/MM/YYYY'),
 });
 
 Vue.use(VueClipboard);
