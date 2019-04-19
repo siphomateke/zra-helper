@@ -20,7 +20,6 @@ import CardModal from '@/components/CardModal.vue';
 import ClientActionInput, { actionInputComponents } from '@/components/ClientActionInputs/ClientActionInput.vue';
 import { generateValueSyncMixin, generatePropSyncMixin } from '@/mixins/sync_prop';
 
-// FIXME: Fix date inputs overflowing modal.
 export default {
   name: 'ClientActionInputModal',
   components: {
