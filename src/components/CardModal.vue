@@ -29,8 +29,13 @@
 </template>
 
 <script>
+import { generatePropSyncMixin } from '@/mixins/sync_prop';
+
 export default {
   name: 'CardModal',
+  mixins: [
+    generatePropSyncMixin('internalActive', 'active'),
+  ],
   props: {
     active: {
       type: Boolean,
@@ -39,19 +44,6 @@ export default {
     title: {
       type: String,
       default: '',
-    },
-  },
-  data() {
-    return {
-      internalActive: this.active,
-    };
-  },
-  watch: {
-    active(value) {
-      this.internalActive = value;
-    },
-    internalActive(value) {
-      this.$emit('update:active', value);
     },
   },
 };
