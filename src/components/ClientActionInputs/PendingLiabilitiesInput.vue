@@ -2,6 +2,7 @@
   <div>
     <TaxTypeSelect
       v-model="input.taxTypeIds"
+      :disabled="disabled"
       :multiple="true"
     />
   </div>

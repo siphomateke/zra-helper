@@ -2,6 +2,7 @@
   <div>
     <DateRangeInput
       :value="[input.fromDate, input.toDate]"
+      :disabled="disabled"
       @input="dateRangeInput"
     />
   </div>

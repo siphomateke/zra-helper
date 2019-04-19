@@ -2,6 +2,7 @@
   <b-datepicker
     :value="date"
     :max-date="maxDate"
+    :disabled="disabled"
     editable
     placeholder="Type or select a date..."
     icon="calendar-alt"
@@ -19,6 +20,10 @@ export default {
     value: {
       type: String,
       default: '',
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {

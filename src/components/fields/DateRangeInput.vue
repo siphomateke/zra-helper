@@ -1,10 +1,16 @@
 <template>
   <b-field grouped>
     <b-field label="From date">
-      <DateInput v-model="fromDate"/>
+      <DateInput
+        v-model="fromDate"
+        :disabled="disabled"
+      />
     </b-field>
     <b-field label="To date">
-      <DateInput v-model="toDate"/>
+      <DateInput
+        v-model="toDate"
+        :disabled="disabled"
+      />
     </b-field>
   </b-field>
 </template>
@@ -27,6 +33,10 @@ export default {
         }
         return true;
       },
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {

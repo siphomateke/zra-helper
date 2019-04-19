@@ -2,6 +2,7 @@
   <div>
     <b-checkbox
       :value="isAllChecked"
+      :disabled="disabled"
       @change.native="checkAll"
     >
       <b>{{ isAllChecked ? 'Un-check all' : 'Check all' }}</b>
@@ -14,6 +15,7 @@
       <b-checkbox
         v-model="checked"
         :native-value="checkbox.value"
+        :disabled="disabled"
       >{{ checkbox.label }}</b-checkbox>
     </div>
   </div>
@@ -41,6 +43,10 @@ export default {
         }
         return true;
       },
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {

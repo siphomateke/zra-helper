@@ -5,12 +5,14 @@
       <CheckboxList
         v-model="taxTypeIds"
         :checkboxes="checkboxes"
+        :disabled="disabled"
       />
     </template>
     <b-select
       v-else
       :value="value"
       :multiple="multiple"
+      :disabled="disabled"
       @input="onInput"
     >
       <option
@@ -37,6 +39,10 @@ export default {
       default: null,
     },
     multiple: {
+      type: Boolean,
+      default: false,
+    },
+    disabled: {
       type: Boolean,
       default: false,
     },

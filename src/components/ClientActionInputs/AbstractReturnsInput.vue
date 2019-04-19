@@ -2,10 +2,12 @@
   <div>
     <DateRangeInput
       :value="[input.fromDate, input.toDate]"
+      :disabled="disabled"
       @input="dateRangeInput"
     />
     <TaxTypeSelect
       v-model="input.taxTypeIds"
+      :disabled="disabled"
       :multiple="true"
     />
   </div>

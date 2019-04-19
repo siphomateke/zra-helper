@@ -1,6 +1,7 @@
 <template>
   <component
     :is="actionInputComponent"
+    :disabled="disabled"
     :value="value"
     @input="value => $emit('input', value)"
   />
@@ -28,6 +29,10 @@ export default {
     value: {
       type: Object,
       default: () => ({}),
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
   computed: {
