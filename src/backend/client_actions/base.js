@@ -29,6 +29,7 @@ import { taskStates } from '@/store/modules/tasks';
  * @property {string} id A unique camelCase ID to identify this client action.
  * @property {string} name The human-readable name of this client action.
  * @property {new () => ClientActionRunner} [Runner]
+ * @property {() => Object} [defaultInput]
  * @property {import('@/backend/constants').BrowserFeature[]} [requiredFeatures]
  * Features this action requires that are only available in certain browsers.
  * @property {boolean} [usesLoggedInTab]
@@ -80,7 +81,7 @@ export class ClientActionRunner {
   /**
    * @param {string} id ID of runner instance in Vuex store.
    */
-  constructor(id) {
+  constructor(id, action) {
     this.id = id;
 
     /**
@@ -103,9 +104,8 @@ export class ClientActionRunner {
     });
 
     this.storeProxy.id = this.id;
-    this.storeProxy.actionId = null;
-
-    this.storeProxy.input = {};
+    this.storeProxy.actionId = action.id;
+    this.storeProxy.input = action.defaultInput();
     this.storeProxy.retryInput = {};
   }
 
@@ -257,6 +257,7 @@ function validateActionOptions(options) {
  */
 export function createClientAction(options) {
   const clientAction = Object.assign({
+    defaultInput: () => ({}),
     hasOutput: false,
     usesLoggedInTab: false,
     requiresTaxTypes: false,

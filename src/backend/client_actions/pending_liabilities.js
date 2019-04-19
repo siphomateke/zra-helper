@@ -186,8 +186,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
 
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
-    super(data);
-    this.storeProxy.actionId = GetAllPendingLiabilitiesClientAction.id;
+    super(data, GetAllPendingLiabilitiesClientAction);
   }
 
   async runInternal() {

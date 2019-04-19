@@ -325,6 +325,11 @@ const module = {
       const run = getters.getRunById(runId);
       return run.clients.find(client => client.id === Number(clientId));
     },
+    getDefaultActionInput: (_state, getters) => (actionId) => {
+      /** @type {ActionObject} */
+      const action = getters.getActionById(actionId);
+      return action.defaultInput();
+    },
   },
   mutations: {
     /**

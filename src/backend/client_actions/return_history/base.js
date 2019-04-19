@@ -171,6 +171,10 @@ export function generateDownloadFilename({
 export const GetReturnHistoryClientActionOptions = {
   requiredFeatures: [browserFeatures.MHTML],
   requiresTaxTypes: true,
+  defaultInput: () => ({
+    fromDate: '01/01/2013',
+    toDate: moment().format('31/12/YYYY'),
+  }),
 };
 
 /**
@@ -197,12 +201,8 @@ function getTaxTypeInput(input, taxTypeId, key) {
 }
 
 export class ReturnHistoryRunner extends ClientActionRunner {
-  constructor(data) {
-    super(data);
-    this.storeProxy.input = {
-      fromDate: '01/01/2013',
-      toDate: moment().format('31/12/YYYY'),
-    };
+  constructor(data, action) {
+    super(data, action);
 
     /** @type {(count: number) => string} */
     this.downloadItemsTaskTitle = () => '';

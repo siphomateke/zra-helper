@@ -45,8 +45,7 @@ const GetReturnsClientAction = createClientAction({
 });
 GetReturnsClientAction.Runner = class extends ReturnHistoryRunner {
   constructor(data) {
-    super(data);
-    this.storeProxy.actionId = GetReturnsClientAction.id;
+    super(data, GetReturnsClientAction);
 
     this.downloadItemsTaskTitle = count => `Download ${count} return(s)`;
     this.downloadTaxTypeTaskTitle = taxType => `Download ${taxType} returns`;

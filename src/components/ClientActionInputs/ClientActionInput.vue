@@ -2,16 +2,17 @@
   <component
     :is="actionInputComponent"
     :disabled="disabled"
-    :value="value"
-    @input="value => $emit('input', value)"
+    v-model="input"
   />
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 import PendingLiabilitiesInput from '@/components/ClientActionInputs/PendingLiabilitiesInput.vue';
 import ReturnsInput from '@/components/ClientActionInputs/ReturnsInput.vue';
 import AckReturnsInput from '@/components/ClientActionInputs/AckReturnsInput.vue';
 import PaymentReceiptsInput from '@/components/ClientActionInputs/PaymentReceiptsInput.vue';
+import { generateValueSyncMixin } from '@/mixins/sync_prop';
 
 export const actionInputComponents = {
   getAllPendingLiabilities: PendingLiabilitiesInput,
@@ -21,6 +22,9 @@ export const actionInputComponents = {
 };
 
 export default {
+  mixins: [
+    generateValueSyncMixin('input'),
+  ],
   props: {
     id: {
       type: String,
@@ -28,7 +32,7 @@ export default {
     },
     value: {
       type: Object,
-      default: () => ({}),
+      default: null,
     },
     disabled: {
       type: Boolean,
@@ -36,9 +40,17 @@ export default {
     },
   },
   computed: {
+    ...mapGetters('clientActions', [
+      'getDefaultActionInput',
+    ]),
     actionInputComponent() {
       return actionInputComponents[this.id];
     },
+  },
+  created() {
+    if (this.input === null) {
+      this.input = this.getDefaultActionInput(this.id);
+    }
   },
 };
 </script>
