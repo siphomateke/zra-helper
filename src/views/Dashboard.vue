@@ -297,6 +297,7 @@ export default {
       await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
         actionIds: this.selectedClientActions,
         clientIds: this.selectedClientIds,
+        actionInputs: this.actionInputs,
       });
     },
     async updateClients(clients) {

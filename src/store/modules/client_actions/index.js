@@ -441,6 +441,7 @@ const module = {
      * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {string} payload.instanceId
+     * @param {Object} payload.input Action input object.
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction
@@ -450,6 +451,7 @@ const module = {
      */
     async runActionOnClient({ commit, getters }, {
       instanceId,
+      input,
       client,
       mainTask,
       isSingleAction,
@@ -482,6 +484,8 @@ const module = {
                   const newInput = Object.assign(prevInstance.input, prevInstance.retryInput);
                   commit('setInstanceInput', { id: instanceId, input: newInput });
                 }
+              } else {
+                commit('setInstanceInput', { id: instanceId, input });
               }
 
               /** @type {ActionInstanceClass} */
@@ -529,6 +533,7 @@ const module = {
      * @param {Object} payload
      * @param {Client} payload.client
      * @param {string[]} payload.actionIds
+     * @param {Object.<string, Object>} [payload.actionInputs] Inputs by action ID
      * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
      * @param {boolean} payload.retry If this run is just a retry of a previous one.
@@ -542,6 +547,7 @@ const module = {
     }, {
       client,
       actionIds,
+      actionInputs = {},
       instanceIds,
       parentTaskId,
       retry,
@@ -638,8 +644,11 @@ const module = {
                 }
                 const promises = [];
                 for (const instanceId of instanceIds) {
+                  /** @type {ActionInstanceData} */
+                  const instance = getters.getInstanceById(instanceId);
                   promises.push(dispatch('runActionOnClient', {
                     instanceId,
+                    input: instance.actionId in actionInputs ? actionInputs[instance.actionId] : {},
                     client,
                     mainTask,
                     isSingleAction,
@@ -697,11 +706,13 @@ const module = {
      * @param {Client[]} payload.clients
      * @param {GetClientsActionIds} payload.getClientsActionIds
      * Function that decides the actions to run on each client.
+     * @param {Object.<string, Object>} [payload.actionInputs] Inputs by action ID
      * @param {boolean} [payload.retry] If this run is just a retry of a previous one.
      */
     async run(context, {
       clients,
       getClientsActionIds,
+      actionInputs = {},
       retry = false,
     }) {
       const {
@@ -757,6 +768,7 @@ const module = {
                 await dispatch('runActionsOnClient', {
                   client,
                   actionIds,
+                  actionInputs,
                   instanceIds,
                   parentTaskId: rootTask.id,
                   retry,
@@ -786,15 +798,20 @@ const module = {
      * Runs the passed actions on all clients.
      * @param {VuexActionContext} context
      * @param {Object} payload
-     * @param {number[]} actionIds
-     * @param {number[]} clientIds
+     * @param {number[]} payload.actionIds
+     * @param {number[]} payload.clientIds
+     * @param {Object.<string, Object>} payload.actionInputs Inputs by action ID
      */
-    async runSelectedActionsOnAllClients({ dispatch, rootGetters }, { actionIds, clientIds }) {
+    async runSelectedActionsOnAllClients(
+      { dispatch, rootGetters },
+      { actionIds, clientIds, actionInputs },
+    ) {
       /** All clients including the invalid ones. */
       const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
       await dispatch('run', {
         clients,
         getClientsActionIds: () => actionIds,
+        actionInputs,
       });
     },
     /**
