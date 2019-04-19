@@ -22,7 +22,7 @@
 </template>
 
 <script>
-import generateValueSyncMixin from '@/mixins/sync_value';
+import { generateValueSyncMixin } from '@/mixins/sync_prop';
 
 export default {
   name: 'CheckboxList',
@@ -48,11 +48,6 @@ export default {
       type: Boolean,
       default: false,
     },
-  },
-  data() {
-    return {
-      checked: [],
-    };
   },
   computed: {
     isAllChecked() {

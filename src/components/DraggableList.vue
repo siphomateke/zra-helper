@@ -130,6 +130,10 @@ export default {
       border-radius: 0 0 $draggable-list-border-radius $draggable-list-border-radius;
     }
 
+    &:only-child {
+      border-radius: $draggable-list-border-radius;
+    }
+
     &.sortable-drag {
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }

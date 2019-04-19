@@ -27,6 +27,12 @@
           v-model="selectedClientActions"
           :disabled="selectActionsDisabled"
         />
+        <ClientActionList
+          v-model="selectedClientActions"
+          :action-ids="selectedClientActions"
+          :disabled="selectActionsDisabled"
+          :inputs.sync="actionInputs"
+        />
         <button
           :disabled="runActionsButtonDisabled"
           :title="runActionsButtonDisabledReason"
@@ -164,11 +170,13 @@ import TaskList from '@/components/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
 import ClientActionSelector from '@/components/ClientActionSelector.vue';
+import ClientActionList from '@/components/ClientActionList.vue';
 import CardModal from '@/components/CardModal.vue';
 import ClientActionFailures from '@/components/ClientActionFailures.vue';
 import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 
+// FIXME: Don't submit dashboard form when pressing enter in client action date inputs
 export default {
   name: 'Dashboard',
   components: {
@@ -181,6 +189,7 @@ export default {
     Log,
     ClientActionOutput,
     ClientActionSelector,
+    ClientActionList,
     CardModal,
     ClientActionFailures,
   },
@@ -193,6 +202,7 @@ export default {
       clientSelectorVisible: false,
       failuresRunId: null,
       failuresModalVisible: false,
+      actionInputs: {},
     };
   },
   computed: {
