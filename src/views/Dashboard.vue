@@ -1,7 +1,7 @@
 <template>
   <div id="dashboard">
     <section class="dashboard-section">
-      <form @submit.prevent="submit">
+      <form @submit.prevent>
         <div>
           <div class="field">
             <label class="label">Client list</label>
@@ -37,7 +37,8 @@
           :disabled="runActionsButtonDisabled"
           :title="runActionsButtonDisabledReason"
           class="button is-primary"
-          type="submit"
+          type="button"
+          @click="submit"
         >Run selected action(s)</button>
       </form>
     </section>
@@ -176,7 +177,6 @@ import ClientActionFailures from '@/components/ClientActionFailures.vue';
 import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 
-// FIXME: Don't submit dashboard form when pressing enter in client action date inputs
 export default {
   name: 'Dashboard',
   components: {
