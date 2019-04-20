@@ -49,8 +49,6 @@ import { taskFunction, getClientIdentifier } from '@/backend/client_actions/util
  * @property {Object.<string, ActionObject>} actions Client actions stored by IDs.
  * @property {Object.<string, ActionInstanceData>} instances
  * Client action runner instances' data stored by instance ID.
- * @property {Object.<string, ActionInstanceClass>} instanceClasses
- * Client action runner instances stored by instance ID.
  * @property {ActionRun[]} runs Action runs stored by run IDs.
  * @property {number} currentRunId Which run the program is currently on.
  */
@@ -144,20 +142,32 @@ function initializeInstances({ commit, getters }, {
   }
 }
 
+/**
+ * @type {Object.<string, ActionInstanceClass>}
+ * Client action runner instances stored by instance ID.
+ */
+const instanceClasses = {};
+
+/**
+ * @param {string|number} instanceId
+ * @returns {ActionInstanceClass}
+ */
+export function getInstanceClassById(instanceId) {
+  return instanceClasses[instanceId];
+}
+
 /** @type {import('vuex').Module<State>} */
 const vuexModule = {
   namespaced: true,
   state: {
     actions: {},
     instances: {},
-    instanceClasses: {},
     runs: [],
     currentRunId: null,
   },
   getters: {
     getActionById: state => id => state.actions[id],
     getInstanceById: state => id => state.instances[id],
-    getInstanceClassById: state => id => state.instanceClasses[id],
     getRunById: state => id => state.runs[id],
     currentRun: state => state.runs[state.currentRunId],
     previousRun: state => state.runs[state.currentRunId - 1],
@@ -429,7 +439,7 @@ const vuexModule = {
       // Actually create the instance and store the class whose methods will be called.
       const instanceClass = new Runner();
       instanceClass.create(instanceId);
-      Vue.set(state.instanceClasses, instanceId, instanceClass);
+      instanceClasses[instanceId] = instanceClass;
 
       // Initialize the instance's data.
       instanceClass.init({ client, config });
@@ -518,7 +528,7 @@ const vuexModule = {
               log.setCategory(clientAction.logCategory);
 
               /** @type {ActionInstanceClass} */
-              const instanceClass = getters.getInstanceClassById(instanceId);
+              const instanceClass = getInstanceClassById(instanceId);
               await instanceClass.run({
                 task,
                 loggedInTabId,
@@ -685,7 +695,7 @@ const vuexModule = {
               } finally {
                 for (const instanceId of instanceIds) {
                   /** @type {ActionInstanceClass} */
-                  const instanceClass = getters.getInstanceClassById(instanceId);
+                  const instanceClass = getInstanceClassById(instanceId);
                   instanceClass.checkIfShouldRetry();
                   // Outputs must be merged here so it happens even if logging in failed
                   instanceClass.mergeAllRunOutputs();
