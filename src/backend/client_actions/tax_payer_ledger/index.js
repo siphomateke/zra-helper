@@ -10,19 +10,17 @@ const TaxPayerLedgerClientAction = createClientAction({
   id: 'taxPayerLedger',
   name: 'Get tax payer ledger',
   requiresTaxTypes: true,
+  // FIXME: Use proper dates
+  defaultInput: () => ({
+    fromDate: '01/01/2013',
+    toDate: '11/03/2019',
+  }),
 });
 
 TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
-    super(data);
-    this.storeProxy.actionId = TaxPayerLedgerClientAction.id;
+    super(data, TaxPayerLedgerClientAction);
     this.records = [];
-
-    // FIXME: Use proper dates
-    this.storeProxy.input = {
-      fromDate: '01/01/2013',
-      toDate: '11/03/2019',
-    };
   }
 
   async runInternal() {
