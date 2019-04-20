@@ -1,4 +1,5 @@
 import addContentScriptListener from './listener';
+import configStore from '@/transitional/config';
 
 let config = null;
 
@@ -7,5 +8,8 @@ addContentScriptListener('receive_config', async (message) => {
 });
 
 export default function getConfig() {
-  return config;
+  if (config !== null) {
+    return config;
+  }
+  return configStore;
 }
