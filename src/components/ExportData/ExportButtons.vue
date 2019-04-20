@@ -116,7 +116,7 @@ export default {
     },
     generators: {
       type: Object,
-      default: () => {},
+      default: () => ({}),
       validator(value) {
         for (const format of Object.keys(value)) {
           const generator = value[format];
