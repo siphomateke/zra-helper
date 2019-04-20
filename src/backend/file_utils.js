@@ -1,7 +1,52 @@
 import Papa from 'papaparse';
 import textTable from 'text-table';
 import store from '@/store';
-// TODO: Give this file a better name
+import log from '@/transitional/log';
+
+/**
+ * Extracts a filenames extension.
+ *
+ * @param {string} filename
+ * @returns {string} The extension
+ */
+function getExtension(filename) {
+  const split = filename.split('.');
+  return split[split.length - 1];
+}
+
+/**
+ * Loads and parses a CSV file.
+ *
+ * @param {File} file The CSV file to load.
+ * @returns {Promise.<string>}
+ * @throws Will throw an error if the file fails to load
+ */
+export function loadCsvFile(file) {
+  return new Promise((resolve, reject) => {
+    const ext = getExtension(file.name);
+    if (ext === 'csv') {
+      const fileReader = new FileReader();
+      // TODO: Add file load progress
+      fileReader.onload = async function onload(fileLoadedEvent) {
+        const text = fileLoadedEvent.target.result;
+        log.setCategory('loadCsvFile');
+        log.log(`Successfully loaded CSV file "${file.name}"`);
+        resolve(text);
+      };
+      fileReader.onerror = function onerror(event) {
+        log.setCategory('loadCsvFile');
+        log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
+        reject(new Error(event.target.error));
+      };
+      log.setCategory('loadCsvFile');
+      log.log(`Loading CSV file "${file.name}"`);
+      fileReader.readAsText(file, 'UTF-8');
+    } else {
+      log.setCategory('loadCsvFile');
+      log.showError(`Uploaded CSV file's extension must be '.csv' not '.${ext}'.`);
+    }
+  });
+}
 
 /**
  * @typedef {'\r\n'|'\n'} EolCharacter End of line character.

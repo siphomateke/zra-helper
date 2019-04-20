@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import log from '@/transitional/log';
 import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@/backend/constants';
+import { loadCsvFile } from './file_utils';
 
 /**
  * @typedef {Object} LoadedClient
@@ -206,46 +207,13 @@ function getClientsFromCsv(csvString, config = {}) {
 }
 
 /**
- * Extracts a filenames extension.
- *
- * @param {string} filename
- * @returns {string} The extension
- */
-function getExtension(filename) {
-  const split = filename.split('.');
-  return split[split.length - 1];
-}
-
-/**
  * Gets clients from a CSV file.
  *
  * @param {File} file The CSV file to get clients from
  * @returns {Promise.<ParsedClient[]>}
  * @throws Will throw an error if the file fails to load
  */
-export default function getClientsFromFile(file) {
-  return new Promise((resolve, reject) => {
-    const ext = getExtension(file.name);
-    if (ext === 'csv') {
-      const fileReader = new FileReader();
-      // TODO: Add file load progress
-      fileReader.onload = async function onload(fileLoadedEvent) {
-        const text = fileLoadedEvent.target.result;
-        log.setCategory('loadClientListFile');
-        log.log(`Successfully loaded client list file "${file.name}"`);
-        resolve(getClientsFromCsv(text));
-      };
-      fileReader.onerror = function onerror(event) {
-        log.setCategory('loadClientListFile');
-        log.showError(`Loading file "${file.name}" failed: ${event.target.error}`);
-        reject(new Error(event.target.error));
-      };
-      log.setCategory('loadClientListFile');
-      log.log(`Loading client list file "${file.name}"`);
-      fileReader.readAsText(file, 'UTF-8');
-    } else {
-      log.setCategory('loadClientListFile');
-      log.showError(`Client list file's extension must be '.csv' not '.${ext}'.`);
-    }
-  });
+export default async function getClientsFromFile(file) {
+  const csvString = await loadCsvFile(file);
+  return getClientsFromCsv(csvString);
 }
