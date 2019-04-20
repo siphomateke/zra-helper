@@ -6,6 +6,15 @@ import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { createClientAction, ClientActionRunner } from '../base';
 
+/* eslint-disable max-len */
+/**
+ * @typedef {Object} RunnerInput
+ * @property {import('@/backend/constants').Date} [fromDate]
+ * @property {import('@/backend/constants').Date} [toDate]
+ * @property {import('@/backend/client_actions/pending_liabilities').ParsedPendingLiabilitiesOutput[]} lastPendingLiabilities
+ */
+/* eslint-enable max-len */
+
 const TaxPayerLedgerClientAction = createClientAction({
   id: 'taxPayerLedger',
   name: 'Get tax payer ledger',
@@ -24,7 +33,9 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
   }
 
   async runInternal() {
-    const { task: parentTask, client, input } = this.storeProxy;
+    const { task: parentTask, client } = this.storeProxy;
+    /** @type {{input: RunnerInput}} */
+    const { input } = this.storeProxy;
     const { fromDate, toDate } = input;
 
     // Get data for each tax account
