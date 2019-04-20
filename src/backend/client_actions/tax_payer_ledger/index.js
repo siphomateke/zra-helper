@@ -92,8 +92,10 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
 
             const records = [];
             for (const response of Object.values(allResponses)) {
-              for (const record of response.value.records) {
-                records.push(record);
+              if (!('error' in response)) {
+                for (const record of response.value.records) {
+                  records.push(record);
+                }
               }
             }
 
