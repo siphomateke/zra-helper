@@ -48,8 +48,6 @@ import { taskFunction, getClientIdentifier } from '@/backend/client_actions/util
  * @property {Object.<string, ActionObject>} actions Client actions stored by IDs.
  * @property {Object.<string, ActionInstanceData>} instances
  * Client action runner instances' data stored by instance ID.
- * @property {Object.<string, ActionInstanceClass>} instanceClasses
- * Client action runner instances stored by instance ID.
  * @property {ActionRun[]} runs Action runs stored by run IDs.
  * @property {number} currentRunId Which run the program is currently on.
  */
@@ -97,20 +95,24 @@ function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
   return instanceId;
 }
 
+/**
+ * @type {Object.<string, ActionInstanceClass>}
+ * Client action runner instances stored by instance ID.
+ */
+const instanceClasses = {};
+
 /** @type {import('vuex').Module<State>} */
 const vuexModule = {
   namespaced: true,
   state: {
     actions: {},
     instances: {},
-    instanceClasses: {},
     runs: [],
     currentRunId: null,
   },
   getters: {
     getActionById: state => id => state.actions[id],
     getInstanceById: state => id => state.instances[id],
-    getInstanceClassById: state => id => state.instanceClasses[id],
     getRunById: state => id => state.runs[id],
     currentRun: state => state.runs[state.currentRunId],
     previousRun: state => state.runs[state.currentRunId - 1],
@@ -384,7 +386,7 @@ const vuexModule = {
 
       // Actually create the instance and store the class whose methods will be called.
       const instanceClass = new Runner(instanceId);
-      Vue.set(state.instanceClasses, instanceId, instanceClass);
+      instanceClasses[instanceId] = instanceClass;
 
       // Initialize the instance's data.
       instanceClass.init({ client, config });
@@ -489,7 +491,7 @@ const vuexModule = {
               }
 
               /** @type {ActionInstanceClass} */
-              const instanceClass = getters.getInstanceClassById(instanceId);
+              const instanceClass = instanceClasses[instanceId];
               await instanceClass.run({
                 task,
                 loggedInTabId,
@@ -539,7 +541,6 @@ const vuexModule = {
      * @param {boolean} payload.retry If this run is just a retry of a previous one.
      */
     async runActionsOnClient({
-      state,
       rootState,
       commit,
       getters,
@@ -664,7 +665,7 @@ const vuexModule = {
                 throw error;
               } finally {
                 for (const instanceId of instanceIds) {
-                  state.instanceClasses[instanceId].checkIfShouldRetry();
+                  instanceClasses[instanceId].checkIfShouldRetry();
                 }
               }
 
