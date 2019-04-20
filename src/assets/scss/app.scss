@@ -36,6 +36,24 @@
 .card-header-title {
   padding: 0.3rem 0.75rem;
 }
+
+.datepicker {
+  .datepicker-header {
+    margin-bottom: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
+  .datepicker-body {
+    min-height: auto;
+    display: flex;
+    justify-content: center;
+  }
+  .datepicker-table {
+    margin: 0;
+    .datepicker-cell {
+      padding: 0.4rem;
+    }
+  }
+}
 // #endregion
 
 .bordered-section {
@@ -72,4 +90,12 @@ $spinner-size: 2;
 // Fix horizontal form labels being really small
 .field-label {
   flex-grow: 5;
+}
+
+.modal-card {
+  overflow: visible;
+}
+
+.modal-card-body {
+  overflow: visible;
 }

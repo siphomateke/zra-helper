@@ -38,8 +38,7 @@ const GetAcknowledgementsOfReturnsClientAction = createClientAction({
 });
 GetAcknowledgementsOfReturnsClientAction.Runner = class extends ReturnHistoryRunner {
   constructor(data) {
-    super(data);
-    this.storeProxy.actionId = GetAcknowledgementsOfReturnsClientAction.id;
+    super(data, GetAcknowledgementsOfReturnsClientAction);
 
     this.downloadItemsTaskTitle = count => `Download ${count} acknowledgement receipt(s)`;
     this.downloadTaxTypeTaskTitle = taxType => `Download ${taxType} acknowledgement receipts`;

@@ -266,6 +266,10 @@ const GetPaymentReceiptsClientAction = createClientAction({
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',
   requiredFeatures: [browserFeatures.MHTML],
+  defaultInput: () => ({
+    fromDate: '01/10/2013',
+    toDate: moment().format('DD/MM/YYYY'),
+  }),
 });
 
 /**
@@ -278,12 +282,7 @@ const GetPaymentReceiptsClientAction = createClientAction({
 
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
-    super(data);
-    this.storeProxy.actionId = GetPaymentReceiptsClientAction.id;
-    this.storeProxy.input = {
-      fromDate: '01/10/2013',
-      toDate: moment().format('DD/MM/YYYY'),
-    };
+    super(data, GetPaymentReceiptsClientAction);
   }
 
   async runInternal() {

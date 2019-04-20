@@ -7,8 +7,7 @@ const TestLoginClientAction = createClientAction({
 
 TestLoginClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
-    super(data);
-    this.storeProxy.actionId = TestLoginClientAction.id;
+    super(data, TestLoginClientAction);
   }
 };
 

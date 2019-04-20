@@ -1,8 +1,9 @@
 <template>
   <button
+    v-bind="$attrs"
     class="button"
     type="button"
-    @click="$emit('click')"
+    v-on="$listeners"
   >
     <span v-if="label">{{ label }}</span>
     <slot/>
@@ -16,6 +17,7 @@
 <script>
 export default {
   name: 'OpenModalButton',
+  inheritAttrs: false,
   props: {
     label: {
       type: String,
