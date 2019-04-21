@@ -1,10 +1,17 @@
 import { createClientAction } from '../base';
-import { ReturnHistoryRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
+import {
+  ReturnHistoryRunner,
+  generateDownloadFilename,
+  GetReturnHistoryClientActionOptions,
+  ReturnHistoryDownloadFn,
+} from './base';
 import { downloadPage } from '../utils';
 
-/** @type {import('./base').ReturnHistoryDownloadFn} */
-function downloadAckReceipt({
-  taxReturn, client, taxType, parentTaskId,
+const downloadAckReceipt: ReturnHistoryDownloadFn = function ({
+  taxReturn,
+  client,
+  taxType,
+  parentTaskId,
 }) {
   const referenceNumber = taxReturn.referenceNo;
   return downloadPage({
@@ -26,7 +33,7 @@ function downloadAckReceipt({
       },
     },
   });
-}
+};
 
 /**
  * Action to download acknowledgement receipts of e-Returns

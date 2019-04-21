@@ -1,8 +1,20 @@
+import { TaxAccountName } from './constants';
+
+interface ExtendedErrorJson {
+  message: string;
+  code: string | null;
+  type: string;
+  props?: any;
+  errorType: 'ExtendedError';
+}
+
 export class ExtendedError {
-  constructor(message, code = null, props = {}) {
+  error: Error;
+
+  type: string = '';
+
+  constructor(message: string, public code: string | null = '', public props: object = {}) {
     this.error = new Error(message);
-    this.code = code;
-    this.props = props;
     this.setType('ExtendedError');
   }
 
@@ -18,27 +30,15 @@ export class ExtendedError {
     return this.error.name;
   }
 
-  setType(type) {
+  setType(type: string) {
     this.type = type;
     this.error.name = this.type;
   }
 
   /**
-   * @typedef ExtendedErrorJson
-   * @property {string} message
-   * @property {string} code
-   * @property {string} type
-   * @property {any} [props]
-   * @property {'ExtendedError'} errorType
-   */
-
-  /**
    * Creates an ExtendedError from a JSON representation of one
-   *
-   * @param {ExtendedErrorJson} json
-   * @returns {ExtendedError}
    */
-  static fromJSON(json) {
+  static fromJSON(json: ExtendedErrorJson): ExtendedError {
     const error = new ExtendedError(json.message, json.code, json.props);
     error.setType(json.type);
     return error;
@@ -46,10 +46,8 @@ export class ExtendedError {
 
   /**
    * Converts this error to a JSON object
-   *
-   * @returns {ExtendedErrorJson}
    */
-  toJSON() {
+  toJSON(): ExtendedErrorJson {
     return {
       message: this.message,
       code: this.code,
@@ -60,47 +58,51 @@ export class ExtendedError {
   }
 }
 
+interface ZraErrorProps {
+  /** The error message reported by ZRA. */
+  error: string;
+}
 export class ZraError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string} props.error The error message reported by ZRA.
-   */
-  constructor(message, code = null, props = { error: null }) {
+  constructor(message: string, code = null, props: ZraErrorProps) {
     super(message, code, props);
     this.setType('ZraError');
   }
 }
+
+interface ElementsNotFoundErrorProps {
+  /** Selectors of the elements that were not found. */
+  selectors: string[];
+  /** HTML of Node which we are searching for elements in. */
+  html?: string | null;
+}
 export class ElementsNotFoundError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string[]} props.selectors Selectors of the elements that were not found.
-   * @param {string} [props.html] HTML of Node which we are searching for elements in.
-   */
-  constructor(message, code = null, props = { selectors: null, html: null }) {
-    super(message, code, props);
+  constructor(message: string, code = null, props: ElementsNotFoundErrorProps) {
+    super(message, code, Object.assign({ html: null }, props));
     this.setType('ElementsNotFoundError');
   }
 }
+interface ElementNotFoundErrorProps {
+  /** Selectors of the elements that were not found. */
+  selector: string;
+  /** HTML of Node which we are searching for elements in. */
+  html?: string | null;
+}
 export class ElementNotFoundError extends ElementsNotFoundError {
-  /**
-   * @param {Object} props
-   * @param {string} props.selector Selector of the element that was not found.
-   * @param {string} [props.html] HTML of Node which we are searching for elements in.
-   */
-  constructor(message, code = null, props = { selector: null, html: null }) {
+  constructor(message: string, code = null, props: ElementNotFoundErrorProps) {
     super(message, code, {
       selectors: [props.selector],
-      html: props.html,
+      html: props.html || null,
     });
     this.setType('ElementNotFoundError');
   }
 }
+
+interface ImageLoadErrorProps {
+  /** The url of the image that failed to load. */
+  src: string;
+}
 export class ImageLoadError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string} props.src The url of the image that failed to load.
-   */
-  constructor(message, code = null, props = { src: null }) {
+  constructor(message: string, code = null, props: ImageLoadErrorProps) {
     super(message, code, props);
     this.setType('ImageLoadError');
   }
@@ -111,87 +113,89 @@ export class CaptchaLoadError extends ImageLoadError {
     this.setType('CaptchaLoadError');
   }
 }
-// codes include:
-// PasswordExpired
-// InvalidUsernameOrPassword
-// WrongClient
 
+interface LoginErrorProps {
+  /** The name of the client that failed to login. */
+  clientName?: string;
+  /** Information about the client that is currently logged in. */
+  loggedInClient?: string;
+  /** The number of login attempts remaining before the client's account is locked. */
+  attemptsRemaining?: number | null;
+  /** Entire document string.Only thrown when the login error is unknown. */
+  documentString?: string | null;
+}
+type LoginErrorCodes = 'PasswordExpired' | 'InvalidUsernameOrPassword' | 'WrongClient';
 // TODO: Handle storing attempts remaining better. Perhaps a class that extends LoginError somehow
 export class LoginError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string} [props.clientName] The name of the client that failed to login.
-   * @param {string} [props.loggedInClient]
-   * Information about the client that is currently logged in.
-   * @param {string} [props.attemptsRemaining]
-   * The number of login attempts remaining before the client's account is locked.
-   * @param {string} [props.documentString]
-   * Entire document string. Only thrown when the login error is unknown.
-   */
-  constructor(message, code = null, props = {
-    clientName: null,
-    loggedInClient: null,
-    attemptsRemaining: null,
-    documentString: null,
-  }) {
-    super(message, code, props);
+  constructor(message: string, code: LoginErrorCodes | null = null, props: LoginErrorProps) {
+    super(message, code, Object.assign({ documentString: null }, props));
     this.setType('LoginError');
   }
 }
+
+interface LogoutErrorProps {
+  /** HTML of logout page where the 'logged out successfully message should have been'. */
+  html?: string | null;
+}
 export class LogoutError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string} [props.html]
-   * HTML of logout page where the 'logged out successfully message should have been'.
-   */
-  constructor(message, code = null, props = { html: null }) {
-    super(message, code, props);
+  constructor(message: string, code = null, props: LogoutErrorProps) {
+    super(message, code, Object.assign({ html: null }, props));
     this.setType('LogoutError');
   }
 }
 
+interface TabErrorProps {
+  /** The ID of the tab which had an error. */
+  tabId: number;
+}
+type TabErrorCodes = 'Closed' | 'TimedOut';
 export class TabError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {number} props.tabId The ID of the tab which had an error.
-   */
-  constructor(message, code = null, props = { tabId: null }) {
+  constructor(message: string, code: TabErrorCodes | null = null, props: TabErrorProps) {
     super(message, code, props);
     this.setType('TabError');
   }
 }
+
+interface ExecuteScriptErrorProps {
+  /** The ID of the tab to which an attempt was made to execute a script. */
+  tabId: number;
+}
+type ExecuteScriptErrorTypes = 'NoAccess';
 export class ExecuteScriptError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {number} props.tabId The ID of the tab to which an attempt was made to execute a script.
-   */
-  constructor(message, code = null, props = { tabId: null }) {
+  constructor(
+    message: string,
+    code: ExecuteScriptErrorTypes | null = null,
+    props: ExecuteScriptErrorProps,
+  ) {
     super(message, code, props);
     this.setType('ExecuteScriptError');
   }
 }
+
+interface SendMessageErrorProps {
+  /** The ID of the tab to which sending a message failed. */
+  tabId: number;
+}
 export class SendMessageError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {number} props.tabId The ID of the tab to which sending a message failed.
-   */
-  constructor(message, code = null, props = { tabId: null }) {
+  constructor(message: string, code = null, props: SendMessageErrorProps) {
     super(message, code, props);
     this.setType('SendMessageError');
   }
 }
+
 export class InvalidReceiptError extends ExtendedError {
   constructor(...args) {
     super(...args);
     this.setType('InvalidReceiptError');
   }
 }
+
+interface DownloadErrorProps {
+  downloadItem: browser.downloads.DownloadItem;
+}
+type DownloadErrorCodes = browser.downloads.InterruptReason;
 export class DownloadError extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {Object} props.downloadItem
-   */
-  constructor(message, code = null, props = { downloadItem: null }) {
+  constructor(message: string, code: DownloadErrorCodes | null = null, props: DownloadErrorProps) {
     super(message, code, props);
     this.setType('DownloadError');
   }
@@ -209,35 +213,34 @@ export class MissingTaxTypesError extends ExtendedError {
     this.setType('MissingTaxTypes');
   }
 }
+
+interface TaxAccountNameNotFoundProps {
+  /** The name of the account that could not be found. */
+  accountName: TaxAccountName;
+}
 export class TaxAccountNameNotFound extends ExtendedError {
-  /**
-   * @param {Object} props
-   * @param {string} props.accountName The name of the account that could not be found.
-   */
-  constructor(message, code = null, props = { accountName: null }) {
+  constructor(message: string, code = null, props: TaxAccountNameNotFoundProps) {
     super(message, code, props);
     this.setType('TaxAccountNameNotFound');
   }
 }
 
-/**
- * @typedef JsonError
- * @property {string} message
- * @property {string} [code]
- * @property {string} [type]
- * @property {Object} [props]
- * @property {'ExtendedError'} [errorType]
- */
+export interface JsonError {
+  message: string;
+  code?: string;
+  type?: string;
+  props?: object;
+  errorType?: 'ExtendedError';
+}
 
 /**
  * Converts an error to a JSON object
- *
- * @param {Error} error
- * @returns {JsonError|null}
  */
-export function errorToJson(error) {
+export function errorToJson(error: Error): JsonError | null {
   if (error) {
-    let output = {};
+    let output = {
+      message: '',
+    };
     if (error instanceof ExtendedError) {
       output = error.toJSON();
     } else if (error.message) {
@@ -252,11 +255,8 @@ export function errorToJson(error) {
 
 /**
  * Creates an Error from it's JSON representation
- *
- * @param {JsonError} json
- * @returns {ExtendedError|Error}
  */
-export function errorFromJson(json) {
+export function errorFromJson(json: JsonError): ExtendedError | Error {
   let output = null;
   if (json.errorType === 'ExtendedError') {
     output = ExtendedError.fromJSON(json);
@@ -268,10 +268,8 @@ export function errorFromJson(json) {
 
 /**
  * Converts any error type to a string.
- * @param {*} error
- * @returns {string}
  */
-export function errorToString(error) {
+export function errorToString(error: any): string {
   let errorString = '';
   if (typeof error === 'object' && !(error instanceof Error) && error.message) {
     errorString = error.message;

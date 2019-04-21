@@ -1,10 +1,17 @@
 import { createClientAction } from '../base';
-import { ReturnHistoryRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
+import {
+  ReturnHistoryRunner,
+  generateDownloadFilename,
+  GetReturnHistoryClientActionOptions,
+  ReturnHistoryDownloadFn,
+} from './base';
 import { downloadPage } from '../utils';
 
-/** @type {import('./base').ReturnHistoryDownloadFn} */
-function downloadReturn({
-  taxReturn, client, taxType, parentTaskId,
+const downloadReturn: ReturnHistoryDownloadFn = function ({
+  taxReturn,
+  client,
+  taxType,
+  parentTaskId,
 }) {
   // Not sure why these tax types are treated differently but the ZRA website had this check.
   const taxTypesFromHistory = ['01', '02', '03', '05', '06', '09', '07', '08', '12'];
@@ -33,7 +40,7 @@ function downloadReturn({
       },
     },
   });
-}
+};
 
 /**
  * Action to download tax returns.

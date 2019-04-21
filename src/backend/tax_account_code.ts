@@ -3,35 +3,44 @@ import createTask from '@/transitional/tasks';
 import { taskFunction } from '@/backend/client_actions/utils';
 import { xmlRequest } from '@/backend/utils';
 import store from '@/store';
-import { reportCodes } from './reports';
+import { ReportCode } from './reports';
+import { TaxAccountName, TaxAccountCode, TaxTypeNumericalCode } from './constants';
+import { TaskId } from '@/store/modules/tasks';
 
 /**
  * Removes client information from a tax account name.
- * @param {string} accountName
- * @return {string} Anonymized account name.
+ * @return Anonymized account name.
  */
-export function getAnonymousAccountName(accountName) {
+export function getAnonymousAccountName(accountName: TaxAccountName): string {
   // Remove client name from account name
   return accountName.replace(/.+?-/, '');
 }
 
-/**
- * @typedef {Object} AccountData
- * @property {string} name The account's code.
- * @property {string} value The account's name.
- */
+interface AccountData {
+  /** The account's code. */
+  name: TaxAccountCode;
+  /** The account's name. */
+  value: TaxAccountName;
+}
+
+interface GetAccountCodeTaskFnOptions {
+  /** The name of the account whose code we would like to know. */
+  accountName: TaxAccountName;
+  /** The numerical tax type ID of the account whose code we would like to know. */
+  taxTypeId: TaxTypeNumericalCode;
+  parentTaskId: TaskId;
+}
 
 /**
  * Gets the code of an account whose name and tax type is known. The reason we would want the code
  * of an account is to generate reports for that account.
- * @param {Object} options
- * @param {string} options.accountName The name of the account whose code we would like to know.
- * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
- * The numerical tax type ID of the account whose code we would like to know.
- * @param {number} options.parentTaskId
- * @returns {Promise.<string>} The account code.
+ * @returns The account code.
  */
-export default async function getAccountCodeTask({ accountName, taxTypeId, parentTaskId }) {
+export default async function getAccountCodeTask({
+  accountName,
+  taxTypeId,
+  parentTaskId,
+}: GetAccountCodeTaskFnOptions): Promise<TaxAccountCode> {
   const task = await createTask(store, {
     title: `Determine ID of account: "${accountName}"`,
     anonymousTitle: `Determine ID of account: ${getAnonymousAccountName(accountName)}`,
@@ -50,14 +59,13 @@ export default async function getAccountCodeTask({ accountName, taxTypeId, paren
         method: 'post',
         data: {
           prm_ajaxComboTarget: 'accountName',
-          reportCode: reportCodes.PENDING_LIABILITY,
+          reportCode: ReportCode.PENDING_LIABILITY,
           prm_TaxType: taxTypeId,
         },
       });
 
-      /** @type {AccountData|AccountData[]} response */
-      let accountData = response['request-params'].param;
-      let accountNameNotFound = false;
+      let accountData: AccountData | AccountData[] | undefined = response['request-params'].param;
+      let accountNameNotFound: boolean = false;
       if (Array.isArray(accountData)) {
         // If there is more than one tax account with the specified tax type, use the one whose
         // name matches the `accountName` param.
@@ -69,9 +77,11 @@ export default async function getAccountCodeTask({ accountName, taxTypeId, paren
         accountNameNotFound = true;
       }
       if (accountNameNotFound) {
-        throw new TaxAccountNameNotFound(`Cannot find account with name "${accountName}"`, null, { accountName });
+        throw new TaxAccountNameNotFound(`Cannot find account with name "${accountName}"`, null, {
+          accountName,
+        });
       }
-      const accountCode = accountData.name;
+      const accountCode = accountData!.name;
       return accountCode;
     },
   });

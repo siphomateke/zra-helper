@@ -1,25 +1,26 @@
 import Papa from 'papaparse';
 import log from '@/transitional/log';
-import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@/backend/constants';
+import { ClientPropValidationError, clientPropValidationErrorMessages } from '@/backend/constants';
 
-/**
- * @typedef {Object} LoadedClient
- * @property {string} name
- * @property {string} username
- * @property {string} password
- */
+interface LoadedClient {
+  name?: string;
+  username?: string;
+  password?: string;
+}
 
-/**
- * @typedef {import('@/backend/constants').ParsedClient} ParsedClient
- * @typedef {import('@/backend/constants').ClientValidationError} ClientValidationError
- */
+// FIXME: Get these from LoadedClient or `requiredProps` in `validateClient()`
+type ClientProps = 'name' | 'username' | 'password';
 
-/**
- * @typedef ClientValidationResult
- * @property {boolean} valid True if the client is valid
- * @property {string[]} [errors] An array of errors that will be set when the client is invalid
- * @property {Object.<string, ClientValidationError[]>} [propErrors] List of errors per property.
- */
+type PropErrors = { [key in ClientProps]?: ClientPropValidationError[] };
+
+interface ClientValidationResult {
+  /** True if the client is valid */
+  valid: boolean;
+  /** An array of errors that will be set when the client is invalid */
+  errors: string[];
+  /** List of errors per property. */
+  propErrors: PropErrors;
+}
 
 /**
  * Checks if a client is valid
@@ -29,19 +30,19 @@ import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@
  * - username is a 10 digit number
  * - password is at least 8 characters long
  *
- * @param {LoadedClient} client The client to validate
- * @returns {ClientValidationResult}
+ * @param  client The client to validate
  */
-function validateClient(client) {
+function validateClient(client: LoadedClient): ClientValidationResult {
   /** Properties that must exist on each client */
-  const requiredProps = ['name', 'username', 'password'];
-  const propErrors = {};
+  // FIXME: Remove this since it's handled by Typescript now.
+  const requiredProps: Array<keyof LoadedClient> = ['name', 'username', 'password'];
+  const propErrors: PropErrors = {};
   const missingProps = [];
   for (const prop of requiredProps) {
     propErrors[prop] = [];
     if (!client[prop]) {
       missingProps.push(prop);
-      propErrors[prop].push(clientPropValidationErrors.MISSING);
+      propErrors[prop]!.push(ClientPropValidationError.MISSING);
     }
   }
   const validationErrors = [];
@@ -50,15 +51,15 @@ function validateClient(client) {
     validationErrors.push(`Properties missing: ${missingString}`);
   }
   if (!missingProps.includes('username')) {
-    const tpin = client.username;
+    const tpin = client.username!;
     if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
       validationErrors.push(clientPropValidationErrorMessages.TPIN_SHORT);
-      propErrors.username.push(clientPropValidationErrors.TPIN_SHORT);
+      propErrors.username!.push(ClientPropValidationError.TPIN_SHORT);
     }
   }
-  if (!missingProps.includes('password') && client.password.length < 8) {
+  if (!missingProps.includes('password') && client.password!.length < 8) {
     validationErrors.push(clientPropValidationErrorMessages.PASSWORD_SHORT);
-    propErrors.password.push(clientPropValidationErrors.PASSWORD_SHORT);
+    propErrors.password!.push(ClientPropValidationError.PASSWORD_SHORT);
   }
   return {
     valid: validationErrors.length === 0,
@@ -70,29 +71,28 @@ function validateClient(client) {
 /**
  * Gets an array of clients from a csv string
  *
- * @param {string} csvString The CSV to parse as a string
- * @param {Papa.ParseConfig} config CSV parsing config
- * @returns {ParsedClient[]}
+ * @param csvString The CSV to parse as a string
+ * @param config CSV parsing config
  */
-function getClientsFromCsv(csvString, config = {}) {
+function getClientsFromCsv(csvString: string, config: Papa.ParseConfig = {}): LoadedClient[] {
   const list = [];
 
   log.setCategory('getClientList');
   log.log('Parsing CSV');
-  const parseConfig = Object.assign({
-    header: true,
-    trimHeaders: true,
-    skipEmptyLines: true,
-  }, config);
+  const parseConfig = Object.assign(
+    {
+      header: true,
+      trimHeaders: true,
+      skipEmptyLines: true,
+    },
+    config,
+  );
   const parsed = Papa.parse(csvString, parseConfig);
 
   /**
    * Converts a row index (from Papa.parse) to a line number
-   *
-   * @param {number} rowIndex
-   * @returns {number}
    */
-  function toLineNumber(rowIndex) {
+  function toLineNumber(rowIndex: number): number {
     let lineNumber = rowIndex + 1;
     if (parseConfig.header) {
       // Since the headers aren't included in the parsed output,
@@ -105,9 +105,8 @@ function getClientsFromCsv(csvString, config = {}) {
   /**
    * An object whose keys are row numbers and the errors associated with
    * the row numbers are values
-   * @type {Object.<string, Papa.ParseError[]>}
    */
-  const rowErrors = {};
+  const rowErrors: { [key: string]: Papa.ParseError[] } = {};
   for (const error of parsed.errors) {
     if (!Array.isArray(rowErrors[error.row])) {
       rowErrors[error.row] = [];
@@ -117,7 +116,9 @@ function getClientsFromCsv(csvString, config = {}) {
 
   // Output all the row errors
   for (const row of Object.keys(rowErrors)) {
-    const errors = rowErrors[row].map(error => `CSV parse error in row ${toLineNumber(error.row)}: ${error.message}`);
+    const errors = rowErrors[row].map(
+      error => `CSV parse error in row ${toLineNumber(error.row)}: ${error.message}`,
+    );
     log.showError(errors.join(', '));
   }
 
@@ -180,23 +181,20 @@ function getClientsFromCsv(csvString, config = {}) {
 
 /**
  * Extracts a filenames extension.
- *
- * @param {string} filename
- * @returns {string} The extension
+ * @param filename
+ * @returns The extension
  */
-function getExtension(filename) {
+function getExtension(filename: string): string {
   const split = filename.split('.');
   return split[split.length - 1];
 }
 
 /**
  * Gets clients from a CSV file.
- *
- * @param {File} file The CSV file to get clients from
- * @returns {Promise.<ParsedClient[]>}
+ * @param file The CSV file to get clients from
  * @throws Will throw an error if the file fails to load
  */
-export default function getClientsFromFile(file) {
+export default function getClientsFromFile(file: File): Promise<LoadedClient[]> {
   return new Promise((resolve, reject) => {
     const ext = getExtension(file.name);
     if (ext === 'csv') {

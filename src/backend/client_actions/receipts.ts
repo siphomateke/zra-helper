@@ -5,18 +5,18 @@ import { runContentScript } from '../utils';
 import {
   changeLiteMode,
   getPagedData,
+  GetDataFromPageFunction,
+  ParallelTaskMapResponse,
+  GetTaskData,
 } from './utils';
+import { TaskId } from '@/store/modules/tasks';
 
-/**
- * @typedef {'payment'} ReceiptType
- */
+export type ReceiptType = 'payment';
 
 /**
  * Extracts information from a receipt that has been opened in a tab.
- * @param {browser.tabs.Tab} tab
- * @param {ReceiptType} type
  */
-export async function getDataFromReceipt(tab, type) {
+export async function getDataFromReceipt(tab: browser.tabs.Tab, type: ReceiptType) {
   const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
   if (!receiptData.referenceNumber) {
     throw new InvalidReceiptError('Invalid receipt; missing reference number.');
@@ -35,40 +35,41 @@ export function finishDownloadingReceipts() {
   return changeLiteMode(true);
 }
 
-/**
- * @template R
- * @typedef {Object} GetReceiptDataResponse
- * @property {R} data The receipt data fetched from all pages in a single flat array.
- * @property {number[]} failedPages Pages from which receipt data could not be fetched.
- */
+interface GetReceiptDataResponse<R> {
+  /** The receipt data fetched from all pages in a single flat array. */
+  data: R;
+  /** Pages from which receipt data could not be fetched. */
+  failedPages: number[];
+}
+
+interface GetReceiptDataFnOptions<Response> {
+  parentTaskId: TaskId;
+  /** Title of the main task. */
+  taskTitle: string;
+  /** Function that generates the title of a page task using a page number. */
+  getPageTaskTitle: (page: number) => string;
+  getDataFunction: GetDataFromPageFunction<Response[]>;
+  /** Specific pages to fetch. */
+  pages: number[];
+}
 
 /**
  * Gets data from multiple pages that is required to download receipts.
- * @template Response
- * @param {Object} options
- * @param {number} options.parentTaskId
- * @param {string} options.taskTitle
- * Title of the main task.
- * @param {(page: number) => string} options.getPageTaskTitle
- * Function that generates the title of a page task using a page number.
- * @param {import('./utils').GetDataFromPageFunction<Response[]>} options.getDataFunction
- * @param {number[]} [options.pages] Specific pages to fetch.
- * @returns {Promise.<GetReceiptDataResponse<Response[]>>}
  */
 // TODO: Rename this to apply to downloading returns as well as return receipts.
-export async function getReceiptData({
+export async function getReceiptData<Response>({
   parentTaskId,
   taskTitle,
   getPageTaskTitle,
   getDataFunction,
   pages = [],
-}) {
+}: GetReceiptDataFnOptions<Response>): Promise<GetReceiptDataResponse<Response[]>> {
   const task = await createTask(store, {
     title: taskTitle,
     parent: parentTaskId,
   });
 
-  const getPageSubTask = (page, subTaskParentId) => ({
+  const getPageSubTask: GetTaskData = (page, subTaskParentId) => ({
     title: getPageTaskTitle(page),
     parent: subTaskParentId,
     indeterminate: true,
@@ -81,14 +82,16 @@ export async function getReceiptData({
     pages,
   });
 
-  const data = [];
-  const failedPages = [];
+  const data: Response[] = [];
+  const failedPages: number[] = [];
   for (const response of responses) {
     if (!('error' in response)) {
       if (Array.isArray(response.value)) {
         data.push(...response.value);
       } else {
-        throw new Error('Receipt data fetched from a page must be an array. For example, an array of reference numbers.');
+        throw new Error(
+          'Receipt data fetched from a page must be an array. For example, an array of reference numbers.',
+        );
       }
     } else {
       failedPages.push(response.page);
@@ -100,7 +103,7 @@ export async function getReceiptData({
 /**
  * Gets the items of all responses that failed from an array of parallel task map responses.
  */
-export function getFailedResponseItems(downloadResponses) {
+export function getFailedResponseItems<R, I>(downloadResponses: ParallelTaskMapResponse<R, I>[]) {
   const items = [];
   for (const response of downloadResponses) {
     if ('error' in response) {

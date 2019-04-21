@@ -1,15 +1,13 @@
-import { getListItemStore } from '@/store/helpers/list_store';
+import { getListItemStore, ListItemStore } from '@/store/helpers/list_store';
 import log from '@/transitional/log';
-
-/** @typedef {import('vuex').Store} VuexStore */
+import { TaskVuexState, TaskState, TaskVuexStateOptional } from '@/store/modules/tasks';
+import { Omit } from '@/utils';
+import { Store } from 'vuex';
 
 /**
  * Gets a task's ListItemStore from an ID.
- * @param {VuexStore} store
- * @param {number} id
- * @returns {import('@/store/helpers/list_store').ListItemStore}
  */
-function taskFromId(store, id) {
+function taskFromId<S>(store: Store<S>, id: number): ListItemStore<S> {
   return getListItemStore(store, {
     id,
     namespace: 'tasks',
@@ -17,67 +15,36 @@ function taskFromId(store, id) {
   });
 }
 
-/** @typedef {import('@/store/modules/tasks').TaskState} TaskState */
+/** Wrapper around the task Vuex module to make it compatible with legacy code. */
+export interface TaskObject extends Omit<TaskVuexState, 'children' | 'parent'> {
+  hasParent: boolean;
+  parent: TaskObject;
+  hasChildren: boolean;
+  children: TaskObject[];
+  /** Total number of child states per state type */
+  childStateCounts: { [key in TaskState]?: number };
+  childStateString: string;
+  complete: boolean;
+  progress: number;
+  progressMax: number;
+  markAsComplete: Function;
+  setError: (error: Error) => void;
+  addStep: (status: string, increment?: number) => void;
+  setStateBasedOnChildren: Function;
+  setErrorBasedOnChildren: Function;
+}
 
-/**
- * @typedef {function} Task.setError
- * @param {Error} error
- */
-
-/**
- * @typedef {function} Task.addStep
- * @param {string} status
- * @param {number} increment
- */
-
-/**
- * @typedef TaskObject.Temp
- * @property {boolean} hasParent
- * @property {TaskObject} parent
- * @property {boolean} hasChildren
- * @property {TaskObject[]} children
- * @property {Object.<TaskState, number>} childStateCounts
- * Total number of child states per state type
- * @property {string} childStateString
- * @property {boolean} complete
- * @property {number} progress
- * @property {number} progressMax
- *
- * @property {function} markAsComplete
- * @property {Task.setError} setError
- * @property {Task.addStep} addStep
- * @property {function} setStateBasedOnChildren
- * @property {function} setErrorBasedOnChildren
- */
-
-/**
- * @typedef {import('@/store/modules/tasks').TaskVuexState} TaskVuexState
- */
-
-/**
- * @typedef {TaskVuexState & TaskObject.Temp} TaskObject
- * Wrapper around the task Vuex module to make it compatible with legacy code.
- */
-
-class Task {
-  constructor() {
-    this.listStoreTask = null;
-  }
+class Task<S> {
+  listStoreTask: ListItemStore<S> | null = null;
 
   /**
    * Creates a new task.
-   * @param {VuexStore} store
-   * @param {TaskVuexState} data
    */
-  async init(store, data) {
+  async init(store: Store<S>, data: TaskVuexStateOptional): Promise<TaskObject> {
     const id = await store.dispatch('tasks/create', data);
     this.listStoreTask = taskFromId(store, id);
     return new Proxy(this, {
-      /**
-       * @param {Task} obj
-       * @param {string} prop
-       */
-      get(obj, prop) {
+      get(obj: Task<S>, prop: string) {
         /**
          * TODO: Find a less hacky way to prevent the Proxy from overriding actual properties and
          * methods.
@@ -92,23 +59,18 @@ class Task {
         }
         return Reflect.get(...arguments); // eslint-disable-line prefer-rest-params
       },
-      /**
-       * @param {Task} obj
-       * @param {string} prop
-       * @param {*} value
-       */
-      set(obj, prop, value) {
+      set(obj: Task<S>, prop: string, value: any) {
         obj.listStoreTask[prop] = value;
         return true;
       },
     });
   }
 
-  setError(error) {
+  setError(error: Error) {
     this.listStoreTask.setError({ error });
   }
 
-  addStep(status, increment = null) {
+  addStep(status: string, increment: number | null = null) {
     const options = { status };
     if (increment !== null) {
       options.increment = increment;
@@ -119,13 +81,14 @@ class Task {
 
 /**
  * TODO: Document this
- * @param {VuexStore} store
- * @param {TaskVuexState} data
- * @returns {Promise.<TaskObject>}
  */
-export default async function createTask(store, data) {
+// FIXME: Make sure the right properties are marked as optional.
+export default async function createTask<S>(
+  store: Store<S>,
+  data: TaskVuexStateOptional,
+): Promise<TaskObject> {
   try {
-    const task = new Task();
+    const task = new Task<S>();
     const taskProxy = await task.init(store, data);
     return taskProxy;
   } catch (error) {

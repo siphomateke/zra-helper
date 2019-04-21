@@ -78,7 +78,7 @@
 <script>
 import CopyToClipboardButton from '@/components/ExportData/CopyToClipboardButton.vue';
 import DownloadButton from '@/components/ExportData/DownloadButton.vue';
-import { exportFormats, exportFormatCodes } from '@/backend/constants';
+import { exportFormats, ExportFormatCode } from '@/backend/constants';
 
 export default {
   name: 'ExportButtons',
@@ -133,7 +133,7 @@ export default {
      */
     defaultFormat: {
       type: String,
-      default: exportFormatCodes.TXT,
+      default: ExportFormatCode.TXT,
     },
   },
   data() {

@@ -1,107 +1,117 @@
-import { exportFormatCodes } from '@/backend/constants';
+import { ExportFormatCode, Client, BrowserFeature } from '@/backend/constants';
 import { objectHasProperties, joinSpecialLast } from '@/utils';
 import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
-import { taskStates } from '@/store/modules/tasks';
+import { TaskState } from '@/store/modules/tasks';
+import { ClientActionOutputs } from '@/store/modules/client_actions/types';
+import { TaskObject } from '@/transitional/tasks';
 
-/**
- * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('../constants').ExportFormatCode} ExportFormatCode
- * @typedef {import('@/transitional/tasks').TaskObject} TaskObject
- */
+interface ClientActionOutputFormatterOptions {
+  clients: Client[];
+  outputs: ClientActionOutputs;
+  format: ExportFormatCode;
+  /** Whether client data in the output should be anonymized. */
+  anonymizeClients: boolean;
+}
 
-/**
- * @typedef {import('@/store/modules/client_actions').ClientActionOutputs} ClientActionOutputs
- *
- * @typedef {Object} ClientActionOutputFormatterOptions
- * @property {Client[]} clients
- * @property {ClientActionOutputs} outputs
- * @property {ExportFormatCode} format
- * @property {boolean} anonymizeClients Whether client data in the output should be anonymized.
- *
- * @callback ClientActionOutputFormatter
- * @param {ClientActionOutputFormatterOptions} options
- * @returns {string}
- */
+type ClientActionOutputFormatter = (options: ClientActionOutputFormatterOptions) => string;
 
-/**
- * @typedef ClientActionOptions
- * @property {string} id A unique camelCase ID to identify this client action.
- * @property {string} name The human-readable name of this client action.
- * @property {new () => ClientActionRunner} [Runner]
- * @property {() => Object} [defaultInput]
- * @property {import('@/backend/constants').BrowserFeature[]} [requiredFeatures]
- * Features this action requires that are only available in certain browsers.
- * @property {boolean} [usesLoggedInTab]
- * Whether this action needs to open a page from a logged in tab.
- * If this is enabled, the page that is opened after logging in will not be closed until the user is
- * about to be logged out.
- * @property {boolean} [requiresTaxTypes]
- * @property {boolean} [hasOutput] Whether this client action returns an output.
- * @property {ExportFormatCode} [defaultOutputFormat]
- * Default output format. Must be set if `hasOutput` is set.
- * @property {ExportFormatCode[]} [outputFormats]
- * The export formats this client action can output. Must be set if `hasOutput` is set.
- * @property {ClientActionOutputFormatter} [outputFormatter]
- * Function that formats the output into different formats such as CSV and JSON.
- *
- * @typedef {Object} ClientActionObject_Temp
- * @property {string} logCategory The log category to use when logging anything in this action.
- *
- * @typedef {ClientActionOptions & ClientActionObject_Temp} ClientActionObject
- */
+// FIXME: Express in type that output settings are required if hasOutput = true.
+interface ClientActionOptions {
+  /** A unique camelCase ID to identify this client action. */
+  id: string;
+  /** The human-readable name of this client action. */
+  name: string;
+  // FIXME: Type this properly based on the current client.
+  defaultInput?: () => object;
+  requiredFeatures?: BrowserFeature[];
+  /**
+   * Whether this action needs to open a page from a logged in tab.
+   * If this is enabled, the page that is opened after logging in will not be closed until the user is
+   * about to be logged out.
+   */
+  usesLoggedInTab?: boolean;
+  requiresTaxTypes?: boolean;
+  /** Whether this client action returns an output. */
+  hasOutput?: boolean;
+  /** Default output format. Must be set if `hasOutput` is set. */
+  defaultOutputFormat?: ExportFormatCode;
+  /** The export formats this client action can output. Must be set if `hasOutput` is set. */
+  outputFormats?: ExportFormatCode[];
+  /** Function that formats the output into different formats such as CSV and JSON. */
+  outputFormatter?: ClientActionOutputFormatter;
+}
 
-/**
- * @typedef {Object} ClientActionRunnerProxy
- * A wrapper around an instance's data in the store that makes it easier to get state and commit
- * mutations.
- * @property {string} id
- * Client action runner instance ID used to retrieve an instance from the store.
- * @property {string} actionId
- * @property {Client} client
- * @property {Object} config
- * @property {number} loggedInTabId
- * @property {TaskObject} task
- * @property {Object} input
- * @property {Object} retryInput
- * @property {string} retryReason The reason why this instance should be retried.
- * @property {boolean} shouldRetry Whether this instance should be retried.
- * @property {any} error
- * @property {any} output
- * @property {boolean} running
- */
+export interface ClientActionObject extends ClientActionOptions {
+  /** The log category to use when logging anything in this action. */
+  logCategory: string;
+  Runner: typeof ClientActionRunner;
+}
+
+export interface ClientActionRunnerProxy {
+  /** Client action runner instance ID used to retrieve an instance from the store. */
+  id: string;
+  actionId: string;
+  client: Client;
+  config: object;
+  loggedInTabId: number;
+  task: TaskObject;
+  input: object;
+  retryInput: object;
+  /** The reason why this instance should be retried. */
+  retryReason: string;
+  /** Whether this instance should be retried. */
+  shouldRetry: boolean;
+  error: any;
+  output: any;
+  running: boolean;
+}
+
+/** Options for {@link ClientActionRunner.init} */
+interface RunnerInitOptions {
+  client: Client;
+  /** This client action's config. */
+  config: object;
+}
+
+interface RunnerRunOptions {
+  /** ID of the logged in tab. */
+  loggedInTabId: number;
+  task: TaskObject;
+}
 
 /**
  * The part of a client action that will actually be run.
  * Each client action runner instance can have its own client, options, parent task, errors and
  * output.
- * @abstract
  */
-export class ClientActionRunner {
-  /**
-   * @param {string} id ID of runner instance in Vuex store.
-   */
-  constructor(id, action) {
-    this.id = id;
+export abstract class ClientActionRunner {
+  storeProxy: ClientActionRunnerProxy;
 
+  /**
+   * @param id ID of runner instance in Vuex store.
+   */
+  constructor(public id: string, action: ClientActionObject) {
     /**
-     * @type {ClientActionRunnerProxy}
      * A wrapper around this instance's data in the store to make it easier to get state and commit
      * mutations.
      */
-    this.storeProxy = new Proxy({}, {
-      get: (_obj, prop) => {
-        const state = store.state.clientActions.instances[this.id];
-        if (typeof prop === 'string' && prop in state) {
-          return state[prop];
-        }
-        return undefined;
+    this.storeProxy = new Proxy(
+      {},
+      {
+        get: (_obj, prop) => {
+          const state = store.state.clientActions.instances[this.id];
+          if (typeof prop === 'string' && prop in state) {
+            return state[prop];
+          }
+          return undefined;
+        },
+        set: (_obj, prop, value) => {
+          store.commit('clientActions/setInstanceProperty', { id: this.id, prop, value });
+          return true;
+        },
       },
-      set: (_obj, prop, value) => {
-        store.commit('clientActions/setInstanceProperty', { id: this.id, prop, value });
-        return true;
-      },
-    });
+    );
 
     this.storeProxy.id = this.id;
     this.storeProxy.actionId = action.id;
@@ -111,11 +121,8 @@ export class ClientActionRunner {
 
   /**
    * Initializes the runner. Must be called before `run()` is called.
-   * @param {Object} data
-   * @param {Client} data.client
-   * @param {Object} data.config this client action's config
    */
-  init(data) {
+  init(data: RunnerInitOptions) {
     this.storeProxy.client = data.client;
     this.storeProxy.config = data.config;
     this.storeProxy.loggedInTabId = null;
@@ -125,8 +132,8 @@ export class ClientActionRunner {
     this.storeProxy.error = null;
     this.storeProxy.output = null;
     this.storeProxy.running = false;
-    this.storeProxy.shouldRetry = null;
-    this.storeProxy.retryReason = null;
+    this.storeProxy.shouldRetry = false;
+    this.storeProxy.retryReason = '';
   }
 
   /**
@@ -134,11 +141,9 @@ export class ClientActionRunner {
    * the actual client action runners which extend `ClientActionRunner`.
    *
    * When run, the client, options and parent task will all be available.
-   * @private
-   * @abstract
    */
-  runInternal() {
-    this.storeProxy.task.state = taskStates.SUCCESS;
+  protected runInternal() {
+    this.storeProxy.task.state = TaskState.SUCCESS;
   }
 
   /**
@@ -147,11 +152,8 @@ export class ClientActionRunner {
    * This is just a wrapper for `runInternal` where the actual runner resides.
    * This prepares data such as the parent task and logged in tab ID for use by `runInternal` as
    * well as setting this runner's error if `runInternal` fails.
-   * @param {Object} data
-   * @param {number} data.loggedInTabId ID of the logged in tab.
-   * @param {TaskObject} data.task
    */
-  async run(data) {
+  async run(data: RunnerRunOptions) {
     this.storeProxy.loggedInTabId = data.loggedInTabId;
     this.storeProxy.task = data.task;
     try {
@@ -177,10 +179,8 @@ export class ClientActionRunner {
         // Don't retry if client's username or password is invalid or their password has expired.
         if (
           error instanceof ExtendedError
-          && (
-            error.type === 'LoginError'
-            && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
-          )
+          && (error.type === 'LoginError'
+            && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword'))
         ) {
           this.storeProxy.shouldRetry = false;
         } else {
@@ -194,9 +194,9 @@ export class ClientActionRunner {
 
   /**
    * Indicates that an instance should be retried and why.
-   * @param {string} reason The reason why this instance should be retried.
+   * @param reason The reason why this instance should be retried.
    */
-  setRetryReason(reason) {
+  setRetryReason(reason: string) {
     this.storeProxy.shouldRetry = true;
     this.storeProxy.retryReason = reason;
   }
@@ -204,24 +204,30 @@ export class ClientActionRunner {
 
 /**
  * Validates a client action's options.
- * @param {ClientActionObject} options
  * @throws {Error}
  */
-function validateActionOptions(options) {
-  const errors = [];
+function validateActionOptions(options: ClientActionOptions) {
+  /** All the validation errors. */
+  const errors: string[] = [];
   if (options.hasOutput) {
-    const validFormats = Object.values(exportFormatCodes);
+    const validFormats: ExportFormatCode[] = Object.values(ExportFormatCode);
 
-    const requiredProperties = ['defaultOutputFormat', 'outputFormats', 'outputFormatter'];
+    const requiredProperties: Array<keyof ClientActionOptions> = [
+      'defaultOutputFormat',
+      'outputFormats',
+      'outputFormatter',
+    ];
     const missing = objectHasProperties(options, requiredProperties);
     if (
       !missing.includes('defaultOutputFormat')
       && !validFormats.includes(options.defaultOutputFormat)
     ) {
-      errors.push(`${JSON.stringify(options.defaultOutputFormat)} is not a valid default output format`);
+      errors.push(
+        `${JSON.stringify(options.defaultOutputFormat)} is not a valid default output format`,
+      );
     }
     if (!missing.includes('outputFormats')) {
-      if (!(Array.isArray(options.outputFormats))) {
+      if (!Array.isArray(options.outputFormats)) {
         errors.push("Property 'outputFormats' must be an array");
       } else {
         const invalid = [];
@@ -240,7 +246,9 @@ function validateActionOptions(options) {
     }
 
     if (missing.length > 0) {
-      errors.push(`If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`);
+      errors.push(
+        `If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`,
+      );
     }
   }
   if (errors.length > 0) {
@@ -248,22 +256,22 @@ function validateActionOptions(options) {
   }
 }
 
-
 /**
  * Creates a new client action from an object.
  * Default options are assigned and then the action is validated.
- * @param {ClientActionOptions} options
- * @returns {ClientActionObject}
  */
-export function createClientAction(options) {
-  const clientAction = Object.assign({
-    defaultInput: () => ({}),
-    hasOutput: false,
-    usesLoggedInTab: false,
-    requiresTaxTypes: false,
-    requiredFeatures: [],
-    logCategory: options.id,
-  }, options);
+export function createClientAction(options: ClientActionOptions): ClientActionObject {
+  const clientAction = Object.assign(
+    {
+      defaultInput: () => ({}),
+      hasOutput: false,
+      usesLoggedInTab: false,
+      requiresTaxTypes: false,
+      requiredFeatures: [],
+      logCategory: options.id,
+    },
+    options,
+  );
 
   validateActionOptions(clientAction);
 
@@ -272,12 +280,9 @@ export function createClientAction(options) {
 
 /**
  * Checks if a key is set in a runner's input
- * @param {Object} input
- * @param {string} key
- * @returns {boolean}
  */
-export function inInput(input, key) {
-  if (input && (key in input)) {
+export function inInput(input: object, key: string): boolean {
+  if (input && key in input) {
     return true;
   }
   return false;

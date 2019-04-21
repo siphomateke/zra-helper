@@ -2,12 +2,7 @@ import { getElement, getElementFromDocument } from '@/backend/content_scripts/he
 import { parseTable } from '@/backend/content_scripts/helpers/zra';
 import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
 
-/**
- * @param {Object} message
- * @param {import('@/backend/client_actions/receipts').ReceiptType} message.type
- * The type of receipt data to get.
- */
-async function listener(message) {
+addContentScriptListener('get_receipt_data', async (message) => {
   let column = '';
   if (message.type === 'payment') {
     column = '4';
@@ -74,6 +69,6 @@ async function listener(message) {
     data.payments = payments;
   }
 
+  // FIXME: Document return value
   return data;
-}
-addContentScriptListener('get_receipt_data', listener);
+});
