@@ -3,10 +3,8 @@ import validateTaxTypeId from './taxTypeId';
 
 /**
  * Validates an array of two-digit numerical tax type IDs.
- * @param {*} value
- * @returns {boolean}
  */
-export default function validate(value) {
+export default function validate(value: any): boolean {
   if (Array.isArray(value)) {
     for (const item of value) {
       if (!validateTaxTypeId(item)) {

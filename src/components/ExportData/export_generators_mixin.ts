@@ -1,4 +1,4 @@
-import { exportFormats, exportFormatCodes } from '@/backend/constants';
+import { exportFormats, ExportFormatCode } from '@/backend/constants';
 
 /** @type {import('vue').ComponentOptions} */
 const ExportGeneratorsMixin = {
@@ -22,7 +22,7 @@ const ExportGeneratorsMixin = {
      */
     defaultFormat: {
       type: String,
-      default: exportFormatCodes.TXT,
+      default: ExportFormatCode.TXT,
     },
   },
   data() {

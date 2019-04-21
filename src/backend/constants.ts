@@ -1,197 +1,170 @@
+import { objectFlip } from '@/utils';
+import { TaxAccount } from './client_actions/utils';
+
 // #region Browser
-/**
- * @typedef {string} BrowserCode
- *
- * @enum {BrowserCode}
- */
-export const browserCodes = {
-  CHROME: 'chrome',
-  FIREFOX: 'firefox',
-};
+export enum BrowserCode {
+  CHROME = 'chrome',
+  FIREFOX = 'firefox',
+}
 
 /**
  * Human-readable names of browsers
- * @type {Object.<BrowserCode, string>}
  */
-export const browserNames = {
-  [browserCodes.CHROME]: 'Chrome',
-  [browserCodes.FIREFOX]: 'Firefox',
+export const BrowserName: { [key in BrowserCode]: string } = {
+  [BrowserCode.CHROME]: 'Chrome',
+  [BrowserCode.FIREFOX]: 'Firefox',
 };
 
-/**
- * @typedef {string} BrowserFeature
- *
- * @enum {BrowserFeature}
- */
-export const browserFeatures = {
-  MHTML: 'saveAsMhtml',
-};
+export enum BrowserFeature {
+  MHTML = 'saveAsMhtml',
+}
 
-/** @type {Object.<BrowserCode, BrowserFeature[]>} */
-export const featuresSupportedByBrowsers = {
-  [browserCodes.CHROME]: [browserFeatures.MHTML],
-  [browserCodes.FIREFOX]: [],
+export const featuresSupportedByBrowsers: { [key in BrowserCode]: BrowserFeature[] } = {
+  [BrowserCode.CHROME]: [BrowserFeature.MHTML],
+  [BrowserCode.FIREFOX]: [],
 };
 // #endregion
 
 // #region Clients
-/**
- * @typedef {string} ClientValidationError
- */
-
-/** @enum {ClientValidationError} */
-export const clientPropValidationErrors = {
-  MISSING: 'MISSING',
-  TPIN_SHORT: 'TPIN_SHORT',
-  PASSWORD_SHORT: 'PASSWORD_SHORT',
-};
+export enum ClientPropValidationError {
+  MISSING = 'MISSING',
+  TPIN_SHORT = 'TPIN_SHORT',
+  PASSWORD_SHORT = 'PASSWORD_SHORT',
+}
 
 /**
  * Human-readable versions of the client property validation error codes.
- * @type {Object.<ClientValidationError, string>}
  */
-export const clientPropValidationErrorMessages = {
-  [clientPropValidationErrors.MISSING]: 'Field must not be blank',
-  [clientPropValidationErrors.TPIN_SHORT]: 'TPIN (username) must be a 10 digit number',
-  [clientPropValidationErrors.PASSWORD_SHORT]: 'Password must be at least 8 characters long',
+export const clientPropValidationErrorMessages: { [key in ClientPropValidationError]: string } = {
+  [ClientPropValidationError.MISSING]: 'Field must not be blank',
+  [ClientPropValidationError.TPIN_SHORT]: 'TPIN (username) must be a 10 digit number',
+  [ClientPropValidationError.PASSWORD_SHORT]: 'Password must be at least 8 characters long',
 };
 
-/** @typedef {string} TPIN */
+/** 10-digit username. */
+export type TPIN = string;
 
-/**
- * @typedef ParsedClient
- * @property {number} id
- * @property {string} name
- * @property {TPIN} username
- * @property {string} password
- * @property {boolean} valid
- * @property {string[]} [errors] An array of errors that will be set when the client is invalid
- * @property {Object.<string, ClientValidationError[]>} [propErrors]
- * List of validation errors per property
- *
- * @typedef {import('@/backend/client_actions/utils').TaxAccount[]} TaxAccounts
- *
- * @typedef {Object} ClientState
- * @property {TaxTypeNumericalCode[]|null} taxTypes
- * List of numerical tax type codes that this client has registered.
- * @property {TaxAccounts} taxAccounts All the tax accounts this client has.
- * @property {TaxAccounts} registeredTaxAccounts Tax accounts whose status is 'registered'.
- *
- * @typedef {ParsedClient & ClientState} Client
- */
+export interface ParsedClient {
+  id: number;
+  name: string;
+  username: TPIN;
+  password: string;
+  valid: boolean;
+  /** An array of errors that will be set when the client is invalid */
+  errors?: string[];
+  /** List of validation errors per property */
+  propErrors?: { [key: string]: ClientPropValidationError[] };
+}
 
-/**
- * @typedef {string} Date Date in the format 'DD/MM/YYYY'
- * @typedef {number} UnixDate
- * @typedef {string} ReferenceNumber
- */
+export interface ClientState {
+  /** List of numerical tax type codes that this client has registered. */
+  taxTypes: TaxTypeNumericalCode[] | null;
+  /** All the tax accounts this client has. */
+  taxAccounts: TaxAccount[];
+  /** Tax accounts whose status is 'registered'. */
+  registeredTaxAccounts: TaxAccount[];
+}
+
+export type Client = ParsedClient & ClientState;
 // #endregion
 
+/** Date in the format 'DD/MM/YYYY' */
+export type Date = string;
+export type UnixDate = number;
+export type ReferenceNumber = string;
+
 // #region Tax Types
-/**
- * @typedef {string} TaxTypeCode
- * Abbreviated tax type name. For example, 'ITX' (income tax) and 'WHT' (withholding tax).
- */
-
-/**
- * @typedef {string} TaxTypeNumericalCode
- * Two-digit tax type code. For example, '01' (income tax) and '02' (value added tax).
- */
-
-/**
- * Enum for tax type codes.
- * @type {Object.<TaxTypeNumericalCode, TaxTypeCode>}
- */
-export const taxTypes = {
-  '01': 'ITX',
-  '02': 'VAT',
-  '03': 'PAYE',
-  '05': 'TOT',
-  '06': 'WHT',
-  '07': 'PTT',
-  '08': 'MINROY',
-  '09': 'TLEVY',
-};
+/** Abbreviated tax type name. For example, 'ITX' (income tax) and 'WHT' (withholding tax). */
+export type TaxTypeCode = string;
+/** Two-digit tax type code. For example, '01' (income tax) and '02' (value added tax). */
+export enum TaxTypeNumericalCode {
+  ITX = '01',
+  VAT = '02',
+  PAYE = '03',
+  TOT = '05',
+  WHT = '06',
+  PTT = '07',
+  MINROY = '08',
+  TLEVY = '09',
+}
 
 // FIXME: Make sure this is used
-/** @type {TaxTypeCode[]} */
+export const taxTypeNumericalCodesArray = Object.values(TaxTypeNumericalCode);
+
+interface TaxTypeNumericalCode2 {
+  ITX: '01';
+  VAT: '02';
+  PAYE: '03';
+  TOT: '05';
+  WHT: '06';
+  PTT: '07';
+  MINROY: '08';
+  TLEVY: '09';
+}
+
+// FIXME: Decide between enum, interface or just something else that works.
+export type TaxTypeCodeMap<T> = { [key in keyof TaxTypeNumericalCode2]?: T };
+export type TaxTypeIdMap<T> = { [key in TaxTypeNumericalCode]?: T };
+
+export const taxTypes = objectFlip(TaxTypeNumericalCode);
+
+// FIXME: Make sure this is used
 export const taxTypeCodes = Object.values(taxTypes);
 
-/**
- * Enum for numerical tax type codes.
- * @type {Object.<TaxTypeCode, TaxTypeNumericalCode>}
- */
-export const taxTypeNumericalCodes = {
-  ITX: '01',
-  VAT: '02',
-  PAYE: '03',
-  TOT: '05',
-  WHT: '06',
-  PTT: '07',
-  MINROY: '08',
-  TLEVY: '09',
-};
-
-// FIXME: Make sure this is used
-/** @type {TaxTypeNumericalCode[]} */
-export const taxTypeNumericalCodesArray = Object.values(taxTypeNumericalCodes);
-
-/**
- * @typedef {string} TaxTypeName
- * Human readable tax type name. For example, 'withholding tax' and 'medical levy tax'.
- */
+/** Human readable tax type name. For example, 'withholding tax' and 'medical levy tax'. */
+export type TaxTypeName = string;
 
 /**
  * Maps tax type names to their corresponding numerical codes.
  * This is primarily used when parsing payment history receipts.
- * @type {Object.<TaxTypeName, TaxTypeNumericalCode>}
  */
-export const taxTypeNames = {
-  'income tax': taxTypeNumericalCodes.ITX,
-  'value added tax': taxTypeNumericalCodes.VAT,
-  'employment tax (pay as you earn)': taxTypeNumericalCodes.PAYE,
-  'turnover tax': taxTypeNumericalCodes.TOT,
-  'withholding tax': taxTypeNumericalCodes.WHT,
-  'property transfer tax': taxTypeNumericalCodes.PTT,
-  'mineral royalty': taxTypeNumericalCodes.MINROY,
-  'mineral royalty tax': taxTypeNumericalCodes.MINROY,
-  'medical levy tax': taxTypeNumericalCodes.TLEVY,
+// FIXME: Fix this typing
+export const taxTypeNames: { [key in TaxTypeName]: TaxTypeNumericalCode } = {
+  'income tax': TaxTypeNumericalCode.ITX,
+  'value added tax': TaxTypeNumericalCode.VAT,
+  'employment tax (pay as you earn)': TaxTypeNumericalCode.PAYE,
+  'turnover tax': TaxTypeNumericalCode.TOT,
+  'withholding tax': TaxTypeNumericalCode.WHT,
+  'property transfer tax': TaxTypeNumericalCode.PTT,
+  'mineral royalty': TaxTypeNumericalCode.MINROY,
+  'mineral royalty tax': TaxTypeNumericalCode.MINROY,
+  'medical levy tax': TaxTypeNumericalCode.TLEVY,
 };
 
 /**
  * Tax type names found in the results of tax payer searches mapped to their corresponding
  * numerical codes.
- * @type {Object.<string, TaxTypeNumericalCode>}
  */
-export const taxPayerSearchTaxTypeNames = {
-  'income tax': taxTypeNumericalCodes.ITX,
-  vat: taxTypeNumericalCodes.VAT,
-  paye: taxTypeNumericalCodes.PAYE,
-  'turnover tax': taxTypeNumericalCodes.TOT,
-  'withholding tax': taxTypeNumericalCodes.WHT,
-  'property transfer tax': taxTypeNumericalCodes.PTT,
-  ptt: taxTypeNumericalCodes.PTT,
-  'mineral royalty': taxTypeNumericalCodes.MINROY,
-  'medical levy tax': taxTypeNumericalCodes.TLEVY,
+export const taxPayerSearchTaxTypeNames: { [key: string]: TaxTypeNumericalCode } = {
+  'income tax': TaxTypeNumericalCode.ITX,
+  vat: TaxTypeNumericalCode.VAT,
+  paye: TaxTypeNumericalCode.PAYE,
+  'turnover tax': TaxTypeNumericalCode.TOT,
+  'withholding tax': TaxTypeNumericalCode.WHT,
+  'property transfer tax': TaxTypeNumericalCode.PTT,
+  ptt: TaxTypeNumericalCode.PTT,
+  'mineral royalty': TaxTypeNumericalCode.MINROY,
+  'medical levy tax': TaxTypeNumericalCode.TLEVY,
 };
 
 /**
  * Human readable names of tax types.
- * @type {Object.<string, string>}
- * TODO: TypeScript: key is TaxTypeNumericalCode
  */
-export const taxTypeLabels = {
-  [taxTypeNumericalCodes.ITX]: 'Income tax',
-  [taxTypeNumericalCodes.VAT]: 'Value added tax',
-  [taxTypeNumericalCodes.PAYE]: 'Pay as you earn',
-  [taxTypeNumericalCodes.TOT]: 'Turnover tax',
-  [taxTypeNumericalCodes.WHT]: 'Withholding tax',
-  [taxTypeNumericalCodes.PTT]: 'Property transfer tax',
-  [taxTypeNumericalCodes.MINROY]: 'Mineral royalty',
-  [taxTypeNumericalCodes.MINROY]: 'Mineral royalty tax',
-  [taxTypeNumericalCodes.TLEVY]: 'Medical levy tax',
+export const taxTypeLabels: { [key in TaxTypeNumericalCode]: string } = {
+  [TaxTypeNumericalCode.ITX]: 'Income tax',
+  [TaxTypeNumericalCode.VAT]: 'Value added tax',
+  [TaxTypeNumericalCode.PAYE]: 'Pay as you earn',
+  [TaxTypeNumericalCode.TOT]: 'Turnover tax',
+  [TaxTypeNumericalCode.WHT]: 'Withholding tax',
+  [TaxTypeNumericalCode.PTT]: 'Property transfer tax',
+  [TaxTypeNumericalCode.MINROY]: 'Mineral royalty',
+  [TaxTypeNumericalCode.MINROY]: 'Mineral royalty tax',
+  [TaxTypeNumericalCode.TLEVY]: 'Medical levy tax',
 };
 
+/** Tax account ID. E.g. 119608 or 405534 */
+export type TaxAccountCode = string;
+export type TaxAccountName = string;
 // #endregion
 
 // #region Financial accounts
@@ -291,37 +264,30 @@ export const financialAccountStatusTypesMap = {
 // #endregion
 
 // #region Export
-/**
- * @typedef {string} ExportFormatCode
- *
- * @enum {ExportFormatCode}
- */
-export const exportFormatCodes = {
-  TXT: 'txt',
-  CSV: 'csv',
-  JSON: 'json',
-};
+export enum ExportFormatCode {
+  TXT = 'txt',
+  CSV = 'csv',
+  JSON = 'json',
+}
 
-/**
- * @typedef ExportFormat
- * @property {string} name
- * @property {string} extension
- * @property {string} mime
- */
+interface ExportFormat {
+  name: string;
+  extension: string;
+  mime: string;
+}
 
-/** @type {Object.<ExportFormatCode, ExportFormat>} */
-export const exportFormats = {
-  [exportFormatCodes.TXT]: {
+export const exportFormats: { [key in ExportFormatCode]: ExportFormat } = {
+  [ExportFormatCode.TXT]: {
     name: 'Text',
     extension: 'txt',
     mime: 'text/plain',
   },
-  [exportFormatCodes.JSON]: {
+  [ExportFormatCode.JSON]: {
     name: 'JSON',
     extension: 'json',
     mime: 'text/json',
   },
-  [exportFormatCodes.CSV]: {
+  [ExportFormatCode.CSV]: {
     name: 'CSV',
     extension: 'csv',
     mime: 'text/csv',

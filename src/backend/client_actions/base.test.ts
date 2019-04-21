@@ -1,9 +1,9 @@
 import { createTestClientAction, getFakeRunInstanceClassFromAction, testMergingAllRunOutputs } from './tests/utils';
+import { ClientActionRunner } from './base';
 
 describe('ClientActionRunner', () => {
   const testAction = createTestClientAction();
-  /** @type {import('./base').ClientActionRunner} */
-  let instanceClass;
+  let instanceClass: ClientActionRunner;
   beforeAll(() => {
     instanceClass = getFakeRunInstanceClassFromAction(testAction);
   });

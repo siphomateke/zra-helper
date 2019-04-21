@@ -1,158 +1,168 @@
-import { exportFormatCodes } from '@/backend/constants';
-import {
-  objectHasProperties, joinSpecialLast, deepAssign,
-} from '@/utils';
+import { ExportFormatCode, Client, BrowserFeature } from '@/backend/constants';
+import { objectHasProperties, joinSpecialLast, deepAssign } from '@/utils';
 import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
-import { taskStates } from '@/store/modules/tasks';
+import { TaskState } from '@/store/modules/tasks';
+import { ClientActionOutputs } from '@/store/modules/client_actions/types';
+import { TaskObject } from '@/transitional/tasks';
 import { has, get } from 'dot-prop';
+import { Rules } from 'vee-validate';
 
-/**
- * @typedef {import('@/backend/constants').Client} Client
- * @typedef {import('../constants').ExportFormatCode} ExportFormatCode
- * @typedef {import('@/transitional/tasks').TaskObject} TaskObject
- */
+type ClientActionOutputFileValue = any;
 
-/** @typedef {any} ClientActionOutputFileValue */
+interface ClientActionOutputFormatterOptions {
+  clients: Client[];
+  allClients: Client[]
+  output: ClientActionOutputFileValue;
+  format: ExportFormatCode;
+  /** Whether client data in the output should be anonymized. */
+  anonymizeClients: boolean;
+}
 
-/**
- * @typedef {import('@/store/modules/client_actions').ClientActionOutputs} ClientActionOutputs
- *
- * @typedef {Object} ClientActionOutputFormatterOptions
- * @property {Client[]} clients
- * @property {Client[]} allClients
- * @property {ClientActionOutputFileValue} output
- * @property {ExportFormatCode} format
- * @property {boolean} anonymizeClients Whether client data in the output should be anonymized.
- *
- * @callback ClientActionOutputFormatter
- * @param {ClientActionOutputFormatterOptions} options
- * @returns {string}
- */
+type ClientActionOutputFormatter = (options: ClientActionOutputFormatterOptions) => string;
 
-/**
- * @typedef {Object} ClientActionOutputFile
- * @property {string} label
- * @property {boolean} wrapper
- * Whether this output file is not an actual output file but just a wrapper for others. If this is
- * set to true, `children` must also be set.
- * @property {string} [filename]
- * @property {ClientActionOutputFileValue} [value]
- * The actual value of this output file that will be passed to the formatter.
- * @property {ExportFormatCode[]} [formats]
- * The export formats this client action can output. Must be set if `wrapper` is false.
- * @property {ExportFormatCode} [defaultFormat]
- * Default output format. Must be set if `wrapper` is false.
- * If not provided, the first format will be the default.
- * @property {ClientActionOutputFormatter} [formatter]
- * Function that formats the output into different formats such as CSV and JSON.
- * @property {boolean} [preview]
- * Whether this output should be shown to the user without having to use one of the export buttons.
- * @property {ClientActionOutputFile[]} children
- */
+interface ClientActionOutputFile {
+  label: string;
+  /** 
+   * Whether this output file is not an actual output file but just a wrapper for others. If this is
+   * set to true, `children` must also be set. 
+   */
+  wrapper: boolean;
+  filename?: string;
+  /** The actual value of this output file that will be passed to the formatter. */
+  value?: ClientActionOutputFileValue;
+  /** The export formats this client action can output. Must be set if `wrapper` is false. */
+  formats?: ExportFormatCode[];
+  /**
+   * Default output format. Must be set if `wrapper` is false.
+   * If not provided, the first format will be the default.
+   */
+  defaultFormat?: ExportFormatCode;
+  /** Function that formats the output into different formats such as CSV and JSON. */
+  formatter?: ClientActionOutputFormatter;
+  /** Whether this output should be shown to the user without having to use one of the export buttons. */
+  preview?: boolean;
+  children: ClientActionOutputFile[];
+}
 
-/**
- * @typedef {Object} ClientActionOutputFilesGeneratorFnOptions
- * @property {Client[]} clients
- * @property {Client[]} allClients
- * @property {ClientActionOutputs} outputs
- *
- * @callback ClientActionOutputFilesGenerator
- * @param {ClientActionOutputFilesGeneratorFnOptions} options
- * @returns {ClientActionOutputFile}
- */
+interface ClientActionOutputFilesGeneratorFnOptions {
+  clients: Client[];
+  allClients: Client[];
+  outputs: ClientActionOutputs;
+}
 
-/**
- * @typedef ClientActionOptions
- * @property {string} id A unique camelCase ID to identify this client action.
- * @property {string} name The human-readable name of this client action.
- * @property {new () => ClientActionRunner} [Runner]
- * @property {() => Object} [defaultInput]
- * @property {Object.<string, string|import('vee-validate').Rules>} [inputValidation]
- * Vee-validate validator for each input property.
- * @property {import('@/backend/constants').BrowserFeature[]} [requiredFeatures]
- * Features this action requires that are only available in certain browsers.
- * @property {boolean} [usesLoggedInTab]
- * Whether this action needs to open a page from a logged in tab.
- * If this is enabled, the page that is opened after logging in will not be closed until the user is
- * about to be logged out.
- * @property {boolean} [requiresTaxTypes]
- * @property {string[]} [requiredActions]
- * Actions that must be run before this one and whose output will be used.
- * @property {boolean} [hasOutput] Whether this client action returns an output.
- * @property {ClientActionOutputFilesGenerator} [generateOutputFiles]
- * Function that generates output(s) of the action based on the raw output data of each client.
- *
- * @typedef {Object} ClientActionObject_Temp
- * @property {string} logCategory The log category to use when logging anything in this action.
- *
- * @typedef {ClientActionOptions & ClientActionObject_Temp} ClientActionObject
- */
+type ClientActionOutputFilesGenerator = (options: ClientActionOutputFilesGeneratorFnOptions) => ClientActionOutputFile;
 
-/**
- * @template {any} Output
- * @typedef {Object} ClientActionRunnerProxy
- * A wrapper around an instance's data in the store that makes it easier to get state and commit
- * mutations.
- * @property {string} id
- * Client action runner instance ID used to retrieve an instance from the store.
- * @property {string} actionId
- * @property {Client} client
- * @property {Object} config
- * @property {number} loggedInTabId
- * @property {TaskObject} task
- * @property {Object} input
- * @property {Object} retryInput
- * @property {string} retryReason The reason why this instance should be retried.
- * @property {boolean} shouldRetry Whether this instance should be retried.
- * @property {any} error
- * @property {Output} output
- * @property {Output[]} allRunOutputs
- * Output of this run/retry and its previous run.
- * TODO: Actually store all run outputs.
- * @property {boolean} running
- * @property {string[]} dependencies IDs of instances this instance depends on.
- */
+// FIXME: Express in type that output settings are required if hasOutput = true.
+interface ClientActionOptions {
+  /** A unique camelCase ID to identify this client action. */
+  id: string;
+  /** The human-readable name of this client action. */
+  name: string;
+  // FIXME: Type this properly based on the current client.
+  defaultInput?: () => object;
+  /** Vee-validate validator for each input property. */
+  inputValidation?: { [inputProperty: string]: string | Rules };
+  requiredFeatures?: BrowserFeature[];
+  /**
+   * Whether this action needs to open a page from a logged in tab.
+   * If this is enabled, the page that is opened after logging in will not be closed until the user is
+   * about to be logged out.
+   */
+  usesLoggedInTab?: boolean;
+  requiresTaxTypes?: boolean;
+  /** Actions that must be run before this one and whose output will be used. */
+  requiredActions?: string[];
+  /** Whether this client action returns an output. */
+  hasOutput?: boolean;
+  /** Function that generates output(s) of the action based on the raw output data of each client. */
+  generateOutputFiles?: ClientActionOutputFilesGenerator;
+}
+
+export interface ClientActionObject extends ClientActionOptions {
+  /** The log category to use when logging anything in this action. */
+  logCategory: string;
+  Runner: typeof ClientActionRunner;
+}
+
+export interface ClientActionRunnerProxy {
+  /** Client action runner instance ID used to retrieve an instance from the store. */
+  id: string;
+  actionId: string;
+  client: Client;
+  config: object;
+  loggedInTabId: number;
+  task: TaskObject;
+  input: object;
+  retryInput: object;
+  /** The reason why this instance should be retried. */
+  retryReason: string;
+  /** Whether this instance should be retried. */
+  shouldRetry: boolean;
+  error: any;
+  output: any;
+  /**
+   * Output of this run/retry and its previous run.
+   * TODO: Actually store all run outputs.
+   */
+  allRunOutputs: any[];
+  running: boolean;
+  /** IDs of instances this instance depends on. */
+  dependencies: string[];
+}
+
+/** Options for {@link ClientActionRunner.init} */
+interface RunnerInitOptions {
+  client: Client;
+  /** This client action's config. */
+  config: object;
+}
+
+interface RunnerRunOptions {
+  /** ID of the logged in tab. */
+  loggedInTabId: number;
+  task: TaskObject;
+}
 
 /**
  * The part of a client action that will actually be run.
  * Each client action runner instance can have its own client, options, parent task, errors and
  * output.
- * @abstract
  */
 // FIXME: Detect circular references of required actions.
-export class ClientActionRunner {
-  /**
-   * @param {ClientActionObject} action
-   */
-  constructor(action) {
-    this.action = action;
-  }
+export abstract class ClientActionRunner {
+  id: string | null = null;
+
+  storeProxy: ClientActionRunnerProxy;
+
+  constructor(public action: ClientActionObject) { }
 
   /**
-   * @param {string} id ID of runner instance in Vuex store.
+   * @param id ID of runner instance in Vuex store.
    */
-  create(id) {
+  create(id: string) {
     this.id = id;
 
     /**
-     * @type {ClientActionRunnerProxy}
      * A wrapper around this instance's data in the store to make it easier to get state and commit
      * mutations.
      */
-    this.storeProxy = new Proxy({}, {
-      get: (_obj, prop) => {
-        const state = store.getters['clientActions/getInstanceById'](this.id);
-        if (typeof prop === 'string' && prop in state) {
-          return state[prop];
-        }
-        return undefined;
+    this.storeProxy = new Proxy(
+      {},
+      {
+        get: (_obj, prop) => {
+          const state = store.getters['clientActions/getInstanceById'](this.id);
+          if (typeof prop === 'string' && prop in state) {
+            return state[prop];
+          }
+          return undefined;
+        },
+        set: (_obj, prop, value) => {
+          store.commit('clientActions/setInstanceProperty', { id: this.id, prop, value });
+          return true;
+        },
       },
-      set: (_obj, prop, value) => {
-        store.commit('clientActions/setInstanceProperty', { id: this.id, prop, value });
-        return true;
-      },
-    });
+    );
 
     this.storeProxy.id = this.id;
     this.storeProxy.actionId = this.action.id;
@@ -162,11 +172,8 @@ export class ClientActionRunner {
 
   /**
    * Initializes the runner. Must be called before `run()` is called.
-   * @param {Object} data
-   * @param {Client} data.client
-   * @param {Object} data.config this client action's config
    */
-  init(data) {
+  init(data: RunnerInitOptions) {
     this.storeProxy.client = data.client;
     this.storeProxy.config = data.config;
     this.storeProxy.loggedInTabId = null;
@@ -178,8 +185,8 @@ export class ClientActionRunner {
     this.storeProxy.allRunOutputs = [];
     this.storeProxy.output = null;
     this.storeProxy.running = false;
-    this.storeProxy.shouldRetry = null;
-    this.storeProxy.retryReason = null;
+    this.storeProxy.shouldRetry = false;
+    this.storeProxy.retryReason = '';
   }
 
   setOutput(output) {
@@ -191,11 +198,9 @@ export class ClientActionRunner {
    * the actual client action runners which extend `ClientActionRunner`.
    *
    * When run, the client, options and parent task will all be available.
-   * @private
-   * @abstract
    */
-  runInternal() {
-    this.storeProxy.task.state = taskStates.SUCCESS;
+  protected runInternal() {
+    this.storeProxy.task.state = TaskState.SUCCESS;
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -235,11 +240,8 @@ export class ClientActionRunner {
    * This is just a wrapper for `runInternal` where the actual runner resides.
    * This prepares data such as the parent task and logged in tab ID for use by `runInternal` as
    * well as setting this runner's error if `runInternal` fails.
-   * @param {Object} data
-   * @param {number} data.loggedInTabId ID of the logged in tab.
-   * @param {TaskObject} data.task
    */
-  async run(data) {
+  async run(data: RunnerRunOptions) {
     this.storeProxy.loggedInTabId = data.loggedInTabId;
     this.storeProxy.task = data.task;
     try {
@@ -265,10 +267,8 @@ export class ClientActionRunner {
         // Don't retry if client's username or password is invalid or their password has expired.
         if (
           error instanceof ExtendedError
-          && (
-            error.type === 'LoginError'
-            && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword')
-          )
+          && (error.type === 'LoginError'
+            && (error.code === 'PasswordExpired' || error.code === 'InvalidUsernameOrPassword'))
         ) {
           this.storeProxy.shouldRetry = false;
         } else {
@@ -282,34 +282,29 @@ export class ClientActionRunner {
 
   /**
    * Indicates that an instance should be retried and why.
-   * @param {string} reason The reason why this instance should be retried.
+   * @param reason The reason why this instance should be retried.
    */
-  setRetryReason(reason) {
+  setRetryReason(reason: string) {
     this.storeProxy.shouldRetry = true;
     this.storeProxy.retryReason = reason;
   }
 
-  /**
-   * @param {string} actionId
-   * @returns {import('@/store/modules/client_actions').ActionInstanceData}
-   */
-  getInstance(actionId) {
+  getInstance(actionId: string): ActionInstanceData {
     // TODO: Change this to support multiple actions of the same type in a client
     const { currentRunId } = store.state.clientActions;
-    const instance = store.getters['clientActions/getInstance'](currentRunId, actionId, this.storeProxy.client.id);
+    const instance: ClientActionRunnerProxy = store.getters['clientActions/getInstance'](currentRunId, actionId, this.storeProxy.client.id);
     return instance;
   }
 }
 
 /**
  * Validates a client action output file.
- * @param {Partial<ClientActionOutputFile>} options
- * @returns {string[]} Validation errors
+ * @returns Validation errors
  */
-export function validateActionOutputFile(options) {
+export function validateActionOutputFile(options: Partial<ClientActionOutputFile>): string[] {
   const errors = [];
 
-  const nonWrapperProperties = [
+  const nonWrapperProperties: Array<keyof ClientActionOutputFile> = [
     'value',
     'filename',
     'formats',
@@ -321,7 +316,7 @@ export function validateActionOutputFile(options) {
   if (!options.wrapper) {
     const { missing } = objectHasProperties(options, nonWrapperProperties);
 
-    const validFormats = Object.values(exportFormatCodes);
+    const validFormats: ExportFormatCode[] = Object.values(ExportFormatCode);
     if (
       !missing.includes('defaultFormat')
       && !validFormats.includes(options.defaultFormat)
@@ -392,7 +387,9 @@ function validateActionOptions(options) {
     // because the output files are generated dynamically based on the output.
 
     if (missing.length > 0) {
-      errors.push(`If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`);
+      errors.push(
+        `If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`,
+      );
     }
   }
   return errors;
@@ -438,24 +435,23 @@ export function createOutputFile(options) {
   return outputFile;
 }
 
-
 /**
  * Creates a new client action from an object.
  * Default options are assigned and then the action is validated.
- * @param {ClientActionOptions} options
- * @returns {ClientActionObject}
- * @throws {Error}
  */
-export function createClientAction(options) {
-  const clientAction = Object.assign({
-    defaultInput: () => ({}),
-    hasOutput: false,
-    usesLoggedInTab: false,
-    requiresTaxTypes: false,
-    requiredActions: [],
-    requiredFeatures: [],
-    logCategory: options.id,
-  }, options);
+export function createClientAction(options: ClientActionOptions): ClientActionObject {
+  const clientAction = Object.assign(
+    {
+      defaultInput: () => ({}),
+      hasOutput: false,
+      usesLoggedInTab: false,
+      requiresTaxTypes: false,
+      requiredActions: [],
+      requiredFeatures: [],
+      logCategory: options.id,
+    },
+    options,
+  );
 
   const errors = validateActionOptions(clientAction);
   if (errors.length > 0) {
@@ -467,25 +463,31 @@ export function createClientAction(options) {
 
 /**
  * Checks if a runner has an input that matches the specified dot notation path.
- * @param {Object} input
- * @param {string} path The dot notation path.
- * @returns {boolean}
+ * @param path The dot notation path.
  */
-export function inputExists(input, path) {
+export function inputExists(input: object, path: string): boolean {
   return has(input, path);
+}
+
+interface GetInputFnOptions {
+  /** Set to false to disable checking if array type inputs have at least one item. */
+  checkArrayLength?: boolean;
+  /** Default value to return if the input doesn't exist or is invalid. */
+  defaultValue?: any;
+}
+
+interface GetInputFnResponse {
+  /** Whether the input at the provided path exists. */
+  exists: boolean;
+  /** Value of input or default value if it was specified. */
+  value: any;
 }
 
 /**
  * Gets a runner's input using a dot notation path. Also, returns if the input existed.
- * @param {Object} input
- * @param {string} path The dot notation path.
- * @param {Object} options
- * @param {boolean} [options.checkArrayLength]
- * Set to false to disable checking if array type inputs have at least one item.
- * @param {any} [options.defaultValue]
- * Default value to return if the input doesn't exist or is invalid.
+ * @param path The dot notation path.
  */
-export function getInput(input, path, options = {}) {
+export function getInput(input: object, path: string, options: GetInputFnOptions = {}): GetInputFnResponse {
   const { checkArrayLength = true } = options;
 
   let value = get(input, path);

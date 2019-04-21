@@ -76,7 +76,9 @@
       <div
         v-show="messages"
         class="messages"
-      >{{ messages }}</div>
+      >
+        {{ messages }}
+      </div>
       <Progress
         :value="progress"
         :max="progressMax"
@@ -99,19 +101,19 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { mapGetters } from 'vuex';
 import { mapGettersById, mapProperties } from '@/store/helpers';
-import { taskStates } from '@/store/modules/tasks';
+import { TaskState } from '@/store/modules/tasks';
 import TaskList from './TaskList.vue';
 import Progress from '@/components/BaseProgress.vue';
 import { generatePropSyncMixin } from '@/mixins/sync_prop';
 import DownloadPills from './DownloadPills.vue';
 
 export const stateIcons = {
-  [taskStates.ERROR]: 'exclamation-circle',
-  [taskStates.WARNING]: 'exclamation-triangle',
-  [taskStates.SUCCESS]: 'check-circle',
+  [TaskState.ERROR]: 'exclamation-circle',
+  [TaskState.WARNING]: 'exclamation-triangle',
+  [TaskState.SUCCESS]: 'check-circle',
 };
 
 // TODO: Improve details button
@@ -168,7 +170,8 @@ export default {
       'isRoot',
       'downloadIds',
     ]),
-    taskStates: () => taskStates,
+    // TODO: Remove this if it is no longer needed.
+    TaskState: () => TaskState,
     messages() {
       return this.errorString ? this.errorString : this.status;
     },

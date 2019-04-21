@@ -1,18 +1,12 @@
-import { createClientAction, ClientActionRunner } from '../base';
+import { createClientAction, ClientActionRunner, ClientActionObject } from '../base';
 import '@/vue_init';
 import store from '@/store';
 import { getInstanceClassById } from '@/store/modules/client_actions';
 
 /**
- * @typedef {import('../base').ClientActionObject} ClientActionObject
- * @typedef {import('../base').ClientActionRunner} ClientActionRunner
- */
-
-/**
  * Creates a dummy client action for testing purposes.
- * @returns {ClientActionObject}
  */
-export function createTestClientAction() {
+export function createTestClientAction(): ClientActionObject {
   const testAction = createClientAction({
     id: 'testAction',
     name: 'Test action',
@@ -28,10 +22,8 @@ export function createTestClientAction() {
 
 /**
  * Generates a dummy client action instance from a fake run.
- * @param {ClientActionObject} action
- * @returns {ClientActionRunner}
  */
-export function getFakeRunInstanceClassFromAction(action) {
+export function getFakeRunInstanceClassFromAction(action: ClientActionObject): ClientActionRunner {
   store.commit('clientActions/startNewRun', {
     taskId: 0,
     clients: [],
@@ -50,11 +42,14 @@ export function getFakeRunInstanceClassFromAction(action) {
 
 /**
  * Tests a client action runner's output merging.
- * @param {ClientActionRunner} instanceClass
- * @param {any[]} outputs The outputs to merge.
- * @param {any} expected The expected merged output.
+ * @param outputs The outputs to merge.
+ * @param expected The expected merged output.
  */
-export function testMergingAllRunOutputs(instanceClass, outputs, expected) {
+export function testMergingAllRunOutputs(
+  instanceClass: ClientActionRunner,
+  outputs: any[],
+  expected: any,
+) {
   instanceClass.storeProxy.allRunOutputs = outputs;
   instanceClass.mergeAllRunOutputs();
   expect(instanceClass.storeProxy.output).toEqual(expected);

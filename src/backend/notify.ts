@@ -1,19 +1,22 @@
-function getExtensionIcon() {
+function getExtensionIcon(): string | null {
   const manifest = browser.runtime.getManifest();
-  return browser.runtime.getURL(manifest.icons['48']);
+  if (typeof manifest.icons !== 'undefined') {
+    return browser.runtime.getURL(manifest.icons[48]);
+  }
+  return null;
+}
+
+interface NotifyOptions {
+  title: string;
+  message: string;
+  icon?: string;
 }
 
 /**
  * Creates a notification
- * @param {Object} options
- * @param {string} options.title
- * @param {string} options.message
- * @param {string} [options.icon]
  */
-export default function notify(options) {
-  const optionsCopy = Object.assign({
-    icon: getExtensionIcon(),
-  }, options);
+export default function notify(options: NotifyOptions) {
+  const optionsCopy = Object.assign({ icon: getExtensionIcon() }, options);
   return browser.notifications.create({
     title: optionsCopy.title,
     message: optionsCopy.message,
