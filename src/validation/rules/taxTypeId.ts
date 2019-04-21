@@ -3,10 +3,8 @@ import { taxTypeNumericalCodes } from '@/backend/constants';
 
 /**
  * Validates a two-digit numerical tax type ID.
- * @param {*} value
- * @returns {boolean}
  */
-export default function validate(value) {
+export default function validate(value: any): boolean {
   return Object.values(taxTypeNumericalCodes).includes(value);
 }
 

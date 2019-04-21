@@ -5,21 +5,19 @@ import store from '@/store';
 
 /**
  * Extracts a filenames extension.
- * @param {string} filename
- * @returns {string} The extension
+ * @returns The extension
  */
-export function getExtension(filename) {
+export function getExtension(filename: string): string {
   const split = filename.split('.');
   return split[split.length - 1];
 }
 
 /**
  * Gets the contents of a file.
- * @param {File} file
- * @returns {Promise.<string>} The contents of the file.
+ * @returns The contents of the file.
  * @throws Will throw an error if the file fails to load
  */
-export async function loadFile(file) {
+export async function loadFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader();
     // TODO: Add file load progress
@@ -34,15 +32,12 @@ export async function loadFile(file) {
   });
 }
 
-/**
- * @typedef {'\r\n'|'\n'} EolCharacter End of line character.
- */
+export type EolCharacter = '\r\n' | '\n';
 
 /**
  * Gets the end of line character used by the current platform.
- * @returns {Promise.<EolCharacter>}
  */
-export async function getPlatformEol() {
+export async function getPlatformEol(): Promise<EolCharacter> {
   const { os } = await browser.runtime.getPlatformInfo();
   switch (os) {
     case 'win':
@@ -54,10 +49,8 @@ export async function getPlatformEol() {
 
 /**
  * Fixes incorrect end of line characters.
- * @param {string} str
- * @returns {string}
  */
-export function correctEolChars(str) {
+export function correctEolChars(str: string): string {
   const { eol } = store.state;
   if (eol !== '\n') {
     return str.replace(/\n/g, eol);
@@ -67,34 +60,36 @@ export function correctEolChars(str) {
 
 /**
  * Unparses JavaScript data objects and returns a CSV string
- * @param {any[][]|Object[]} data
- * @param {Papa.UnparseConfig} options
  */
-export function unparseCsv(data, options = {}) {
-  return Papa.unparse(data, Object.assign({
-    quotes: true,
-    newline: store.state.eol,
-  }, options));
+export function unparseCsv(data: any[][] | object[], options: Papa.UnparseConfig = {}) {
+  return Papa.unparse(
+    data,
+    Object.assign(
+      {
+        quotes: true,
+        newline: store.state.eol,
+      },
+      options,
+    ),
+  );
 }
 
 /**
  * Generates borderless text table strings suitable for printing to log.
- * @param {Array<Array<{}>>} rows
+ * @param rows
  * An array of arrays containing strings, numbers, or other printable values.
- * @returns {string}
  */
-export function renderTable(rows) {
+export function renderTable(rows: Array<Array<{}>>): string {
   const str = textTable(rows);
   return correctEolChars(str);
 }
 
 /**
  * Converts an array of objects to a CSV string.
- * @param {Object[]} data
- * @returns {string} The data as a CSV string
+ * @returns The data as a CSV string
  */
 // TODO: This function isn't really needed. Papaparse can already do this.
-export function writeCsv(data) {
+export function writeCsv(data: object[]): string {
   if (data.length > 0) {
     const rows = data.map(row => Object.values(row));
     rows.unshift(Object.keys(data[0]));
@@ -105,21 +100,19 @@ export function writeCsv(data) {
 
 /**
  * Stringifies JSON
- * @param {Object} json
- * @returns {string}
  */
-export function writeJson(json) {
+export function writeJson(json: object): string {
   const str = JSON.stringify(json, null, 2);
   return correctEolChars(str);
 }
 
+// TODO: Convert to TypeScript
 class ObjectToCsvConverter {
   /**
    *
-   * @param {Map.<string, string>} columns
-   * Column IDs and labels.
+   * @param columns Column IDs and labels.
    */
-  constructor(columns) {
+  constructor(columns: Map.<string, string>) {
     /** @type {any[][]} */
     this.rows = [];
     /** @type {any[]} The current row. */
@@ -224,6 +217,7 @@ class ObjectToCsvConverter {
  * arrays in `obj`.
  * @returns {any[][]}
  */
+// TODO: Convert to TypeScript
 // TODO: Attempt to strictly type `obj` once we are using TypeScript
 export function objectToCsvTable(obj, columns) {
   const converter = new ObjectToCsvConverter(columns);

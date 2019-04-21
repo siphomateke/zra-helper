@@ -1,12 +1,13 @@
 import Action, { generateTotals, totalsColumns } from './pending_liabilities';
 import { getFakeRunInstanceClassFromAction, testMergingAllRunOutputs } from './tests/utils';
+import { ClientActionRunner } from './base';
 
 function generateDummyTotals() {
   return generateTotals(totalsColumns, '0.00');
 }
 
 describe('GetAllPendingLiabilitiesClientAction', () => {
-  let instanceClass;
+  let instanceClass: ClientActionRunner;
   let totals;
   beforeAll(() => {
     instanceClass = getFakeRunInstanceClassFromAction(Action);

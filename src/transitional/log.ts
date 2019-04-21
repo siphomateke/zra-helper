@@ -4,15 +4,15 @@ const dispatch = getScopedDispatch('log');
 
 // TODO: Document my functions
 export default {
-  setCategory(category) {
+  setCategory(category: string) {
     dispatch('setCategory', category);
   },
 
-  log(content, type) {
+  log(content: string, type: string | null = null) {
     dispatch('addLine', { content, type, category: '' });
   },
 
-  showError(error, warning = false) {
+  showError(error: any, warning: boolean = false) {
     dispatch('addErrorLine', { error, warning });
   },
 };

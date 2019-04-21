@@ -1,28 +1,28 @@
 import { getElementFromDocument } from './elements';
 import { parseTable } from './zra';
+import { ReceiptType } from '@/backend/client_actions/receipts';
+import { PaymentReceiptData } from '@/backend/client_actions/payment_history';
 
-/**
- * @typedef {'payment'|'ack_receipt'} ReceiptType
- */
+// FIXME: Use TypeScript
 
-/**
- * @typedef {Object} PaymentReceiptData
- * @property {string} registrationDate
- * @property {string} referenceNumber
- * @property {import('@/backend/client_actions/payment_history').PaymentReceiptData[]} payments
-*/
+interface ReceiptData {
+  registrationDate: string;
+  referenceNumber: string;
+}
 
-/**
- * @typedef {Object} AcknowledgementReceiptData
- * @property {boolean} provisional
- */
+// TODO: Rename
+interface PaymentReceiptData2 extends ReceiptData {
+  payments: PaymentReceiptData[];
+}
 
-/**
- * @param {HTMLDocument|HTMLElement} root
- * @param {ReceiptType} type
- * @returns {PaymentReceiptData | AcknowledgementReceiptData}
- */
-export default function getDataFromReceipt(root, type) {
+interface AcknowledgementReceiptData {
+  provisional: boolean;
+}
+
+export default function getDataFromReceipt(
+  root: HTMLDocument | HTMLElement,
+  type: ReceiptType
+): PaymentReceiptData2 | AcknowledgementReceiptData {
   const data = {};
 
   const mainTable = getElementFromDocument(
@@ -102,5 +102,6 @@ export default function getDataFromReceipt(root, type) {
     data.provisional = taxType.includes('IT Provisional');
   }
 
+  // FIXME: Document return value
   return data;
 }

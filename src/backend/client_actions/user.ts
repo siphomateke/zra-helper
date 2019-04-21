@@ -14,15 +14,16 @@ import { CaptchaLoadError, LogoutError } from '@/backend/errors';
 import OCRAD from 'ocrad.js';
 import md5 from 'md5';
 import { checkLogin } from '../content_scripts/helpers/check_login';
-import { taskStates } from '@/store/modules/tasks';
+import { TaskState } from '@/store/modules/tasks';
+import { TaskId } from '@/store/modules/tasks';
+import { Client } from '../constants';
 
 /**
  * Creates a canvas from a HTML image element
- * @param {HTMLImageElement} image The image to use
- * @param {number} [scale=1] Optional scale to apply to the image
- * @returns {HTMLCanvasElement}
+ * @param image The image to use
+ * @param scale Optional scale to apply to the image
  */
-function imageToCanvas(image, scale = 1) {
+function imageToCanvas(image: HTMLImageElement, scale: number = 1): HTMLCanvasElement {
   const width = image.width * scale;
   const height = image.height * scale;
   const canvas = document.createElement('canvas');
@@ -36,10 +37,9 @@ function imageToCanvas(image, scale = 1) {
 
 /**
  * Generates a new captcha as a canvas
- * @param {number} [scale=2] Optional scale to help recognize the image
- * @returns {Promise.<HTMLCanvasElement>}
+ * @param scale Optional scale to help recognize the image
  */
-function getFreshCaptcha(scale = 2) {
+function getFreshCaptcha(scale: number = 2): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     // Set crossOrigin to 'anonymous' to fix the "operation is insecure" error in Firefox.
@@ -61,14 +61,14 @@ function getFreshCaptcha(scale = 2) {
  *
  * The input text should be in the format: "<number> <operator> <number>?". For example, '112-11?'.
  * Spaces and question marks are automatically stripped.
- * @param {string} text Text containing arithmetic question.
+ * @param text Text containing arithmetic question.
  * @example
  * solveCaptcha('112- 11?') // 101
- * @returns {number}
  */
-function solveCaptcha(text) {
+function solveCaptcha(text: string): number {
   const captchaArithmetic = text.replace(/\s/g, '').replace(/\?/g, '');
   let numbers = captchaArithmetic.split(/\+|-/).map(str => parseInt(str, 10));
+  // TODO: Find out why we are converting to a number twice.
   numbers = numbers.map(number => Number(number)); // convert to actual numbers
   const operator = captchaArithmetic[captchaArithmetic.search(/\+|-/)];
   if (operator === '+') {
@@ -81,25 +81,22 @@ function solveCaptcha(text) {
  * Common characters that the OCR engine incorrectly outputs and their
  * correct counterparts
  */
-const commonIncorrectCharacters = [
-  ['l', '1'],
-  ['o', '0'],
-];
+const commonIncorrectCharacters = [['l', '1'], ['o', '0']];
 
 /**
  * Gets and solves the login captcha.
- * @param {number} maxCaptchaRefreshes
+ * @param maxCaptchaRefreshes
  * The maximum number of times that a new captcha will be loaded if the OCR fails
- * @returns {Promise.<number>} The solution to the captcha.
+ * @returns The solution to the captcha.
  */
-async function getCaptchaText(maxCaptchaRefreshes) {
+async function getCaptchaText(maxCaptchaRefreshes: number): Promise<number | null> {
   // Solve captcha
-  let answer = null;
+  let answer: number | null = null;
   let refreshes = 0;
   /* eslint-disable no-await-in-loop */
   while (refreshes < maxCaptchaRefreshes) {
     const captcha = await getFreshCaptcha();
-    const captchaText = OCRAD(captcha);
+    const captchaText: string = OCRAD(captcha);
     answer = solveCaptcha(captchaText);
 
     // If captcha reading failed, try again with common recognition errors fixed.
@@ -123,34 +120,36 @@ async function getCaptchaText(maxCaptchaRefreshes) {
   return answer;
 }
 
-/** @typedef {import('@/backend/constants').Client} Client */
+interface LoginFnOptions {
+  client: Client;
+  parentTaskId: TaskId;
+  /** Whether the logged in tab should be kept open after logging in. */
+  keepTabOpen?: boolean;
+  /**
+   * Whether to close the tab if any errors occurred when checking if the client was successfully
+   * logged in. Only used when `keepTabOpen` is true. 
+   */
+  closeOnErrors?: boolean;
+}
 
-/**
- * @typedef {Object} LoginResponse
- * @property {number} tabId The ID of the logged in tab.
- * @property {any} [checkLoginError]
- * Any error that occurred checking if the client was successfully logged in.
- */
+interface LoginResponse {
+  /** The ID of the logged in tab. */
+  tabId: number;
+  /** Any error that occurred checking if the client was successfully logged in. */
+  checkLoginError?: any;
+}
 
 /**
  * Creates a new tab, logs in and then closes the tab
- * @param {Object} payload
- * @param {Client} payload.client
- * @param {number} payload.parentTaskId
- * @param {boolean} [payload.keepTabOpen]
- * Whether the logged in tab should be kept open after logging in.
- * @param {boolean} [payload.closeOnErrors]
- * Whether to close the tab if any errors occurred when checking if the client was successfully
- * logged in. Only used when `keepTabOpen` is true.
- * @returns {Promise.<LoginResponse>}
  * @throws {import('@/backend/errors').ExtendedError}
  */
+// FIXME: Fix type so return is tab ID only if keepTabOpen=true.
 export async function login({
   client,
   parentTaskId,
   keepTabOpen = false,
   closeOnErrors = true,
-}) {
+}: LoginFnOptions): Promise<LoginResponse> {
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
@@ -172,7 +171,7 @@ export async function login({
       });
       const pwd = getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input').value;
 
-      let tabId = null;
+      let tabId: number | null = null;
       task.addStep('Initiating login');
       try {
         const loginRequest = {
@@ -207,7 +206,7 @@ export async function login({
             checkLogin(doc, client);
           }
           log.log(`Done logging in "${client.name}"`);
-          task.state = taskStates.SUCCESS;
+          task.state = TaskState.SUCCESS;
         } catch (error) {
           task.setError(error);
           checkLoginError = error;
@@ -242,13 +241,14 @@ export async function login({
   });
 }
 
+interface LogoutFnOptions {
+  parentTaskId: TaskId;
+}
+
 /**
  * Creates a new tab, logs out and then closes the tab
- * @param {Object} payload
- * @param {number} payload.parentTaskId
- * @returns {Promise}
  */
-export async function logout({ parentTaskId }) {
+export async function logout({ parentTaskId }: LogoutFnOptions): Promise<void> {
   const task = await createTask(store, {
     title: 'Logout',
     parent: parentTaskId,
@@ -273,26 +273,33 @@ export async function logout({ parentTaskId }) {
       );
       const logoutMessage = el.innerText.toLowerCase();
       if (!logoutMessage.includes('you have successfully logged off')) {
-        throw new LogoutError('Logout success message was empty.', null, { html: getHtmlFromNode(doc) });
+        throw new LogoutError('Logout success message was empty.', null, {
+          html: getHtmlFromNode(doc),
+        });
       }
       log.log('Done logging out');
     },
   });
 }
 
+interface RobustLoginFnOptions {
+  client: Client;
+  parentTaskId: TaskId;
+  /** The maximum number of times an attempt should be made to login to a client. */
+  maxAttempts: number;
+  /** Whether the logged in tab should be kept open. */
+  keepTabOpen?: boolean;
+  /**
+   * Whether to close the tab if any errors occur when checking if the client was successfully logged
+   * in. Only used when `keepTabOpen` is true. If more than one login attempt is made, only the tab
+   * from the last attempt will be kept open on errors.
+   */
+  closeOnErrors?: boolean;
+}
+
 /**
  * Logs in a client and retries if already logged in as another client
- * @param {Object} payload
- * @param {Client} payload.client
- * @param {number} payload.parentTaskId
- * @param {number} payload.maxAttempts
- * The maximum number of times an attempt should be made to login to a client.
- * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open.
- * @param {boolean} [payload.closeOnErrors]
- * Whether to close the tab if any errors occur when checking if the client was successfully logged
- * in. Only used when `keepTabOpen` is true. If more than one login attempt is made, only the tab
- * from the last attempt will be kept open on errors.
- * @returns {Promise.<number>} The ID of the logged in tab.
+ * @returns The ID of the logged in tab.
  */
 export async function robustLogin({
   client,
@@ -300,7 +307,7 @@ export async function robustLogin({
   maxAttempts,
   keepTabOpen = false,
   closeOnErrors = true,
-}) {
+}: RobustLoginFnOptions): Promise<number | null> {
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
@@ -315,7 +322,7 @@ export async function robustLogin({
   return taskFunction({
     task,
     async func() {
-      let loggedInTabId = null;
+      let loggedInTabId: number | null = null;
       /* eslint-disable no-await-in-loop */
       while (run) {
         try {

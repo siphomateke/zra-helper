@@ -1,12 +1,18 @@
 import { createClientAction } from '../base';
-import { ReturnHistoryDownloadRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
+import {
+  ReturnHistoryDownloadRunner,
+  generateDownloadFilename,
+  GetReturnHistoryClientActionOptions,
+  ReturnHistoryDownloadFn,
+} from './base';
 import { downloadPage } from '../utils';
+import { TaxTypeNumericalCode, ReferenceNumber } from '@/backend/constants';
+import { CreateTabPostOptions } from '@/backend/utils';
 
-/**
- * @returns {import('@/backend/utils').CreateTabPostOptions}
- */
-// TODO: Use TypeScript
-export function generateAckReceiptRequest(taxType, referenceNumber) {
+export function generateAckReceiptRequest(
+  taxType: TaxTypeNumericalCode,
+  referenceNumber: ReferenceNumber,
+): CreateTabPostOptions {
   return {
     url: 'https://www.zra.org.zm/retHist.htm',
     data: {
@@ -18,9 +24,11 @@ export function generateAckReceiptRequest(taxType, referenceNumber) {
   };
 }
 
-/** @type {import('./base').ReturnHistoryDownloadFn} */
-function downloadAckReceipt({
-  taxReturn, client, taxType, parentTaskId,
+const downloadAckReceipt: ReturnHistoryDownloadFn = function ({
+  taxReturn,
+  client,
+  taxType,
+  parentTaskId,
 }) {
   const referenceNumber = taxReturn.referenceNo;
   return downloadPage({
@@ -34,7 +42,7 @@ function downloadAckReceipt({
     parentTaskId,
     createTabPostOptions: generateAckReceiptRequest(taxType, referenceNumber),
   });
-}
+};
 
 /**
  * Action to download acknowledgement receipts of e-Returns
