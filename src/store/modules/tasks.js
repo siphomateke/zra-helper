@@ -92,7 +92,7 @@ function getChildProgress(type, { getters, task, id }) {
 const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');
 
 /** @type {import('vuex').Module} */
-const module = {
+const vuexModule = {
   namespaced: true,
   state: {
     /**
@@ -363,4 +363,4 @@ const module = {
     },
   },
 };
-export default module;
+export default vuexModule;

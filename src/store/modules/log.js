@@ -13,7 +13,7 @@ export const logTypes = {
 
 // TODO: Add more documentation
 /** @type {import('vuex').Module} */
-const module = {
+const vuexModule = {
   namespaced: true,
   state: {
     lines: [],
@@ -115,4 +115,4 @@ const module = {
     },
   },
 };
-export default module;
+export default vuexModule;
