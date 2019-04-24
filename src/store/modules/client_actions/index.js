@@ -143,43 +143,40 @@ function initializeInstances({ commit, getters }, {
 }
 
 /**
- * @typedef {Object.<string, string[]>} DependentInstancesByActionId
+ * @typedef {Object.<string, string[]>} DependentInstances
+ * Dependent instances grouped by the instance they depend on.
  */
 
 /**
- * Gets all the instances that depend on each action.
+ * Gets all the instances that depend on each provided instance.
  * @param {import('vuex').ActionContext} context
  * @param {string[]} instanceIds
- * @returns {DependentInstancesByActionId}
+ * @returns {DependentInstances}
  */
-function getDependentInstancesByActionId({ getters }, instanceIds) {
-  const dependentInstancesByActionId = {};
+function getDependentInstances({ getters }, instanceIds) {
+  const dependentInstances = {};
   for (const instanceId of instanceIds) {
     /** @type {ActionInstanceData} */
     const instance = getters.getInstanceById(instanceId);
-    /** @type {ActionObject} */
-    const action = getters.getActionById(instance.actionId);
-    if (action.requiredActions.length > 0) {
-      for (const actionId of action.requiredActions) {
-        if (!(actionId in dependentInstancesByActionId)) {
-          dependentInstancesByActionId[actionId] = [];
-        }
-        dependentInstancesByActionId[actionId].push(instanceId);
+    for (const dependedInstanceId of instance.dependencies) {
+      if (!(dependedInstanceId in dependentInstances)) {
+        dependentInstances[dependedInstanceId] = [];
       }
+      dependentInstances[dependedInstanceId].push(instanceId);
     }
   }
-  return dependentInstancesByActionId;
+  return dependentInstances;
 }
 
 /**
- * Checks if all the actions an action depends on have completed.
- * @param {ActionObject} action
- * @param {string[]} completedActionIds
+ * Checks if all the instances an instance depends on have completed.
+ * @param {ActionInstanceData} instance
+ * @param {string[]} completedInstanceIds
  * @returns {boolean}
  */
-function allDependentActionsCompleted(action, completedActionIds) {
-  for (const actionId of action.requiredActions) {
-    if (!completedActionIds.includes(actionId)) {
+function allDependedInstancesCompleted(instance, completedInstanceIds) {
+  for (const instanceId of instance.dependencies) {
+    if (!completedInstanceIds.includes(instanceId)) {
       return false;
     }
   }
@@ -191,36 +188,116 @@ function allDependentActionsCompleted(action, completedActionIds) {
  */
 
 /**
- * Runs all the instances that depend on the provided action.
+ * Runs all the instances that depend on the provided instance.
  * @param {import('vuex').ActionContext<State>} context
  * @param {Object} options
- * @param {string} options.actionId
- * @param {DependentInstancesByActionId} options.dependentInstancesByActionId
- * @param {string[]} options.completedActionIds
+ * @param {ActionInstanceData} options.instance
+ * @param {DependentInstances} options.dependentInstances
+ * @param {string[]} options.completedInstanceIds
  * @param {ActionInstancePromise} options.getInstancePromise
  * @returns {Promise<void>}
  */
 async function runDependentInstances({ getters }, {
-  actionId,
-  dependentInstancesByActionId,
-  completedActionIds,
+  instance: parentInstance,
+  dependentInstances,
+  completedInstanceIds,
   getInstancePromise,
 }) {
-  /** The instances that depends on this action. */
-  const instanceIds = dependentInstancesByActionId[actionId];
-  const promises = [];
-  for (const instanceId of instanceIds) {
+  if (parentInstance.id in dependentInstances) {
+    /** The instances that depends on this instance. */
+    const instanceIds = dependentInstances[parentInstance.id];
+    const promises = [];
+    for (const instanceId of instanceIds) {
+      /** @type {ActionInstanceData} */
+      const instance = getters.getInstanceById(instanceId);
+      // Check if all the instances this instance depends on completed
+      if (allDependedInstancesCompleted(instance, completedInstanceIds)) {
+        // If they did, the instance can now be run.
+        promises.push(getInstancePromise(instance));
+      }
+    }
+    await Promise.all(promises);
+  }
+}
+
+/**
+ * Recursively get instances of dependent actions.
+ * @param {import('vuex').ActionContext} context
+ * @param {Object} options
+ * @param {Client} options.client
+ * @param {string[]} options.requiredActions
+ * @param {ActionInstanceData[]} options.instances
+ * @param {string} options.parentInstanceId The ID of the instance that `requiredActions` belong to.
+ * @returns {ActionInstanceData[]}
+ */
+// TODO: Make this less confusing
+function getDependedActionInstances(context, {
+  client,
+  requiredActions,
+  instances: instancesParam,
+  parentInstanceId,
+}) {
+  let instances = instancesParam.slice();
+  const { commit, getters } = context;
+  for (const dependedActionId of requiredActions) {
+    const existingInstance = instances.find(instance => instance.actionId === dependedActionId);
+    let dependedInstanceId;
+    if (!existingInstance) {
+      dependedInstanceId = addNewInstance(context, {
+        actionId: dependedActionId,
+        client,
+      });
+      /** @type {ActionInstanceData} */
+      const dependedInstance = getters.getInstanceById(dependedInstanceId);
+      /** @type {ActionObject} */
+      const action = getters.getActionById(dependedInstance.actionId);
+      instances.push(dependedInstance);
+      instances = getDependedActionInstances(context, {
+        client,
+        requiredActions: action.requiredActions,
+        instances,
+        parentInstanceId: dependedInstanceId,
+      });
+    } else {
+      dependedInstanceId = existingInstance.id;
+    }
+
+    // Add this depended instance to the list of instance's instance dependencies.
+    commit('addDependedInstanceToInstance', {
+      id: parentInstanceId,
+      dependedInstanceId,
+    });
+  }
+  return instances;
+}
+
+/**
+ * Creates instances from actions as well as any dependent instances.
+ * @param {import('vuex').ActionContext} context
+ * @param {string[]} actionIds
+ * @param {Client} client
+ * @returns {ActionInstanceData[]}
+ */
+// TODO: Make this less confusing
+function convertActionsToInstances(context, actionIds, client) {
+  const { getters } = context;
+  /** @type {ActionInstanceData[]} */
+  let instances = [];
+  for (const actionId of actionIds) {
+    const instanceId = addNewInstance(context, { actionId, client });
     /** @type {ActionInstanceData} */
     const instance = getters.getInstanceById(instanceId);
+    instances.push(instance);
     /** @type {ActionObject} */
-    const action = getters.getActionById(instance.actionId);
-    // Check if all the actions this instance depends on completed
-    if (allDependentActionsCompleted(action, completedActionIds)) {
-      // If they did, the instance can now be run.
-      promises.push(getInstancePromise(instance));
-    }
+    const action = getters.getActionById(actionId);
+    instances = getDependedActionInstances(context, {
+      client,
+      requiredActions: action.requiredActions,
+      instances,
+      parentInstanceId: instanceId,
+    });
   }
-  await Promise.all(promises);
+  return instances;
 }
 
 /**
@@ -565,6 +642,9 @@ const vuexModule = {
     setInstancePreviousOutput(state, { id, output }) {
       state.instances[id].allRunOutputs.unshift(output);
     },
+    addDependedInstanceToInstance(state, { id, dependedInstanceId }) {
+      state.instances[id].dependencies.push(dependedInstanceId);
+    },
   },
   actions: {
     /**
@@ -656,6 +736,7 @@ const vuexModule = {
      * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
      */
+    // TODO: Use instance IDs only
     async runActionsOnClient(context, {
       client,
       actionIds,
@@ -766,28 +847,24 @@ const vuexModule = {
                 }
 
                 // FIXME: Allow for multiple instances of the same action.
-                const dependentInstancesByActionId = getDependentInstancesByActionId(
-                  context,
-                  instanceIds,
-                );
+                const dependentInstances = getDependentInstances(context, instanceIds);
 
-                const completedActionIds = [];
+                const completedInstanceIds = [];
 
                 /**
                  * Gets a promise that runs the provided instance as well as any instances
                  * that depend on it.
-                 * @param {ActionObject} action
                  * @param {ActionInstanceData} instance
                  * @returns {Promise<void>}
                  */
-                async function getInstanceWithDependentsPromise(action, instance) {
+                async function getInstanceWithDependentsPromise(instance) {
                   await getInstancePromise(instance);
-                  completedActionIds.push(action.id);
+                  completedInstanceIds.push(instance.id);
                   await runDependentInstances(context, {
-                    actionId: action.id,
-                    completedActionIds,
-                    getInstancePromise,
-                    dependentInstancesByActionId,
+                    instance,
+                    dependentInstances,
+                    completedInstanceIds,
+                    getInstancePromise: getInstanceWithDependentsPromise,
                   });
                 }
                 /* eslint-enable no-inner-declarations */
@@ -802,10 +879,9 @@ const vuexModule = {
                 for (const instanceId of instanceIds) {
                   /** @type {ActionInstanceData} */
                   const instance = getters.getInstanceById(instanceId);
-                  /** @type {ActionObject} */
-                  const action = getters.getActionById(instance.actionId);
-                  if (action.requiredActions.length === 0) {
-                    promises.push(getInstanceWithDependentsPromise(action, instance));
+                  // Run the instances that don't depend on any other ones first.
+                  if (instance.dependencies.length === 0) {
+                    promises.push(getInstanceWithDependentsPromise(instance));
                   }
                 }
 
@@ -878,7 +954,6 @@ const vuexModule = {
     }) {
       const {
         state,
-        getters,
         rootState,
         commit,
         dispatch,
@@ -914,28 +989,8 @@ const vuexModule = {
             async func() {
               /* eslint-disable no-await-in-loop */
               for (const client of validClients) {
-                const originalActionIds = getClientsActionIds(client);
-                const actionIds = [];
-                // Add any action dependencies
-                for (const actionId of originalActionIds) {
-                  /** @type {ActionObject} */
-                  const action = getters.getActionById(actionId);
-                  // TODO: Tag dependent actions as such.
-                  for (const dependentActionId of action.requiredActions) {
-                    if (!actionIds.includes(dependentActionId)) {
-                      actionIds.push(dependentActionId);
-                    }
-                  }
-                  actionIds.push(actionId);
-                }
-
-                // Initialize all client action runner instances.
-                const instanceIds = actionIds.map(
-                  actionId => addNewInstance(context, { actionId, client }),
-                );
-
-                /** @type {ActionInstanceData[]} */
-                const instances = instanceIds.map(id => getters.getInstanceById(id));
+                const actionIds = getClientsActionIds(client);
+                const instances = convertActionsToInstances(context, actionIds, client);
                 initializeInstances(context, {
                   instances,
                   actionInputs,
@@ -948,9 +1003,9 @@ const vuexModule = {
                 // Currently, only tabLoaded checks for this.
                 await dispatch('runActionsOnClient', {
                   client,
-                  actionIds,
+                  actionIds: instances.map(instance => instance.actionId),
                   actionInputs,
-                  instanceIds,
+                  instanceIds: instances.map(instance => instance.id),
                   parentTaskId: rootTask.id,
                 });
               }

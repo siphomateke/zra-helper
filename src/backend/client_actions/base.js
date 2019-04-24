@@ -111,6 +111,7 @@ import { has, get } from 'dot-prop';
  * Output of this run/retry and its previous run.
  * TODO: Actually store all run outputs.
  * @property {boolean} running
+ * @property {string[]} dependencies IDs of instances this instance depends on.
  */
 
 /**
@@ -119,6 +120,7 @@ import { has, get } from 'dot-prop';
  * output.
  * @abstract
  */
+// FIXME: Detect circular references of required actions.
 export class ClientActionRunner {
   /**
    * @param {ClientActionObject} action
@@ -169,6 +171,7 @@ export class ClientActionRunner {
     this.storeProxy.config = data.config;
     this.storeProxy.loggedInTabId = null;
     this.storeProxy.task = null;
+    this.storeProxy.dependencies = [];
 
     // Run status data
     this.storeProxy.error = null;
