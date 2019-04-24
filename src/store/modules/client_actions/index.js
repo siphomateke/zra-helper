@@ -97,6 +97,87 @@ function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
 }
 
 /**
+ * @typedef {Object.<string, string[]>} DependentInstancesByActionId
+ */
+
+/**
+ * Gets all the instances that depend on each action.
+ * @param {import('vuex').ActionContext} context
+ * @param {string[]} instanceIds
+ * @returns {DependentInstancesByActionId}
+ */
+function getDependentInstancesByActionId({ getters }, instanceIds) {
+  const dependentInstancesByActionId = {};
+  for (const instanceId of instanceIds) {
+    /** @type {ActionInstanceData} */
+    const instance = getters.getInstanceById(instanceId);
+    /** @type {ActionObject} */
+    const action = getters.getActionById(instance.actionId);
+    if (action.requiredActions.length > 0) {
+      for (const actionId of action.requiredActions) {
+        if (!(actionId in dependentInstancesByActionId)) {
+          dependentInstancesByActionId[actionId] = [];
+        }
+        dependentInstancesByActionId[actionId].push(instanceId);
+      }
+    }
+  }
+  return dependentInstancesByActionId;
+}
+
+/**
+ * Checks if all the actions an action depends on have completed.
+ * @param {ActionObject} action
+ * @param {string[]} completedActionIds
+ * @returns {boolean}
+ */
+function allDependentActionsCompleted(action, completedActionIds) {
+  for (const actionId of action.requiredActions) {
+    if (!completedActionIds.includes(actionId)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @typedef {(instance: ActionInstanceData) => Promise<void>} ActionInstancePromise
+ */
+
+/**
+ * Runs all the instances that depend on the provided action.
+ * @param {import('vuex').ActionContext<State>} context
+ * @param {Object} options
+ * @param {string} options.actionId
+ * @param {DependentInstancesByActionId} options.dependentInstancesByActionId
+ * @param {string[]} options.completedActionIds
+ * @param {ActionInstancePromise} options.getInstancePromise
+ * @returns {Promise<void>}
+ */
+async function runDependentInstances({ getters }, {
+  actionId,
+  dependentInstancesByActionId,
+  completedActionIds,
+  getInstancePromise,
+}) {
+  /** The instances that depends on this action. */
+  const instanceIds = dependentInstancesByActionId[actionId];
+  const promises = [];
+  for (const instanceId of instanceIds) {
+    /** @type {ActionInstanceData} */
+    const instance = getters.getInstanceById(instanceId);
+    /** @type {ActionObject} */
+    const action = getters.getActionById(instance.actionId);
+    // Check if all the actions this instance depends on completed
+    if (allDependentActionsCompleted(action, completedActionIds)) {
+      // If they did, the instance can now be run.
+      promises.push(getInstancePromise(instance));
+    }
+  }
+  await Promise.all(promises);
+}
+
+/**
  * @type {Object.<string, ActionInstanceClass>}
  * Client action runner instances stored by instance ID.
  */
@@ -544,12 +625,7 @@ const vuexModule = {
      * @param {boolean} payload.retry If this run is just a retry of a previous one.
      * @param {number} [payload.retryRunId] ID of the run that is being retried
      */
-    async runActionsOnClient({
-      rootState,
-      commit,
-      getters,
-      dispatch,
-    }, {
+    async runActionsOnClient(context, {
       client,
       actionIds,
       actionInputs = {},
@@ -558,6 +634,9 @@ const vuexModule = {
       retry,
       retryRunId = null,
     }) {
+      const {
+        rootState, commit, getters, dispatch,
+      } = context;
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
 
@@ -642,6 +721,52 @@ const vuexModule = {
                   }
                 }
 
+                /**
+                 * Creates a promise that will actually run an instance.
+                 * @param {ActionInstanceData} instance
+                 * @returns {Promise<void>}
+                 */
+                /* eslint-disable no-inner-declarations */
+                function getInstancePromise(instance) {
+                  return dispatch('runActionOnClient', {
+                    instanceId: instance.id,
+                    input: instance.actionId in actionInputs ? actionInputs[instance.actionId] : {},
+                    client,
+                    mainTask,
+                    isSingleAction,
+                    loggedInTabId,
+                    retry,
+                    retryRunId,
+                  });
+                }
+
+                // FIXME: Allow for multiple instances of the same action.
+                const dependentInstancesByActionId = getDependentInstancesByActionId(
+                  context,
+                  instanceIds,
+                );
+
+                const completedActionIds = [];
+
+                /**
+                 * Gets a promise that runs the provided instance as well as any instances
+                 * that depend on it.
+                 * @param {ActionObject} action
+                 * @param {ActionInstanceData} instance
+                 * @returns {Promise<void>}
+                 */
+                async function getInstanceWithDependentsPromise(action, instance) {
+                  await getInstancePromise(instance);
+                  completedActionIds.push(action.id);
+                  await runDependentInstances(context, {
+                    actionId: action.id,
+                    completedActionIds,
+                    getInstancePromise,
+                    dependentInstancesByActionId,
+                  });
+                }
+                /* eslint-enable no-inner-declarations */
+
                 // Run actions in parallel
                 if (!isSingleAction) {
                   mainTask.status = 'Running actions';
@@ -652,17 +777,13 @@ const vuexModule = {
                 for (const instanceId of instanceIds) {
                   /** @type {ActionInstanceData} */
                   const instance = getters.getInstanceById(instanceId);
-                  promises.push(dispatch('runActionOnClient', {
-                    instanceId,
-                    input: instance.actionId in actionInputs ? actionInputs[instance.actionId] : {},
-                    client,
-                    mainTask,
-                    isSingleAction,
-                    loggedInTabId,
-                    retry,
-                    retryRunId,
-                  }));
+                  /** @type {ActionObject} */
+                  const action = getters.getActionById(instance.actionId);
+                  if (action.requiredActions.length === 0) {
+                    promises.push(getInstanceWithDependentsPromise(action, instance));
+                  }
                 }
+
                 await Promise.all(promises);
               } catch (error) {
                 for (const instanceId of instanceIds) {
@@ -729,6 +850,7 @@ const vuexModule = {
       const {
         state,
         rootState,
+        getters,
         commit,
         dispatch,
       } = context;
@@ -761,26 +883,31 @@ const vuexModule = {
             catchErrors: true,
             setStateBasedOnChildren: true,
             async func() {
-              const allInstanceIds = [];
-              const clientActionIds = [];
+              /* eslint-disable no-await-in-loop */
               for (const client of validClients) {
-                const actionIds = getClientsActionIds(client);
-                clientActionIds.push(actionIds);
+                const originalActionIds = getClientsActionIds(client);
+                const actionIds = [];
+                // Add any action dependencies
+                for (const actionId of originalActionIds) {
+                  /** @type {ActionObject} */
+                  const action = getters.getActionById(actionId);
+                  // TODO: Tag dependent actions as such.
+                  for (const dependentActionId of action.requiredActions) {
+                    if (!actionIds.includes(dependentActionId)) {
+                      actionIds.push(dependentActionId);
+                    }
+                  }
+                  actionIds.push(actionId);
+                }
 
                 // Initialize all client action runner instances.
                 const instanceIds = actionIds.map(
                   actionId => addNewInstance(context, { actionId, client }),
                 );
-                allInstanceIds.push(instanceIds);
-              }
-              /* eslint-disable no-await-in-loop */
-              for (let i = 0; i < validClients.length; i++) {
-                const client = validClients[i];
-                const instanceIds = allInstanceIds[i];
+
                 rootTask.status = client.name;
                 // TODO: Consider checking if a tab has been closed prematurely all the time.
                 // Currently, only tabLoaded checks for this.
-                const actionIds = clientActionIds[i];
                 await dispatch('runActionsOnClient', {
                   client,
                   actionIds,
