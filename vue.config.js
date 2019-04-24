@@ -58,15 +58,19 @@ module.exports = {
         return args;
       });
 
-    // Disable hot-reloading since it doesn't work
     config.module
       .rule('vue')
       .use('vue-loader')
       .loader('vue-loader')
       .tap((options) => {
+        // Disable hot-reloading since it doesn't work
         options.hotReload = false;
+        // Disable prettier to decrease compile time
+        // See https://github.com/vuejs/vue-loader/issues/1426
+        options.prettify = false;
         return options;
       });
+    // Disable hot-reloading since it doesn't work
     if (config.plugins.has('hmr')) {
       config.plugins.delete('hmr');
     }
