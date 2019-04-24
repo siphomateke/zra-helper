@@ -74,6 +74,10 @@ module.exports = {
     if (config.plugins.has('hmr')) {
       config.plugins.delete('hmr');
     }
+
+    // Hide 'bufferutil' and 'utf-8-validate' module not found errors.
+    // See https://github.com/websockets/ws/issues/1220
+    config.externals(['bufferutil', 'utf-8-validate']);
   },
   pages: {
     dashboard: {
