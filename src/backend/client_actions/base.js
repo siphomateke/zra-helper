@@ -77,6 +77,8 @@ import { has, get } from 'dot-prop';
  * If this is enabled, the page that is opened after logging in will not be closed until the user is
  * about to be logged out.
  * @property {boolean} [requiresTaxTypes]
+ * @property {string[]} [requiredActions]
+ * Actions that must be run before this one and whose output will be used.
  * @property {boolean} [hasOutput] Whether this client action returns an output.
  * @property {ClientActionOutputFilesGenerator} [generateOutputFiles]
  * Function that generates output(s) of the action based on the raw output data of each client.
@@ -283,6 +285,14 @@ export class ClientActionRunner {
     this.storeProxy.shouldRetry = true;
     this.storeProxy.retryReason = reason;
   }
+
+  getActionOutput(actionId) {
+    // TODO: Change this to support multiple actions of the same type in a client
+    const { currentRunId } = store.state.clientActions;
+    /** @type {import('@/store/modules/client_actions').ActionInstanceData} */
+    const instance = store.getters['clientActions/getInstance'](currentRunId, actionId, this.storeProxy.client.id);
+    return instance.output;
+  }
 }
 
 /**
@@ -436,6 +446,7 @@ export function createClientAction(options) {
     hasOutput: false,
     usesLoggedInTab: false,
     requiresTaxTypes: false,
+    requiredActions: [],
     requiredFeatures: [],
     logCategory: options.id,
   }, options);
