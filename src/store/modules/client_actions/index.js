@@ -98,7 +98,7 @@ function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
 }
 
 /** @type {import('vuex').Module<State>} */
-const module = {
+const vuexModule = {
   namespaced: true,
   state: {
     actions: {},
@@ -833,4 +833,4 @@ const module = {
     },
   },
 };
-export default module;
+export default vuexModule;

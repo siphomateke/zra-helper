@@ -21,7 +21,7 @@ let lastClientId = 0;
 const listStoreHelper = new ListStoreHelper('all', 'client', 'getClientById');
 
 /** @type {import('vuex').Module} */
-const module = {
+const vuexModule = {
   namespaced: true,
   /** @type {State} */
   state: {
@@ -103,4 +103,4 @@ const module = {
     },
   },
 };
-export default module;
+export default vuexModule;

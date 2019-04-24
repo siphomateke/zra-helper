@@ -99,7 +99,7 @@ const defaultConfig = {
 };
 
 /** @type {import('vuex').Module<State>} */
-const module = {
+const vuexModule = {
   namespaced: true,
   state: deepClone(defaultConfig),
   mutations: {
@@ -138,4 +138,4 @@ const module = {
     },
   },
 };
-export default module;
+export default vuexModule;
