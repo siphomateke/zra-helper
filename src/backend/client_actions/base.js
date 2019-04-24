@@ -71,6 +71,7 @@ import { taskStates } from '@/store/modules/tasks';
  * @property {any} error
  * @property {any} output
  * @property {boolean} running
+ * @property {string[]} dependencies IDs of instances this instance depends on.
  */
 
 /**
@@ -79,6 +80,7 @@ import { taskStates } from '@/store/modules/tasks';
  * output.
  * @abstract
  */
+// FIXME: Detect circular references of required actions.
 export class ClientActionRunner {
   /**
    * @param {string} id ID of runner instance in Vuex store.
@@ -122,6 +124,7 @@ export class ClientActionRunner {
     this.storeProxy.config = data.config;
     this.storeProxy.loggedInTabId = null;
     this.storeProxy.task = null;
+    this.storeProxy.dependencies = [];
 
     // Run status data
     this.storeProxy.error = null;
