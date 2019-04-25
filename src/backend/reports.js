@@ -44,21 +44,23 @@ export function parseReportPage(response) {
 }
 
 /**
+ * @template Record
  * @typedef {Object} ReportPage
  * @property {number} numPages
  * @property {number} numRecords
- * @property {import('@/backend/content_scripts/helpers/zra').ParsedReportTable} parsedTable
+ * @property {import('@/backend/content_scripts/helpers/zra').ParsedReportTable<Record>} parsedTable
  */
 
 /**
  * Gets a particular page of a report.
+ * @template Record
  * @param {Object} options
  * @param {string} options.tpin Same as client's username.
  * @param {string} options.reportCode The ID of the type of report to get.
  * @param {Object} options.request Parameters to pass to the HTTP request.
  * @param {string[]} options.reportHeaders The columns in the report table.
  * @param {number} options.page The page of the report to get.
- * @returns {Promise.<ReportPage>}
+ * @returns {Promise.<ReportPage<Record>>}
  */
 async function getReportPage({
   reportCode,
@@ -114,7 +116,7 @@ async function getReportPage({
  * provided, all the accounts with the provided tax type will be retrieved instead.
  * @param {import('./constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {number} options.page The page to get.
- * @returns {Promise.<ReportPage>}
+ * @returns {Promise.<ReportPage<import('./client_actions/pending_liabilities').PendingLiability>>}
  */
 export function getPendingLiabilityPage({
   tpin,
@@ -145,6 +147,18 @@ export function getPendingLiabilityPage({
 }
 
 /**
+ * @typedef {Object} TaxPayerLedgerRecord
+ * @property {string} srNo
+ * @property {string} transactionDate
+ * @property {string} fromDate
+ * @property {string} toDate
+ * @property {string} narration
+ * @property {string} debit
+ * @property {string} credit
+ * @property {string} cumulativeBalance
+ */
+
+/**
  * Gets a single page from the tax payer ledger.
  * @param {Object} options
  * @param {string} options.tpin Same as client's username.
@@ -152,7 +166,7 @@ export function getPendingLiabilityPage({
  * @param {string} options.fromDate Format must be DD/MM/YYYY
  * @param {string} options.toDate Format must be DD/MM/YYYY
  * @param {number} options.page The page to get.
- * @returns {Promise.<ReportPage>}
+ * @returns {Promise.<ReportPage<TaxPayerLedgerRecord>>}
  */
 export function getTaxPayerLedgerPage({
   tpin,
