@@ -32,6 +32,8 @@ Amended Return
 Audit assessment from Audit Module (Assessment No : 10000000000000) (14 digits)
 Additional assessment from Assessment Module (Assessment No : 10000000000000)
 Additional assessment from Assessment Module (Assessment No : 10000000000000)(10000000000000)
+Estimated Assessment (Assessment No : 00020316134466)
+REVERSAL OF - Estimated Assessment (Assessment No : 00020316134471)
 Fine for Audit assessment
 Being penalty amounting to 0.00 imposed under section 100(1)(e)(i)(A) for Additional assessment for the Return Period 01/01/2018 to 31/01/2018
 Amended assessment from Objection And Appeals Module (Assessment No : 10000000000000)
@@ -79,6 +81,7 @@ const narrationTypes = {
   AMENDED_RETURN: 'AMENDED_RETURN',
   AUDIT_ASSESSMENT: 'AUDIT_ASSESSMENT',
   ADDITIONAL_ASSESSMENT: 'ADDITIONAL_ASSESSMENT',
+  ESTIMATED_ASSESSMENT: 'ESTIMATED_ASSESSMENT',
   AUDIT_ASSESSMENT_PENALTY: 'AUDIT_ASSESSMENT_PENALTY',
   ADDITIONAL_ASSESSMENT_PENALTY: 'ADDITIONAL_ASSESSMENT_PENALTY',
   BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX: 'BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX',
@@ -205,6 +208,12 @@ const narrationTypeMatchers = {
   },
   [narrationTypes.ADDITIONAL_ASSESSMENT]: {
     typeMatch: /^additional assessment from assessment module/,
+    meta: {
+      assessmentNumber: /\(assessment no : (\d+)\)/,
+    },
+  },
+  [narrationTypes.ESTIMATED_ASSESSMENT]: {
+    typeMatch: /^estimated assessment/,
     meta: {
       assessmentNumber: /\(assessment no : (\d+)\)/,
     },
