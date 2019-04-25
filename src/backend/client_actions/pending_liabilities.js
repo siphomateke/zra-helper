@@ -36,6 +36,18 @@ function generateTotals(columns, value) {
 }
 
 /**
+ * @typedef {Object} PendingLiability
+ * @property {string} srNo
+ * @property {string} accountName
+ * @property {string} periodFrom
+ * @property {string} periodTo
+ * @property {string} principal
+ * @property {string} interest
+ * @property {string} penalty
+ * @property {string} total
+ */
+
+/**
  * Gets the pending liability totals of a tax type.
  * @param {import('../constants').Client} client
  * @param {import('../constants').TaxTypeNumericalCode} taxTypeId
