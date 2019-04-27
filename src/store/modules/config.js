@@ -76,7 +76,7 @@ const defaultConfig = {
     progressBars: false,
     sendConfigToContentScripts: true,
     missingElementInfo: true,
-    anonymizeClientsInExports: true,
+    anonymizeClientsInExports: false,
   },
   tabLoadTimeout: 20000,
   requestTimeout: 10000,
