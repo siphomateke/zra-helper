@@ -178,7 +178,7 @@ import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 
 export default {
-  name: 'Dashboard',
+  name: 'DashboardView',
   components: {
     ClientListFileUpload,
     ClientListModal,
