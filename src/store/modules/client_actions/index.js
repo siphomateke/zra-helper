@@ -734,6 +734,7 @@ const vuexModule = {
           unknownMaxProgress: false,
           sequential: true,
           isRoot: true,
+          list: 'clientActions',
         });
 
         commit('startNewRun', { taskId: rootTask.id, clients });

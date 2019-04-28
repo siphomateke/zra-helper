@@ -17,7 +17,10 @@ function taskFromId(store, id) {
   });
 }
 
-/** @typedef {import('@/store/modules/tasks').TaskState} TaskState */
+/**
+ * @typedef {import('@/store/modules/tasks').TaskState} TaskState
+ * @typedef {import('@/store/modules/tasks').TaskCreateOptions} TaskCreateOptions
+ */
 
 /**
  * @typedef {function} Task.setError
@@ -67,7 +70,7 @@ class Task {
   /**
    * Creates a new task.
    * @param {VuexStore} store
-   * @param {TaskVuexState} data
+   * @param {TaskCreateOptions} data
    */
   async init(store, data) {
     const id = await store.dispatch('tasks/create', data);
@@ -120,7 +123,7 @@ class Task {
 /**
  * TODO: Document this
  * @param {VuexStore} store
- * @param {TaskVuexState} data
+ * @param {TaskCreateOptions} data
  * @returns {Promise.<TaskObject>}
  */
 export default async function createTask(store, data) {

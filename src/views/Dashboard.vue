@@ -207,7 +207,7 @@ export default {
   },
   computed: {
     ...mapState({
-      tasks: state => state.tasks.all,
+      tasks: state => state.tasks.clientActions,
       clientsObj: state => state.clients.all,
     }),
     ...mapState(['zraLiteModeEnabled']),
