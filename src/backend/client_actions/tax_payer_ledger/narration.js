@@ -73,8 +73,9 @@ const narrationTypes = {
   ADVANCE_PAYMENT: 'ADVANCE_PAYMENT',
   PAYMENT: 'PAYMENT',
   CLOSING_BALANCE: 'CLOSING_BALANCE',
-  LATE_PAYMENT: 'LATE_PAYMENT',
-  LATE_RETURN: 'LATE_RETURN',
+  LATE_PAYMENT_PENALTY: 'LATE_PAYMENT_PENALTY',
+  LATE_PAYMENT_INTEREST: 'LATE_PAYMENT_INTEREST',
+  LATE_RETURN_PENALTY: 'LATE_RETURN_PENALTY',
   PROVISIONAL_RETURN: 'PROVISIONAL_RETURN',
   REVISED_PROVISIONAL_RETURN: 'REVISED_PROVISIONAL_RETURN',
   ORIGINAL_RETURN: 'ORIGINAL_RETURN',
@@ -94,11 +95,22 @@ const narrationTypes = {
   BEING_REVERSAL_REPLICATED_TRANSACTION: 'BEING_REVERSAL_REPLICATED_TRANSACTION',
 };
 
+const t = narrationTypes;
+
 /**
- * @typedef {Object} ParsedNarrationType
+ * @typedef {Object} ParsedNarrationPreGroup
  * @property {NarrationType} type
  * @property {Object} meta
  * @property {boolean} reversal
+ */
+
+/**
+ * @typedef {Object} ParsedNarrationWithGroup
+ * @property {string} group
+ */
+
+/**
+ * @typedef {ParsedNarrationPreGroup & ParsedNarrationWithGroup} ParsedNarrationType
  */
 
 /**
@@ -117,13 +129,6 @@ const narrationTypes = {
  */
 
 // TODO: Parse dates using moment. All dates are in the DD/MM/YYYY format.
-/* FIXME: Group the following:
-- LATE_RETURN_PENALTY
-- LATE_PAYMENT_PENALTY
-- AUDIT_ASSESSMENT_PENALTY
-- ADDITIONAL_ASSESSMENT_PENALTY
-- UNDER_ESTIMATION_PROVISIONAL_TAX_PENALTY
-*/
 /** @type {Object.<string, NarrationTypeMatcher>} */
 const narrationTypeMatchers = {
   [narrationTypes.TARPS_BALANCE]: {
@@ -162,17 +167,14 @@ const narrationTypeMatchers = {
       toDate: / to (.+)/,
     },
   },
-  [narrationTypes.LATE_PAYMENT]: {
-    typeMatch: /^late payment [a-z]+/,
-    meta: {
-      type: /late payment ([a-z]+)/,
+  [narrationTypes.LATE_PAYMENT_PENALTY]: {
+    typeMatch: /^late payment penalty/,
     },
+  [narrationTypes.LATE_PAYMENT_INTEREST]: {
+    typeMatch: /^late payment interest/,
   },
-  [narrationTypes.LATE_RETURN]: {
-    typeMatch: /^late return [a-z]+/,
-    meta: {
-      type: /late return ([a-z]+)/,
-    },
+  [narrationTypes.LATE_RETURN_PENALTY]: {
+    typeMatch: /^late return penalty/,
   },
   [narrationTypes.PROVISIONAL_RETURN]: {
     typeMatch: /^provisional return/,
@@ -279,6 +281,82 @@ const narrationTypeMatchers = {
 };
 
 /**
+ * @typedef {string} NarrationGroup
+ */
+
+/**
+ * @enum {NarrationGroup}
+ */
+// TODO: Strictly define this once TypeScript is used
+export const narrationGroups = {
+  PAYMENTS: 'PAYMENTS',
+  RETURNS: 'RETURNS',
+  PENALTIES: 'PENALTIES',
+  INTEREST: 'INTEREST',
+  ASSESSMENTS: 'ASSESSMENTS',
+  META: 'META',
+  LEGACY: 'LEGACY',
+};
+
+/**
+ * @type {Object.<NarrationGroup, NarrationType[]>}
+ */
+// TODO: Strictly define this once TypeScript is used
+const narrationTypesByGroup = {
+  [narrationGroups.PAYMENTS]: [
+    t.ADVANCE_PAYMENT,
+    t.PAYMENT,
+  ],
+  [narrationGroups.RETURNS]: [
+    t.PROVISIONAL_RETURN, // ITX-only
+    t.REVISED_PROVISIONAL_RETURN, // ITX-only
+    t.ORIGINAL_RETURN,
+    t.AMENDED_RETURN,
+  ],
+  [narrationGroups.INTEREST]: [
+    t.LATE_PAYMENT_INTEREST,
+  ],
+  [narrationGroups.PENALTIES]: [
+    t.LATE_RETURN_PENALTY,
+    t.AUDIT_ASSESSMENT_PENALTY,
+    t.ADDITIONAL_ASSESSMENT_PENALTY,
+    t.BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX,
+    t.LATE_PAYMENT_PENALTY,
+  ],
+  [narrationGroups.ASSESSMENTS]: [
+    t.AUDIT_ASSESSMENT,
+    t.ADDITIONAL_ASSESSMENT,
+    t.ESTIMATED_ASSESSMENT,
+  ],
+  [narrationGroups.META]: [
+    t.CLOSING_BALANCE,
+  ],
+  [narrationGroups.LEGACY]: [
+    t.TARPS_BALANCE,
+    t.BEING_POSTING_OPENING_BALANCE_MIGRATED,
+    t.BEING_REVERSAL_DUPLICATE_PAYMENT,
+    t.BEING_REVERSAL_REPLICATED_TRANSACTION,
+  ],
+};
+
+/** TODO: Rename me */
+const narrationTypesGroupsMap = {};
+for (const group of Object.keys(narrationTypesByGroup)) {
+  for (const narrationType of narrationTypesByGroup[group]) {
+    narrationTypesGroupsMap[narrationType] = group;
+  }
+}
+
+/**
+ * Determines which group a narration type belongs to.
+ * @param {ParsedNarrationPreGroup} narration
+ * @returns {NarrationGroup}
+ */
+function getNarrationType(narration) {
+  return narrationTypesGroupsMap[narration.type];
+}
+
+/**
  * Identifies the type of reason for change a narration in the tax payer ledger is. Additionally,
  * extracts information from the reason such as whether the reason is a reversal, dates,
  * receipt numbers and assessment numbers.
@@ -291,6 +369,7 @@ export default function parseNarration(narration) {
     type: null,
     meta: {},
     reversal: false,
+    group: null,
   };
   result.reversal = narration.includes('reversal of') || narration.includes('reversed');
   for (const type of Object.keys(narrationTypeMatchers)) {
@@ -312,5 +391,6 @@ export default function parseNarration(narration) {
       break;
     }
   }
+  result.group = getNarrationType(result);
   return result;
 }
