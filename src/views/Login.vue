@@ -191,7 +191,7 @@ export default {
     },
     async login() {
       const task = await createTask(this.$store, {
-        title: 'Login client',
+        title: `Login client ${this.username}`,
         list: 'login',
       });
       this.tasks.push(task.id);
@@ -199,7 +199,7 @@ export default {
         task,
         func: () => robustLogin({
           client: {
-            name: 'Unknown client',
+            name: this.username,
             username: this.username,
             password: this.password,
           },
