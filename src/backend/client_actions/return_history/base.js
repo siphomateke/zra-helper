@@ -172,6 +172,7 @@ export const GetReturnHistoryClientActionOptions = {
   requiredFeatures: [browserFeatures.MHTML],
   requiresTaxTypes: true,
   defaultInput: () => ({
+    taxTypeIds: Object.keys(taxTypes),
     fromDate: '01/01/2013',
     toDate: moment().format('31/12/YYYY'),
   }),

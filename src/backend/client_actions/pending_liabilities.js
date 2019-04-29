@@ -95,6 +95,9 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
+  defaultInput: () => ({
+    taxTypeIds: Object.keys(taxTypes),
+  }),
   hasOutput: true,
   defaultOutputFormat: exportFormatCodes.CSV,
   outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
