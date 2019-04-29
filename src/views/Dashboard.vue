@@ -178,7 +178,7 @@ import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 
 export default {
-  name: 'Dashboard',
+  name: 'DashboardView',
   components: {
     ClientListFileUpload,
     ClientListModal,
@@ -207,7 +207,7 @@ export default {
   },
   computed: {
     ...mapState({
-      tasks: state => state.tasks.all,
+      tasks: state => state.tasks.clientActions,
       clientsObj: state => state.clients.all,
     }),
     ...mapState(['zraLiteModeEnabled']),

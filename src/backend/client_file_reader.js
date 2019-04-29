@@ -21,6 +21,30 @@ import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@
  * @property {Object.<string, ClientValidationError[]>} [propErrors] List of errors per property.
  */
 
+export function validateClientUsername(tpin) {
+  const response = {
+    valid: true,
+    errors: [],
+  };
+  if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
+    response.valid = false;
+    response.errors.push(clientPropValidationErrorMessages.TPIN_SHORT);
+  }
+  return response;
+}
+
+export function validateClientPassword(password) {
+  const response = {
+    valid: true,
+    errors: [],
+  };
+  if (password.length < 8) {
+    response.valid = false;
+    response.errors.push(clientPropValidationErrorMessages.PASSWORD_SHORT);
+  }
+  return response;
+}
+
 /**
  * Checks if a client is valid
  *
@@ -50,15 +74,18 @@ function validateClient(client) {
     validationErrors.push(`Properties missing: ${missingString}`);
   }
   if (!missingProps.includes('username')) {
-    const tpin = client.username;
-    if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
-      validationErrors.push(clientPropValidationErrorMessages.TPIN_SHORT);
-      propErrors.username.push(clientPropValidationErrors.TPIN_SHORT);
+    const validationResult = validateClientUsername(client.username);
+    if (!validationResult.valid) {
+      validationErrors.push(...validationResult.errors);
+      propErrors.username.push(...validationResult.errors);
     }
   }
-  if (!missingProps.includes('password') && client.password.length < 8) {
-    validationErrors.push(clientPropValidationErrorMessages.PASSWORD_SHORT);
-    propErrors.password.push(clientPropValidationErrors.PASSWORD_SHORT);
+  if (!missingProps.includes('password')) {
+    const validationResult = validateClientPassword(client.password);
+    if (!validationResult.valid) {
+      validationErrors.push(...validationResult.errors);
+      propErrors.password.push(...validationResult.errors);
+    }
   }
   return {
     valid: validationErrors.length === 0,

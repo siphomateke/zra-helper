@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import Dashboard from './views/Dashboard.vue';
+import Login from './views/Login.vue';
 import Settings from './views/Settings.vue';
 
 Vue.use(Router);
@@ -19,6 +20,15 @@ export default new Router({
       meta: {
         title: 'Dashboard',
         icon: 'tachometer-alt',
+      },
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: Login,
+      meta: {
+        title: 'Login',
+        icon: 'sign-in-alt',
       },
     },
     {

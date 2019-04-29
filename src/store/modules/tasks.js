@@ -46,6 +46,12 @@ export const taskStates = {
  * associated with a single client action run.
  */
 
+/**
+ * @typedef {Object} TaskCreateOptions_Temp
+ * @property {string} [list]
+ */
+/** @typedef {TaskVuexState & TaskCreateOptions_Temp} TaskCreateOptions */
+
 // TODO: Document this module. Especially the getters.
 // TODO: Figure out how to use function documentation in transitional tasks module.
 
@@ -96,10 +102,20 @@ const vuexModule = {
   namespaced: true,
   state: {
     /**
-     * Top-level list of tasks.
+     * Default task list.
      * @type {number[]}
      */
     all: [],
+    /**
+     * Client action related task IDs.
+     * @type {number[]}
+     */
+    clientActions: [],
+    /**
+     * Tasks related to logging into a single client.
+     * @type {number[]}
+     */
+    login: [],
     /**
      * Object containing tasks as values and their corresponding IDs as keys.
      * @type {Object.<string, TaskVuexState>}
@@ -251,10 +267,10 @@ const vuexModule = {
     /**
      * Creates a new task and returns its ID.
      * @param {import('vuex').ActionContext} store
-     * @param {TaskVuexState} data
+     * @param {TaskCreateOptions} data
      * @returns {number} The newly-created task's ID.
      */
-    create({ commit }, data = {}) {
+    create({ commit }, data = { list: 'all' }) {
       const task = Object.assign({
         id: lastTaskId,
         title: '',
@@ -281,7 +297,7 @@ const vuexModule = {
       lastTaskId += 1;
 
       if (task.parent === null) {
-        commit('addToList', { id, name: 'all' });
+        commit('addToList', { id, name: data.list });
       } else {
         commit('addChildren', { id: task.parent, children: [id] });
       }

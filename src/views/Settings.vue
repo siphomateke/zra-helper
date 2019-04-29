@@ -231,7 +231,7 @@ import configMixin from '@/mixins/config';
 import BaseCard from '@/components/BaseCard.vue';
 
 export default {
-  name: 'Settings',
+  name: 'SettingsView',
   components: {
     BaseCard,
   },
