@@ -10,7 +10,7 @@
           <b-field
             :type="fields.loginDetails.type"
             :message="fields.loginDetails.message"
-            title="Client login details separated by tabs. The details can either be name, username and password or just username and password."
+            title="Client login details separated by tabs or commas. The details can either be name, username and password or just username and password."
             label="Login details"
           >
             <!-- eslint-enable max-len -->
@@ -66,6 +66,7 @@ import { validateClientUsername, validateClientPassword } from '../backend/clien
 import { robustLogin } from '@/backend/client_actions/user';
 import createTask from '@/transitional/tasks';
 import { taskFunction } from '@/backend/client_actions/utils';
+import Papa from 'papaparse';
 
 export default {
   name: 'LoginView',
@@ -131,33 +132,36 @@ export default {
         password: '',
       };
       if (this.loginDetails) {
-        const fields = this.loginDetails.split('\t');
-        if (fields.length === 2 || fields.length === 3) {
-          if (fields.length === 2) {
-            [data.username, data.password] = fields;
+        const parsed = Papa.parse(this.loginDetails);
+        if (parsed.errors.length > 0) {
+          valid = false;
+          errorMessage += parsed.errors.map(error => error.message).join(', ');
+        } else {
+          const fields = parsed.data[0];
+          if (fields.length === 2 || fields.length === 3) {
+            if (fields.length === 2) {
+              [data.username, data.password] = fields;
+            } else {
+              [data.name, data.username, data.password] = fields;
+            }
+            if (data.username.length === 0 || data.password.length === 0) {
+              valid = false;
+              if (data.username.length === 0 && data.password.length === 0) {
+                errorMessage = 'Username and password must not be blank.';
+              } else if (data.username.length === 0) {
+                errorMessage = 'Username must not be blank.';
+              } else if (data.password.length === 0) {
+                errorMessage = 'Password must not be blank.';
+              }
+            }
           } else {
-            [data.name, data.username, data.password] = fields;
-          }
-          if (data.username.length === 0 || data.password.length === 0) {
             valid = false;
-            if (data.username.length === 0 && data.password.length === 0) {
-              errorMessage = 'Username and password must not be blank.';
-            } else if (data.username.length === 0) {
-              errorMessage = 'Username must not be blank.';
-            } else if (data.password.length === 0) {
-              errorMessage = 'Password must not be blank.';
+            if (fields.length > 3) {
+              errorMessage += 'Too many fields.';
+            } else {
+              errorMessage += 'Too few fields. Must contain at least a username and password separated by a tab or a comma.';
             }
           }
-        } else {
-          valid = false;
-          if (fields.length > 3) {
-            errorMessage += 'Too many fields.';
-          } else {
-            errorMessage += 'Too few fields. Must contain at least a username and password separated by a tab.';
-          }
-        }
-        if (!valid) {
-          errorMessage = `Invalid login details: ${errorMessage}`;
         }
       }
       this.showFieldValidation('loginDetails', valid, [errorMessage]);
