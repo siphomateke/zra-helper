@@ -10,7 +10,6 @@
 
 <script>
 import DateRangeInput from '@/components/fields/DateRangeInput.vue';
-import TaxTypeSelect from '@/components/fields/TaxTypeSelect.vue';
 import ClientActionInputMixin from './mixin';
 
 // FIXME: Add `receipts` and `receiptDataPages` inputs.
@@ -18,7 +17,6 @@ export default {
   name: 'ClientActionAckReturnsInput',
   components: {
     DateRangeInput,
-    TaxTypeSelect,
   },
   mixins: [ClientActionInputMixin],
   props: {
