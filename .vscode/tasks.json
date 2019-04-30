@@ -39,6 +39,11 @@
         "type": "npm",
         "script": "build:all",
         "problemMatcher": []
+      },
+      {
+        "type": "npm",
+        "script": "test:unit",
+        "problemMatcher": []
       }
     ]
   }
