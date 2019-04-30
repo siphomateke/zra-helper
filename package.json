@@ -17,7 +17,8 @@
     "build:all": "yarn run build:firefox && yarn run build:chrome",
     "lint": "vue-cli-service lint --format stylish --mode production",
     "devtools": "vue-devtools",
-    "postversion": "concurrently \"git push --tags\" \"yarn run build:all\""
+    "postversion": "concurrently \"git push --tags\" \"yarn run build:all\"",
+    "test:unit": "vue-cli-service test:unit"
   },
   "contributors": [
     "rahensonzam",
@@ -49,9 +50,13 @@
     "@types/firefox-webext-browser": "^65.0.0",
     "@vue/cli-plugin-babel": "^3.4.1",
     "@vue/cli-plugin-eslint": "^3.4.1",
+    "@vue/cli-plugin-unit-jest": "^3.7.0",
     "@vue/cli-service": "^3.4.1",
     "@vue/devtools": "^4.1.5",
     "@vue/eslint-config-airbnb": "^4.0.0",
+    "@vue/test-utils": "1.0.0-beta.29",
+    "babel-core": "7.0.0-bridge.0",
+    "babel-jest": "^23.6.0",
     "concurrently": "^4.1.0",
     "cross-env": "^5.2.0",
     "imports-loader": "^0.8.0",
