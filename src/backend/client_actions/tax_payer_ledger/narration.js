@@ -187,6 +187,7 @@ const narrationTypeMatchers = {
       const periodFromMonth = moment(parsed.meta.fromDate, 'DD/MM/YYYY').format('MM');
       const periodToMonth = moment(parsed.meta.toDate, 'DD/MM/YYYY').format('MM');
       parsed.meta.quarter = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+      return parsed;
     },
   },
   [narrationTypes.REVISED_PROVISIONAL_RETURN]: {
@@ -194,6 +195,13 @@ const narrationTypeMatchers = {
     meta: {
       fromDate: /\((.+)-.+\)/,
       toDate: /\(.+-(.+)\)/,
+    },
+    transformer(parsed) {
+      // FIXME: Only parse date once. Moment shouldn't run in the transformer and again elsewhere.
+      const periodFromMonth = moment(parsed.meta.fromDate, 'DD/MM/YYYY').format('MM');
+      const periodToMonth = moment(parsed.meta.toDate, 'DD/MM/YYYY').format('MM');
+      parsed.meta.quarter = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+      return parsed;
     },
   },
   [narrationTypes.ORIGINAL_RETURN]: {
