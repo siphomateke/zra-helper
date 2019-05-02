@@ -134,8 +134,9 @@ export async function parseTableAdvanced({
 }
 
 /**
+ * @template Record
  * @typedef {Object} ParsedReportTable
- * @property {ParsedTableRecord[]} records
+ * @property {ParsedTableRecord[] | Record[]} records
  * @property {number} numPages
  * @property {number} currentPage
  */
@@ -143,10 +144,11 @@ export async function parseTableAdvanced({
 /**
  * Parses rslt report tables.
  * These are used by the pending liabilities and the tax payer ledger reports.
+ * @template Record
  * @param {Object} options
  * @param {Document|Element} options.root
  * @param {string[]} options.headers
- * @returns {Promise.<ParsedReportTable>}
+ * @returns {Promise.<ParsedReportTable<Record>>}
  */
 export async function parseReportTable({ root, headers }) {
   let numPages = null;
@@ -196,4 +198,19 @@ export async function parseReportTable({ root, headers }) {
     currentPage,
     records,
   };
+}
+
+/**
+ * Parses numbers from the ZRA website. The numbers contain commas and decimal places that must be
+ * properly parsed.
+ * @param {string} amount E.g. 3,400.00
+ * @returns {number}
+ */
+// TODO: Consider actually using this when parsing tables.
+export function parseAmountString(amount) {
+  // TODO: Remove this type check once we use TypeScript
+  if (amount && typeof amount === 'string') {
+    return parseFloat(amount.replace(/,/g, ''));
+  }
+  return null;
 }

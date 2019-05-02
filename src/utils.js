@@ -111,3 +111,15 @@ export function joinSpecialLast(arr, separator, lastSeparator) {
 export async function delay(timeout) {
   return new Promise(resolve => setTimeout(resolve, timeout));
 }
+
+/**
+ * Checks if two objects are equivalent. That is they have the same keys with the same values.
+ * It doesn't check if the two objects share the same reference.
+ * @param {Object} obj1
+ * @param {Object} obj2
+ * @returns {boolean}
+ */
+// TODO: Evaluate performance and consider using lodash.
+export function objectsEqual(obj1, obj2) {
+  return JSON.stringify(obj1) === JSON.stringify(obj2);
+}
