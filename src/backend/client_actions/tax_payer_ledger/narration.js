@@ -368,18 +368,19 @@ function getNarrationType(narration) {
  * Identifies the type of reason for change a narration in the tax payer ledger is. Additionally,
  * extracts information from the reason such as whether the reason is a reversal, dates,
  * receipt numbers and assessment numbers.
- * @param {string} narration Lower case narration.
+ * @param {string} originalNarration Lower case narration.
  * @returns {ParsedNarrationType}
  */
 // TODO: Add tests to this. It really needs them.
-export default function parseNarration(narration) {
+export default function parseNarration(originalNarration) {
   let result = {
     type: null,
     meta: {},
     reversal: false,
     group: null,
   };
-  result.reversal = narration.includes('reversal of') || narration.includes('reversed');
+  result.reversal = originalNarration.includes('reversal of') || originalNarration.includes('reversed');
+  const narration = originalNarration.replace(/^reversal of - /, '').replace(/reversed$/, '');
   for (const type of Object.keys(narrationTypeMatchers)) {
     const matcher = narrationTypeMatchers[type];
     if (narration.match(matcher.typeMatch)) {
