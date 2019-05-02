@@ -332,17 +332,19 @@ function getDifferenceInDays(date1, date2) {
  * @param {number} currentDate
  * @returns {PastWeekRecordsResponse}
  */
-// FIXME: Improve performance by sorting and stopping search once dates are older than a week.
 export function getRecordsFromPastWeek(records, currentDate = new Date().valueOf()) {
+  const sorted = sortRecordsByDate(records, 'transactionDate', false);
   const exactlyAWeekAgo = [];
   const withinLastWeek = [];
-  for (const record of records) {
+  for (const record of sorted) {
     const diff = getDifferenceInDays(currentDate, record.transactionDate);
     if (diff >= 0 && diff <= 7) {
       withinLastWeek.push(record);
       if (diff === 7) {
         exactlyAWeekAgo.push(record);
       }
+    } else if (diff > 7) {
+      break;
     }
   }
   return {
