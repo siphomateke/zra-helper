@@ -80,6 +80,7 @@ export const clientPropValidationErrorMessages = {
 
 /**
  * @typedef {string} Date Date in the format 'DD/MM/YYYY'
+ * @typedef {number} UnixDate
  * @typedef {string} ReferenceNumber
  */
 // #endregion

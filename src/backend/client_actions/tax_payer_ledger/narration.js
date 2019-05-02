@@ -68,7 +68,7 @@ REVERSAL OF - Payment Reconciliation (PRN: 100000000000 ) against PRINCIPAL LIAB
  * @typedef {string} NarrationType
  * @enum {NarrationType}
  */
-const narrationTypes = {
+export const narrationTypes = {
   TARPS_BALANCE: 'TARPS_BALANCE',
   ADVANCE_PAYMENT: 'ADVANCE_PAYMENT',
   PAYMENT: 'PAYMENT',
