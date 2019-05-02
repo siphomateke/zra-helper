@@ -1,7 +1,7 @@
 import moment from 'moment';
 import parseNarration, { narrationGroups, narrationTypes } from './narration';
 import { parseAmountString } from '@/backend/content_scripts/helpers/zra';
-import { pendingLiabilityColumns, pendingLiabilityTypes } from '../pending_liabilities';
+import { pendingLiabilityTypes } from '../pending_liabilities';
 import { objectsEqual } from '@/utils';
 import { getDataFromReceipt } from '../receipts';
 import { getAckReceiptPostOptions } from '../return_history/ack_receipt';
@@ -69,39 +69,6 @@ export function parseLedgerRecords(records) {
       fromDateString: record.fromDate,
       toDateString: record.toDate,
     }));
-  }
-  return parsedRecords;
-}
-
-/**
- * @typedef {Object} ParsedPendingLiability
- * @property {string} srNo
- * @property {string} accountName
- * @property {UnixDate} periodFrom
- * @property {UnixDate} periodTo
- * @property {number} principal
- * @property {number} interest
- * @property {number} penalty
- * @property {number} total
- */
-
-/**
- * Converts pending liabilities to a machine-readable format.
- * @param {import('../pending_liabilities').PendingLiability[]} records
- * @returns {ParsedPendingLiability[]}
- */
-function parsePendingLiabilities(records) {
-  const parsedRecords = [];
-  for (const record of records) {
-    const parsedRecord = {
-      periodFrom: parseDate(record.periodFrom),
-      periodTo: parseDate(record.periodTo),
-    };
-    for (const type of pendingLiabilityColumns) {
-      parsedRecord[type] = parseAmountString(record[type]);
-    }
-    const recordCopy = Object.assign({}, record);
-    parsedRecords.push(Object.assign(recordCopy, parsedRecord));
   }
   return parsedRecords;
 }
@@ -279,43 +246,6 @@ function findLedgerRecordByAmount(amount, records) {
           return amendment;
         }
       }
-    }
-  }
-  return null;
-}
-
-/**
- * Finds a pending liability with a certain pending liability type amount.
- * E.g. one with principal of 5.
- * @param {number} amount
- * @param {string} pendingLiabilityType Pending liability type. E.g. 'principal', 'interest'
- * @param {ParsedPendingLiability[]} records
- * @returns {ParsedPendingLiability|null}
- */
-function findPendingLiabilityByAmount(amount, pendingLiabilityType, records) {
-  for (const record of records) {
-    if (record[pendingLiabilityType] === amount) {
-      return record;
-    }
-  }
-  return null;
-}
-
-/**
- * Finds the pending liability that matches a record in the tax payer ledger.
- *
- * This is done by searching for a pending liability with the same period as the record.
- * @param {ParsedTaxPayerLedgerRecord} record
- * @param {ParsedPendingLiability[]} pendingLiabilities
- * @returns {ParsedPendingLiability|null}
- */
-function findMatchingPendingLiability(record, pendingLiabilities) {
-  for (const pendingLiability of pendingLiabilities) {
-    if (
-      pendingLiability.periodFrom === record.fromDate
-      && pendingLiability.periodTo === record.toDate
-    ) {
-      return pendingLiability;
     }
   }
   return null;
@@ -556,7 +486,6 @@ async function getLiabilityAmountFromAckReceipt({
  * @param {ParsedLedgerRecordWithReturnData} options.record
  * @param {number} options.difference
  * @param {string} options.pendingLiabilityType Pending liability type. E.g. 'principal', 'interest'
- * @param {ParsedPendingLiability[]} options.parsedPendingLiabilities
  * @param {ClosingBalancesByPeriod} options.closingBalances
  * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {import('@/backend/constants').Client} options.client
@@ -567,7 +496,6 @@ async function generateChangeReasonDetails({
   record,
   difference,
   pendingLiabilityType,
-  parsedPendingLiabilities,
   closingBalances,
   taxTypeId,
   client,
@@ -615,27 +543,6 @@ async function generateChangeReasonDetails({
       }
     } else {
       // TODO: Confirm that this shouldn't run if principal increased by less than a Kwacha.
-      /* const pendingLiabilityRecord = findMatchingPendingLiability(
-        record,
-        parsedPendingLiabilities,
-      );
-      let discrepancy = false;
-      if (pendingLiabilityRecord) {
-        const pendingLiabilityAmount = pendingLiabilityRecord[pendingLiabilityType];
-        if (pendingLiabilityAmount !== record.returnData.amount) {
-          discrepancy = true;
-        }
-      } else {
-        // Couldn't find a matching pending liability.
-        // TODO: Make a distinction between this and the values not being equal.
-        discrepancy = true;
-      }
-      if (discrepancy) {
-        // A discrepancy can be caused by an advance payment being paid to the account
-        // but not allocated to any period or liability. This is a system error.
-        details.systemError = ledgerSystemErrors.ADVANCE_PAYMENT;
-      } */
-
       // FIXME: Handle closing balance not existing. This shouldn't be the case but just in case.
       const closingBalance = closingBalances[record.fromDate];
       if (closingBalanceIsZero(closingBalance) && record.returnData.advancePayments.length > 0) {
@@ -650,15 +557,12 @@ async function generateChangeReasonDetails({
 export default async function taxPayerLedgerLogic({
   taxTypeId,
   lastPendingLiabilityTotals,
-  pendingLiabilities,
   pendingLiabilityTotals,
   taxPayerLedgerRecords,
   currentDate = new Date().valueOf(), // FIXME: Remove this
   client,
   parentTaskId,
 }) {
-  // const parsedPendingLiabilities = parsePendingLiabilities(pendingLiabilities);
-  const parsedPendingLiabilities = [];
   let parsedLedgerRecords = parseLedgerRecords(taxPayerLedgerRecords);
 
   // Extract closing balances
@@ -723,7 +627,6 @@ export default async function taxPayerLedgerLogic({
           closingBalances,
           difference,
           pendingLiabilityType,
-          parsedPendingLiabilities,
           taxTypeId,
           client,
           parentTaskId,
