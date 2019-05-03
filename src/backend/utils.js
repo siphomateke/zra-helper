@@ -207,8 +207,9 @@ class TabCreator {
 export const tabCreator = new TabCreator();
 
 /**
- * Waits for a tab with a specific ID to load
+ * Waits for a tab with a specific ID to finish loading.
  *
+ * If the tab isn't currently loading, it immediately resolves.
  * @param {number} desiredTabId
  * @param {number} [timeout]
  * The amount of time to wait for a tab to load (in milliseconds). Default value is the one set in
@@ -219,7 +220,14 @@ export const tabCreator = new TabCreator();
 export function tabLoaded(desiredTabId, timeout = null) {
   if (timeout === null) timeout = config.tabLoadTimeout;
 
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    const tab = await browser.tabs.get(desiredTabId);
+    // Make sure the tab is currently loading
+    if (tab.status !== 'loading') {
+      resolve();
+      return;
+    }
+
     let removeListeners;
     function updatedListener(tabId, changeInfo) {
       if (tabId === desiredTabId && changeInfo.status === 'complete') {
