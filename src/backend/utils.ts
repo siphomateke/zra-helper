@@ -628,9 +628,9 @@ const xmlParser = new xml2js.Parser({ explicitArray: false });
 /**
  * Converts an XML string to JSON
  */
-async function parseXml(str: string): Promise<object> {
+async function parseXml<R extends object>(str: string): Promise<R> {
   return new Promise((resolve, reject) => {
-    xmlParser.parseString(str, (err, result: object) => {
+    xmlParser.parseString(str, (err, result: R) => {
       if (err) {
         reject(err);
       }
@@ -643,9 +643,9 @@ async function parseXml(str: string): Promise<object> {
  * Makes a request that returns XML and parses the XML response.
  * @returns The parsed XML.
  */
-export async function xmlRequest(options: RequestOptions): Promise<object> {
+export async function xmlRequest<R extends object>(options: RequestOptions): Promise<R> {
   const xml: string = await makeRequest(options);
-  return parseXml(xml);
+  return parseXml<R>(xml);
 }
 
 /**
@@ -668,6 +668,6 @@ export function parseDocument(documentString: string): Document {
  * @throws {import('@/backend/errors').ZraError}
  */
 export async function getDocumentByAjax(options: RequestOptions): Promise<Document> {
-  const data = await makeRequest(options);
+  const data: string = await makeRequest(options);
   return parseDocument(data);
 }
