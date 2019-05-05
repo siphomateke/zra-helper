@@ -17,13 +17,13 @@ interface ClientActionOutputFormatterOptions {
 type ClientActionOutputFormatter = (options: ClientActionOutputFormatterOptions) => string;
 
 // FIXME: Express in type that output settings are required if hasOutput = true.
-interface ClientActionOptions {
+interface ClientActionOptions<Input extends object> {
   /** A unique camelCase ID to identify this client action. */
   id: string;
   /** The human-readable name of this client action. */
   name: string;
   // FIXME: Type this properly based on the current client.
-  defaultInput?: () => object;
+  defaultInput?: () => Input;
   requiredFeatures?: BrowserFeature[];
   /**
    * Whether this action needs to open a page from a logged in tab.
@@ -42,30 +42,33 @@ interface ClientActionOptions {
   outputFormatter?: ClientActionOutputFormatter;
 }
 
-export interface ClientActionObject extends ClientActionOptions {
+export interface ClientActionObject<Input extends object> extends ClientActionOptions<Input> {
   /** The log category to use when logging anything in this action. */
   logCategory: string;
   Runner: typeof ClientActionRunner;
 }
 
-export interface ClientActionRunnerProxy {
+// FIXME: Actually use this strongly typed version elsewhere
+export interface TypedClientActionRunnerProxy<Input, Output, Config> {
   /** Client action runner instance ID used to retrieve an instance from the store. */
   id: string;
   actionId: string;
   client: Client;
-  config: object;
+  config: Config;
   loggedInTabId: number;
   task: TaskObject;
-  input: object;
-  retryInput: object;
+  input: Input;
+  retryInput: Input;
   /** The reason why this instance should be retried. */
   retryReason: string;
   /** Whether this instance should be retried. */
   shouldRetry: boolean;
   error: any;
-  output: any;
+  output: Output;
   running: boolean;
 }
+
+export type ClientActionRunnerProxy = TypedClientActionRunnerProxy<any, any, any>;
 
 /** Options for {@link ClientActionRunner.init} */
 interface RunnerInitOptions {
@@ -80,18 +83,22 @@ interface RunnerRunOptions {
   task: TaskObject;
 }
 
+export interface BasicRunnerInput { }
+export interface BasicRunnerOutput { }
+export interface BasicRunnerConfig { }
+
 /**
  * The part of a client action that will actually be run.
  * Each client action runner instance can have its own client, options, parent task, errors and
  * output.
  */
-export abstract class ClientActionRunner {
-  storeProxy: ClientActionRunnerProxy;
+export abstract class ClientActionRunner<Input extends object, Output, Config> {
+  storeProxy: TypedClientActionRunnerProxy<Input, Output, Config>;
 
   /**
    * @param id ID of runner instance in Vuex store.
    */
-  constructor(public id: string, action: ClientActionObject) {
+  constructor(public id: string, action: ClientActionObject<Input>) {
     /**
      * A wrapper around this instance's data in the store to make it easier to get state and commit
      * mutations.
@@ -260,7 +267,9 @@ function validateActionOptions(options: ClientActionOptions) {
  * Creates a new client action from an object.
  * Default options are assigned and then the action is validated.
  */
-export function createClientAction(options: ClientActionOptions): ClientActionObject {
+export function createClientAction<
+  Input extends object
+>(options: ClientActionOptions<Input>): ClientActionObject<Input> {
   const clientAction = Object.assign(
     {
       defaultInput: () => ({}),

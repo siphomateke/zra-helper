@@ -1,33 +1,44 @@
 import store from '@/store';
 import createTask from '@/transitional/tasks';
-import { exportFormatCodes, taxTypes } from '../constants';
+import {
+  ExportFormatCode,
+  taxTypes,
+  Client,
+  TaxTypeNumericalCode,
+  TaxTypeCodeMap,
+} from '../constants';
 import { writeJson, unparseCsv } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
-import { createClientAction, ClientActionRunner, inInput } from './base';
+import {
+  createClientAction,
+  ClientActionRunner,
+  inInput,
+  BasicRunnerConfig,
+} from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
+import { TaskId } from '@/store/modules/tasks';
+
+// FIXME: Infer this from totalsColumns
+type TotalsColumn = 'principal' | 'interest' | 'penalty' | 'total';
 
 /** Columns to get from the pending liabilities table */
-const totalsColumns = [
-  'principal',
-  'interest',
-  'penalty',
-  'total',
-];
+const totalsColumns: TotalsColumn[] = ['principal', 'interest', 'penalty', 'total'];
 
 /**
- * @typedef {Object.<string, string>} Totals
  * Totals with two decimal places. The possible totals are all the items in `totalsColumns`.
  */
+type Totals = { [K in TotalsColumn]: string };
 
 /**
  * Generates an object with totals that are all one value.
- * @param {string[]} columns
- * @param {string} value
- * @returns {Totals}
  */
-function generateTotals(columns, value) {
-  const totals = {};
+// TODO: Figure out a way to properly type this functions return value based on the passed columns
+function generateTotals<
+  V,
+  R extends { [key in TotalsColumn]: V }
+>(columns: TotalsColumn[], value: V): R {
+  const totals: R = {} as R;
   for (const column of columns) {
     totals[column] = value;
   }
@@ -36,12 +47,12 @@ function generateTotals(columns, value) {
 
 /**
  * Gets the pending liability totals of a tax type.
- * @param {import('../constants').Client} client
- * @param {import('../constants').TaxTypeNumericalCode} taxTypeId
- * @param {number} parentTaskId
- * @returns {Promise<Totals|null>}
  */
-async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
+async function getPendingLiabilities(
+  client: Client,
+  taxTypeId: TaxTypeNumericalCode,
+  parentTaskId: TaskId,
+): Promise<Totals | null> {
   const taxType = taxTypes[taxTypeId];
 
   const task = await createTask(store, {
@@ -68,13 +79,13 @@ async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
         });
       }
 
-      let totals;
+      let totals: Totals | null;
       const { records } = response.parsedTable;
       if (records.length > 0) {
         const totalsRow = records[records.length - 1];
         // Make sure we are getting totals from the grand total row.
         if (totalsRow.srNo.toLowerCase() === 'grand total') {
-          totals = {};
+          totals = {} as Totals;
           for (const column of totalsColumns) {
             const cell = totalsRow[column];
             totals[column] = cell.replace(/\n\n/g, '');
@@ -91,26 +102,34 @@ async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
   });
 }
 
-const GetAllPendingLiabilitiesClientAction = createClientAction({
+export namespace PendingLiabilitiesAction {
+  export interface Output {
+    totals: TaxTypeCodeMap<Totals>;
+    retrievalErrors: TaxTypeCodeMap<any>;
+  }
+
+  export interface Input {
+    taxTypeIds?: TaxTypeNumericalCode[];
+  }
+}
+
+const GetAllPendingLiabilitiesClientAction = createClientAction<PendingLiabilitiesAction.Input>({
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
   hasOutput: true,
-  defaultOutputFormat: exportFormatCodes.CSV,
-  outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+  defaultOutputFormat: ExportFormatCode.CSV,
+  outputFormats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
   outputFormatter({
-    clients,
-    outputs: clientOutputs,
-    format,
-    anonymizeClients,
+    clients, outputs: clientOutputs, format, anonymizeClients,
   }) {
-    if (format === exportFormatCodes.CSV) {
+    if (format === ExportFormatCode.CSV) {
       const rows = [];
       const columnOrder = totalsColumns;
       // Columns are: client identifier, ...totals, error
       const numberOfColumns = 2 + totalsColumns.length + 1;
       for (const client of clients) {
-        let value = null;
+        let value: PendingLiabilitiesAction.Output | null = null;
         if (client.id in clientOutputs) {
           ({ value } = clientOutputs[client.id]);
         }
@@ -122,7 +141,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
             firstCol = getClientIdentifier(client, anonymizeClients);
           }
           const row = [firstCol, taxType];
-          if (value && (taxType in totalsObjects)) {
+          if (value && taxType in totalsObjects) {
             const totalsObject = totalsObjects[taxType];
             const totals = [];
             for (const column of columnOrder) {
@@ -134,7 +153,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
               row.push('');
             }
             // Indicate that this tax type had an error
-            if (value && (taxType in value.retrievalErrors)) {
+            if (value && taxType in value.retrievalErrors) {
               row.push('!');
             }
           }
@@ -179,20 +198,17 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   },
 });
 
-/**
- * @typedef {Object} RunnerInput
- * @property {import('../constants').TaxTypeNumericalCode[]} [taxTypeIds]
- */
-
-GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
+GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
+  PendingLiabilitiesAction.Input,
+  PendingLiabilitiesAction.Output,
+  BasicRunnerConfig
+  > {
   constructor(data) {
     super(data, GetAllPendingLiabilitiesClientAction);
   }
 
   async runInternal() {
-    const { task: actionTask, client } = this.storeProxy;
-    // eslint-disable-next-line prefer-destructuring
-    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+    const { task: actionTask, client, input } = this.storeProxy;
     let { taxTypes: taxTypeIds } = client;
 
     if (inInput(input, 'taxTypeIds')) {
@@ -207,17 +223,17 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
       },
     });
 
-    const output = {
+    const output: PendingLiabilitiesAction.Output = {
       totals: {},
       retrievalErrors: {},
     };
     const failedTaxTypeIds = [];
     for (const response of responses) {
-      const taxTypeId = response.item;
+      // FIXME: Remove this once task map ambiguous list or count is fixed.
+      const taxTypeId = <TaxTypeNumericalCode>response.item;
       const taxType = taxTypes[taxTypeId];
-      const totals = response.value;
-      if (totals) {
-        output.totals[taxType] = Object.assign({}, totals);
+      if ('value' in response) {
+        output.totals[taxType] = Object.assign({}, response.value);
       } else {
         output.retrievalErrors[taxType] = response.error;
         failedTaxTypeIds.push(taxTypeId);
@@ -227,9 +243,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
     const failedTaxTypes = Object.keys(output.retrievalErrors);
     if (failedTaxTypes.length > 0) {
       this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);
-      /** @type {RunnerInput} */
-      const retryInput = { taxTypeIds: failedTaxTypeIds };
-      this.storeProxy.retryInput = retryInput;
+      this.storeProxy.retryInput = { taxTypeIds: failedTaxTypeIds };
     }
   }
 };

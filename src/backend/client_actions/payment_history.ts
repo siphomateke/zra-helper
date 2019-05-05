@@ -2,7 +2,10 @@ import moment from 'moment';
 import { getDocumentByAjax } from '../utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import {
-  taskFunction, downloadPages, downloadPage,
+  taskFunction,
+  downloadPages,
+  downloadPage,
+  GetDataFromPageFunctionReturn,
 } from './utils';
 import {
   startDownloadingReceipts,
@@ -13,74 +16,67 @@ import {
 } from './receipts';
 import {
   taxTypeNames,
-  taxTypeNumericalCodes,
+  TaxTypeNumericalCode,
   taxTypes,
-  browserFeatures,
+  BrowserFeature,
+  Date,
+  ReferenceNumber,
+  TaxTypeName,
+  Client,
 } from '../constants';
-import { createClientAction, ClientActionRunner, inInput } from './base';
+import {
+  createClientAction,
+  ClientActionRunner,
+  inInput,
+  BasicRunnerOutput,
+  BasicRunnerConfig,
+} from './base';
+import { TaskId } from '@/store/modules/tasks';
 
-/**
- * @typedef {import('../constants').Date} Date
- * @typedef {import('../constants').Client} Client
- */
+interface PrnNo {
+  /** E.g. '118019903987' */
+  innerText: string;
+  /**
+   * Contains information about the payment such as search code, reference number and payment type
+   * in the following format:
+   * `payementHistory('<search code>','<reference number>','<payment type>')`
+   * E.g.
+   * `payementHistory('123456789','123456789','ABC')`
+   */
+  onclick: string;
+}
 
-/**
- * @template R
- * @typedef {import('./utils').GetDataFromPageFunctionReturn<R>} GetDataFromPageFunctionReturn
- */
+interface PaymentReceipt {
+  /** Serial number */
+  srNo: string;
+  /** PRN number */
+  prnNo: PrnNo;
+  /** Amount in Kwacha */
+  amount: string;
+  /** E.g. 'Payment received' */
+  status: string;
+  prnDate: Date;
+  paymentDate: Date;
+  /** Payment type. E.g. 'Electronic' */
+  type: string;
+}
 
-/**
- * @typedef GetPaymentReceiptsOptions
- * @property {Date} fromDate
- * @property {Date} toDate
- * @property {string} [receiptNumber]
- * @property {import('../constants').ReferenceNumber} [referenceNumber]
- */
-
-/**
- * @typedef {Object} PrnNo
- * @property {string} innerText E.g. '118019903987'
- * @property {string} onclick
- * Contains information about the payment such as search code, reference number and payment type
- * in the following format:
- * `payementHistory('<search code>','<reference number>','<payment type>')`
- * E.g.
- * `payementHistory('123456789','123456789','ABC')`
- */
-
-/**
- * @typedef PaymentReceipt
- * @property {string} srNo Serial number
- * @property {PrnNo} prnNo PRN number
- * @property {string} amount Amount in Kwacha
- * @property {string} status E.g. 'Payment received'
- * @property {Date} prnDate
- * @property {Date} paymentDate
- * @property {string} type Payment type. E.g. 'Electronic'
- */
-
-const recordHeaders = [
-  'srNo',
-  'prnNo',
-  'amount',
-  'status',
-  'prnDate',
-  'paymentDate',
-  'type',
-];
+interface GetPaymentReceiptsOptions {
+  fromDate: Date;
+  toDate: Date;
+  receiptNumber?: string;
+  referenceNumber?: ReferenceNumber;
+}
 
 /**
  * Gets payment receipts from a single page.
- * @param {number} page
- * @param {GetPaymentReceiptsOptions} options
- * @returns {Promise.<GetDataFromPageFunctionReturn<PaymentReceipt[]>>}
  */
-async function getPaymentReceipts(page, {
-  fromDate,
-  toDate,
-  referenceNumber = '',
-  receiptNumber = '',
-}) {
+async function getPaymentReceipts(
+  page: number,
+  {
+    fromDate, toDate, referenceNumber = '', receiptNumber = '',
+  }: GetPaymentReceiptsOptions,
+): Promise<GetDataFromPageFunctionReturn<PaymentReceipt[]>> {
   const doc = await getDocumentByAjax({
     url: 'https://www.zra.org.zm/ePaymentController.htm?actionCode=SearchPmtDetails',
     method: 'post',
@@ -94,7 +90,7 @@ async function getPaymentReceipts(page, {
   });
   const table = await parseTableAdvanced({
     root: doc,
-    headers: recordHeaders,
+    headers: ['srNo', 'prnNo', 'amount', 'status', 'prnDate', 'paymentDate', 'type'],
     tableInfoSelector: '#contentDiv>table>tbody>tr>td',
     recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
     noRecordsString: 'No Records Found',
@@ -113,24 +109,17 @@ async function getPaymentReceipts(page, {
   };
 }
 
-/**
- * @typedef {Object} Payment
- * @property {import('@/backend/constants').TaxTypeName} taxType Tax type name
- * @property {string} periodFrom
- * @property {string} periodTo
- */
+interface Payment {
+  taxType: TaxTypeName;
+  periodFrom: string;
+  periodTo: string;
+}
 
 /**
  * Checks if two payments are different.
- * @param {Payment} payment1
- * @param {Payment} payment2
  */
-function paymentsDifferent(payment1, payment2) {
-  const mustBeEqual = [
-    'taxType',
-    'periodFrom',
-    'periodTo',
-  ];
+function paymentsDifferent(payment1: Payment, payment2: Payment): boolean {
+  const mustBeEqual: Array<keyof Payment> = ['taxType', 'periodFrom', 'periodTo'];
   let anyDifferent = false;
   for (const prop of mustBeEqual) {
     if (payment1[prop] !== payment2[prop]) {
@@ -143,16 +132,11 @@ function paymentsDifferent(payment1, payment2) {
 
 /**
  * Gets the quarter number from a period.
- * @param {string} from The month the period started. E.g. '01'
- * @param {string} to The month the period ended.E.g. '03'
+ * @param from The month the period started. E.g. '01'
+ * @param to The month the period ended.E.g. '03'
  */
-function getQuarterFromPeriod(from, to) {
-  const quarterMap = [
-    ['01', '03'],
-    ['04', '06'],
-    ['07', '09'],
-    ['10', '12'],
-  ];
+function getQuarterFromPeriod(from: string, to: string): number | null {
+  const quarterMap = [['01', '03'], ['04', '06'], ['07', '09'], ['10', '12']];
   let quarter = null;
   for (let i = 0; i < quarterMap.length; i++) {
     if (from === quarterMap[i][0] && to === quarterMap[i][1]) {
@@ -163,36 +147,29 @@ function getQuarterFromPeriod(from, to) {
   return quarter;
 }
 
-/**
- * @typedef {Object} PaymentReceiptPayment
- * @property {string} taxType
- * @property {string} accountName
- * @property {string} liabilityType
- * @property {string} periodFrom
- * @property {string} periodTo
- * @property {string} chargeYear
- * @property {string} chargeQuater
- * @property {string} alternativeNumber
- * @property {string} amount
- */
+interface PaymentReceiptPayment {
+  taxType: string;
+  accountName: string;
+  liabilityType: string;
+  periodFrom: string;
+  periodTo: string;
+  chargeYear: string;
+  chargeQuater: string;
+  alternativeNumber: string;
+  amount: string;
+}
 
-/**
- * @typedef PaymentReceiptData
- * @property {string} registrationDate
- * @property {string} referenceNumber
- * @property {string} prn
- * @property {string} paymentDate
- * @property {string} searchCode
- * @property {string} paymentType
- * @property {PaymentReceiptPayment[]} payments
- */
+interface PaymentReceiptData {
+  registrationDate: string;
+  referenceNumber: string;
+  prn: string;
+  paymentDate: string;
+  searchCode: string;
+  paymentType: string;
+  payments: PaymentReceiptPayment[];
+}
 
-/**
- * @param {Client} client
- * @param {PaymentReceiptData} receiptData
- * @returns {string[]}
- */
-function getPaymentReceiptFilenames(client, receiptData) {
+function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptData): string[] {
   const uniquePayments = [];
   for (const payment of receiptData.payments) {
     let unique = true;
@@ -212,7 +189,7 @@ function getPaymentReceiptFilenames(client, receiptData) {
     const periodFrom = moment(payment.periodFrom, 'DD/MM/YYYY');
     const periodTo = moment(payment.periodTo, 'DD/MM/YYYY');
     let filename = `receipt-${client.username}-${taxTypes[taxTypeId]}`;
-    if (taxTypeId === taxTypeNumericalCodes.ITX) {
+    if (taxTypeId === TaxTypeNumericalCode.ITX) {
       const chargeYear = periodTo.format('YYYY');
       filename += `-${chargeYear}`;
 
@@ -233,14 +210,19 @@ function getPaymentReceiptFilenames(client, receiptData) {
   });
 }
 
-/**
- * @param {Object} options
- * @param {Client} options.client
- * @param {PaymentReceipt} options.receipt
- * @param {number} options.parentTaskId
- */
-function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
-  const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
+function downloadPaymentReceipt({
+  client,
+  receipt,
+  parentTaskId,
+}: {
+  client: Client;
+  receipt: PaymentReceipt;
+  parentTaskId: TaskId;
+}) {
+  const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick
+    .replace(/'/g, '')
+    .match(/\((.+)\)/)[1]
+    .split(',');
 
   return downloadPage({
     async filename(tab) {
@@ -265,34 +247,35 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
 const GetPaymentReceiptsClientAction = createClientAction({
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',
-  requiredFeatures: [browserFeatures.MHTML],
+  requiredFeatures: [BrowserFeature.MHTML],
   defaultInput: () => ({
     fromDate: '01/10/2013',
     toDate: moment().format('DD/MM/YYYY'),
   }),
 });
 
-/**
- * @typedef {Object} RunnerInput
- * @property {import('@/backend/constants').Date} [fromDate]
- * @property {import('@/backend/constants').Date} [toDate]
- * @property {PaymentReceipt[]} receipts
- * @property {number[]} receiptDataPages
- */
+interface RunnerInput {
+  fromDate?: Date;
+  toDate?: Date;
+  receipts?: PaymentReceipt[];
+  receiptDataPages?: number[];
+}
 
-GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
+GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
+  RunnerInput,
+  BasicRunnerOutput,
+  BasicRunnerConfig
+  > {
   constructor(data) {
     super(data, GetPaymentReceiptsClientAction);
   }
 
   async runInternal() {
-    const { task: actionTask, client } = this.storeProxy;
-    // eslint-disable-next-line prefer-destructuring
-    const input = /** @type {RunnerInput} */(this.storeProxy.input);
+    const { task: actionTask, client, input } = this.storeProxy;
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
 
-    const failed = {
+    const failed: { receipts: PaymentReceipt[]; receiptDataPages: number[] } = {
       receipts: [],
       receiptDataPages: [],
     };
@@ -301,7 +284,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        let receipts = [];
+        let receipts: PaymentReceipt[] = [];
         // If specific receipts have been requested to be downloaded, use those.
         const receiptsInInput = inInput(input, 'receipts');
         if (receiptsInInput) {
@@ -311,7 +294,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
           }
         }
 
-        let pages = [];
+        let pages: number[] = [];
         // If getting certain receipt data pages failed last time, only get those pages.
         if (inInput(input, 'receiptDataPages')) {
           const inputReceiptDataPages = input.receiptDataPages;
