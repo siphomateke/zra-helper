@@ -54,15 +54,15 @@ interface ClientActionOutputFilesGeneratorFnOptions {
 type ClientActionOutputFilesGenerator = (options: ClientActionOutputFilesGeneratorFnOptions) => ClientActionOutputFile;
 
 // FIXME: Express in type that output settings are required if hasOutput = true.
-interface ClientActionOptions {
+interface ClientActionOptions<Input extends object> {
   /** A unique camelCase ID to identify this client action. */
   id: string;
   /** The human-readable name of this client action. */
   name: string;
   // FIXME: Type this properly based on the current client.
-  defaultInput?: () => object;
+  defaultInput?: () => Input;
   /** Vee-validate validator for each input property. */
-  inputValidation?: { [inputProperty: string]: string | Rules };
+  inputValidation?: { [inputProperty in keyof Input]: string | Rules };
   requiredFeatures?: BrowserFeature[];
   /**
    * Whether this action needs to open a page from a logged in tab.
@@ -79,37 +79,40 @@ interface ClientActionOptions {
   generateOutputFiles?: ClientActionOutputFilesGenerator;
 }
 
-export interface ClientActionObject extends ClientActionOptions {
+export interface ClientActionObject<Input extends object> extends ClientActionOptions<Input> {
   /** The log category to use when logging anything in this action. */
   logCategory: string;
   Runner: typeof ClientActionRunner;
 }
 
-export interface ClientActionRunnerProxy {
+// FIXME: Actually use this strongly typed version elsewhere
+export interface TypedClientActionRunnerProxy<Input, Output, Config> {
   /** Client action runner instance ID used to retrieve an instance from the store. */
   id: string;
   actionId: string;
   client: Client;
-  config: object;
+  config: Config;
   loggedInTabId: number;
   task: TaskObject;
-  input: object;
-  retryInput: object;
+  input: Input;
+  retryInput: Input;
   /** The reason why this instance should be retried. */
   retryReason: string;
   /** Whether this instance should be retried. */
   shouldRetry: boolean;
   error: any;
-  output: any;
+  output: Output;
   /**
    * Output of this run/retry and its previous run.
    * TODO: Actually store all run outputs.
    */
-  allRunOutputs: any[];
+  allRunOutputs: Output[];
   running: boolean;
   /** IDs of instances this instance depends on. */
   dependencies: string[];
 }
+
+export type ClientActionRunnerProxy = TypedClientActionRunnerProxy<any, any, any>;
 
 /** Options for {@link ClientActionRunner.init} */
 interface RunnerInitOptions {
@@ -124,18 +127,22 @@ interface RunnerRunOptions {
   task: TaskObject;
 }
 
+export interface BasicRunnerInput { }
+export interface BasicRunnerOutput { }
+export interface BasicRunnerConfig { }
+
 /**
  * The part of a client action that will actually be run.
  * Each client action runner instance can have its own client, options, parent task, errors and
  * output.
  */
 // FIXME: Detect circular references of required actions.
-export abstract class ClientActionRunner {
+export abstract class ClientActionRunner<Input extends object, Output, Config> {
   id: string | null = null;
 
-  storeProxy: ClientActionRunnerProxy;
+  storeProxy: TypedClientActionRunnerProxy<Input, Output, Config>;
 
-  constructor(public action: ClientActionObject) { }
+  constructor(public action: ClientActionObject<Input>) { }
 
   /**
    * @param id ID of runner instance in Vuex store.
@@ -189,7 +196,7 @@ export abstract class ClientActionRunner {
     this.storeProxy.retryReason = '';
   }
 
-  setOutput(output) {
+  setOutput(output: Output) {
     this.storeProxy.allRunOutputs.push(output);
   }
 
@@ -204,7 +211,7 @@ export abstract class ClientActionRunner {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  mergeRunOutputs(prevOutput, output) {
+  mergeRunOutputs(prevOutput: Output, output: Output) {
     return deepAssign(prevOutput, output, {
       clone: true,
       concatArrays: true,
@@ -218,7 +225,7 @@ export abstract class ClientActionRunner {
    */
   mergeAllRunOutputs() {
     const outputs = this.storeProxy.allRunOutputs;
-    const merged = outputs.reduce((prevOutput, output) => {
+    const merged = outputs.reduce((prevOutput: Output, output: Output) => {
       if (prevOutput !== null && output !== null) {
         return this.mergeRunOutputs(prevOutput, output);
       }
@@ -439,7 +446,9 @@ export function createOutputFile(options) {
  * Creates a new client action from an object.
  * Default options are assigned and then the action is validated.
  */
-export function createClientAction(options: ClientActionOptions): ClientActionObject {
+export function createClientAction<
+  Input extends object
+>(options: ClientActionOptions<Input>): ClientActionObject<Input> {
   const clientAction = Object.assign(
     {
       defaultInput: () => ({}),

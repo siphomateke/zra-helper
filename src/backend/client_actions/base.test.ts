@@ -2,8 +2,9 @@ import { createTestClientAction, getFakeRunInstanceClassFromAction, testMergingA
 import { ClientActionRunner } from './base';
 
 describe('ClientActionRunner', () => {
+  // FIXME: Strictly type test action's output
   const testAction = createTestClientAction();
-  let instanceClass: ClientActionRunner;
+  let instanceClass: ClientActionRunner<any, any, any>;
   beforeAll(() => {
     instanceClass = getFakeRunInstanceClassFromAction(testAction);
   });

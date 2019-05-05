@@ -96,6 +96,7 @@ export type MultipleResponses<R> = MultipleResponsesError | MultipleResponsesVal
 
 export type ParallelTaskMapResponse<R, ListItem> = MultipleResponses<R> & {
   /** The corresponding item from the list or index that this response came from. */
+  // FIXME: Only set to number when count is defined in `ParallelTaskMapFnOptions`.
   item: ListItem | number;
 };
 
@@ -744,11 +745,10 @@ const quarterMap = [
 
 /**
  * Gets the quarter number from a period.
- * @param {string} fromMonth The month the period started. E.g. '01'
- * @param {string} toMonth The month the period ended.E.g. '03'
- * @returns {number|null}
+ * @param fromMonth The month the period started. E.g. '01'
+ * @param toMonth The month the period ended.E.g. '03'
  */
-export function getQuarterFromPeriodMonths(fromMonth, toMonth) {
+export function getQuarterFromPeriodMonths(fromMonth: string, toMonth: string): number | null {
   let quarter = null;
   for (let i = 0; i < quarterMap.length; i++) {
     if (fromMonth === quarterMap[i][0] && toMonth === quarterMap[i][1]) {

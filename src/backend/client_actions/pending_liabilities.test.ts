@@ -1,4 +1,4 @@
-import Action, { generateTotals, pendingLiabilityColumns } from './pending_liabilities';
+import Action, { generateTotals, pendingLiabilityColumns, Totals, PendingLiabilitiesAction } from './pending_liabilities';
 import { getFakeRunInstanceClassFromAction, testMergingAllRunOutputs } from './tests/utils';
 import { ClientActionRunner } from './base';
 
@@ -7,8 +7,12 @@ function generateDummyTotals() {
 }
 
 describe('GetAllPendingLiabilitiesClientAction', () => {
-  let instanceClass: ClientActionRunner;
-  let totals;
+  let instanceClass: ClientActionRunner<
+    PendingLiabilitiesAction.Input,
+    PendingLiabilitiesAction.Output,
+    PendingLiabilitiesAction.Config
+  >;
+  let totals: Totals;
   beforeAll(() => {
     instanceClass = getFakeRunInstanceClassFromAction(Action);
     totals = generateDummyTotals();
