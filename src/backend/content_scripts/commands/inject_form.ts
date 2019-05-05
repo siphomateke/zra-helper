@@ -1,11 +1,14 @@
 import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
+import { getElement } from '../helpers/elements';
 
-/**
- * @param {Object} message
- * @param {string} message.html
- */
-async function listener(message) {
-  document.body.innerHTML = message.html;
-  document.getElementById('zra-helper-post-form').submit();
-}
-addContentScriptListener('inject_form', listener, true);
+addContentScriptListener(
+  'inject_form',
+  async (message) => {
+    document.body.innerHTML = message.html;
+    const submitFormButton = <HTMLFormElement>(
+      getElement('#zra-helper-post-form', 'ZRA Helper submit POST form button')
+    );
+    submitFormButton.submit();
+  },
+  true,
+);
