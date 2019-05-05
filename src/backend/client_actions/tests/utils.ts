@@ -1,4 +1,4 @@
-import { createClientAction, ClientActionRunner, ClientActionObject } from '../base';
+import { createClientAction, ClientActionRunner, ClientActionObject, BasicRunnerInput, BasicRunnerOutput, BasicRunnerConfig } from '../base';
 import '@/vue_init';
 import store from '@/store';
 import { getInstanceClassById } from '@/store/modules/client_actions';
@@ -6,13 +6,17 @@ import { getInstanceClassById } from '@/store/modules/client_actions';
 /**
  * Creates a dummy client action for testing purposes.
  */
-export function createTestClientAction(): ClientActionObject {
-  const testAction = createClientAction({
+export function createTestClientAction(): ClientActionObject<BasicRunnerInput> {
+  const testAction = createClientAction<BasicRunnerInput>({
     id: 'testAction',
     name: 'Test action',
     requiredFeatures: [],
   });
-  testAction.Runner = class extends ClientActionRunner {
+  testAction.Runner = class extends ClientActionRunner<
+    BasicRunnerInput,
+    BasicRunnerOutput,
+    BasicRunnerConfig
+    > {
     constructor() {
       super(testAction);
     }
@@ -23,7 +27,10 @@ export function createTestClientAction(): ClientActionObject {
 /**
  * Generates a dummy client action instance from a fake run.
  */
-export function getFakeRunInstanceClassFromAction(action: ClientActionObject): ClientActionRunner {
+// TODO: Improve so that runner output and config are typed.
+export function getFakeRunInstanceClassFromAction<I extends object>(
+  action: ClientActionObject<I>
+): ClientActionRunner<I, any, any> {
   store.commit('clientActions/startNewRun', {
     taskId: 0,
     clients: [],
@@ -45,8 +52,8 @@ export function getFakeRunInstanceClassFromAction(action: ClientActionObject): C
  * @param outputs The outputs to merge.
  * @param expected The expected merged output.
  */
-export function testMergingAllRunOutputs(
-  instanceClass: ClientActionRunner,
+export function testMergingAllRunOutputs<I extends object, O, C>(
+  instanceClass: ClientActionRunner<I, O, C>,
   outputs: any[],
   expected: any,
 ) {

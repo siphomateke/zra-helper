@@ -95,6 +95,7 @@ export type MultipleResponses<R> = MultipleResponsesError | MultipleResponsesVal
 
 export type ParallelTaskMapResponse<R, ListItem> = MultipleResponses<R> & {
   /** The corresponding item from the list or index that this response came from. */
+  // FIXME: Only set to number when count is defined in `ParallelTaskMapFnOptions`.
   item: ListItem | number;
 };
 
