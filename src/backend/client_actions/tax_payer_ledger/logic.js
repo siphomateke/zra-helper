@@ -427,19 +427,19 @@ async function getLiabilityAmountFromAckReceipt({
   const documentPromises = [];
   for (const taxReturn of taxReturns) {
     const referenceNumber = taxReturn.referenceNo;
-    const requestOptions = generateAckReceiptRequest(taxTypeId, referenceNumber);
-    documentPromises.push(getDocumentByAjax({
-      ...requestOptions,
-      method: 'post',
-    }));
+    if (taxReturn.returnAppliedDate === record.transactionDateString) {
+      const requestOptions = generateAckReceiptRequest(taxTypeId, referenceNumber);
+      documentPromises.push(getDocumentByAjax({
+        ...requestOptions,
+        method: 'post',
+      }));
+    }
   }
   const docs = await Promise.all(documentPromises);
   for (const doc of docs) {
     const data = getDataFromReceipt(doc, 'ack_return');
-    if (data.registrationDate === record.transactionDateString) {
-      const amount = parseAmountString(data.liabilityAmount);
-      possibleAmounts.push(amount);
-    }
+    const amount = parseAmountString(data.liabilityAmount);
+    possibleAmounts.push(amount);
   }
   return possibleAmounts;
 }
