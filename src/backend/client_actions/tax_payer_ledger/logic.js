@@ -172,7 +172,6 @@ function sortRecordsBySerialNumber(records) {
  * @returns {ParsedTaxPayerLedgerRecord[]}
  */
 // TODO: Examine map to array conversion performance impact.
-// FIXME: Take into account that all records must be reversed before being amended.
 export function removeReversals(records) {
   /** @type {Map<string, ParsedTaxPayerLedgerRecord>} */
   const recordsBySrNo = new Map();
@@ -227,7 +226,6 @@ function recordMatchesAmount(record, amount) {
  * @param {ParsedLedgerRecordWithReturnData[]} records
  * @returns {ParsedTaxPayerLedgerRecord}
  */
-// FIXME: Handle records with `returnData`
 function findLedgerRecordByAmount(amount, records) {
   // TODO: Make sure the matched record has the correct narration type for the tax type and total
   // type (principal, interest)
@@ -239,11 +237,6 @@ function findLedgerRecordByAmount(amount, records) {
       for (const payment of record.returnData.payments) {
         if (recordMatchesAmount(payment, amount)) {
           return payment;
-        }
-      }
-      for (const amendment of record.returnData.amendments) {
-        if (recordMatchesAmount(amendment, amount)) {
-          return amendment;
         }
       }
     }
@@ -298,8 +291,6 @@ export function getRecordsFromPastWeek(records, currentDate = new Date().valueOf
  * @typedef {Object} ReturnData
  * @property {number} index The index of the return in the records.
  * @property {ParsedTaxPayerLedgerRecord} record The return record.
- * @property {number} amount The amount of the return or the latest amended amount.
- * @property {ParsedTaxPayerLedgerRecord[]} amendments Return amendments and revisions.
  * @property {ParsedTaxPayerLedgerRecord[]} payments Payments that belong to the return.
  * @property {number} paymentsSum Sum of all the payments.
  * @property {boolean} paymentsMatchReturn
@@ -319,7 +310,7 @@ export function getRecordsFromPastWeek(records, currentDate = new Date().valueOf
 /**
  * Matches up payments to their returns in the tax payer ledger.
  *
- * This depends on original returns being followed by their payments and amendments.
+ * This depends on original returns being followed by their payments.
  * Because of this, PAYE and WHT don't currently work as they have returns that are split in two.
  * Additionally, revised provisional returns may not work as expected.
  *
@@ -328,6 +319,7 @@ export function getRecordsFromPastWeek(records, currentDate = new Date().valueOf
  * @param {ParsedTaxPayerLedgerRecord[]} records
  * @returns {ParsedLedgerRecordWithReturnData[]} Return data by serial number.
  */
+// TODO: Don't add record objects to other records, only serial numbers.
 // TODO: Add unit tests. Particularly for amended returns.
 export function matchPaymentsToReturns(records) {
   const recordsWithReturnData = [];
@@ -336,16 +328,11 @@ export function matchPaymentsToReturns(records) {
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
     const recordCopy = Object.assign({}, record);
-    if (
-      record.narration.type === narrationTypes.ORIGINAL_RETURN
-      || record.narration.type === narrationTypes.PROVISIONAL_RETURN
-    ) {
+    if (record.narration.group === narrationGroups.RETURNS) {
       processedRecords.push(record.srNo);
       const returnData = {
         index: i,
         record,
-        amount: record.debit,
-        amendments: [],
         payments: [],
         paymentsSum: 0,
         paymentsMatchReturn: false,
@@ -357,23 +344,10 @@ export function matchPaymentsToReturns(records) {
         const subRecord = records[j];
         // If we have reached the next return in the ledger, then we have got all payments for
         // the current return.
-        if (
-          subRecord.narration.type === narrationTypes.ORIGINAL_RETURN
-          || subRecord.narration.type === narrationTypes.PROVISIONAL_RETURN
-        ) {
-          // Done getting all payments for return. Now check if the sum of all the payments is equal
-          // to the return amount.
-          returnData.paymentsMatchReturn = returnData.paymentsSum === returnData.amount;
+        if (subRecord.narration.group === narrationGroups.RETURNS) {
+          // Now check if the sum of all the payments is equal to the return amount.
+          returnData.paymentsMatchReturn = returnData.paymentsSum === returnData.record.debit;
           break;
-        } else if (
-          subRecord.narration.type === narrationTypes.AMENDED_RETURN
-          || subRecord.narration.type === narrationTypes.REVISED_PROVISIONAL_RETURN
-        ) {
-          // If the return was amended, we must take note of that as it affects which payments
-          // match the return.
-          returnData.amendments.push(subRecord);
-          returnData.amount = subRecord.debit;
-          processedRecords.push(subRecord.srNo);
         } else if (subRecord.narration.type === narrationTypes.PAYMENT) {
           const payment = subRecord;
           // We can't double check that this payment belongs to the return as it might not be equal
@@ -522,7 +496,7 @@ async function generateChangeReasonDetails({
       // TODO: Add unit tests for this specific case
       if (
         !record.returnData.paymentsMatchReturn
-        && Math.ceil(record.returnData.amount) === record.returnData.paymentsSum
+        && Math.ceil(record.returnData.record.debit) === record.returnData.paymentsSum
       ) {
         // It's pretty likely this is the system error case but just to be absolutely sure, check
         // the acknowledgement of return receipt. It has the accurate return amount.
