@@ -221,13 +221,6 @@ export function tabLoaded(desiredTabId, timeout = null) {
   if (timeout === null) timeout = config.tabLoadTimeout;
 
   return new Promise(async (resolve, reject) => {
-    const tab = await browser.tabs.get(desiredTabId);
-    // Make sure the tab is currently loading
-    if (tab.status !== 'loading') {
-      resolve();
-      return;
-    }
-
     let removeListeners;
     function updatedListener(tabId, changeInfo) {
       if (tabId === desiredTabId && changeInfo.status === 'complete') {
@@ -253,12 +246,20 @@ export function tabLoaded(desiredTabId, timeout = null) {
     browser.tabs.onUpdated.addListener(updatedListener);
     browser.tabs.onRemoved.addListener(removedListener);
 
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       removeListeners();
       reject(new TabError(`Timed out waiting for tab with ID ${desiredTabId} to load`, 'TimedOut', {
         tabId: desiredTabId,
       }));
     }, timeout);
+
+    const tab = await browser.tabs.get(desiredTabId);
+    // Make sure the tab is currently loading
+    if (tab.status !== 'loading') {
+      clearTimeout(timeoutId);
+      removeListeners();
+      resolve();
+    }
   });
 }
 
