@@ -282,15 +282,6 @@ const vuexModule = {
       return null;
     },
     /**
-     * Gets the instance from the previous run that matches the provided one.
-     * @returns {(instanceId: string) => ActionInstanceData}
-     */
-    getPreviousInstance: (state, getters) => (instanceId) => {
-      /** @type {ActionInstanceData} */
-      const instance = getters.getInstanceById(instanceId);
-      return getters.getInstance(state.currentRunId - 1, instance.actionId, instance.client.id);
-    },
-    /**
      * Gets the outputs of all client action runner instances whose action IDs match the one
      * specified.
      * @returns {(runId: string, actionId: string) => ClientActionOutputs}
@@ -448,6 +439,7 @@ const vuexModule = {
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
      * @param {boolean} payload.retry If this run is just a retry of a previous one.
+     * @param {number} [payload.retryRunId] ID of the run that is being retried
      */
     async runActionOnClient({ commit, getters }, {
       instanceId,
@@ -457,6 +449,7 @@ const vuexModule = {
       isSingleAction,
       loggedInTabId,
       retry,
+      retryRunId = null,
     }) {
       /** @type {ActionInstanceData} */
       const instance = getters.getInstanceById(instanceId);
@@ -475,13 +468,15 @@ const vuexModule = {
 
               if (retry) {
                 /** @type {ActionInstanceData} */
-                const prevInstance = getters.getPreviousInstance(instanceId);
-                if (prevInstance.retryInput) {
+                const retryInstance = getters.getInstance(
+                  retryRunId, instance.actionId, instance.client.id,
+                );
+                if (retryInstance.retryInput) {
                   // Make sure the last instance's original input is used as well as the input to
                   // retry the specific parts of the action that failed. For example, if a date
                   // range was specified the last time the action was run, make sure we use the same
                   // one when retrying.
-                  const newInput = Object.assign(prevInstance.input, prevInstance.retryInput);
+                  const newInput = Object.assign(retryInstance.input, retryInstance.retryInput);
                   commit('setInstanceInput', { id: instanceId, input: newInput });
                 }
               } else {
@@ -537,6 +532,7 @@ const vuexModule = {
      * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
      * @param {boolean} payload.retry If this run is just a retry of a previous one.
+     * @param {number} [payload.retryRunId] ID of the run that is being retried
      */
     async runActionsOnClient({
       state,
@@ -551,6 +547,7 @@ const vuexModule = {
       instanceIds,
       parentTaskId,
       retry,
+      retryRunId = null,
     }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
@@ -654,6 +651,7 @@ const vuexModule = {
                     isSingleAction,
                     loggedInTabId,
                     retry,
+                    retryRunId,
                   }));
                 }
                 await Promise.all(promises);
@@ -708,12 +706,14 @@ const vuexModule = {
      * Function that decides the actions to run on each client.
      * @param {Object.<string, Object>} [payload.actionInputs] Inputs by action ID
      * @param {boolean} [payload.retry] If this run is just a retry of a previous one.
+     * @param {number} [payload.retryRunId] ID of the run that is being retried
      */
     async run(context, {
       clients,
       getClientsActionIds,
       actionInputs = {},
       retry = false,
+      retryRunId = null,
     }) {
       const {
         state,
@@ -773,6 +773,7 @@ const vuexModule = {
                   instanceIds,
                   parentTaskId: rootTask.id,
                   retry,
+                  retryRunId,
                 });
               }
               /* eslint-enable no-await-in-loop */
@@ -830,6 +831,7 @@ const vuexModule = {
           return retryableFailuresByClient[client.id].map(failure => failure.actionId);
         },
         retry: true,
+        retryRunId: runId,
       });
     },
   },
