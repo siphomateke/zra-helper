@@ -303,8 +303,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
       func: async () => {
         let receipts = [];
         // If specific receipts have been requested to be downloaded, use those.
-        const receiptsInInput = inInput(input, 'receipts');
-        if (receiptsInInput) {
+        if (inInput(input, 'receipts')) {
           const inputReceipts = input.receipts;
           if (Array.isArray(inputReceipts) && inputReceipts.length > 0) {
             receipts = inputReceipts;
