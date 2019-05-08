@@ -269,6 +269,7 @@ export class ReturnHistoryRunner extends ClientActionRunner {
   * @typedef {Object} TaxTypeFailure
   * @property {TaxReturn[]} [returns]
   * @property {number[]} [returnHistoryPages]
+  * @property {boolean} failed
   */
 
   /**
@@ -288,9 +289,10 @@ export class ReturnHistoryRunner extends ClientActionRunner {
     const taxType = taxTypes[taxTypeId];
 
     /** @type {TaxTypeFailure} */
-    const failed = {
+    const failures = {
       returnHistoryPages: [],
       returns: [],
+      failed: false,
     };
 
     const task = await createTask(store, {
@@ -304,43 +306,55 @@ export class ReturnHistoryRunner extends ClientActionRunner {
       catchErrors: true,
       setStateBasedOnChildren: true,
       func: async () => {
-        let failedPages = [];
+        try {
+          let returns = [];
+          // If only certain returns failed in the last run, use those.
+          const inputReturns = getTaxTypeInput(input, taxTypeId, 'returns');
+          if (Array.isArray(inputReturns) && inputReturns.length > 0) {
+            returns = inputReturns;
+          }
+          let pages = [];
+          // If getting certain return history pages failed last time, only get those pages.
+          const inputPages = getTaxTypeInput(input, taxTypeId, 'returnHistoryPages');
+          if (Array.isArray(inputPages) && inputPages.length > 0) {
+            pages = inputPages;
+          }
+          if (Array.isArray(inputPages) || !Array.isArray(inputReturns)) {
+            task.status = 'Getting returns';
+            try {
+              const data = await this.getReturns({ task, taxTypeId, pages });
+              failures.returnHistoryPages = data.failedPages;
+              returns.push(...data.returns);
+            } catch (error) {
+              if (pages.length > 0) {
+                // If a specific page was specified but failed, then an error was thrown
+                // and we must manually set `returnHistoryPages`
+                failures.returnHistoryPages = pages;
+              }
+              throw error;
+            }
+          }
 
-        let returns = [];
-        // If only certain returns failed in the last run, use those.
-        const inputReturns = getTaxTypeInput(input, taxTypeId, 'returns');
-        if (Array.isArray(inputReturns) && inputReturns.length > 0) {
-          returns = inputReturns;
+          // TODO: Indicate why items weren't downloaded
+          if (returns.length > 0) {
+            task.status = this.downloadItemsTaskTitle(returns.length);
+            failures.returns = await this.downloadItems({
+              returns,
+              task,
+              taxTypeId,
+            });
+          }
+        } catch (error) {
+          failures.failed = true;
+          throw error;
+        } finally {
+          if (failures.returnHistoryPages.length > 0 || failures.returns.length > 0) {
+            failures.failed = true;
+          }
         }
-        let pages = [];
-        // If getting certain return history pages failed last time, only get those pages.
-        const inputPages = getTaxTypeInput(input, taxTypeId, 'returnHistoryPages');
-        if (Array.isArray(inputPages) && inputPages.length > 0) {
-          pages = inputPages;
-        }
-        if (inputPages !== null || inputReturns === null) {
-          task.status = 'Getting returns';
-          const data = await this.getReturns({ task, taxTypeId, pages });
-          ({ failedPages } = data);
-          returns.push(...data.returns);
-        }
-
-        let failedReturns = [];
-        // TODO: Indicate why items weren't downloaded
-        if (returns.length > 0) {
-          task.status = this.downloadItemsTaskTitle(returns.length);
-          failedReturns = await this.downloadItems({
-            returns,
-            task,
-            taxTypeId,
-          });
-        }
-
-        failed.returnHistoryPages = failedPages;
-        failed.returns = failedReturns;
       },
     });
-    return failed;
+    return failures;
   }
 
   async runInternal() {
@@ -354,55 +368,44 @@ export class ReturnHistoryRunner extends ClientActionRunner {
     if (inInput(input, 'taxTypeIds')) {
       taxTypeIds = taxTypeIds.filter(id => input.taxTypeIds.includes(id));
     }
-    const returnsInInput = inInput(input, 'returns');
-    const returnHistoryPagesInInput = inInput(input, 'returnHistoryPages');
-    if (returnsInInput || returnHistoryPagesInInput) {
-      // Note: This array will have duplicate tax type IDs.
-      const desiredTaxTypeIds = [];
-      if (returnsInInput) {
-        desiredTaxTypeIds.push(...Object.keys(input.returns));
-      }
-      if (returnHistoryPagesInInput) {
-        desiredTaxTypeIds.push(...Object.keys(input.returnHistoryPages));
-      }
-      taxTypeIds = taxTypeIds.filter(id => desiredTaxTypeIds.includes(id));
-    }
 
     /** @type {TaxTypeFailures} */
     const failures = {};
     let anyFailures = false;
 
-    // TODO: Rename this to be generic
-    await startDownloadingReceipts();
-    await parallelTaskMap({
-      list: taxTypeIds,
-      task: actionTask,
-      func: async (taxTypeId, parentTaskId) => {
-        const taxTypeFailure = await this.downloadTaxTypeItems({ taxTypeId, parentTaskId });
-        failures[taxTypeId] = taxTypeFailure;
-        if (
-          taxTypeFailure.returnHistoryPages.length > 0
-          || taxTypeFailure.returns.length > 0
-        ) {
-          anyFailures = true;
+    try {
+      // TODO: Rename this to be generic
+      await startDownloadingReceipts();
+      await parallelTaskMap({
+        list: taxTypeIds,
+        task: actionTask,
+        func: async (taxTypeId, parentTaskId) => {
+          const taxTypeFailure = await this.downloadTaxTypeItems({ taxTypeId, parentTaskId });
+          if (taxTypeFailure.failed) {
+            failures[taxTypeId] = taxTypeFailure;
+            anyFailures = true;
+          }
+        },
+      });
+      await finishDownloadingReceipts();
+    } finally {
+      if (anyFailures) {
+        this.setRetryReason('Some receipts failed to download.');
+        const retryInput = {
+          taxTypeIds: [],
+        };
+        for (const taxTypeId of Object.keys(failures)) {
+          const failure = failures[taxTypeId];
+          if (failure.returns.length > 0) {
+            set(retryInput, ['returns', taxTypeId], failure.returns);
+          }
+          if (failure.returnHistoryPages.length > 0) {
+            set(retryInput, ['returnHistoryPages', taxTypeId], failure.returnHistoryPages);
+          }
+          retryInput.taxTypeIds.push(taxTypeId);
         }
-      },
-    });
-    await finishDownloadingReceipts();
-
-    if (anyFailures) {
-      this.setRetryReason('Some receipts failed to download.');
-      const retryInput = {};
-      for (const taxTypeId of Object.keys(failures)) {
-        const failure = failures[taxTypeId];
-        if (failure.returns.length > 0) {
-          set(retryInput, ['returns', taxTypeId], failure.returns);
-        }
-        if (failure.returnHistoryPages.length > 0) {
-          set(retryInput, ['returnHistoryPages', taxTypeId], failure.returnHistoryPages);
-        }
+        this.storeProxy.retryInput = retryInput;
       }
-      this.storeProxy.retryInput = retryInput;
     }
   }
 }
