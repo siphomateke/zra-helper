@@ -476,7 +476,8 @@ const vuexModule = {
                   // retry the specific parts of the action that failed. For example, if a date
                   // range was specified the last time the action was run, make sure we use the same
                   // one when retrying.
-                  const newInput = Object.assign(retryInstance.input, retryInstance.retryInput);
+                  let newInput = Object.assign({}, retryInstance.input);
+                  newInput = Object.assign(newInput, retryInstance.retryInput);
                   commit('setInstanceInput', { id: instanceId, input: newInput });
                 }
               } else {
