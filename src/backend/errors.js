@@ -273,14 +273,18 @@ export function errorFromJson(json) {
  */
 export function errorToString(error) {
   let errorString = '';
-  if (typeof error === 'object' && !(error instanceof Error) && error.message) {
-    errorString = error.message;
-  } else if (error instanceof ExtendedError) {
-    errorString = `${error.type}: ${error.message}`;
-  } else if (typeof error === 'string') {
-    errorString = `Error: ${error}`;
-  } else if (typeof error !== 'undefined' && error !== null) {
-    errorString = error.toString();
+  if (typeof error !== 'undefined' && error !== null) {
+    if (error instanceof ExtendedError) {
+      errorString = `${error.type}: ${error.message}`;
+    } else if (error instanceof Error) {
+      errorString = error.toString();
+    } else if (typeof error === 'object' && ('message' in error) && error.message) {
+      errorString = error.message;
+    } else if (typeof error === 'string') {
+      errorString = `Error: ${error}`;
+    } else {
+      errorString = error.toString();
+    }
   }
   return errorString;
 }
