@@ -9,7 +9,7 @@ import {
   finishDownloadingReceipts,
   getFailedResponseItems,
   getReceiptData,
-  getDataFromReceipt,
+  getDataFromReceiptTab,
 } from './receipts';
 import {
   taxTypeNames,
@@ -244,7 +244,7 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
 
   return downloadPage({
     async filename(tab) {
-      const receiptData = await getDataFromReceipt(tab, 'payment');
+      const receiptData = await getDataFromReceiptTab(tab, 'payment');
       return getPaymentReceiptFilenames(client, receiptData);
     },
     taskTitle: `Download receipt ${refNo}`,
