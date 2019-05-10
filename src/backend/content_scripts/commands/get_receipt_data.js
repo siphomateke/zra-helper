@@ -1,9 +1,9 @@
 import addContentScriptListener from '@/backend/content_scripts/helpers/listener';
-import { getDataFromReceipt } from '@/backend/client_actions/receipts';
+import getDataFromReceipt from '../helpers/receipt_data';
 
 /**
  * @param {Object} message
- * @param {import('@/backend/client_actions/receipts').ReceiptType} message.type
+ * @param {import('../helpers/receipt_data').ReceiptType} message.type
  * The type of receipt data to get.
  */
 async function listener(message) {
