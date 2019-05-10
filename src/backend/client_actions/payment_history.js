@@ -18,6 +18,7 @@ import {
   browserFeatures,
 } from '../constants';
 import { createClientAction, ClientActionRunner, inInput } from './base';
+import { InvalidReceiptError } from '../errors';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -245,6 +246,9 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
   return downloadPage({
     async filename(tab) {
       const receiptData = await getDataFromReceiptTab(tab, 'payment');
+      if (!receiptData.referenceNumber) {
+        throw new InvalidReceiptError('Invalid receipt; missing reference number.');
+      }
       return getPaymentReceiptFilenames(client, receiptData);
     },
     taskTitle: `Download receipt ${refNo}`,

@@ -14,9 +14,6 @@ import {
  */
 export async function getDataFromReceiptTab(tab, type) {
   const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
-  if (!receiptData.referenceNumber) {
-    throw new InvalidReceiptError('Invalid receipt; missing reference number.');
-  }
   if (receiptData === null) {
     throw new InvalidReceiptError('Invalid receipt; failed to collect receipt data.');
   }
