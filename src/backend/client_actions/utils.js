@@ -9,11 +9,13 @@ import {
   saveAsMHTML,
   closeTab,
   monitorDownloadProgress,
+  startDownload,
 } from '../utils';
 import { taxPayerSearchTaxTypeNames, browserCodes } from '../constants';
 import { getCurrentBrowser } from '@/utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
+import downloadSingleHtmlFile from '../html_bundler';
 
 /**
  * @typedef {import('@/transitional/tasks').TaskObject} Task
@@ -485,7 +487,9 @@ export function anonymizeClientsInOutput(output, clients) {
 }
 
 /**
- * @typedef {(tab: browser.tabs.Tab) => Promise.<string|string[]>} FilenameGenerator
+ * @callback FilenameGenerator
+ * @param {browser.tabs.Tab | HTMLDocument} dataSource
+ * @returns {Promise.<string|string[]>}
  */
 
 /**
@@ -500,6 +504,7 @@ export function anonymizeClientsInOutput(output, clients) {
  * @property {string} taskTitle
  * @property {number} parentTaskId
  * @property {import('@/backend/utils').CreateTabPostOptions} createTabPostOptions
+ * FIXME: This isn't just used for creating tabs anymore.
  */
 
 /**
@@ -518,41 +523,64 @@ export async function downloadPage({
   const task = await createTask(store, {
     title: taskTitle,
     parent: parentTaskId,
-    progressMax: 4,
-    status: 'Opening tab',
+    progressMax: 3,
+    status: 'Waiting for slot in queue',
   });
-  if (filenameUsesPage) {
-    task.progressMax += 1;
-  }
+  // Extra step waiting for filename to generate from page.
+  if (filenameUsesPage) task.progressMax += 1;
+  // Extra step waiting for tab to open.
+  if (config.export.pageDownloadFileType === 'mhtml') task.progressMax += 1;
 
   let generatedFilename;
   return taskFunction({
     task,
     async func() {
-      // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
-      const initialMaxOpenTabs = config.maxOpenTabs;
-      config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
-      const tab = await createTabPost(createTabPostOptions);
-      config.maxOpenTabs = initialMaxOpenTabs;
       let blob = null;
-      try {
-        task.addStep('Waiting for page to load');
-        await tabLoaded(tab.id);
+      if (config.export.pageDownloadFileType === 'mhtml') {
+        task.status = 'Opening tab';
+        // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
+        const initialMaxOpenTabs = config.maxOpenTabs;
+        config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
+        const tab = await createTabPost(createTabPostOptions);
+        config.maxOpenTabs = initialMaxOpenTabs;
+        try {
+          task.addStep('Waiting for page to load');
+          await tabLoaded(tab.id);
+          if (filenameUsesPage) {
+            task.addStep('Generating filename');
+            generatedFilename = await filename(tab);
+          }
+          task.addStep('Converting page to MHTML');
+          blob = await saveAsMHTML({ tabId: tab.id });
+        } finally {
+          // TODO: Catch tab close errors
+          closeTab(tab.id);
+        }
+      } else if (config.export.pageDownloadFileType === 'html') {
+        task.status = 'Fetching page';
+        const doc = await getDocumentByAjax({
+          ...createTabPostOptions,
+          method: 'post',
+        });
+        task.addStep('Bundling page into single HTML file');
+        blob = await downloadSingleHtmlFile(doc, createTabPostOptions.url);
         if (filenameUsesPage) {
           task.addStep('Generating filename');
-          generatedFilename = await filename(tab);
-        } else {
-          generatedFilename = filename;
+          generatedFilename = await filename(doc);
         }
-        task.addStep('Converting page to MHTML');
-        blob = await saveAsMHTML({ tabId: tab.id });
-      } finally {
-        // TODO: Catch tab close errors
-        closeTab(tab.id);
+      }
+      if (!filenameUsesPage) {
+        generatedFilename = filename;
       }
       if (blob !== null) {
         const url = URL.createObjectURL(blob);
-        task.addStep('Downloading generated MHTML');
+        let fileTypeName = 'file';
+        if (config.export.pageDownloadFileType === 'mhtml') {
+          fileTypeName = 'MHTML file';
+        } else if (config.export.pageDownloadFileType === 'html') {
+          fileTypeName = 'HTML file';
+        }
+        task.addStep(`Downloading generated ${fileTypeName}`);
 
         let generatedFilenames;
         if (typeof generatedFilename === 'string') {
@@ -566,10 +594,13 @@ export async function downloadPage({
           for (const generatedFilename of generatedFilenames) {
             promises.push(new Promise(async (resolve) => {
               let downloadFilename = generatedFilename;
-              if (!config.export.removeMhtmlExtension) {
+              if (
+                config.export.pageDownloadFileType === 'mhtml'
+                && !config.export.removeMhtmlExtension
+              ) {
                 downloadFilename += '.mhtml';
               }
-              const downloadId = await browser.downloads.download({
+              const downloadId = await startDownload({
                 url,
                 filename: downloadFilename,
               });

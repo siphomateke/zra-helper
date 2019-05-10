@@ -2,7 +2,7 @@ import moment from 'moment';
 import set from 'lodash.set';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
-import { taxTypes, taxTypeNumericalCodes, browserFeatures } from '../../constants';
+import { taxTypes, taxTypeNumericalCodes } from '../../constants';
 import { getDocumentByAjax } from '../../utils';
 import { parseTableAdvanced } from '../../content_scripts/helpers/zra';
 import {
@@ -169,7 +169,6 @@ export function generateDownloadFilename({
  */
 
 export const GetReturnHistoryClientActionOptions = {
-  requiredFeatures: [browserFeatures.MHTML],
   requiresTaxTypes: true,
   defaultInput: () => ({
     taxTypeIds: Object.keys(taxTypes),
