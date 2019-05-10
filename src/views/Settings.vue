@@ -21,6 +21,12 @@
               </div>
               <div class="control">
                 <b-checkbox
+                  v-model="config.debug.showTaskErrorsInConsole"
+                  title="Logs full details of all task errors to the console."
+                >Show task errors in console</b-checkbox>
+              </div>
+              <div class="control">
+                <b-checkbox
                   v-model="config.debug.errors"
                   title="Show detailed information about errors if available."
                 >Detailed error information</b-checkbox>

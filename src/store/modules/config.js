@@ -13,6 +13,8 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * effect.
  * @property {boolean} debug.logToConsole
  * Show all user-side logs in the console.
+ * @property {boolean} debug.showTaskErrorsInConsole
+ * Whether to log task errors in the console for easier debugging.
  * @property {boolean} debug.errors
  * Show detailed information about errors if available.
  * @property {boolean} debug.progressBars
@@ -80,6 +82,7 @@ const defaultConfig = {
   debug: {
     devtools: false,
     logToConsole: false,
+    showTaskErrorsInConsole: false,
     errors: true,
     progressBars: false,
     sendConfigToContentScripts: true,

@@ -323,9 +323,13 @@ const vuexModule = {
      * @param {number} payload.id
      * @param {any} payload.error
      */
-    setError({ commit }, { id, error }) {
+    setError({ commit, rootState }, { id, error }) {
       commit('setError', { id, value: error });
       commit('setState', { id, value: taskStates.ERROR });
+      if (rootState.config.debug.showTaskErrorsInConsole) {
+        // eslint-disable-next-line no-console
+        console.log(error);
+      }
     },
     /**
      * Increments progress and sets status.
