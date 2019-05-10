@@ -58,8 +58,9 @@ export default {
       const data = await this.generateData();
       const blob = new Blob([data], { type: `${this.downloadType.mime};charset=utf-8` });
       const fullFilename = `${this.filename}.${this.downloadType.extension}`;
+      const downloadUrl = URL.createObjectURL(blob);
       const downloadId = await browser.downloads.download({
-        url: URL.createObjectURL(blob),
+        url: downloadUrl,
         filename: fullFilename,
         saveAs: this.showSaveAsDialog,
       });
@@ -73,6 +74,7 @@ export default {
       }, 200);
       try {
         await waitForDownloadToComplete(downloadId);
+        URL.revokeObjectURL(downloadUrl);
         this.$toast.open({
           message: `Successfully downloaded '${fullFilename}'`,
           type: 'is-success',

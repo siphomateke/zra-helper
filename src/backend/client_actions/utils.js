@@ -610,6 +610,7 @@ export async function downloadPage({
                   task.progress = taskProgressBeforeDownload + downloadProgress;
                 }
               });
+              URL.revokeObjectURL(url);
               resolve();
             }));
           }
