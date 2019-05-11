@@ -9,15 +9,16 @@ import {
   finishDownloadingReceipts,
   getFailedResponseItems,
   getReceiptData,
-  getDataFromReceipt,
+  getDataFromReceiptTab,
 } from './receipts';
 import {
   taxTypeNames,
   taxTypeNumericalCodes,
   taxTypes,
-  browserFeatures,
 } from '../constants';
 import { createClientAction, ClientActionRunner, inInput } from './base';
+import { InvalidReceiptError } from '../errors';
+import getDataFromReceipt from '../content_scripts/helpers/receipt_data';
 
 /**
  * @typedef {import('../constants').Date} Date
@@ -243,8 +244,16 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
   const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick.replace(/'/g, '').match(/\((.+)\)/)[1].split(',');
 
   return downloadPage({
-    async filename(tab) {
-      const receiptData = await getDataFromReceipt(tab, 'payment');
+    async filename(dataSource) {
+      let receiptData;
+      if (dataSource instanceof HTMLDocument) {
+        receiptData = await getDataFromReceipt(dataSource, 'payment');
+      } else {
+        receiptData = await getDataFromReceiptTab(dataSource, 'payment');
+      }
+      if (!receiptData.referenceNumber) {
+        throw new InvalidReceiptError('Invalid receipt; missing reference number.');
+      }
       return getPaymentReceiptFilenames(client, receiptData);
     },
     taskTitle: `Download receipt ${refNo}`,
@@ -265,7 +274,7 @@ function downloadPaymentReceipt({ client, receipt, parentTaskId }) {
 const GetPaymentReceiptsClientAction = createClientAction({
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',
-  requiredFeatures: [browserFeatures.MHTML],
+  requiredFeatures: [],
   defaultInput: () => ({
     fromDate: '01/10/2013',
     toDate: moment().format('DD/MM/YYYY'),

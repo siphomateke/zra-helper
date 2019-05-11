@@ -31,6 +31,8 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * The amount of time to wait for a tab to load (in milliseconds).
  * @property {number} requestTimeout
  * The amount of time to wait for HTTP requests to complete (in milliseconds). Set to 0 to disable.
+ * @property {number} maxConcurrentRequests
+ * The maximum number of HTTP requests that can be running at once. Set to 0 to disable.
  * @property {number} maxOpenTabs
  * The maximum number of tabs that can be opened. Set to 0 to disable.
  * @property {number} maxOpenTabsWhenDownloading
@@ -40,6 +42,10 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * The time to wait after creating a tab before creating another one (in milliseconds).
  * @property {number} maxLoginAttempts
  * The maximum number of times an attempt should be made to login to a client.
+ * @property {number} maxConcurrentDownloads
+ * The maximum number of downloads that can be downloading at the same time. Set to 0 to disable.
+ * @property {number} downloadDelay
+ * Time time to wait after starting a download before starting another (in milliseconds).
  * @property {boolean} sendNotifications
  * Whether to send a notification when all running tasks have completed.
  * @property {boolean} promptRetryActions
@@ -62,6 +68,8 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * @property {boolean} export.removeMhtmlExtension
  * Removes the .mhtml file extension from all downloaded receipts.
  * Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.
+ * @property {'mhtml'|'html'} export.pageDownloadFileType
+ * File type to use when downloading pages such as receipts.
  * @property {EolConfig} export.eol
  * The default end of line character. If set to 'auto', the end of line character will be
  * automatically determined based on the operating system.
@@ -79,11 +87,14 @@ const defaultConfig = {
     anonymizeClientsInExports: false,
   },
   tabLoadTimeout: 20000,
-  requestTimeout: 10000,
+  requestTimeout: 20000,
+  maxConcurrentRequests: 200,
   maxOpenTabs: 8,
   maxOpenTabsWhenDownloading: 3,
   tabOpenDelay: 0,
   maxLoginAttempts: 3,
+  maxConcurrentDownloads: 0,
+  downloadDelay: 0,
   sendNotifications: true,
   promptRetryActions: true,
   zraLiteMode: true,
@@ -94,6 +105,7 @@ const defaultConfig = {
   export: {
     showSaveAsDialog: true,
     removeMhtmlExtension: true,
+    pageDownloadFileType: 'html',
     eol: 'auto',
   },
 };

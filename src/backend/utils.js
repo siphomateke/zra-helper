@@ -12,6 +12,7 @@ import {
   DownloadError,
 } from './errors';
 import { browserCodes } from './constants';
+import PromiseQueue from './promise_queue';
 
 /**
  * Waits for a specific message.
@@ -125,6 +126,7 @@ export async function runContentScript(tabId, id, message = {}) {
   return response;
 }
 
+// TODO: Merge with PromiseQueue
 class TabCreator {
   constructor() {
     /**
@@ -339,7 +341,7 @@ export async function createTabPost({ url, data, active = false }) {
 
 /**
  * Promise version of chrome.pageCapture.saveAsMHTML
- * @param {Object} options
+ * @param {chrome.pageCapture.SaveDetails} options
  */
 export function saveAsMHTML(options) {
   return new Promise((resolve, reject) => {
@@ -389,6 +391,19 @@ export async function clickElement(tabId, selector, name = null, ignoreZraErrors
     name,
     ignoreZraErrors,
   });
+}
+
+const downloadQueue = new PromiseQueue(
+  () => config.maxConcurrentDownloads,
+  () => config.downloadDelay,
+);
+
+/**
+ * Wrapper around `browser.downloads.download()` that supports queuing using the `PromiseQueue`.
+ * @returns {Promise<number>} The download ID.
+ */
+export function startDownload(downloadOptions) {
+  return downloadQueue.add(() => browser.downloads.download(downloadOptions));
 }
 
 /**
@@ -457,11 +472,14 @@ export function waitForDownloadToComplete(id) {
   });
 }
 
+const requestQueue = new PromiseQueue(() => config.maxConcurrentRequests);
+
 /**
  * @typedef {Object} RequestOptions
  * @property {string} url
  * @property {string} [method=get] Type of request
  * @property {Object} [data] POST request data
+ * @property {string} [responseType]
  */
 
 /**
@@ -469,12 +487,17 @@ export function waitForDownloadToComplete(id) {
  * @param {RequestOptions} options
  * @returns {Promise.<*>}
  */
-export async function makeRequest({ url, method = 'get', data = {} }) {
+export async function makeRequest({
+  url,
+  method = 'get',
+  data = {},
+  responseType = 'text',
+}) {
   /** @type {import('axios').AxiosRequestConfig} */
   const axiosOptions = {
     url,
     method,
-    responseType: 'text',
+    responseType,
     timeout: config.requestTimeout,
   };
   if (method === 'get') {
@@ -487,7 +510,7 @@ export async function makeRequest({ url, method = 'get', data = {} }) {
     axiosOptions.data = params;
     axiosOptions.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
   }
-  const response = await axios(axiosOptions);
+  const response = await requestQueue.add(() => axios(axiosOptions));
   return response.data;
 }
 

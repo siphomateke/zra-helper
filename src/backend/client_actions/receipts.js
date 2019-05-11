@@ -8,19 +8,12 @@ import {
 } from './utils';
 
 /**
- * @typedef {'payment'} ReceiptType
- */
-
-/**
  * Extracts information from a receipt that has been opened in a tab.
  * @param {browser.tabs.Tab} tab
- * @param {ReceiptType} type
+ * @param {import('../content_scripts/helpers/receipt_data').ReceiptType} type
  */
-export async function getDataFromReceipt(tab, type) {
+export async function getDataFromReceiptTab(tab, type) {
   const receiptData = await runContentScript(tab.id, 'get_receipt_data', { type });
-  if (!receiptData.referenceNumber) {
-    throw new InvalidReceiptError('Invalid receipt; missing reference number.');
-  }
   if (receiptData === null) {
     throw new InvalidReceiptError('Invalid receipt; failed to collect receipt data.');
   }

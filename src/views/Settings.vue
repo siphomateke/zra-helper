@@ -60,13 +60,26 @@
               <div class="control">
                 <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
               </div>
-              <div class="control">
-                <b-checkbox
-                  v-model="config.export.removeMhtmlExtension"
-                  title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
-                >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
-              </div>
             </div>
+            <b-field
+              v-if="pageDownloadTypes.length > 1"
+              label="Save pages as"
+              title="File type to use when downloading pages such as receipts."
+            >
+              <b-select v-model="config.export.pageDownloadFileType">
+                <option
+                  v-for="option in pageDownloadTypes"
+                  :key="option.value"
+                  :value="option.value"
+                >{{ option.label }}</option>
+              </b-select>
+            </b-field>
+            <b-field v-if="config.export.pageDownloadFileType === 'mhtml'">
+              <b-checkbox
+                v-model="config.export.removeMhtmlExtension"
+                title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
+              >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
+            </b-field>
             <b-field label="End of line character">
               <b-select v-model="config.export.eol">
                 <option
@@ -123,6 +136,16 @@
               </b-field>
             </b-field>
             <b-field
+              label="Max parallel HTTP requests"
+              title="The maximum number of HTTP requests that can be running at once. Set to 0 to disable."
+              horizontal
+            >
+              <b-input
+                v-model="config.maxConcurrentRequests"
+                type="number"
+              />
+            </b-field>
+            <b-field
               label="Tab load timeout"
               title="The amount of time to wait for a tab to load (in milliseconds)."
               horizontal
@@ -162,10 +185,40 @@
               title="The time to wait after creating a tab before creating another one (in milliseconds)."
               horizontal
             >
+              <b-field>
+                <b-input
+                  v-model="config.tabOpenDelay"
+                  type="number"
+                />
+                <p class="control">
+                  <span class="button is-static">ms</span>
+                </p>
+              </b-field>
+            </b-field>
+            <b-field
+              label="Max parallel downloads"
+              title="The maximum number of downloads that can be downloading at the same time. Set to 0 to disable."
+              horizontal
+            >
               <b-input
-                v-model="config.tabOpenDelay"
+                v-model="config.maxConcurrentDownloads"
                 type="number"
               />
+            </b-field>
+            <b-field
+              label="Download delay"
+              title="Time time to wait after starting a download before starting another (in milliseconds)."
+              horizontal
+            >
+              <b-field>
+                <b-input
+                  v-model="config.downloadDelay"
+                  type="number"
+                />
+                <p class="control">
+                  <span class="button is-static">ms</span>
+                </p>
+              </b-field>
             </b-field>
           </BaseCard>
         </div>
@@ -226,9 +279,12 @@
 </template>
 
 <script>
-import { deepReactiveClone } from '@/utils';
+import { deepReactiveClone, getCurrentBrowser } from '@/utils';
 import configMixin from '@/mixins/config';
 import BaseCard from '@/components/BaseCard.vue';
+import { browserFeatures, featuresSupportedByBrowsers } from '@/backend/constants';
+
+const currentBrowser = getCurrentBrowser();
 
 export default {
   name: 'SettingsView',
@@ -241,6 +297,21 @@ export default {
       config: {},
       isLoading: false,
     };
+  },
+  computed: {
+    mhtmlSupported() {
+      const featuresSupportedByCurrentBrowser = featuresSupportedByBrowsers[currentBrowser];
+      return featuresSupportedByCurrentBrowser.includes(browserFeatures.MHTML);
+    },
+    pageDownloadTypes() {
+      const options = [
+        { value: 'html', label: 'Plain HTML' },
+      ];
+      if (this.mhtmlSupported) {
+        options.push({ value: 'mhtml', label: 'MHTML' });
+      }
+      return options;
+    },
   },
   watch: {
     'config.debug.missingElementInfo': function missingElementInfo(value) {
