@@ -599,6 +599,8 @@ export async function downloadPage({
                 && !config.export.removeMhtmlExtension
               ) {
                 downloadFilename += '.mhtml';
+              } else if (config.export.pageDownloadFileType === 'html') {
+                downloadFilename += '.html';
               }
               const downloadId = await startDownload({
                 url,
