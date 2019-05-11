@@ -87,7 +87,7 @@ const defaultConfig = {
     anonymizeClientsInExports: false,
   },
   tabLoadTimeout: 20000,
-  requestTimeout: 10000,
+  requestTimeout: 20000,
   maxConcurrentRequests: 200,
   maxOpenTabs: 8,
   maxOpenTabsWhenDownloading: 3,
