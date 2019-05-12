@@ -4,6 +4,7 @@
       v-for="id in tasks"
       :key="id"
       :id="id"
+      :open-tasks.sync="internalOpenTasks"
     />
     <div
       v-if="isRoot && tasks.length === 0"
@@ -34,6 +35,7 @@ import { taskStates } from '@/store/modules/tasks';
 import { exportFormatCodes } from '@/backend/constants';
 import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
 import { mapState } from 'vuex';
+import { generatePropSyncMixin } from '@/mixins/sync_prop';
 
 function objectWithoutKey(obj, key) {
   const { [key]: deletedKey, ...otherKeys } = obj;
@@ -61,6 +63,9 @@ export default {
     // TaskListItem: () => import(/* webpackChunkName: "task-list-item" */'./TaskListItem.vue'),
     ExportButtons,
   },
+  mixins: [
+    generatePropSyncMixin('internalOpenTasks', 'openTasks'),
+  ],
   props: {
     tasks: {
       type: Array,
@@ -69,6 +74,10 @@ export default {
     isRoot: {
       type: Boolean,
       default: false,
+    },
+    openTasks: {
+      type: Array,
+      default: () => [],
     },
   },
   data() {

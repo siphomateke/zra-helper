@@ -99,3 +99,14 @@ $spinner-size: 2;
 .modal-card-body {
   overflow: visible;
 }
+
+.button.is-hover-button {
+  @extend .is-text;
+  text-decoration: none;
+  opacity: 0.5;
+
+  &:hover {
+    opacity: 1;
+    background-color: rgb(214, 214, 214);
+  }
+}
