@@ -9,8 +9,6 @@ import { createClientAction, ClientActionRunner } from '../base';
 /* eslint-disable max-len */
 /**
  * @typedef {Object} RunnerInput
- * @property {import('@/backend/constants').Date} [fromDate]
- * @property {import('@/backend/constants').Date} [toDate]
  * @property {import('@/backend/client_actions/pending_liabilities').ParsedPendingLiabilitiesOutput[]} lastPendingLiabilities
  */
 /* eslint-enable max-len */
@@ -19,11 +17,7 @@ const TaxPayerLedgerClientAction = createClientAction({
   id: 'taxPayerLedger',
   name: 'Get tax payer ledger',
   requiresTaxTypes: true,
-  // FIXME: Use proper dates
-  defaultInput: () => ({
-    fromDate: '01/01/2013',
-    toDate: '11/03/2019',
-  }),
+  defaultInput: () => ({}),
 });
 
 TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
@@ -36,7 +30,8 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
     const { task: parentTask, client } = this.storeProxy;
     /** @type {{input: RunnerInput}} */
     const { input } = this.storeProxy;
-    const { fromDate, toDate } = input;
+    const fromDate = '01/01/2013';
+    const toDate = moment().format('DD/MM/YYYY');
 
     // Get data for each tax account
     this.records = await parallelTaskMap({
