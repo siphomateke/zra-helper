@@ -35,10 +35,7 @@ export default {
   props: {
     value: {
       type: Object,
-      default: () => ({
-        fromDate: null,
-        toDate: null,
-      }),
+      default: () => ({}),
     },
   },
   data() {
@@ -48,10 +45,6 @@ export default {
     };
   },
   methods: {
-    dateRangeInput(value) {
-      this.$set(this.input, 'fromDate', value.fromDate);
-      this.$set(this.input, 'toDate', value.toDate);
-    },
     async fileUploaded(file) {
       try {
         const fileExtension = getExtension(file.name);
