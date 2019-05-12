@@ -1,10 +1,5 @@
 <template>
   <div>
-    <DateRangeInput
-      :value="[input.fromDate, input.toDate]"
-      :disabled="disabled"
-      @input="dateRangeInput"
-    />
     <b-field label="Last week pending liability totals">
       <FileUpload
         :disabled="disabled"
@@ -31,17 +26,10 @@ export default {
   props: {
     value: {
       type: Object,
-      default: () => ({
-        fromDate: null,
-        toDate: null,
-      }),
+      default: () => ({}),
     },
   },
   methods: {
-    dateRangeInput(value) {
-      this.$set(this.input, 'fromDate', value.fromDate);
-      this.$set(this.input, 'toDate', value.toDate);
-    },
     async fileUploaded(file) {
       const csvString = await loadCsvFile(file);
 
