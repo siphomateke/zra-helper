@@ -169,7 +169,7 @@ const narrationTypeMatchers = {
   },
   [narrationTypes.LATE_PAYMENT_PENALTY]: {
     typeMatch: /^late payment penalty/,
-    },
+  },
   [narrationTypes.LATE_PAYMENT_INTEREST]: {
     typeMatch: /^late payment interest/,
   },
@@ -249,7 +249,9 @@ const narrationTypeMatchers = {
   },
   [narrationTypes.AMENDED_ASSESSMENT_OBJECTION]: {
     typeMatch: /^amended assessment from objection and appeals module/,
-    assessmentNumber: /\(assessment no : (\d+)\)/,
+    meta: {
+      assessmentNumber: /\(assessment no : (\d+)\)/,
+    },
   },
   [narrationTypes.PENALTY_FOR_AMENDED_ASSESSMENT]: {
     typeMatch: /^penalty for amended assessment/,
