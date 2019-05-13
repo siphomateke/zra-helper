@@ -1,0 +1,11 @@
+113,13/01/2016,01/12/2015,31/12/2015,Original Return,"3,000.96",0
+114,14/01/2016,01/12/2015,31/12/2015,Payment Reconciliation (PRN: 100000000001 ) against PRINCIPAL LIABILITY (Payment Date: 14-JAN-2016),0,"3,000.96"
+115,14/01/2016,01/12/2015,31/12/2015,Advance payment from  CLIENT  Ref. PRN: 100000000001 (Payment Date: 14-JAN-2016),0,0.04
+116,21/10/2016,01/12/2015,31/12/2015,Additional assessment from Assessment Module (Assessment No : 10000000002345),"10,000.04",0
+117,21/10/2016,01/12/2015,31/12/2015,Additional assessment from Assessment Module (Assessment No : 10000000002345),"500,000.60",0
+118,17/10/2016,01/12/2015,31/12/2015,REVERSAL OF - Advance payment from  CLIENT  Ref. PRN: 100000000001 (Payment Date: 14-JAN-2016),0.04,0
+119,17/10/2016,01/12/2015,31/12/2015,Payment Reconciliation (PRN: 100000000001 ) against ASSESSMENT LIABILITY (Payment Date: 14-JAN-2016),0,0.04
+120,30/07/2017,01/12/2015,31/12/2015,Advance payment from  CLIENT  Ref. PRN: 100000000002 (Payment Date: 30-JUL-2017),0,"10,000.04"
+121,25/04/2018,01/12/2015,31/12/2015,Amended assessment from Objection And Appeals Module (Assessment No : 10000000002345),0,"10,000.04"
+122,25/04/2018,01/12/2015,31/12/2015,Amended assessment from Objection And Appeals Module (Assessment No : 10000000002345),0,"500,000.60"
+123,,01/12/2015,31/12/2015,Closing Balance - 01/12/2015 to 31/12/2015,,"10,000.08"
