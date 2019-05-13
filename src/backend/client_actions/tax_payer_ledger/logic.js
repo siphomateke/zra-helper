@@ -7,6 +7,7 @@ import getDataFromReceipt from '@/backend/content_scripts/helpers/receipt_data';
 import { getAckReceiptPostOptions } from '../return_history/ack_receipt';
 import { getAllReturnHistoryRecords } from '../return_history/base';
 import { getDocumentByAjax } from '@/backend/utils';
+import generateChangeReasonString from './reason_string';
 
 /**
  * @typedef {import('@/backend/constants').Date} Date
@@ -452,6 +453,7 @@ async function getLiabilityAmountFromAckReceipt({
  * @property {LedgerSystemError} systemError
  * @property {ParsedNarrationType} narration
  * @property {string} [prn]
+ * @property {string} [assessmentNumber]
  */
 
 /**
@@ -486,6 +488,15 @@ async function generateChangeReasonDetails({
   if (record.narration.group === narrationGroups.PAYMENTS) {
     details.prn = record.narration.meta.prn || record.narration.meta.refPrn;
   }
+  // FIXME: Get PRN numbers of late payments, advance payments, and late returns from
+  // payments in the same period.
+  if (record.narration.group === narrationGroups.ASSESSMENTS) {
+    details.assessmentNumber = record.narration.meta.assessmentNumber;
+  } else if ('assessmentNumber' in record.narration.meta) {
+    details.assessmentNumber = record.narration.meta.assessmentNumber;
+  }
+  // FIXME: Get assessment number when appropriate from assessments in the same period.
+  // E.g. payments and penalties for amended assessments.
 
   // If pending liabilities increased from last week.
   if (difference > 0) {
@@ -558,12 +569,12 @@ export default async function taxPayerLedgerLogic({
 
   const changeReasonsByLiability = {};
   for (const pendingLiabilityType of pendingLiabilityTypes) {
+    const allChangeReasonDetails = [];
     // FIXME: Make sure totals are not empty.
     const lastWeek = parseAmountString(lastPendingLiabilityTotals[pendingLiabilityType]);
     const thisWeek = parseAmountString(pendingLiabilityTotals[pendingLiabilityType]);
     const difference = thisWeek - lastWeek;
     if (Math.abs(difference) > 0) {
-      const changeReasons = [];
       /**
        * The records that caused a change in pending liabilities.
        * @type {ParsedLedgerRecordWithReturnData[]}
@@ -606,14 +617,21 @@ export default async function taxPayerLedgerLogic({
           parentTaskId,
         }));
       }
-      const allChangeReasonDetails = await Promise.all(promises);
-      for (const details of allChangeReasonDetails) {
-        changeReasons.push(details);
+      const changeReasonDetails = await Promise.all(promises);
+      for (const details of changeReasonDetails) {
+        allChangeReasonDetails.push(details);
       }
-      changeReasonsByLiability[pendingLiabilityType] = changeReasons;
     } else {
-      // TODO: Handle no change from last week.
+      allChangeReasonDetails.push(null);
     }
+    const changeReasons = [];
+    for (const details of allChangeReasonDetails) {
+      changeReasons.push(generateChangeReasonString(taxTypeId, details));
+    }
+    // FIXME: Merge similar change reasons compactly.
+    // When the date and other meta data is the same, only the header is required from each.
+    // E.g. "Late return,\nLate payment,\nLate payment"
+    changeReasonsByLiability[pendingLiabilityType] = changeReasons.join('\n\n');
   }
   return changeReasonsByLiability;
 }
