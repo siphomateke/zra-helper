@@ -350,9 +350,53 @@ const vuexModule = {
      * @param {number} payload.id
      * @param {any} payload.error
      */
-    setError({ commit }, { id, error }) {
+    setError({
+      commit, rootState, dispatch,
+    }, { id, error }) {
       commit('setError', { id, value: error });
       commit('setState', { id, value: taskStates.ERROR });
+      if (rootState.config.debug.showTaskErrorsInConsole) {
+        dispatch('logError', { id });
+      }
+    },
+    /**
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     */
+    logError({ rootState, getters }, { id }) {
+      if (rootState.config.debug.showTaskErrorsInConsole) {
+        const task = getters.getTaskById(id);
+        if (task.state === taskStates.ERROR) {
+          /* eslint-disable no-console */
+          console.groupCollapsed(`${task.id} = ${task.title}`);
+          console.dir(task.error);
+          console.groupEnd();
+          /* eslint-enable no-console */
+        }
+      }
+    },
+    /**
+     * Logs tasks errors adn their descendants' errors.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number[]} payload.tasks
+     */
+    logTaskErrors({ getters, dispatch }, { tasks }) {
+      for (const taskId of tasks) {
+        dispatch('logError', { id: taskId });
+        const task = getters.getTaskById(taskId);
+        dispatch('logTaskErrors', { tasks: task.children });
+      }
+    },
+    /**
+     * Logs the errors of all tasks directly or indirectly under a list.
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {string} payload.list
+     */
+    logErrorsOfTaskList({ state, dispatch }, { list }) {
+      dispatch('logTaskErrors', { tasks: state[list] });
     },
     /**
      * Increments progress and sets status.
