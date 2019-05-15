@@ -209,6 +209,7 @@ export default {
           },
           parentTaskId: task.id,
           keepTabOpen: true,
+          closeOnErrors: false,
           maxAttempts: this.$store.state.config.maxLoginAttempts,
         }),
       });

@@ -131,10 +131,18 @@ async function getCaptchaText(maxCaptchaRefreshes) {
  * @param {number} payload.parentTaskId
  * @param {boolean} [payload.keepTabOpen]
  * Whether the logged in tab should be kept open after logging in.
+ * @param {boolean} [payload.closeOnErrors]
+ * Whether to close the tab if any errors occur getting its ID. Only used when `keepTabOpen`
+ * is true.
  * @returns {Promise.<number>} The ID of the logged in tab.
  * @throws {import('@/backend/errors').ExtendedError}
  */
-export async function login({ client, parentTaskId, keepTabOpen = false }) {
+export async function login({
+  client,
+  parentTaskId,
+  keepTabOpen = false,
+  closeOnErrors = true,
+}) {
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
@@ -197,7 +205,7 @@ export async function login({ client, parentTaskId, keepTabOpen = false }) {
         however, this is not necessary at the moment since nothing else can run if logging in
         fails.
         */
-        if (keepTabOpen && tabId !== null) {
+        if (keepTabOpen && closeOnErrors && tabId !== null) {
           // TODO: Catch tab close errors
           closeTab(tabId);
         }
@@ -253,10 +261,17 @@ export async function logout({ parentTaskId }) {
  * @param {number} payload.maxAttempts
  * The maximum number of times an attempt should be made to login to a client.
  * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open.
+ * @param {boolean} [payload.closeOnErrors]
+ * Whether to close the tab if any errors occur getting its ID. Only used when `keepTabOpen`
+ * is true.
  * @returns {Promise.<number>} The ID of the logged in tab.
  */
 export async function robustLogin({
-  client, parentTaskId, maxAttempts, keepTabOpen = false,
+  client,
+  parentTaskId,
+  maxAttempts,
+  keepTabOpen = false,
+  closeOnErrors = true,
 }) {
   const task = await createTask(store, {
     title: 'Robust login',
@@ -281,7 +296,9 @@ export async function robustLogin({
           } else {
             task.status = 'Logging in';
           }
-          loggedInTabId = await login({ client, parentTaskId: task.id, keepTabOpen });
+          loggedInTabId = await login({
+            client, parentTaskId: task.id, keepTabOpen, closeOnErrors,
+          });
           run = false;
         } catch (error) {
           if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts + 1 < maxAttempts) {
