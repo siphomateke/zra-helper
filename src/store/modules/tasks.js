@@ -368,8 +368,11 @@ const vuexModule = {
       if (rootState.config.debug.showTaskErrorsInConsole) {
         const task = getters.getTaskById(id);
         if (task.state === taskStates.ERROR) {
-          // eslint-disable-next-line no-console
-          console.log(error);
+          /* eslint-disable no-console */
+          console.groupCollapsed(`${task.id} = ${task.title}`);
+          console.dir(task.error);
+          console.groupEnd();
+          /* eslint-enable no-console */
         }
       }
     },
