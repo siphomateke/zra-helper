@@ -8,7 +8,7 @@
   >
     <div
       class="task-content"
-      @click="showChildren()"
+      @click="showChildren"
     >
       <div class="header">
         <div class="title is-6">
@@ -19,22 +19,53 @@
           />
           <span>{{ title }}</span>
         </div>
-        <div
-          :title="childStateString"
-          class="subtasks-info"
-        >
-          <span
-            v-for="(count, state) in childStateCounts"
-            :key="state"
-            :class="state"
-            class="item"
+        <div class="header-right">
+          <div
+            ref="taskButtons"
+            class="task-buttons"
           >
-            <b-icon
-              :icon="getStateIcon(state)"
-              size="is-small"
-            />
-            <span class="count">{{ count }}</span>
-          </span>
+            <template v-if="hasChildren">
+              <button
+                class="button is-small is-hover-button"
+                type="button"
+                title="Collapse all descendants"
+                @click="collapseAllTasks"
+              >
+                <b-icon
+                  icon="minus-square"
+                  pack="fas"
+                />
+              </button>
+              <button
+                class="button is-small is-hover-button"
+                type="button"
+                title="Expand all descendants"
+                @click="expandAllTasks"
+              >
+                <b-icon
+                  icon="plus-square"
+                  pack="fas"
+                />
+              </button>
+            </template>
+          </div>
+          <div
+            :title="childStateString"
+            class="subtasks-info"
+          >
+            <span
+              v-for="(count, state) in childStateCounts"
+              :key="state"
+              :class="state"
+              class="item"
+            >
+              <b-icon
+                :icon="getStateIcon(state)"
+                size="is-small"
+              />
+              <span class="count">{{ count }}</span>
+            </span>
+          </div>
         </div>
       </div>
       <div
@@ -54,15 +85,18 @@
     <TaskList
       v-if="hasChildren"
       :tasks="children"
+      :open-tasks.sync="internalOpenTasks"
     />
   </div>
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 import { mapGettersById, mapProperties } from '@/store/helpers';
 import { taskStates } from '@/store/modules/tasks';
 import TaskList from './TaskList.vue';
 import Progress from './BaseProgress.vue';
+import { generatePropSyncMixin } from '@/mixins/sync_prop';
 
 export const stateIcons = {
   [taskStates.ERROR]: 'exclamation-circle',
@@ -77,18 +111,23 @@ export default {
     TaskList,
     Progress,
   },
+  mixins: [
+    generatePropSyncMixin('internalOpenTasks', 'openTasks'),
+  ],
   props: {
     id: {
       type: Number,
       default: null,
     },
-  },
-  data() {
-    return {
-      open: false,
-    };
+    openTasks: {
+      type: Array,
+      default: () => [],
+    },
   },
   computed: {
+    ...mapGetters('tasks', [
+      'getTaskById',
+    ]),
     ...mapGettersById('tasks', [
       'childStateCounts',
       'childStateString',
@@ -115,6 +154,14 @@ export default {
     messages() {
       return this.errorString ? this.errorString : this.status;
     },
+    open: {
+      get() {
+        return this.internalOpenTasks.includes(this.id);
+      },
+      set(value) {
+        this.setTaskOpenState(this.id, value);
+      },
+    },
   },
   created() {
     // Expand the root task by default
@@ -126,10 +173,42 @@ export default {
     getStateIcon(state) {
       return stateIcons[state];
     },
-    showChildren() {
+    showChildren({ target }) {
+      // Don't do anything if this was triggered by clicking a button within the task
+      if (this.$refs.taskButtons.contains(target)) return;
+
       if (this.hasChildren) {
         this.open = !this.open;
       }
+    },
+    setTaskOpenState(id, open) {
+      const index = this.internalOpenTasks.indexOf(id);
+      const taskIsOpen = index > -1;
+      if (open) {
+        if (!taskIsOpen) {
+          this.internalOpenTasks.push(id);
+        }
+      } else if (taskIsOpen) {
+        this.internalOpenTasks.splice(index, 1);
+      }
+    },
+    setChildrenOpenState(parentTask, state) {
+      if (parentTask.children.length > 0) {
+        this.setTaskOpenState(parentTask.id, state);
+        for (const childTaskId of parentTask.children) {
+          const task = this.getTaskById(childTaskId);
+          this.setChildrenOpenState(task, state);
+        }
+      }
+    },
+    setExpandAllState(state) {
+      this.setChildrenOpenState(this, state);
+    },
+    expandAllTasks() {
+      this.setExpandAllState(true);
+    },
+    collapseAllTasks() {
+      this.setExpandAllState(false);
     },
   },
 };
@@ -141,10 +220,6 @@ export default {
 .task {
   &:not(:last-child) {
     margin-bottom: 1em;
-  }
-
-  &.has-children > .task-content {
-    cursor: pointer;
   }
 
   & > .task-content {
@@ -162,15 +237,19 @@ export default {
         margin-bottom: 0;
       }
 
-      .subtasks-info {
+      .header-right {
         margin-left: auto;
+        display: flex;
+      }
+
+      .subtasks-info {
         display: flex;
         white-space: nowrap;
         .item .count {
           padding-left: 0.2em;
         }
         .item:not(:last-child) {
-          padding-right: 1em;
+          padding-right: 0.5em;
         }
         @each $state, $color in $taskColors {
           .#{$state} .icon {
@@ -178,6 +257,24 @@ export default {
           }
         }
       }
+      .task-buttons {
+        display: none;
+        margin-left: auto;
+        padding-right: 0.5rem;
+        height: 1em;
+
+        .button {
+          margin-top: -0.375rem;
+        }
+      }
+    }
+  }
+
+  &.has-children > .task-content {
+    cursor: pointer;
+
+    &:hover .task-buttons {
+      display: flex;
     }
   }
 
