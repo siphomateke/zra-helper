@@ -4,6 +4,37 @@ import store from '@/store';
 // TODO: Give this file a better name
 
 /**
+ * Extracts a filenames extension.
+ * @param {string} filename
+ * @returns {string} The extension
+ */
+export function getExtension(filename) {
+  const split = filename.split('.');
+  return split[split.length - 1];
+}
+
+/**
+ * Gets the contents of a file.
+ * @param {File} file
+ * @returns {Promise.<string>} The contents of the file.
+ * @throws Will throw an error if the file fails to load
+ */
+export async function loadFile(file) {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+    // TODO: Add file load progress
+    fileReader.onload = async function onload(fileLoadedEvent) {
+      const text = fileLoadedEvent.target.result;
+      resolve(text);
+    };
+    fileReader.onerror = function onerror(event) {
+      reject(new Error(event.target.error));
+    };
+    fileReader.readAsText(file, 'UTF-8');
+  });
+}
+
+/**
  * @typedef {'\r\n'|'\n'} EolCharacter End of line character.
  */
 
