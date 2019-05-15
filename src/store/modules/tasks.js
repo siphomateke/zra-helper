@@ -103,6 +103,7 @@ const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');
 /** @type {import('vuex').Module} */
 const vuexModule = {
   namespaced: true,
+  // TODO: Group lists under one property
   state: {
     /**
      * Default task list.
@@ -119,6 +120,11 @@ const vuexModule = {
      * @type {number[]}
      */
     login: [],
+    /**
+     * Tasks used in the task viewer.
+     * @type {number[]}
+     */
+    taskViewer: [],
     /**
      * Object containing tasks as values and their corresponding IDs as keys.
      * @type {Object.<string, TaskVuexState>}
@@ -209,6 +215,9 @@ const vuexModule = {
     create(state, { id, task }) {
       Vue.set(state.tasks, id, task);
     },
+    batchCreate(state, tasks) {
+      Object.assign(state.tasks, tasks);
+    },
     /**
      * Adds a particular task to a certain list. Mainly used for the top-level list of tasks.
      * @param {any} state
@@ -218,6 +227,14 @@ const vuexModule = {
      */
     addToList(state, { id, name = 'all' }) {
       state[name].push(id);
+    },
+    clearList(state, { name }) {
+      state[name] = [];
+    },
+    removeTasks(state, { ids }) {
+      for (const id of ids) {
+        Vue.delete(state.tasks, id);
+      }
     },
     /**
      * Adds several child tasks to a task.

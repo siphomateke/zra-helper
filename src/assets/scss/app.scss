@@ -110,3 +110,8 @@ $spinner-size: 2;
     background-color: rgb(214, 214, 214);
   }
 }
+
+// Add border to messages since they blend into the background
+.message:not([headerless]) {
+  border: 1px solid #d2d2d2;
+}

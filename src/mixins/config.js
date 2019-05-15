@@ -1,12 +1,12 @@
 export default {
   data() {
     return {
-      isLoading: false,
+      configIsLoading: false,
     };
   },
   methods: {
     async loadConfig() {
-      this.isLoading = true;
+      this.configIsLoading = true;
       try {
         await this.$store.dispatch('config/load');
       } catch (e) {
@@ -17,7 +17,7 @@ export default {
           hasIcon: true,
         });
       } finally {
-        this.isLoading = false;
+        this.configIsLoading = false;
       }
     },
   },
