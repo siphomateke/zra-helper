@@ -26,6 +26,9 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * @property {boolean} debug.anonymizeClientsInExports
  * Enable this to remove sensitive client information such as names, usernames and passwords from
  * exports.
+ * @property {boolean} debug.calculateTaskDuration
+ * Tracks how long tasks take and displays the information in their titles. Must be enabled before
+ * running the tasks.
  *
  * @property {number} tabLoadTimeout
  * The amount of time to wait for a tab to load (in milliseconds).
@@ -73,6 +76,8 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * @property {EolConfig} export.eol
  * The default end of line character. If set to 'auto', the end of line character will be
  * automatically determined based on the operating system.
+ * @property {boolean} export.taskDuration
+ * Whether to include task duration in exports.
  */
 
 /** @type {State} */
@@ -85,6 +90,7 @@ const defaultConfig = {
     sendConfigToContentScripts: true,
     missingElementInfo: true,
     anonymizeClientsInExports: false,
+    calculateTaskDuration: false,
   },
   tabLoadTimeout: 20000,
   requestTimeout: 20000,
@@ -107,6 +113,7 @@ const defaultConfig = {
     removeMhtmlExtension: true,
     pageDownloadFileType: 'html',
     eol: 'auto',
+    taskDuration: false,
   },
 };
 

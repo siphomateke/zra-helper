@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
 import { errorToString } from '@/backend/errors';
+import moment from 'moment';
 
 let lastTaskId = 0;
 
@@ -44,6 +45,8 @@ export const taskStates = {
  * @property {boolean} [isRoot=false]
  * Whether this task is at the highest level and has no parents. Root tasks are generally
  * associated with a single client action run.
+ * @property {number} startedAt The Unix time at which this task was created.
+ * @property {number} completedAt The Unix time at which this task completed.
  */
 
 /**
@@ -185,6 +188,14 @@ const vuexModule = {
         }
         return task.progressMax;
       },
+      duration: ({ task }) => {
+        if (task.completedAt !== null && task.startedAt !== null) {
+          const ms = task.completedAt - task.startedAt;
+          const duration = moment.duration(ms);
+          return Math.floor(duration.asHours()) + moment.utc(ms).format(':mm:ss.SSS');
+        }
+        return null;
+      },
     }),
   },
   mutations: {
@@ -261,6 +272,8 @@ const vuexModule = {
       'sequential',
       'autoUpdateParent',
       'indeterminate',
+      'startedAt',
+      'completedAt',
     ]),
   },
   actions: {
@@ -270,7 +283,7 @@ const vuexModule = {
      * @param {TaskCreateOptions} data
      * @returns {number} The newly-created task's ID.
      */
-    create({ commit }, data = { list: 'all' }) {
+    create({ commit, rootState }, data = { list: 'all' }) {
       const task = Object.assign({
         id: lastTaskId,
         title: '',
@@ -288,11 +301,16 @@ const vuexModule = {
         sequential: true,
         autoUpdateParent: true,
         isRoot: false,
+        startedAt: null,
+        completedAt: null,
       }, data);
       if (!('anonymousTitle' in task)) {
         task.anonymousTitle = task.title;
       }
       const { id } = task;
+      if (rootState.config.debug.calculateTaskDuration) {
+        task.startedAt = Date.now();
+      }
       commit('create', { id, task });
       lastTaskId += 1;
 
@@ -303,6 +321,15 @@ const vuexModule = {
       }
 
       return id;
+    },
+    /**
+     * @param {import('vuex').ActionContext} context
+     * @param {Object} payload
+     * @param {number} payload.id
+     * @param {number} payload.time
+     */
+    setTaskCompletionTime({ commit }, { id, time }) {
+      commit('setCompletedAt', { id, value: time });
     },
     /**
      * Marks this task as complete and sets its progress to the maximum value.

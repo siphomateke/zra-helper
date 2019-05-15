@@ -99,6 +99,9 @@ export default {
     anonymizeClientsInExports() {
       return this.$store.state.config.debug.anonymizeClientsInExports;
     },
+    exportTaskDuration() {
+      return this.$store.state.config.export.taskDuration;
+    },
     eolCharacter() {
       return this.$store.state.eol;
     },
@@ -119,7 +122,11 @@ export default {
 
         // Add various getters to the task JSON
         const taskCopy = objectWithoutKey(task, 'children');
-        for (const getter of taskGettersToExport) {
+        const getters = taskGettersToExport.slice();
+        if (this.exportTaskDuration) {
+          getters.push('duration');
+        }
+        for (const getter of getters) {
           taskCopy[getter] = this.$store.getters[`tasks/${getter}`](id);
         }
 
@@ -183,6 +190,7 @@ export default {
         if (task.error) {
           row.error = task.errorString;
         }
+        if (task.duration) row.duration = task.duration;
         if (!this.onlyExportClientTasks && task.children) {
           row.children = this.getTextExportMetadata(task.children, indent + 1);
         }
@@ -197,6 +205,7 @@ export default {
           task.emoji,
           task.title,
           task.childStates,
+          task.duration ? task.duration : '',
           task.error ? task.error : '',
         ]);
       }
@@ -213,6 +222,9 @@ export default {
           string += '|  ';
         }
         string += `${task.emoji} ${task.title} ${task.childStates}`;
+        if (task.duration) {
+          string += ` | ${task.duration}`;
+        }
         if (task.error) {
           string += ` | ${task.error}`;
         }
@@ -238,6 +250,9 @@ export default {
         'Child states',
         'Error',
       ]);
+      if (this.exportTaskDuration) {
+        table[0].splice(3, 0, 'Duration');
+      }
       return unparseCsv(table);
     },
     async getExport(format) {
