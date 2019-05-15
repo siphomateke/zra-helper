@@ -49,6 +49,12 @@
                   title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
                 >Anonymize clients in exports</b-checkbox>
               </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.calculateTaskDuration"
+                  title="Tracks how long tasks take and displays the information in their titles. Must be enabled before running the tasks."
+                >Measure task duration</b-checkbox>
+              </div>
             </div>
           </BaseCard>
         </div>
@@ -59,6 +65,15 @@
             <div class="field">
               <div class="control">
                 <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+              </div>
+            </div>
+            <div class="field">
+              <div class="control">
+                <b-checkbox
+                  v-model="config.export.taskDuration"
+                  title="Whether to include how long tasks took to run in the task export. 'Measure task duration' must have been enabled before the tasks were run for this to work."
+                  @input="enabled => {if (enabled) config.debug.calculateTaskDuration = true}"
+                >Include task duration in exports</b-checkbox>
               </div>
             </div>
             <b-field
@@ -322,6 +337,11 @@ export default {
     'config.debug.sendConfigToContentScripts': function sendConfigToContentScripts(value) {
       if (!value && this.config.debug.missingElementInfo) {
         this.config.debug.missingElementInfo = false;
+      }
+    },
+    'config.debug.calculateTaskDuration': function calculateTaskDuration(value) {
+      if (!value && this.config.export.taskDuration) {
+        this.config.export.taskDuration = false;
       }
     },
   },

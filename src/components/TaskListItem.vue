@@ -49,6 +49,11 @@
               </button>
             </template>
           </div>
+          <span
+            class="task-duration"
+            v-if="calculateTaskDuration && complete"
+            :title="duration === null ? unknownDurationMessage : ''"
+          >{{ duration !== null ? duration : 'Unknown duration' }}</span>
           <div
             :title="childStateString"
             class="subtasks-info"
@@ -124,6 +129,11 @@ export default {
       default: () => [],
     },
   },
+  data() {
+    return {
+      unknownDurationMessage: 'Duration is unknown. The "Measure task duration" setting must be enabled before the tasks are run for their duration to be computed.',
+    };
+  },
   computed: {
     ...mapGetters('tasks', [
       'getTaskById',
@@ -136,6 +146,7 @@ export default {
       'progress',
       'progressMax',
       'complete',
+      'duration',
     ]),
     ...mapGettersById('tasks', {
       model: 'getTaskById',
@@ -161,6 +172,18 @@ export default {
       set(value) {
         this.setTaskOpenState(this.id, value);
       },
+    },
+    calculateTaskDuration() {
+      return this.$store.state.config.debug.calculateTaskDuration;
+    },
+  },
+  watch: {
+    complete(value) {
+      // FIXME: Move this to Vuex. Just not sure how to put it there since it should only be
+      // run when a getter (complete) changes to a certain value.
+      if (this.calculateTaskDuration && value) {
+        this.$store.dispatch('tasks/setTaskCompletionTime', { id: this.id, time: Date.now() });
+      }
     },
   },
   created() {
@@ -256,6 +279,9 @@ export default {
             color: $color;
           }
         }
+      }
+      .task-duration {
+        padding-right: 0.5rem;
       }
       .task-buttons {
         display: none;
