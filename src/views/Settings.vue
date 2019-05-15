@@ -293,7 +293,7 @@
     </form>
     <!-- eslint-enable max-len -->
     <b-loading
-      :active="isLoading"
+      :active="configIsLoading"
       :is-full-page="false"
     />
   </div>
@@ -316,7 +316,6 @@ export default {
   data() {
     return {
       config: {},
-      isLoading: false,
     };
   },
   computed: {

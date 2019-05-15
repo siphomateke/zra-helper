@@ -266,7 +266,10 @@ export default {
           output = this.getCsvExport(tasks);
         }
       } else {
-        output = writeJson(tasksJson);
+        output = writeJson({
+          version: '1',
+          tasks: tasksJson,
+        });
       }
       if (this.anonymizeClientsInExports) {
         output = anonymizeClientsInOutput(output, this.clients);
@@ -276,3 +279,9 @@ export default {
   },
 };
 </script>
+
+<style lang="scss">
+.tasks:not(:first-child) {
+  margin-top: 1rem;
+}
+</style>

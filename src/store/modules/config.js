@@ -80,6 +80,12 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * automatically determined based on the operating system.
  * @property {boolean} export.taskDuration
  * Whether to include task duration in exports.
+ *
+ * @property {Object} dismissed
+ * Tracks which warnings that have been dismissed by the user and shouldn't be shown again.
+ * @property {boolean} dismissed.taskViewerWarning
+ * Whether the warning about the task viewer interfering with tasks in the dashboard has been
+ * dismissed.
  */
 
 /** @type {State} */
@@ -117,6 +123,9 @@ const defaultConfig = {
     pageDownloadFileType: 'html',
     eol: 'auto',
     taskDuration: false,
+  },
+  dismissed: {
+    taskViewerWarning: false,
   },
 };
 

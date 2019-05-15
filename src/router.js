@@ -3,6 +3,7 @@ import Router from 'vue-router';
 import Dashboard from './views/Dashboard.vue';
 import Login from './views/Login.vue';
 import Settings from './views/Settings.vue';
+import TaskViewer from './views/TaskViewer.vue';
 
 Vue.use(Router);
 
@@ -38,6 +39,15 @@ export default new Router({
       meta: {
         title: 'Settings',
         icon: 'cog',
+      },
+    },
+    {
+      path: '/task-viewer',
+      name: 'task-viewer',
+      component: TaskViewer,
+      meta: {
+        title: 'Task viewer',
+        icon: 'tasks',
       },
     },
   ],
