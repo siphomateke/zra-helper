@@ -253,6 +253,9 @@ export default {
     shouldPromptToRetryFailures() {
       return this.$store.state.config.promptRetryActions;
     },
+    showTaskErrorsInConsole() {
+      return this.$store.state.config.debug.showTaskErrorsInConsole;
+    },
     anyRunsWithOutputs() {
       for (const run of this.runs) {
         if (this.actionsWithOutputsInRun(run).length > 0) {
@@ -286,6 +289,11 @@ export default {
           });
         }
         this.failuresRunId = this.currentRunId;
+      }
+    },
+    showTaskErrorsInConsole(show) {
+      if (show) {
+        this.$store.dispatch('tasks/logErrorsOfTaskList', { list: 'clientActions' });
       }
     },
   },
