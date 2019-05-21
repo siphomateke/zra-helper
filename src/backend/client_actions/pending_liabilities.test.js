@@ -1,8 +1,8 @@
-import Action, { generateTotals, totalsColumns } from './pending_liabilities';
+import Action, { generateTotals, pendingLiabilityColumns } from './pending_liabilities';
 import { getFakeRunInstanceClassFromAction, testMergingAllRunOutputs } from './tests/utils';
 
 function generateDummyTotals() {
-  return generateTotals(totalsColumns, '0.00');
+  return generateTotals(pendingLiabilityColumns, '0.00');
 }
 
 describe('GetAllPendingLiabilitiesClientAction', () => {

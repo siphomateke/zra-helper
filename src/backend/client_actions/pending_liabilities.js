@@ -11,11 +11,18 @@ import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
 import { deepAssign } from '@/utils';
 
-/** Columns to get from the pending liabilities table */
-export const totalsColumns = [
+/** @typedef {'principal'|'interest'|'penalty'} PendingLiabilityType */
+
+/** @type {PendingLiabilityType[]} */
+export const pendingLiabilityTypes = [
   'principal',
   'interest',
   'penalty',
+];
+
+/** Columns to get from the pending liabilities table */
+export const pendingLiabilityColumns = [
+  ...pendingLiabilityTypes,
   'total',
 ];
 
@@ -29,7 +36,8 @@ const totalsColumnsNames = {
 
 /**
  * @typedef {Object.<string, string>} Totals
- * Totals with two decimal places. The possible totals are all the items in `totalsColumns`.
+ * Totals with two decimal places. The possible totals are all the items in
+ * `pendingLiabilityColumns`.
  */
 
 /**
@@ -99,7 +107,7 @@ async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
         // Make sure we are getting totals from the grand total row.
         if (totalsRow.srNo.toLowerCase() === 'grand total') {
           totals = {};
-          for (const column of totalsColumns) {
+          for (const column of pendingLiabilityColumns) {
             const cell = totalsRow[column];
             totals[column] = cell.replace(/\n\n/g, '');
           }
@@ -107,7 +115,7 @@ async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
           totals = null;
         }
       } else {
-        totals = generateTotals(totalsColumns, '0');
+        totals = generateTotals(pendingLiabilityColumns, '0');
       }
 
       return totals;
@@ -159,7 +167,7 @@ function outputFormatter({
       ['client', 'Client'],
       ['taxType', 'Tax type'],
     ]);
-    totalsColumns.forEach((c) => {
+    pendingLiabilityColumns.forEach((c) => {
       columns.set(c, totalsColumnsNames[c]);
     });
     columns.set('error', 'Error');
@@ -264,8 +272,8 @@ export function csvOutputParser(csvString) {
     }
     const taxType = row[1];
     const taxTypeTotals = {};
-    for (let i = 0; i < totalsColumns.length; i++) {
-      taxTypeTotals[totalsColumns[i]] = row[i + 2];
+    for (let i = 0; i < pendingLiabilityColumns.length; i++) {
+      taxTypeTotals[pendingLiabilityColumns[i]] = row[i + 2];
     }
     totals[taxType] = taxTypeTotals;
   }
