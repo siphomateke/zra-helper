@@ -8,11 +8,21 @@ const t = narrationTypes;
 /**
  * Generates a string describing why pending liabilities changed.
  * @param {import('../return_history/base').TaxTypeNumericalCode} taxTypeId
- * @param {import('./logic').ChangeReasonDetails} details
+ * @param {import('./logic').ChangeReasonDetails} detailsObj
  * @returns {string}
  */
-export default function generateChangeReasonString(taxTypeId, details) {
-  if (details === null || !details) return 'NC'; // NC = No change
+export default function generateChangeReasonString(taxTypeId, detailsObj) {
+  if ('change' in detailsObj && detailsObj.change === false) return 'NC'; // NC = No change
+
+  const details = Object.assign({}, detailsObj);
+
+  // For each detail with multiple possible values, combine the possible values into single strings.
+  const detailsWithMultiplePossibleValues = ['prn', 'assessmentNumber'];
+  for (const prop of detailsWithMultiplePossibleValues) {
+    if (Array.isArray(details[prop])) {
+      details[prop] = details[prop].join('|');
+    }
+  }
 
   const transactionDate = moment(details.transactionDate).format('DD/MM/YY');
   const fromDate = moment(details.fromDate);
@@ -66,14 +76,8 @@ export default function generateChangeReasonString(taxTypeId, details) {
       `(PRN:${details.prn})`,
       `of ${monthYear}`,
     ];
-    if (details.systemError === ledgerSystemErrors.ADVANCE_PAYMENT) {
-      // FIXME: Handle actual advance payments
-      paymentLines.unshift('System error');
-      paymentLines.push(...[
-        'not reflected',
-        'reflected in ledger',
-      ]);
-    } else if (type === t.PAYMENT) {
+    // FIXME: Handle advance payments
+    if (type === t.PAYMENT) {
       // Leave the same if ordinary payment
 
       // FIXME: Confirm this works
@@ -88,6 +92,13 @@ export default function generateChangeReasonString(taxTypeId, details) {
       paymentLines[0] = 'Late return';
     }
     lines.unshift(...paymentLines);
+    if (details.systemError === ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT) {
+      lines.unshift('System error');
+      lines.push(...[
+        'not reflected',
+        'reflected in ledger',
+      ]);
+    }
   } else if (
     narration.group === narrationGroups.ASSESSMENTS
     || type === t.AMENDED_ASSESSMENT_OBJECTION
@@ -119,10 +130,6 @@ export default function generateChangeReasonString(taxTypeId, details) {
     || type === t.BEING_REVERSAL_REPLICATED_TRANSACTION
   ) {
     lines.unshift(monthYear);
-  }
-  if (lines.length === 1) {
-    console.log('LINES_LENGTH_1');
-    console.log(details);
   }
   return lines.join('\n');
 }
