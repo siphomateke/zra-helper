@@ -200,17 +200,32 @@ export async function parseReportTable({ root, headers }) {
   };
 }
 
+/** The number of decimal places that numbers on the ZRA website have. */
+const ZRA_DECIMAL_PLACES = 2;
+
+/**
+ * Scales a decimal value to remove the values after the decimal point.
+ * @param {number} amount
+ */
+export function scaleZraAmount(amount) {
+  return amount * (10 ** ZRA_DECIMAL_PLACES);
+}
+
 /**
  * Parses numbers from the ZRA website. The numbers contain commas and decimal places that must be
  * properly parsed.
+ *
+ * This doesn't return a float but rather an integer to prevent floating point errors. Thus, any
+ * calculations using the return should take into account that the number is actually smaller.
+ * To convert a number to be in the same scale as the return, use `scaleZraAmount`.
  * @param {string} amount E.g. 3,400.00
- * @returns {number}
+ * @returns {number} Amount scaled to remove values after decimal point. E.g. 3,401.75 -> 340175
  */
 // TODO: Consider actually using this when parsing tables.
 export function parseAmountString(amount) {
   // TODO: Remove this type check once we use TypeScript
   if (amount && typeof amount === 'string') {
-    return parseFloat(amount.replace(/,/g, ''));
+    return scaleZraAmount(parseFloat(amount.replace(/,/g, '')));
   }
   return null;
 }
