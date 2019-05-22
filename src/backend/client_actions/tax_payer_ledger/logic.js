@@ -826,6 +826,40 @@ async function generateChangeReasonDetails({
 }
 
 /**
+ * Checks if two change details are equal.
+ * @param {ChangeReasonDetails} details1
+ * @param {ChangeReasonDetails} details2
+ * @returns {boolean}
+ */
+function changeDetailsEqual(details1, details2) {
+  return objectsEqual(details1, details2);
+}
+
+/**
+ * Removes duplicate change reason details. These are usually caused by records in the ledger being
+ * split for no apparent reason.
+ * @param {ChangeReasonDetails[]} changeReasonDetails
+ * @returns {ChangeReasonDetails[]}
+ */
+// TODO: Add test for this
+function removeDuplicateChangeReasonDetails(changeReasonDetails) {
+  const list = changeReasonDetails.slice();
+  for (let i = list.length - 1; i >= 0; i--) {
+    const details = list[i];
+    if (details.change) {
+      for (let j = i - 1; j >= 0; j--) {
+        const details2 = list[j];
+        if (details2.change && changeDetailsEqual(details, details2)) {
+          list.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+  return list;
+}
+
+/**
  * Checks if a record contributes to a change in a certain liability type.
  * @template {ParsedTaxPayerLedgerRecord} Record
  * @param {Record} record
@@ -966,6 +1000,8 @@ export default async function taxPayerLedgerLogic({
     } else {
       changeReasonDetails.push({ change: false });
     }
+
+    changeReasonDetails = removeDuplicateChangeReasonDetails(changeReasonDetails);
 
     const changeReasons = changeReasonDetails.map(
       details => generateChangeReasonString(taxTypeId, details),
