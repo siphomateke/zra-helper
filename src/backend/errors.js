@@ -221,6 +221,13 @@ export class TaxAccountNameNotFound extends ExtendedError {
   }
 }
 
+export class LedgerError extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('LedgerError');
+  }
+}
+
 /**
  * @typedef JsonError
  * @property {string} message
