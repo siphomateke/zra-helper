@@ -1,6 +1,6 @@
 import moment from 'moment';
 import parseNarration, { narrationGroups, narrationTypes } from './narration';
-import { parseAmountString } from '@/backend/content_scripts/helpers/zra';
+import { parseAmountString, scaleZraAmount } from '@/backend/content_scripts/helpers/zra';
 import { pendingLiabilityTypes } from '../pending_liabilities';
 import { objectsEqual } from '@/utils';
 import getDataFromReceipt from '@/backend/content_scripts/helpers/receipt_data';
@@ -778,7 +778,7 @@ async function generateChangeReasonDetails({
   // check its return, not the payment.
   if (difference > 0 && record.narration.group === narrationGroups.RETURNS) {
     // If specifically principal increased by less than a kwacha
-    if (liabilityType === 'principal' && difference < 1) {
+    if (liabilityType === 'principal' && difference < scaleZraAmount(1)) {
       // In this case, the return has been rounded up but the payment is still exact and correct.
       // Double check that that is the case.
       // TODO: Add unit tests for this specific case
@@ -854,8 +854,6 @@ function filterRecordsByLiabilityType(records, liabilityType) {
   return records.filter(record => recordAffectsLiabilityType(record, liabilityType));
 }
 
-// FIXME: Fix errors due to floating point numbers. E.g. when checking pending liability diff
-// and when comparing payment sums.
 export default async function taxPayerLedgerLogic({
   taxTypeId,
   lastPendingLiabilityTotals,
