@@ -86,6 +86,10 @@
         :state="state"
         size="is-small"
       />
+      <DownloadPills
+        v-if="downloadIds.length > 0"
+        :download-ids="downloadIds"
+      />
     </div>
     <TaskList
       v-if="hasChildren"
@@ -102,6 +106,7 @@ import { taskStates } from '@/store/modules/tasks';
 import TaskList from './TaskList.vue';
 import Progress from '@/components/BaseProgress.vue';
 import { generatePropSyncMixin } from '@/mixins/sync_prop';
+import DownloadPills from './DownloadPills.vue';
 
 export const stateIcons = {
   [taskStates.ERROR]: 'exclamation-circle',
@@ -115,6 +120,7 @@ export default {
   components: {
     TaskList,
     Progress,
+    DownloadPills,
   },
   mixins: [
     generatePropSyncMixin('internalOpenTasks', 'openTasks'),
@@ -160,6 +166,7 @@ export default {
       'children',
       'indeterminate',
       'isRoot',
+      'downloadIds',
     ]),
     taskStates: () => taskStates,
     messages() {

@@ -34,6 +34,11 @@ function taskFromId(store, id) {
  */
 
 /**
+ * @typedef {function} Task.addDownload
+ * @param {number} downloadId
+ */
+
+/**
  * @typedef TaskObject.Temp
  * @property {boolean} hasParent
  * @property {TaskObject} parent
@@ -49,6 +54,7 @@ function taskFromId(store, id) {
  * @property {function} markAsComplete
  * @property {Task.setError} setError
  * @property {Task.addStep} addStep
+ * @property {Task.addDownload} addDownload
  * @property {function} setStateBasedOnChildren
  * @property {function} setErrorBasedOnChildren
  */
@@ -89,6 +95,7 @@ class Task {
           typeof prop === 'string'
           && prop !== 'addStep'
           && prop !== 'setError'
+          && prop !== 'addDownload'
           && prop !== 'listStoreTask'
         ) {
           return obj.listStoreTask[prop];
@@ -117,6 +124,10 @@ class Task {
       options.increment = increment;
     }
     this.listStoreTask.addStep(options);
+  }
+
+  addDownload(downloadId) {
+    this.listStoreTask.addDownload({ downloadId });
   }
 }
 

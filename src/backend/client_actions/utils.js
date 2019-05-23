@@ -615,6 +615,7 @@ export async function downloadPage({
                 url,
                 filename: downloadFilename,
               });
+              task.addDownload(downloadId);
               // FIXME: Catch and handle download errors
               await monitorDownloadProgress(downloadId, (downloadProgress) => {
                 if (downloadProgress !== -1) {

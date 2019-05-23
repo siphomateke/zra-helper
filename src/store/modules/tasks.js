@@ -275,6 +275,9 @@ const vuexModule = {
       Vue.set(state.tasks[id], 'error', value);
       Vue.set(state.tasks[id], 'errorString', errorToString(value));
     },
+    addDownload(state, { id, downloadId }) {
+      state.tasks[id].downloadIds.push(downloadId);
+    },
     ...listStoreHelper.itemMutations([
       'title',
       'anonymousTitle',
@@ -320,6 +323,7 @@ const vuexModule = {
         isRoot: false,
         startedAt: null,
         completedAt: null,
+        downloadIds: [],
       }, data);
       if (!('anonymousTitle' in task)) {
         task.anonymousTitle = task.title;
@@ -464,6 +468,9 @@ const vuexModule = {
         const childTask = children[0];
         await dispatch('setError', { id, error: childTask.error });
       }
+    },
+    addDownload({ commit }, { id, downloadId }) {
+      commit('addDownload', { id, downloadId });
     },
   },
 };

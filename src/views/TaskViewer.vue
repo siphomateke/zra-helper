@@ -49,6 +49,7 @@ const jsonTaskProperties = [
   'sequential',
   'autoUpdateParent',
   'isRoot',
+  'downloadIds',
 ];
 
 function getTasksObjectFromJson(version, jsonTasks, allTasks = {}) {
