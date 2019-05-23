@@ -67,6 +67,7 @@ import { robustLogin } from '@/backend/client_actions/user';
 import createTask from '@/transitional/tasks';
 import { taskFunction } from '@/backend/client_actions/utils';
 import Papa from 'papaparse';
+import { clientPropValidationErrorMessages } from '@/backend/constants';
 
 export default {
   name: 'LoginView',
@@ -113,15 +114,23 @@ export default {
         this.fields[field].message = '';
       }
     },
-    validateUsername() {
-      const validation = validateClientUsername(this.username);
-      this.showFieldValidation('username', validation.valid, validation.errors);
+    getErrorMessageFromCode(code) {
+      if (code in clientPropValidationErrorMessages) {
+        return clientPropValidationErrorMessages[code];
+      }
+      return 'Unknown error';
+    },
+    validateProperty(prop, validationFunc) {
+      const validation = validationFunc(this[prop]);
+      const errors = validation.errors.map(code => this.getErrorMessageFromCode(code));
+      this.showFieldValidation(prop, validation.valid, errors);
       return validation.valid;
     },
+    validateUsername() {
+      return this.validateProperty('username', validateClientUsername);
+    },
     validatePassword() {
-      const validation = validateClientPassword(this.password);
-      this.showFieldValidation('password', validation.valid, validation.errors);
-      return validation.valid;
+      return this.validateProperty('password', validateClientPassword);
     },
     validateLoginDetails() {
       let valid = true;

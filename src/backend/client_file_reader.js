@@ -1,6 +1,6 @@
 import Papa from 'papaparse';
 import log from '@/transitional/log';
-import { clientPropValidationErrors, clientPropValidationErrorMessages } from '@/backend/constants';
+import { clientPropValidationErrors } from '@/backend/constants';
 import { loadFile, getExtension } from './file_utils';
 
 /**
@@ -29,7 +29,7 @@ export function validateClientUsername(tpin) {
   };
   if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
     response.valid = false;
-    response.errors.push(clientPropValidationErrorMessages.TPIN_SHORT);
+    response.errors.push(clientPropValidationErrors.TPIN_SHORT);
   }
   return response;
 }
@@ -41,7 +41,7 @@ export function validateClientPassword(password) {
   };
   if (password.length < 8) {
     response.valid = false;
-    response.errors.push(clientPropValidationErrorMessages.PASSWORD_SHORT);
+    response.errors.push(clientPropValidationErrors.PASSWORD_SHORT);
   }
   return response;
 }
