@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import { stateIcons } from '@/components/TaskListItem.vue';
+import { stateIcons } from '@/components/tasks/TaskListItem.vue';
 import { taskStates } from '@/store/modules/tasks';
 
 // TODO: Make this less tightly linked to tasks

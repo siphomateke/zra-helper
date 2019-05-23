@@ -167,7 +167,7 @@ import ClientListModal from '@/components/Clients/ClientListModal.vue';
 import ParsedClientsViewer from '@/components/Clients/ParsedClientsViewer.vue';
 import ClientSelector from '@/components/Clients/ClientSelector.vue';
 import OpenModalButton from '@/components/OpenModalButton.vue';
-import TaskList from '@/components/TaskList.vue';
+import TaskList from '@/components/tasks/TaskList.vue';
 import Log from '@/components/TheLog.vue';
 import ClientActionOutput from '@/components/ClientActionOutput.vue';
 import ClientActionSelector from '@/components/ClientActionSelector.vue';

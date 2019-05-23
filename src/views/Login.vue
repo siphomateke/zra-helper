@@ -61,7 +61,7 @@
 </template>
 
 <script>
-import TaskList from '@/components/TaskList.vue';
+import TaskList from '@/components/tasks/TaskList.vue';
 import { validateClientUsername, validateClientPassword } from '../backend/client_file_reader';
 import { robustLogin } from '@/backend/client_actions/user';
 import createTask from '@/transitional/tasks';

@@ -28,7 +28,7 @@
 
 <script>
 import FileUpload from '@/components/BaseFileUpload.vue';
-import TaskList from '@/components/TaskList.vue';
+import TaskList from '@/components/tasks/TaskList.vue';
 import { loadFile, getExtension } from '@/backend/file_utils';
 import configMixin from '@/mixins/config';
 

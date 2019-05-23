@@ -50,9 +50,9 @@
             </template>
           </div>
           <span
-            class="task-duration"
             v-if="calculateTaskDuration && complete"
             :title="duration === null ? unknownDurationMessage : ''"
+            class="task-duration"
           >{{ duration !== null ? duration : 'Unknown duration' }}</span>
           <div
             :title="childStateString"
@@ -100,7 +100,7 @@ import { mapGetters } from 'vuex';
 import { mapGettersById, mapProperties } from '@/store/helpers';
 import { taskStates } from '@/store/modules/tasks';
 import TaskList from './TaskList.vue';
-import Progress from './BaseProgress.vue';
+import Progress from '@/components/BaseProgress.vue';
 import { generatePropSyncMixin } from '@/mixins/sync_prop';
 
 export const stateIcons = {
