@@ -139,19 +139,15 @@ export default {
             await browser.downloads.open(this.id);
           }
         } catch (error) {
-          this.$dialog.alert({
+          this.$showError({
             title: dialogTitle,
-            message: errorToString(error),
-            hasIcon: true,
-            type: 'is-danger',
+            error,
           });
         }
       } else {
-        this.$dialog.alert({
+        this.$showError({
           title: dialogTitle,
           message: this.errorMessage ? this.errorMessage : 'Download no longer exists.',
-          hasIcon: true,
-          type: 'is-danger',
         });
       }
     },

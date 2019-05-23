@@ -171,11 +171,9 @@ export default {
       } catch (error) {
         this.importSuccess = false;
         this.errorMessage = error.toString();
-        this.$dialog.alert({
+        this.$showError({
           title: 'Error importing tasks',
           message: this.errorMessage,
-          type: 'is-danger',
-          hasIcon: true,
         });
       } finally {
         this.imported = true;

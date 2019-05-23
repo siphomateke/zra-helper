@@ -388,9 +388,9 @@ export default {
           message: 'Successfully saved settings',
         });
       } catch (e) {
-        this.$toast.open({
-          type: 'is-danger',
-          message: `Error saving settings: ${e}`,
+        this.$showError({
+          title: 'Error saving settings',
+          error: e,
         });
       }
     },
@@ -407,9 +407,9 @@ export default {
           message: 'Reset settings to their default values',
         });
       } catch (e) {
-        this.$toast.open({
-          type: 'is-danger',
-          message: `Error loading default settings: ${e}`,
+        this.$showError({
+          title: 'Error loading default settings',
+          error: e,
         });
       }
     },

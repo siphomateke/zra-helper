@@ -10,11 +10,9 @@ export default {
       try {
         await this.$store.dispatch('config/load');
       } catch (e) {
-        this.$dialog.alert({
+        this.$showError({
           title: 'Error loading settings',
-          message: e.toString(),
-          type: 'is-danger',
-          hasIcon: true,
+          error: e,
         });
       } finally {
         this.configIsLoading = false;

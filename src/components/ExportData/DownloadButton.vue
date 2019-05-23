@@ -81,9 +81,9 @@ export default {
         });
       } catch (error) {
         if (error.code !== 'USER_CANCELED') {
-          this.$toast.open({
-            message: `Failed to download ${this.downloadType.name}: ${error.code}.`,
-            type: 'is-danger',
+          this.$showError({
+            title: `Failed to download ${this.downloadType.name}`,
+            error,
           });
         }
         // TODO: Consider logging the download error
