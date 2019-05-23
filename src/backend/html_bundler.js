@@ -112,10 +112,12 @@ class SingleHtmlFileGenerator {
   /**
    * @param {HTMLDocument} doc HTMLDocument to convert to a single HTML file.
    * @param {string} url Original url of the HTMLDocument.
+   * @param {string} [title] Optional string that will replace the page's title.
    */
-  constructor(doc, url) {
+  constructor(doc, url, title = null) {
     this.doc = doc;
     this.baseUrl = url;
+    this.title = title;
   }
 
   removeScripts() {
@@ -179,11 +181,19 @@ class SingleHtmlFileGenerator {
     await this.processStylesheets();
     await this.processImages();
     this.setCharacterEncoding();
+    if (this.title) {
+      this.doc.title = this.title;
+    }
     return this.getHtmlBlob();
   }
 }
 
-export default async function getSingleFileHtmlBlob(doc, url) {
-  const generator = new SingleHtmlFileGenerator(doc, url);
+/**
+ * @param {HTMLDocument} doc HTMLDocument to convert to a single HTML file.
+ * @param {string} url Original url of the HTMLDocument.
+ * @param {string} [title] Optional string that will replace the page's title.
+ */
+export default async function getSingleFileHtmlBlob(doc, url, title = null) {
+  const generator = new SingleHtmlFileGenerator(doc, url, title);
   return generator.run();
 }

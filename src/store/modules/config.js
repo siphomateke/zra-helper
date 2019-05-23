@@ -75,6 +75,9 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous.
  * @property {'mhtml'|'html'} export.pageDownloadFileType
  * File type to use when downloading pages such as receipts.
+ * @property {boolean} export.useFilenameAsHtmlPageTitle
+ * Makes the page title of downloaded HTML files the same as their filenames. This is useful when
+ * re-downloading HTML files as PDFs in Chrome since it uses page titles as filenames.
  * @property {EolConfig} export.eol
  * The default end of line character. If set to 'auto', the end of line character will be
  * automatically determined based on the operating system.
@@ -121,6 +124,7 @@ const defaultConfig = {
     showSaveAsDialog: true,
     removeMhtmlExtension: true,
     pageDownloadFileType: 'html',
+    useFilenameAsHtmlPageTitle: true,
     eol: 'auto',
     taskDuration: false,
   },

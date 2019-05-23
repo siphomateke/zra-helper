@@ -101,6 +101,12 @@
                 title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
               >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
             </b-field>
+            <b-field v-if="config.export.pageDownloadFileType === 'html'">
+              <b-checkbox
+                v-model="config.export.useFilenameAsHtmlPageTitle"
+                title="Makes the page title of downloaded HTML files the same as their filenames. This is useful when re-downloading HTML files as PDFs in Chrome since it uses page titles as filenames."
+              >Use HTML filename as title</b-checkbox>
+            </b-field>
             <b-field label="End of line character">
               <b-select v-model="config.export.eol">
                 <option

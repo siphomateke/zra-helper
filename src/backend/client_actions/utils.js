@@ -532,6 +532,9 @@ export async function downloadPage({
   if (config.export.pageDownloadFileType === 'mhtml') task.progressMax += 1;
 
   let generatedFilename;
+  if (!filenameUsesPage) {
+    generatedFilename = filename;
+  }
   return taskFunction({
     task,
     async func() {
@@ -562,15 +565,21 @@ export async function downloadPage({
           ...createTabPostOptions,
           method: 'post',
         });
-        task.addStep('Bundling page into single HTML file');
-        blob = await downloadSingleHtmlFile(doc, createTabPostOptions.url);
         if (filenameUsesPage) {
           task.addStep('Generating filename');
           generatedFilename = await filename(doc);
         }
-      }
-      if (!filenameUsesPage) {
-        generatedFilename = filename;
+        task.addStep('Bundling page into single HTML file');
+        let htmlPageTitle = null;
+        // FIXME: Generate multiple blobs when filename is an array.
+        if (
+          config.export.useFilenameAsHtmlPageTitle
+          && Array.isArray(generatedFilename)
+          && generatedFilename.length === 1
+        ) {
+          [htmlPageTitle] = generatedFilename;
+        }
+        blob = await downloadSingleHtmlFile(doc, createTabPostOptions.url, htmlPageTitle);
       }
       if (blob !== null) {
         const url = URL.createObjectURL(blob);
