@@ -92,12 +92,11 @@ $spinner-size: 2;
   flex-grow: 5;
 }
 
-.modal-card {
+.modal-card.overflow {
   overflow: visible;
-}
-
-.modal-card-body {
-  overflow: visible;
+  .modal-card-body {
+    overflow: visible;
+  }
 }
 
 .button.is-hover-button {

@@ -3,7 +3,10 @@
     :active.sync="internalActive"
     has-modal-card
   >
-    <div class="modal-card">
+    <div
+      :class="{overflow: !scrollable}"
+      class="modal-card"
+    >
       <header
         v-if="this.$slots.head || title"
         class="modal-card-head"
@@ -44,6 +47,10 @@ export default {
     title: {
       type: String,
       default: '',
+    },
+    scrollable: {
+      type: Boolean,
+      default: true,
     },
   },
 };

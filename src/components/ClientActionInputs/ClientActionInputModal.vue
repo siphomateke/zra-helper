@@ -3,6 +3,7 @@
     <CardModal
       :active.sync="internalActive"
       :title="`${getActionById(actionId).name} input`"
+      :scrollable="false"
     >
       <ClientActionInput
         slot="body"
