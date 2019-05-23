@@ -208,6 +208,16 @@
               />
             </b-field>
             <b-field
+              label="Max parallel loading tabs"
+              title="The maximum number of tabs that can be loading at once. Set to 0 to disable."
+              horizontal
+            >
+              <b-input
+                v-model="config.maxLoadingTabs"
+                type="number"
+              />
+            </b-field>
+            <b-field
               label="Tab open delay"
               title="The time to wait after creating a tab before creating another one (in milliseconds)."
               horizontal

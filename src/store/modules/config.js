@@ -43,6 +43,8 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * @property {number} maxOpenTabsWhenDownloading
  * The maximum number of tabs that can be opened when downloading pages one after another. Set to 0
  * to disable.
+ * @property {number} maxLoadingTabs
+ * The maximum number of tabs that can be loading at once. Set to 0 to disable.
  * @property {number} tabOpenDelay
  * The time to wait after creating a tab before creating another one (in milliseconds).
  * @property {number} maxLoginAttempts
@@ -109,6 +111,7 @@ const defaultConfig = {
   maxConcurrentRequests: 200,
   maxOpenTabs: 8,
   maxOpenTabsWhenDownloading: 3,
+  maxLoadingTabs: 0,
   tabOpenDelay: 0,
   maxLoginAttempts: 3,
   maxConcurrentDownloads: 0,

@@ -137,16 +137,73 @@ class TabCreator {
     /** The number of tabs that are currently open. */
     this.openTabsCount = 0;
     this.lastTabOpenTime = null;
+    /**
+     * Array of callbacks that are called with a queue ID when there is a free slot.
+     * They are only created and added by `waitForFreeTabSlot` which converts them to promises.
+     * @type {((queueId: number) => void)[]}
+     */
     this.queue = [];
     this.drainingQueue = false;
+    this.lastQueueId = 0;
+    /** IDs of queues that have loading tabs */
+    this.loadingQueueIds = [];
+    /** Maps queue IDs to tab IDs/ */
+    this.queueIdsByTabId = {};
 
     browser.tabs.onRemoved.addListener((tabId) => {
       if (this.tabs.includes(tabId)) {
+        this.removeLoadingTab(tabId);
         this.openTabsCount--;
         this.tabs.splice(this.tabs.indexOf(tabId), 1);
         this.drainQueue();
       }
     });
+
+    browser.tabs.onUpdated.addListener((tabId, { status }) => {
+      if ((status === 'complete' || 'loading') && this.tabs.includes(tabId)) {
+        if (status === 'complete') {
+          this.removeLoadingTab(tabId);
+        } else if (status === 'loading') {
+          this.addLoadingTab(tabId);
+        }
+        this.drainQueue();
+      }
+    });
+  }
+
+  /**
+   * Adds the specified tab to the loading tabs count.
+   * @param {number} tabId
+   */
+  addLoadingTab(tabId) {
+    if (tabId in this.queueIdsByTabId) {
+      const queueId = this.queueIdsByTabId[tabId];
+      if (!this.loadingQueueIds.includes(queueId)) {
+        this.loadingQueueIds.push(queueId);
+      }
+    }
+  }
+
+  /**
+   * Removes the specified tab from the loading tabs count.
+   * @param {number} tabId
+   */
+  removeLoadingTab(tabId) {
+    if (tabId in this.queueIdsByTabId) {
+      const queueId = this.queueIdsByTabId[tabId];
+      const index = this.loadingQueueIds.indexOf(queueId);
+      if (index > -1) {
+        this.loadingQueueIds.splice(index, 1);
+      }
+    }
+  }
+
+  /**
+   * The number of tabs that are currently loading.
+   * @returns {number}
+   */
+  get loadingTabsCount() {
+    return this.loadingQueueIds.length;
   }
 
   /**
@@ -154,13 +211,19 @@ class TabCreator {
    * @returns {boolean}
    */
   slotFree() {
-    const notMaxOpenTabs = config.maxOpenTabs === 0 || this.openTabsCount < config.maxOpenTabs;
+    const notMaxOpenTabs = config.maxOpenTabs === 0
+      || this.openTabsCount < config.maxOpenTabs;
+
+    const notMaxLoadingTabs = config.maxLoadingTabs === 0
+      || this.loadingTabsCount < config.maxLoadingTabs;
+
     const timeSinceLastTabOpened = Date.now() - this.lastTabOpenTime;
     const delayLargeEnough = (
       this.lastTabOpenTime === null
       || timeSinceLastTabOpened >= config.tabOpenDelay
     );
-    return notMaxOpenTabs && delayLargeEnough;
+
+    return notMaxOpenTabs && notMaxLoadingTabs && delayLargeEnough;
   }
 
   /**
@@ -173,8 +236,15 @@ class TabCreator {
         const callback = this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
+
+        // Store the yet to be created tab as a loading tab.
+        // We use a queue ID to track it for now since we don't have the tab ID yet.
+        const queueId = this.lastQueueId;
+        this.lastQueueId++;
+        this.loadingQueueIds.push(queueId);
+
         this.startDrainQueueTimer();
-        callback();
+        callback(queueId);
       }
       this.drainingQueue = false;
     }
@@ -191,6 +261,9 @@ class TabCreator {
     }
   }
 
+  /**
+   * @returns {Promise<number>} queueId
+   */
   waitForFreeTabSlot() {
     return new Promise((resolve) => {
       this.queue.push(resolve);
@@ -199,8 +272,9 @@ class TabCreator {
   }
 
   async create(createProperties) {
-    await this.waitForFreeTabSlot();
+    const queueId = await this.waitForFreeTabSlot();
     const tab = await browser.tabs.create(createProperties);
+    this.queueIdsByTabId[tab.id] = queueId;
     this.tabs.push(tab.id);
     return tab;
   }
