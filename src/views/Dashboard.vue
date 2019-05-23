@@ -236,16 +236,23 @@ export default {
       return this.selectedClientActions.length === 0;
     },
     runActionsButtonDisabled() {
-      return this.noActionsSelected || this.clientActionsRunning;
+      return this.noActionsSelected
+        || this.selectedClientIds.length === 0
+        || this.clientActionsRunning;
     },
     runActionsButtonDisabledReason() {
-      if (this.noActionsSelected) {
-        return 'Please select some actions to run on the clients first.';
-      }
       if (this.clientActionsRunning) {
         return 'Some client actions are still running. Please wait for them to finish before running some more.';
       }
-      return '';
+      let reason = '';
+      if (this.noActionsSelected && this.selectedClientIds.length === 0) {
+        reason += 'Please select some clients and some actions to run on them.';
+      } else if (this.selectedClientIds.length === 0) {
+        reason += 'Please select some clients to run actions on.';
+      } else if (this.noActionsSelected) {
+        reason += 'Please select some actions to run on the clients first.';
+      }
+      return reason;
     },
     selectActionsDisabled() {
       return this.clientActionsRunning;
