@@ -34,8 +34,16 @@ const mixin = {
     async generateData() {
       this.generatingData = true;
       try {
-        const data = await this.generator();
-        return data;
+        try {
+          const data = await this.generator();
+          return data;
+        } catch (error) {
+          this.$showError({
+            title: 'Failed to generate export',
+            error,
+          });
+          throw error;
+        }
       } finally {
         this.generatingData = false;
       }

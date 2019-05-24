@@ -51,11 +51,16 @@
               </b-field>
             </template>
             <div
-              v-else
+              v-else-if="!outputGenerationErrorMessage"
               class="bordered-section"
             >
               <LoadingMessage message="Generating output preview"/>
             </div>
+            <b-message
+              v-if="outputGenerationErrorMessage"
+              type="is-danger"
+              title="Error generating output"
+            >{{ outputGenerationErrorMessage }}</b-message>
           </div>
           <div
             v-else
@@ -80,6 +85,7 @@ import LoadingMessage from '@/components/LoadingMessage.vue';
 import { mapGetters } from 'vuex';
 import { exportFormats, exportFormatCodes } from '../backend/constants';
 import ExportViewer from './ExportData/ExportViewer.vue';
+import { errorToString } from '../backend/errors';
 
 export default {
   name: 'ClientActionOutput',
@@ -107,6 +113,7 @@ export default {
       outputGenerated: false,
       exportFormatCodes,
       displayRawOutput: false,
+      outputGenerationError: null,
     };
   },
   computed: {
@@ -147,6 +154,12 @@ export default {
         }
       }
       return generators;
+    },
+    outputGenerationErrorMessage() {
+      if (this.outputGenerationError) {
+        return errorToString(this.outputGenerationError);
+      }
+      return null;
     },
   },
   watch: {
@@ -202,8 +215,13 @@ export default {
     },
     async getOutput() {
       if (this.clientOutputs) {
-        this.output = await this.formatOutput(this.selectedOutputFormat);
-        this.outputGenerated = true;
+        try {
+          this.output = await this.formatOutput(this.selectedOutputFormat);
+          this.outputGenerated = true;
+          this.outputGenerationError = false;
+        } catch (error) {
+          this.outputGenerationError = error;
+        }
       }
     },
     updateOutput() {
