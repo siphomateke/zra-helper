@@ -2,34 +2,72 @@
   <div class="client-action-output">
     <div class="field">
       <label class="label">{{ action.name }} output</label>
-      <template v-if="!loading">
-        <div v-if="defaultOutput">
-          <div class="control client-action-output-control">
-            <textarea
-              :value="defaultOutput"
-              class="textarea"
-              readonly
-              rows="7"
-            />
-          </div>
+      <div class="bordered-section">
+        <div v-if="!loading">
           <ExportButtons
+            v-if="output"
             :generators="generators"
             :default-format="defaultFormat"
             :filename="`${action.id}Output`"
           />
+          <b-field label="Output preview format">
+            <div
+              v-if="action.outputFormats.length < 8"
+              class="control"
+            >
+              <b-radio
+                v-for="format of action.outputFormats"
+                :key="format"
+                :native-value="format"
+                v-model="selectedOutputFormat"
+              >{{ getFormatName(format) }}</b-radio>
+            </div>
+            <b-select
+              v-else
+              v-model="selectedOutputFormat"
+            >
+              <option
+                v-for="format of action.outputFormats"
+                :key="format"
+                :value="format"
+              >{{ getFormatName(format) }}</option>
+            </b-select>
+          </b-field>
+          <div
+            v-if="output"
+            class="control client-action-output-control"
+          >
+            <template v-if="outputGenerated">
+              <ExportViewer
+                :raw="displayRawOutput"
+                :format="selectedOutputFormat"
+                :output="output"
+              />
+              <b-field>
+                <b-checkbox
+                  v-if="selectedOutputFormat !== exportFormatCodes.TXT"
+                  v-model="displayRawOutput"
+                >Show raw output</b-checkbox>
+              </b-field>
+            </template>
+            <div
+              v-else
+              class="bordered-section"
+            >
+              <LoadingMessage message="Generating output preview"/>
+            </div>
+          </div>
+          <div
+            v-else
+            class="bordered-section"
+          >
+            <EmptyMessage message="Output is empty"/>
+          </div>
         </div>
-        <div
+        <LoadingMessage
           v-else
-          class="bordered-section"
-        >
-          <EmptyMessage message="Output is empty"/>
-        </div>
-      </template>
-      <div
-        v-else
-        class="bordered-section"
-      >
-        <LoadingMessage message="Getting output"/>
+          message="Getting output"
+        />
       </div>
     </div>
   </div>
@@ -40,6 +78,8 @@ import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
 import { mapGetters } from 'vuex';
+import { exportFormats, exportFormatCodes } from '../backend/constants';
+import ExportViewer from './ExportData/ExportViewer.vue';
 
 export default {
   name: 'ClientActionOutput',
@@ -47,6 +87,7 @@ export default {
     ExportButtons,
     EmptyMessage,
     LoadingMessage,
+    ExportViewer,
   },
   props: {
     runId: {
@@ -60,8 +101,12 @@ export default {
   },
   data() {
     return {
-      defaultOutput: null,
+      output: null,
+      selectedOutputFormat: null,
       clientOutputs: null,
+      outputGenerated: false,
+      exportFormatCodes,
+      displayRawOutput: false,
     };
   },
   computed: {
@@ -105,11 +150,18 @@ export default {
     },
   },
   watch: {
-    defaultOutputFormat() {
-      this.getDefaultOutput();
+    selectedOutputFormat() {
+      this.outputGenerated = false;
+      this.getOutput();
+    },
+    defaultFormat: {
+      immediate: true,
+      handler(format) {
+        this.selectedOutputFormat = format;
+      },
     },
     clientOutputs() {
-      this.getDefaultOutput();
+      this.getOutput();
     },
     loading(loading) {
       if (!loading) {
@@ -118,7 +170,7 @@ export default {
     },
   },
   created() {
-    this.getDefaultOutput();
+    this.getOutput();
   },
   methods: {
     /**
@@ -148,13 +200,17 @@ export default {
         anonymizeClients,
       });
     },
-    async getDefaultOutput() {
+    async getOutput() {
       if (this.clientOutputs) {
-        this.defaultOutput = await this.formatOutput(this.defaultFormat);
+        this.output = await this.formatOutput(this.selectedOutputFormat);
+        this.outputGenerated = true;
       }
     },
     updateOutput() {
       this.getClientOutputs();
+    },
+    getFormatName(format) {
+      return exportFormats[format].name;
     },
   },
 };
@@ -169,6 +225,11 @@ export default {
 
   .client-action-output-control {
     margin-bottom: $export-buttons-margin;
+
+    .export-viewer .scrollable-section {
+      overflow-y: auto;
+      max-height: 300px;
+    }
   }
 }
 </style>

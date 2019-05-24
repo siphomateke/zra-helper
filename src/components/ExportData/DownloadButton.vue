@@ -1,33 +1,24 @@
 <template>
-  <button
-    :class="[{'is-loading': loading}, size]"
-    :title="description"
-    :disabled="disabled"
-    class="button"
-    type="button"
+  <BaseExportButton
+    :class="{'is-loading': loading}"
+    v-bind="buttonProps"
     @click="download"
-  >
-    <b-icon
-      icon="download"
-      size="is-small"
-    />
-    <span v-if="!compact">{{ label }}</span>
-  </button>
+  />
 </template>
 
 <script>
 import { waitForDownloadToComplete } from '@/backend/utils';
 import { exportFormats } from '@/backend/constants';
 import ExportButtonMixin from './export_button_mixin';
+import BaseExportButton from './BaseExportButton.vue';
 
 export default {
   name: 'DownloadButton',
+  components: {
+    BaseExportButton,
+  },
   mixins: [ExportButtonMixin],
   props: {
-    type: {
-      type: String,
-      required: true,
-    },
     filename: {
       type: String,
       default: 'download',
@@ -37,11 +28,12 @@ export default {
     return {
       downloading: false,
       label: 'Download',
+      icon: 'download',
     };
   },
   computed: {
     downloadType() {
-      return exportFormats[this.type];
+      return exportFormats[this.format];
     },
     description() {
       return `Download as ${this.downloadType.name}`;

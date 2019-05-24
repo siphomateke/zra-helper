@@ -1,13 +1,10 @@
 <template>
-  <button
-    :class="[size]"
-    :title="description"
-    :disabled="disabled"
-    class="button"
-    type="button"
+  <BaseExportButton
+    v-bind="buttonProps"
     @click="copy"
   >
     <b-tooltip
+      slot="label"
       :active="showTooltip"
       :label="tooltip"
       always
@@ -15,28 +12,33 @@
       type="is-dark"
     >
       <b-icon
-        icon="clipboard"
+        :icon="icon"
         size="is-small"
       />
       <span v-if="!compact">{{ label }}</span>
     </b-tooltip>
-  </button>
+  </BaseExportButton>
 </template>
 
 <script>
 import ExportButtonMixin from './export_button_mixin';
+import BaseExportButton from './BaseExportButton.vue';
 
 // FIXME: Wrap tooltip around button without breaking .buttons.has-addons
 export default {
   name: 'CopyToClipboardButton',
+  components: {
+    BaseExportButton,
+  },
   mixins: [ExportButtonMixin],
   data() {
     return {
+      label: 'Copy',
+      description: 'Copy to clipboard',
+      icon: 'clipboard',
       showTooltip: false,
       tooltip: '',
       tooltipTimeout: 3000,
-      description: 'Copy to clipboard',
-      label: 'Copy',
     };
   },
   methods: {

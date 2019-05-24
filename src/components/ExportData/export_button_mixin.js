@@ -8,6 +8,10 @@ const mixin = {
       type: Function,
       required: true,
     },
+    format: {
+      type: String,
+      required: true,
+    },
     compact: {
       type: Boolean,
       default: false,
@@ -35,6 +39,18 @@ const mixin = {
       } finally {
         this.generatingData = false;
       }
+    },
+  },
+  computed: {
+    buttonProps() {
+      return {
+        label: this.label,
+        description: this.description,
+        icon: this.icon,
+        compact: this.compact,
+        size: this.size,
+        disabled: this.disabled,
+      };
     },
   },
 };

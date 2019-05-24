@@ -23,18 +23,26 @@
         >{{ getFormatName(format) }}</option>
       </b-select>
       <CopyToClipboardButton
+        :format="selectedFormat"
         :generator="generator"
         :size="size"
         :compact="compact"
         :disabled="disabled"
       />
       <DownloadButton
+        :format="selectedFormat"
         :generator="generator"
         :size="size"
         :compact="compact"
         :disabled="disabled"
         :filename="filename"
-        :type="selectedFormat"
+      />
+      <PreviewButton
+        :format="selectedFormat"
+        :generator="generator"
+        :size="size"
+        :compact="compact"
+        :disabled="disabled"
       />
     </b-field>
   </div>
@@ -55,6 +63,7 @@
       </p>
       <p class="control">
         <CopyToClipboardButton
+          :format="format"
           :generator="getGeneratorFromFormat(format)"
           :size="size"
           :compact="true"
@@ -63,12 +72,21 @@
       </p>
       <p class="control">
         <DownloadButton
+          :format="format"
           :generator="getGeneratorFromFormat(format)"
           :size="size"
           :compact="true"
           :disabled="disabled"
           :filename="filename"
-          :type="format"
+        />
+      </p>
+      <p class="control">
+        <PreviewButton
+          :format="format"
+          :generator="getGeneratorFromFormat(format)"
+          :size="size"
+          :compact="true"
+          :disabled="disabled"
         />
       </p>
     </b-field>
@@ -78,6 +96,7 @@
 <script>
 import CopyToClipboardButton from '@/components/ExportData/CopyToClipboardButton.vue';
 import DownloadButton from '@/components/ExportData/DownloadButton.vue';
+import PreviewButton from '@/components/ExportData/PreviewButton.vue';
 import { exportFormats, exportFormatCodes } from '@/backend/constants';
 
 export default {
@@ -85,6 +104,7 @@ export default {
   components: {
     CopyToClipboardButton,
     DownloadButton,
+    PreviewButton,
   },
   props: {
     size: {
