@@ -26,7 +26,13 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
 
   const transactionDate = moment(details.transactionDate).format('DD/MM/YY');
   const fromDate = moment(details.fromDate);
-  const monthYear = fromDate.format('MM/YY');
+  const toDate = moment(details.toDate);
+  let periodString = fromDate.format('MM/YY');
+  // FIXME: Add test for this
+  // If period is the whole year
+  if (fromDate.month() === 0 && toDate.month() === 11) {
+    periodString = fromDate.format('YYYY');
+  }
   const transactionString = `on ${transactionDate}`;
 
   const { narration } = details;
@@ -40,7 +46,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     if (details.systemError === ledgerSystemErrors.RETURN_ROUNDED_UP) {
       lines.unshift(...[
         'System error',
-        `${monthYear} Return`,
+        `${periodString} Return`,
         'does not match',
         'ledger,',
         'ledger incorrect',
@@ -48,10 +54,10 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     } else if (taxTypeId === taxTypeNumericalCodes.ITX) {
       lines.unshift(`${fromDate.format('YYYY')} Return`);
     } else {
-      lines.unshift(`${monthYear} Return`);
+      lines.unshift(`${periodString} Return`);
     }
   } else if (type === t.AMENDED_RETURN) {
-    lines.unshift(`${monthYear} Amended return`);
+    lines.unshift(`${periodString} Amended return`);
   } else if (
     type === t.PROVISIONAL_RETURN
     || type === t.REVISED_PROVISIONAL_RETURN
@@ -73,9 +79,11 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
   ].includes(type)) {
     const paymentLines = [
       'Payment',
-      `(PRN:${details.prn})`,
-      `of ${monthYear}`,
     ];
+    if (details.prn) {
+      paymentLines.push(`(PRN:${details.prn})`);
+    }
+    paymentLines.push(`of ${periodString}`);
     // FIXME: Handle advance payments
     if (type === t.PAYMENT) {
       // Leave the same if ordinary payment
@@ -85,11 +93,11 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
         paymentLines.push(`(${details.assessmentNumber})`);
       }
     } else if (type === t.LATE_PAYMENT_INTEREST || type === t.LATE_PAYMENT_PENALTY) {
-      paymentLines[0] = 'Late payment';
+      paymentLines[0] = 'Late Payment';
       // FIXME: If there are multiple late returns or payments with the same details,
       // combine the names.
     } else if (type === t.LATE_RETURN_PENALTY) {
-      paymentLines[0] = 'Late return';
+      paymentLines[0] = 'Late Return';
     }
     lines.unshift(...paymentLines);
     if (details.systemError === ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT) {
@@ -106,7 +114,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     lines.unshift(...[
       'Assessment',
       `(${details.assessmentNumber})`,
-      `of ${monthYear}`,
+      `of ${periodString}`,
     ]);
     if (type === t.AMENDED_ASSESSMENT_OBJECTION) {
       lines.unshift('Amended');
@@ -115,21 +123,21 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     lines.unshift(...[
       'Assessment refund',
       `(${details.assessmentNumber})`,
-      `of ${monthYear}`,
+      `of ${periodString}`,
     ]);
   } else if (type === t.REFUND_OFFSET || type === t.REFUND_PAID) {
+    lines.unshift(`of ${periodString}`);
     if (type === t.REFUND_OFFSET) {
       lines.unshift('Refund offset');
     } else if (type === t.REFUND_PAID) {
       lines.unshift('Refund paid');
     }
-    lines.unshift(`of ${monthYear}`);
   } else if (
     type === t.BEING_POSTING_OPENING_BALANCE_MIGRATED
     || type === t.BEING_REVERSAL_DUPLICATE_PAYMENT
     || type === t.BEING_REVERSAL_REPLICATED_TRANSACTION
   ) {
-    lines.unshift(monthYear);
+    lines.unshift(periodString);
   }
   return lines.join('\n');
 }
