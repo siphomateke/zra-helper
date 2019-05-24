@@ -4,7 +4,7 @@
       <button
         :class="{
           'is-danger': errorState,
-          'is-loading': fetchingDownloadInfo,
+          'is-loading': fetchingDownloadInfo || inProgress,
         }"
         :title="tooltip"
         class="button is-small download-pill"
@@ -49,6 +49,7 @@ export default {
     return {
       /** @type {browser.downloads.DownloadItem} */
       download: null,
+      inProgress: false,
       fetchingDownloadInfo: true,
       error: null,
       downloadIdInvalid: false,
@@ -91,7 +92,7 @@ export default {
       return null;
     },
     errorState() {
-      return this.error !== null || !this.downloadExists;
+      return !this.inProgress && (this.error !== null || !this.downloadExists);
     },
     downloadExists() {
       if (this.fetchedDownloadInfo) {
@@ -107,6 +108,20 @@ export default {
         this.fetchDownloadInfo();
       },
     },
+  },
+  created() {
+    browser.downloads.onChanged.addListener((download) => {
+      if (download.id === this.id) {
+        if (download.state) {
+          if (download.state.current === 'in_progress') {
+            this.inProgress = true;
+          } else {
+            this.inProgress = false;
+          }
+        }
+        this.fetchDownloadInfo();
+      }
+    });
   },
   methods: {
     async fetchDownloadInfo() {
