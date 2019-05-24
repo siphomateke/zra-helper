@@ -164,18 +164,22 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
           });
         }
         const outputValue = output.value;
-        const taxTypeErrors = {};
-        for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
-          const error = outputValue.retrievalErrors[taxTypeCode];
-          taxTypeErrors[taxTypeCode] = errorToString(error);
+        if (outputValue !== null) {
+          const taxTypeErrors = {};
+          for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
+            const error = outputValue.retrievalErrors[taxTypeCode];
+            taxTypeErrors[taxTypeCode] = errorToString(error);
+          }
+          json[client.id] = {
+            client: jsonClient,
+            actionId: output.actionId,
+            totals: outputValue.totals,
+            taxTypeErrors,
+            error: output.error,
+          };
+        } else {
+          json[client.id] = null;
         }
-        json[client.id] = {
-          client: jsonClient,
-          actionId: output.actionId,
-          totals: outputValue.totals,
-          taxTypeErrors,
-          error: output.error,
-        };
       }
     }
     return writeJson(json);
