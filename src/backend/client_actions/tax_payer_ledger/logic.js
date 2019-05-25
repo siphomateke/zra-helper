@@ -745,8 +745,6 @@ async function generateChangeReasonDetails({
     systemError: null,
   };
 
-  // FIXME: Link late payments to assessments or payments depending on what exists.
-
   if (record.narration.group === narrationGroups.PAYMENTS) {
     details.prn = record.narration.meta.prn || record.narration.meta.refPrn;
   } else if ([
@@ -758,12 +756,17 @@ async function generateChangeReasonDetails({
     details.prn = getRecordPrn(record, recordsByPeriod);
   }
 
+  // TODO: Remove this first block since the outcome is a duplicate of the second one
   if (record.narration.group === narrationGroups.ASSESSMENTS) {
     details.assessmentNumber = record.narration.meta.assessmentNumber;
   } else if ('assessmentNumber' in record.narration.meta) {
+    // First, try getting assessment number from narration
     details.assessmentNumber = record.narration.meta.assessmentNumber;
   } else if (
+    // If that fails, get it from an assessment in the same period
     record.narration.type === narrationTypes.PENALTY_FOR_AMENDED_ASSESSMENT
+    || record.narration.type === narrationTypes.LATE_PAYMENT_INTEREST
+    || record.narration.type === narrationTypes.LATE_PAYMENT_PENALTY
     || (
       record.narration.type === narrationTypes.PAYMENT
       && record.narration.meta.against === 'assessment manual penalty'
