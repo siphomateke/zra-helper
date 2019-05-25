@@ -94,6 +94,12 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
       }
     } else if (type === t.LATE_PAYMENT_INTEREST || type === t.LATE_PAYMENT_PENALTY) {
       paymentLines[0] = 'Late Payment';
+      if (details.assessmentNumber) {
+        paymentLines.push(...[
+          'Assessment',
+          `(${details.assessmentNumber})`,
+        ]);
+      }
       // FIXME: If there are multiple late returns or payments with the same details,
       // combine the names.
     } else if (type === t.LATE_RETURN_PENALTY) {
