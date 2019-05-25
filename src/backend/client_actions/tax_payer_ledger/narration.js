@@ -17,7 +17,9 @@ Advance payment from  HENSON  Ref. PRN: 100000000000 (Payment Date: 01-JAN-2018)
 Closing Balance - 01/01/2018 to 31/12/2018
 Closing Balance - 01/01/2018 to 31/12/2018
 Late Payment Interest
+Late Payment Interest(10000000000123)
 Late Payment Penalty
+Late Payment Penalty(10000000000123)
 Late Return Penalty
 Late Payment Interest-Reversed
 Late Payment Penalty-Reversed
@@ -169,9 +171,15 @@ const narrationTypeMatchers = {
   },
   [narrationTypes.LATE_PAYMENT_PENALTY]: {
     typeMatch: /^late payment penalty/,
+    meta: {
+      assessmentNumber: /\((\d+)\)/,
+    },
   },
   [narrationTypes.LATE_PAYMENT_INTEREST]: {
     typeMatch: /^late payment interest/,
+    meta: {
+      assessmentNumber: /\((\d+)\)/,
+    },
   },
   [narrationTypes.LATE_RETURN_PENALTY]: {
     typeMatch: /^late return penalty/,
