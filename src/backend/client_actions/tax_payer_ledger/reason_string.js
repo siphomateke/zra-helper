@@ -43,7 +43,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
   ];
 
   if (type === t.ORIGINAL_RETURN) {
-    if (details.systemError === ledgerSystemErrors.RETURN_ROUNDED_UP) {
+    if (details.systemErrors.includes(ledgerSystemErrors.RETURN_ROUNDED_UP)) {
       lines.unshift(...[
         'System error',
         `${periodString} Return`,
@@ -106,7 +106,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
       paymentLines[0] = 'Late Return';
     }
     lines.unshift(...paymentLines);
-    if (details.systemError === ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT) {
+    if (details.systemErrors.includes(ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT)) {
       lines.unshift('System error');
       lines.push(...[
         'not reflected',
