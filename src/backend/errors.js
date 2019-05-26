@@ -244,6 +244,59 @@ export class ClosingBalanceMissingError extends LedgerError {
   }
 }
 
+export class MultipleExactDifferenceMatches extends LedgerError {
+  /**
+   *
+   * @param {Object} props
+   * @param {Object} props.matchingRecords
+   * The records that exactly match the change in pending liabilities.
+   */
+  constructor(message, code = null, props = { matchingRecords: null }) {
+    super(message, code, props);
+    this.setType('MultipleExactDifferenceMatches');
+  }
+}
+
+export class SumOfChangeRecordsNotEqualToDifference extends LedgerError {
+  /**
+   * @param {Object} props
+   * @param {number} props.changeRecordsSum
+   * The sum of the records determined to have caused a change in pending liabilities.
+   * @param {number} props.pendingLiabilityDifference
+   * The actual change in pending liabilities from last week.
+   * @param {string[]} props.recordsFromExactlyAWeekAgo
+   * Serial numbers of records that took place exactly a week ago.
+   */
+  constructor(message, code = null, props = {
+    changeRecordsSum: null,
+    pendingLiabilityDifference: null,
+    recordsFromExactlyAWeekAgo: null,
+  }) {
+    super(message, code, props);
+    this.setType('SumOfChangeRecordsNotEqualToDifference');
+  }
+}
+
+/**
+ * When confirming if a return's amount was incorrectly rounded up, its corresponding
+ * acknowledgement receipt is checked. This error means that multiple matching receipts were found
+ * and thus whether the return was rounded up can not be 100% confirmed.
+ */
+export class ExactAckReceiptNotFound extends LedgerError {
+  /**
+   *
+   * @param {Object} props
+   * @param {Object} props.record
+   * The return record that was being checked for a rounded up system error.
+   * @param {boolean} props.foundAmountMatch
+   * Whether one of the possible ack receipts' amounts matched the return's.
+   */
+  constructor(message, code = null, props = { record: null, foundAmountMatch: null }) {
+    super(message, code, props);
+    this.setType('ExactAckReceiptNotFound');
+  }
+}
+
 /**
  * @typedef JsonError
  * @property {string} message

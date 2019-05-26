@@ -55,7 +55,7 @@ async function fullLogicTest(testName, filename) {
         parentTaskId: null,
         client: null, // FIXME: Mock whatever the client data is needed for
       }).then((reasons) => {
-        expect(reasons).toEqual(ledgerTaxTypeOutput.changeReasons);
+        expect(reasons.changeReasonsByLiability).toEqual(ledgerTaxTypeOutput.changeReasons);
       }));
     }
     await Promise.all(promises);

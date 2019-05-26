@@ -8,7 +8,13 @@ import { getAckReceiptPostOptions } from '../return_history/ack_receipt';
 import { getAllReturnHistoryRecords } from '../return_history/base';
 import { getDocumentByAjax } from '@/backend/utils';
 import generateChangeReasonString from './reason_string';
-import { LedgerError, ClosingBalanceMissingError } from '@/backend/errors';
+import {
+  LedgerError,
+  ClosingBalanceMissingError,
+  MultipleExactDifferenceMatches,
+  SumOfChangeRecordsNotEqualToDifference,
+  ExactAckReceiptNotFound,
+} from '@/backend/errors';
 
 /**
  * @typedef {import('@/backend/constants').Date} Date
@@ -18,6 +24,8 @@ import { LedgerError, ClosingBalanceMissingError } from '@/backend/errors';
  * @typedef {import('./narration').NarrationType} NarrationType
  * @typedef {import('../pending_liabilities').PendingLiabilityType} PendingLiabilityType
  * @typedef {import('@/backend/errors').ExtendedError} ExtendedError
+ * @typedef {import('../pending_liabilities').Totals} PendingLiabilityTotals
+ * @typedef {import('@/backend/constants').Client} Client
  */
 
 /**
@@ -297,7 +305,7 @@ function getDifferenceInDays(date1, date2) {
  * Gets all transactions that took place in the past week.
  * @template {ParsedTaxPayerLedgerRecord} Record
  * @param {Record[]} records
- * @param {number} currentDate
+ * @param {UnixDate} currentDate
  * @returns {PastWeekRecordsResponse<Record>}
  */
 export function getRecordsFromPastWeek(records, currentDate = new Date().valueOf()) {
@@ -796,7 +804,7 @@ function generateChangeReasonDetails({
  * @param {number} options.difference The change in pending liabilities since last week.
  * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {PendingLiabilityType} options.liabilityType
- * @param {import('@/backend/constants').Client} options.client
+ * @param {Client} options.client
  * @param {number} options.parentTaskId
  * @returns {Promise<GetReturnSystemErrorsFnResponse>}
  */
@@ -840,13 +848,28 @@ async function getReturnSystemErrors({
             systemErrors.push(ledgerSystemErrors.RETURN_ROUNDED_UP);
           }
         } else {
-          for (const amount of possibleLiabilityAmounts) {
-            if (record.paymentsSum === amount) {
+          let foundAmountMatch = false;
+          for (const liabilityAmount of possibleLiabilityAmounts) {
+            if (record.paymentsSum === liabilityAmount) {
               systemErrors.push(ledgerSystemErrors.RETURN_ROUNDED_UP);
+              foundAmountMatch = true;
               break;
             }
           }
-          // TODO: Make a note that it's probably a system error but we can't confirm it.
+          let errorMessage = `When confirming if the return record '${record.srNo}' was incorrectly rounded up, multiple matching acknowledgement receipts were found. `;
+          if (foundAmountMatch) {
+            errorMessage += 'Since one of the receipts\' amounts did match the return\'s, it\'s pretty likely the return was incorrectly rounded up.';
+          } else {
+            errorMessage += 'None of them had an amount that matched the return and so whether it was incorrectly rounded up could not be confirmed.';
+          }
+          processingErrors.push(new ExactAckReceiptNotFound(
+            errorMessage,
+            null,
+            {
+              record: deepClone(record),
+              foundAmountMatch,
+            },
+          ));
         }
       }
     }
@@ -902,7 +925,7 @@ async function getReturnSystemErrors({
  * @param {number} options.difference The change in pending liabilities since last week.
  * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {PendingLiabilityType} options.liabilityType
- * @param {import('@/backend/constants').Client} options.client
+ * @param {Client} options.client
  * @param {number} options.parentTaskId
  * @returns {Promise<GetReasonStringRecordsFnResponse>}
  */
@@ -1115,12 +1138,40 @@ function getAllPairedRecords(parsedLedgerRecords) {
   return pairRecords(records);
 }
 
+/**
+ * @typedef {Object.<string, string>} ChangeReasonsByLiability
+ */
+
+/**
+ * @typedef {Object} TaxPayerLedgerLogicFnResponse
+ * @property {ChangeReasonsByLiability} changeReasonsByLiability
+ * @property {ProcessingErrors} processingErrors
+ */
+
+/**
+ * Processes records from the tax payer ledger to determine why pending liabilities have changed
+ * since the last week.
+ * @param {Object} options
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
+ * @param {PendingLiabilityTotals} options.lastPendingLiabilityTotals
+ * The pending liability grand totals from the previous week
+ * @param {PendingLiabilityTotals} options.pendingLiabilityTotals
+ * The pending liability grand totals from this week.
+ * @param {UnixDate} [options.currentDate]
+ * The current date. Should match when `pendingLiabilityTotals` were retrieved and be a week from
+ * when `lastPendingLiabilityTotals` were retrieved.
+ * @param {TaxPayerLedgerRecord[]} options.taxPayerLedgerRecords
+ * All records in the tax payer ledger.
+ * @param {Client} options.client
+ * @param {number} options.parentTaskId
+ * @returns {Promise<TaxPayerLedgerLogicFnResponse>}
+ */
 export default async function taxPayerLedgerLogic({
   taxTypeId,
   lastPendingLiabilityTotals,
   pendingLiabilityTotals,
-  taxPayerLedgerRecords,
   currentDate = new Date().valueOf(), // FIXME: Remove this
+  taxPayerLedgerRecords,
   client,
   parentTaskId,
 }) {
@@ -1145,7 +1196,7 @@ export default async function taxPayerLedgerLogic({
   const pairedRecordsBySrNo = getRecordsBySerialNumber(pairedRecords);
   const pairedRecordsByPeriod = getRecordsByPeriod(pairedRecords);
 
-  /** @type {Object.<string, string>} */
+  /** @type {ChangeReasonsByLiability} */
   const changeReasonsByLiability = {};
   const liabilityPromises = pendingLiabilityTypes.map(liabilityType => (async () => {
     /** @type {ChangeReasonDetails[]} */
@@ -1171,8 +1222,17 @@ export default async function taxPayerLedgerLogic({
       if (matchingRecords.length === 1) {
         changeRecords.push(matchingRecords[0]);
       } else {
-        // TODO: There shouldn't ever be more than one record that exactly matches the difference.
-        // However, if there is, a warning should be shown.
+        // There shouldn't ever be more than one record that exactly matches the difference.
+        // However, if there is, show a warning.
+        if (matchingRecords.length > 1) {
+          processingErrors.push(new MultipleExactDifferenceMatches(
+            'Multiple records that exactly match the change in pending liabilities were found. Probably a system error.',
+            null,
+            {
+              matchingRecords: deepClone(matchingRecords),
+            },
+          ));
+        }
 
         // If there is no single record that exactly matches the amount, then any of the unbalanced
         // records from the last week could have contributed to the change.
@@ -1183,18 +1243,29 @@ export default async function taxPayerLedgerLogic({
       // pending liability types to increase performance.
 
       // Confirm that the records add up to the difference
-      let sum = 0;
+      let changeRecordsSum = 0;
       for (const record of changeRecords) {
-        sum += getRecordBalance(record);
+        changeRecordsSum += getRecordBalance(record);
       }
-      if (sum !== difference) {
-        // TODO: Make a note of this
+      if (changeRecordsSum !== difference) {
+        let errorMessage = 'The sum of the records determined to have caused a change in pending liabilities doesn\'t match the actual change in pending liabilities.';
         // Check if any transactions took place exactly 7 days ago.
+        let exactlyAWeekAgoSrNos = [];
         if (pastWeekRecords.exactlyAWeekAgo.length > 0) {
           // If some did, that could be why things don't add up.
-          // TODO: Make note of this
+          exactlyAWeekAgoSrNos = pastWeekRecords.exactlyAWeekAgo.map(r => r.srNo);
+          errorMessage += ` The following records were from exactly a week ago [${exactlyAWeekAgoSrNos.join(',')}] and could have caused the mismatch.`;
           // TODO: Consider retrying without those from exactly a week ago
         }
+        processingErrors.push(new SumOfChangeRecordsNotEqualToDifference(
+          errorMessage,
+          null,
+          {
+            changeRecordsSum,
+            pendingLiabilityDifference: difference,
+            recordsFromExactlyAWeekAgo: exactlyAWeekAgoSrNos,
+          },
+        ));
       }
 
       // Get all the records each change record is linked to, if the record they are linked to
@@ -1246,5 +1317,8 @@ export default async function taxPayerLedgerLogic({
     changeReasonsByLiability[liabilityType] = changeReasons.join('\n\n');
   })());
   await Promise.all(liabilityPromises);
-  return changeReasonsByLiability;
+  return {
+    changeReasonsByLiability,
+    processingErrors,
+  };
 }
