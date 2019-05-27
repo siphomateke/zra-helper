@@ -1093,7 +1093,10 @@ function recordAffectsLiabilityType(record, liabilityType) {
   } if (liabilityType === 'penalty') {
     return record.narration.group === narrationGroups.PENALTIES;
   } if (liabilityType === 'principal') {
-    return true;
+    return !(
+      record.narration.group === narrationGroups.INTEREST
+      || record.narration.group === narrationGroups.PENALTIES
+    );
   }
   throw new Error('Unknown liability type');
 }
