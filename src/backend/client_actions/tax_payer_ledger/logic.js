@@ -413,10 +413,8 @@ function recordMatchesPayment(record, payment) {
     interest: t.LATE_PAYMENT_INTEREST,
     'payment penalty': t.LATE_PAYMENT_PENALTY,
     'late return penalty': t.LATE_RETURN_PENALTY,
-    // FIXME: Fix these assessment matches. Do they both match additional assessments?
-    // Is that all they match?
-    'assessment liability': t.ADDITIONAL_ASSESSMENT,
-    'assessment manual penalty': t.ADDITIONAL_ASSESSMENT,
+    'assessment liability': () => record.narration.group === narrationGroups.ASSESSMENTS,
+    'assessment manual penalty': () => record.narration.group === narrationGroups.PENALTY_ASSESSMENTS,
   };
   let typeMatches = false;
   if (against in matchers) {
@@ -781,7 +779,7 @@ function generateChangeReasonDetails({
     || record.narration.type === narrationTypes.LATE_PAYMENT_PENALTY
     || (
       record.narration.type === narrationTypes.PAYMENT
-      && record.narration.meta.against === 'assessment manual penalty'
+      && record.narration.meta.againstAssessment
     )
   ) {
     // TODO: Test getting assessment number from assessment in same period.
