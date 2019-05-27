@@ -88,7 +88,7 @@ export const narrationTypes = {
   AUDIT_ASSESSMENT_PENALTY: 'AUDIT_ASSESSMENT_PENALTY',
   ADDITIONAL_ASSESSMENT_PENALTY: 'ADDITIONAL_ASSESSMENT_PENALTY',
   BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX: 'BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX',
-  AMENDED_ASSESSMENT_OBJECTION: 'AMENDED_ASSESSMENT_OBJECTION',
+  AMENDED_ASSESSMENT: 'AMENDED_ASSESSMENT',
   PENALTY_FOR_AMENDED_ASSESSMENT: 'PENALTY_FOR_AMENDED_ASSESSMENT',
   REFUND_OFFSET: 'REFUND_OFFSET',
   REFUND_PAID: 'REFUND_PAID',
@@ -160,6 +160,15 @@ const narrationTypeMatchers = {
       fromReceiptNumber: /from \(legacy payment receipt no: (\d+)\)/,
       quarter: /for quarter {q(\d+)}/,
       via: /via\. (.+)/,
+    },
+    transformer(parsed) {
+      if (
+        parsed.meta.against === 'assessment manual penalty'
+        || parsed.meta.against === 'assessment liability'
+      ) {
+        parsed.meta.againstAssessment = true;
+      }
+      return parsed;
     },
   },
   [narrationTypes.CLOSING_BALANCE]: {
@@ -255,7 +264,7 @@ const narrationTypeMatchers = {
       toDate: /for the return period .+ - (.+)/,
     },
   },
-  [narrationTypes.AMENDED_ASSESSMENT_OBJECTION]: {
+  [narrationTypes.AMENDED_ASSESSMENT]: {
     typeMatch: /^amended assessment from objection and appeals module/,
     meta: {
       assessmentNumber: /\(assessment no : (\d+)\)/,
@@ -314,6 +323,7 @@ export const narrationGroups = {
   ASSESSMENTS: 'ASSESSMENTS',
   META: 'META',
   LEGACY: 'LEGACY',
+  PENALTY_ASSESSMENTS: 'PENALTY_ASSESSMENTS',
 };
 
 /**
@@ -345,6 +355,7 @@ const narrationTypesByGroup = {
     t.AUDIT_ASSESSMENT,
     t.ADDITIONAL_ASSESSMENT,
     t.ESTIMATED_ASSESSMENT,
+    t.AMENDED_ASSESSMENT,
   ],
   [narrationGroups.META]: [
     t.CLOSING_BALANCE,
@@ -354,6 +365,10 @@ const narrationTypesByGroup = {
     t.BEING_POSTING_OPENING_BALANCE_MIGRATED,
     t.BEING_REVERSAL_DUPLICATE_PAYMENT,
     t.BEING_REVERSAL_REPLICATED_TRANSACTION,
+  ],
+  [narrationGroups.PENALTY_ASSESSMENTS]: [
+    t.AUDIT_ASSESSMENT_PENALTY,
+    t.ADDITIONAL_ASSESSMENT_PENALTY,
   ],
 };
 
