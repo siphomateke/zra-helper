@@ -85,25 +85,25 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     }
     paymentLines.push(`of ${periodString}`);
     // FIXME: Handle advance payments
-    if (type === t.PAYMENT) {
-      // Leave the same if ordinary payment
-
-      // FIXME: Confirm this works
-      if (narration.meta.against === 'assessment manual penalty') {
-        paymentLines.push(`(${details.assessmentNumber})`);
-      }
-    } else if (type === t.LATE_PAYMENT_INTEREST || type === t.LATE_PAYMENT_PENALTY) {
+    if (type === t.LATE_PAYMENT_INTEREST || type === t.LATE_PAYMENT_PENALTY) {
       paymentLines[0] = 'Late Payment';
+      // FIXME: If there are multiple late returns or payments with the same details,
+      // combine the names.
+    } else if (type === t.LATE_RETURN_PENALTY) {
+      paymentLines[0] = 'Late Return';
+    }
+    // FIXME: Confirm this works
+    if (
+      (type === t.PAYMENT && narration.meta.againstAssessment)
+      || type === t.LATE_PAYMENT_INTEREST
+      || type === t.LATE_PAYMENT_PENALTY
+    ) {
       if (details.assessmentNumber) {
         paymentLines.push(...[
           'Assessment',
           `(${details.assessmentNumber})`,
         ]);
       }
-      // FIXME: If there are multiple late returns or payments with the same details,
-      // combine the names.
-    } else if (type === t.LATE_RETURN_PENALTY) {
-      paymentLines[0] = 'Late Return';
     }
     lines.unshift(...paymentLines);
     if (details.systemErrors.includes(ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT)) {
@@ -113,16 +113,14 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
         'reflected in ledger',
       ]);
     }
-  } else if (
-    narration.group === narrationGroups.ASSESSMENTS
-    || type === t.AMENDED_ASSESSMENT_OBJECTION
-  ) {
+  } else if (narration.group === narrationGroups.ASSESSMENTS) {
+    // FIXME: Update tests for assessments
     lines.unshift(...[
       'Assessment',
       `(${details.assessmentNumber})`,
       `of ${periodString}`,
     ]);
-    if (type === t.AMENDED_ASSESSMENT_OBJECTION) {
+    if (type === t.AMENDED_ASSESSMENT) {
       lines.unshift('Amended');
     }
   } else if (type === t.PENALTY_FOR_AMENDED_ASSESSMENT) {
