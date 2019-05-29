@@ -1,14 +1,10 @@
 <template>
   <div>
-    <DateRangeInput
-      :value="[input.fromDate, input.toDate]"
-      :disabled="disabled"
-      @input="dateRangeInput"
-    />
     <b-field
       :message="uploadFieldError"
       :type="uploadFieldType"
-      label="Last week pending liability totals">
+      label="Last week pending liability totals"
+    >
       <FileUpload
         :disabled="disabled"
         @input="fileUploaded"
@@ -18,7 +14,6 @@
 </template>
 
 <script>
-import DateRangeInput from '@/components/fields/DateRangeInput.vue';
 import FileUpload from '@/components/BaseFileUpload.vue';
 import ClientActionInputMixin from './mixin';
 import { getExtension, loadFile } from '@/backend/file_utils';
@@ -28,7 +23,6 @@ import { errorToString } from '@/backend/errors';
 export default {
   name: 'ClientActionTaxPayerLedgerInput',
   components: {
-    DateRangeInput,
     FileUpload,
   },
   mixins: [ClientActionInputMixin],
