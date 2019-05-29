@@ -5,6 +5,7 @@ import GetReturnsClientAction from '@/backend/client_actions/return_history/retu
 import GetAcknowledgementsOfReturnsClientAction from '@/backend/client_actions/return_history/ack_receipt';
 import GetPaymentReceiptsClientAction from '@/backend/client_actions/payment_history';
 import TestLoginClientAction from '@/backend/client_actions/test_login';
+import TaxPayerLedgerClientAction from '@/backend/client_actions/tax_payer_ledger';
 
 const actions = [
   GetAllPendingLiabilitiesClientAction,
@@ -12,6 +13,7 @@ const actions = [
   GetAcknowledgementsOfReturnsClientAction,
   GetPaymentReceiptsClientAction,
   TestLoginClientAction,
+  TaxPayerLedgerClientAction,
 ];
 
 // TODO: Do this better, perhaps
