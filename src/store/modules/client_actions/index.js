@@ -602,7 +602,7 @@ const vuexModule = {
      * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {string} payload.instanceId
-     * @param {Object} payload.input Action input object.
+     * @param {Object|null} payload.input Action input object.
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction
@@ -650,7 +650,7 @@ const vuexModule = {
                   newInput = Object.assign(newInput, retryInstance.retryInput);
                   commit('setInstanceInput', { id: instanceId, input: newInput });
                 }
-              } else {
+              } else if (input !== null) {
                 commit('setInstanceInput', { id: instanceId, input });
               }
 
@@ -809,9 +809,13 @@ const vuexModule = {
                  */
                 /* eslint-disable no-inner-declarations */
                 function getInstancePromise(instance) {
+                  let input = null;
+                  if (instance.actionId in actionInputs) {
+                    input = actionInputs[instance.actionId];
+                  }
                   return dispatch('runActionOnClient', {
                     instanceId: instance.id,
-                    input: instance.actionId in actionInputs ? actionInputs[instance.actionId] : {},
+                    input,
                     client,
                     mainTask,
                     isSingleAction,
