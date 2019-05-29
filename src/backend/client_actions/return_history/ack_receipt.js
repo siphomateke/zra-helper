@@ -3,17 +3,21 @@ import { ReturnHistoryDownloadRunner, generateDownloadFilename, GetReturnHistory
 import { downloadPage } from '../utils';
 
 /**
+ * /**
+ * Gets POST options to fetch an acknowledgement of a return receipt.
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} taxTypeId
+ * @param {string} referenceNumber
  * @returns {import('@/backend/utils').CreateTabPostOptions}
  */
 // TODO: Use TypeScript
-export function generateAckReceiptRequest(taxType, referenceNumber) {
+export function generateAckReceiptRequest(taxTypeId, referenceNumber) {
   return {
     url: 'https://www.zra.org.zm/retHist.htm',
     data: {
       actionCode: 'printReceipt',
       flag: 'rtnHistRcpt',
       ackNo: referenceNumber,
-      rtnType: taxType,
+      rtnType: taxTypeId,
     },
   };
 }

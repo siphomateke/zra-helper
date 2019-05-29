@@ -20,7 +20,7 @@ import { ClientActionRunner, inputExists, getInput } from '../base';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
- * @typedef {string} TPIN
+ * @typedef {import('@/backend/constants').TPIN} TPIN
  * @typedef {import('@/backend/constants').TaxTypeNumericalCode} TaxTypeNumericalCode
  * @typedef {import('@/backend/constants').Date} Date
  * @typedef {import('@/backend/constants').ReferenceNumber} ReferenceNumber
@@ -134,6 +134,44 @@ async function getReturnHistoryRecords(page, {
     numPages: table.numPages,
     value: records,
   };
+}
+
+/**
+ * @typedef {Object} GetAllReturnHistoryRecordsFnOptions
+ * @property {number} parentTaskId
+ * @property {TPIN} tpin
+ * @property {TaxTypeNumericalCode} taxTypeId
+ * @property {Date} fromDate
+ * @property {Date} toDate
+ * @property {number[]} [pages]
+ */
+
+/**
+ * Gets multiple pages of return history records within a certain time frame under a certain
+ * tax type.
+ * @param {GetAllReturnHistoryRecordsFnOptions} options
+ */
+export function getAllReturnHistoryRecords({
+  parentTaskId,
+  tpin,
+  taxTypeId,
+  fromDate,
+  toDate,
+  pages = [],
+}) {
+  return getReceiptData({
+    parentTaskId,
+    taskTitle: 'Get returns',
+    getPageTaskTitle: page => `Getting returns from page ${page}`,
+    getDataFunction: page => getReturnHistoryRecords(page, {
+      tpin,
+      taxType: taxTypeId,
+      fromDate,
+      toDate,
+      exciseType: exciseTypes.airtime,
+    }),
+    pages,
+  });
 }
 
 /**
@@ -260,17 +298,12 @@ export class ReturnHistoryRunner extends ClientActionRunner {
     // eslint-disable-next-line prefer-destructuring
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
 
-    const response = await getReceiptData({
+    const response = await getAllReturnHistoryRecords({
       parentTaskId: task.id,
-      taskTitle: 'Get returns',
-      getPageTaskTitle: page => `Getting returns from page ${page}`,
-      getDataFunction: page => getReturnHistoryRecords(page, {
-        tpin: client.username,
-        taxType: taxTypeId,
-        fromDate: input.fromDate,
-        toDate: input.toDate,
-        exciseType: exciseTypes.airtime,
-      }),
+      tpin: client.username,
+      taxTypeId,
+      fromDate: input.fromDate,
+      toDate: input.toDate,
       pages,
     });
     return {

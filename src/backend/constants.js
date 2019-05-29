@@ -56,11 +56,13 @@ export const clientPropValidationErrorMessages = {
   [clientPropValidationErrors.PASSWORD_SHORT]: 'Password must be at least 8 characters long',
 };
 
+/** @typedef {string} TPIN */
+
 /**
  * @typedef ParsedClient
  * @property {number} id
  * @property {string} name
- * @property {string} username
+ * @property {TPIN} username
  * @property {string} password
  * @property {boolean} valid
  * @property {string[]} [errors] An array of errors that will be set when the client is invalid

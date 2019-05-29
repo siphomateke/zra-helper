@@ -15,6 +15,7 @@ import { parseTable } from './zra';
 /**
  * @typedef {Object} AcknowledgementReceiptData
  * @property {boolean} provisional
+ * @property {string} liabilityAmount E.g. '4,200.00'
  */
 
 /**
@@ -22,6 +23,8 @@ import { parseTable } from './zra';
  * @param {ReceiptType} type
  * @returns {PaymentReceiptData | AcknowledgementReceiptData}
  */
+// TODO: Improve performance by only getting the data that is required. For instance, registration
+// date and reference number doesn't always need to be retrieved.
 export default function getDataFromReceipt(root, type) {
   const data = {};
 
@@ -100,6 +103,11 @@ export default function getDataFromReceipt(root, type) {
     - IT Partnership
     */
     data.provisional = taxType.includes('IT Provisional');
+
+    // FIXME: Make sure this works
+    const liabilityAmountInfo = getElementFromDocument(mainTable, 'tr:nth-child(12)>td:nth-child(2)').innerText;
+    const matches = liabilityAmountInfo.match(/Liability Amount\s*:\s*K\s*(.+)/);
+    [, data.liabilityAmount] = matches;
   }
 
   return data;
