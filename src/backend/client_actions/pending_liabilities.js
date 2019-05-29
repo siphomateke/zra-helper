@@ -1,5 +1,6 @@
 import store from '@/store';
 import createTask from '@/transitional/tasks';
+import Papa from 'papaparse';
 import { exportFormatCodes, taxTypes } from '../constants';
 import { writeJson, unparseCsv } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
@@ -215,6 +216,49 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
     });
   },
 });
+
+/**
+ * @typedef {Object} ParsedPendingLiabilitiesOutput
+ * @property {string} client
+ * @property {Object.<import('@/backend/constants').TaxTypeCode, Object.<string, string>>} totals
+ */
+
+/**
+ * Parses the pending liabilities CSV output.
+ * @param {string} csvString
+ * @returns {ParsedPendingLiabilitiesOutput[]}
+ */
+export function csvOutputParser(csvString) {
+  const parsed = Papa.parse(csvString, {
+    header: false,
+  });
+
+  const clients = [];
+  const pendingLiabilities = [];
+  let totals = {};
+  let currentClient = '';
+  const { data: rows } = parsed;
+  for (const row of rows) {
+    if (row[0].length > 0) {
+      if (currentClient !== '') {
+        pendingLiabilities.push({
+          client: currentClient,
+          totals: Object.assign({}, totals),
+        });
+        totals = {};
+      }
+      [currentClient] = row;
+      clients.push(currentClient);
+    }
+    const taxType = row[1];
+    const taxTypeTotals = {};
+    for (let i = 0; i < totalsColumns.length; i++) {
+      taxTypeTotals[totalsColumns[i]] = row[i + 2];
+    }
+    totals[taxType] = taxTypeTotals;
+  }
+  return pendingLiabilities;
+}
 
 /**
  * @typedef {Object} RunnerInput

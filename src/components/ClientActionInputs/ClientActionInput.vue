@@ -20,6 +20,7 @@ import PendingLiabilitiesInput from '@/components/ClientActionInputs/PendingLiab
 import ReturnsInput from '@/components/ClientActionInputs/ReturnsInput.vue';
 import AckReturnsInput from '@/components/ClientActionInputs/AckReturnsInput.vue';
 import PaymentReceiptsInput from '@/components/ClientActionInputs/PaymentReceiptsInput.vue';
+import TaxPayerLedgerInput from '@/components/ClientActionInputs/TaxPayerLedgerInput.vue';
 import { generateValueSyncMixin } from '@/mixins/sync_prop';
 
 export const actionInputComponents = {
@@ -27,6 +28,7 @@ export const actionInputComponents = {
   getReturns: ReturnsInput,
   getAcknowledgementsOfReturns: AckReturnsInput,
   getPaymentReceipts: PaymentReceiptsInput,
+  taxPayerLedger: TaxPayerLedgerInput,
 };
 
 export default {
