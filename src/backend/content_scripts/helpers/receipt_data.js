@@ -2,7 +2,7 @@ import { getElementFromDocument } from './elements';
 import { parseTable } from './zra';
 
 /**
- * @typedef {'payment'} ReceiptType
+ * @typedef {'payment'|'ack_return'} ReceiptType
  */
 
 /**
@@ -16,15 +16,27 @@ import { parseTable } from './zra';
 * @property {import('@/backend/client_actions/payment_history').PaymentReceiptData[]} payments
 * @typedef {ReceiptData & PaymentReceiptData_Temp} PaymentReceiptData
 */
+
+/**
+ * @typedef {Object} AckReceiptData_Temp
+ * @property {string} liabilityAmount E.g. '4,200.00'
+ *
+ * @typedef {ReceiptData & AckReceiptData_Temp} AckReceiptData
+ */
+
 /**
  * @param {HTMLDocument|HTMLElement} root
  * @param {ReceiptType} type
- * @returns {ReceiptData | PaymentReceiptData}
+ * @returns {ReceiptData | PaymentReceiptData | AckReceiptData}
  */
+// TODO: Improve performance by only getting the data that is required. For instance, registration
+// date and reference number doesn't always need to be retrieved.
 export default function getDataFromReceipt(root, type) {
   let column = '';
   if (type === 'payment') {
     column = '4';
+  } else if (type === 'ack_return') {
+    column = '3';
   }
   const mainTable = getElementFromDocument(
     root,
@@ -87,6 +99,11 @@ export default function getDataFromReceipt(root, type) {
       payments.pop();
     }
     data.payments = payments;
+  } else if (type === 'ack_return') {
+    const receiptTable = getElementFromDocument(root, '#ReturnHistoryForm>table>tbody>tr:nth-child(2)>td:nth-child(2)>table>tbody');
+    const liabilityAmountInfo = getElementFromDocument(receiptTable, 'tr:nth-child(12)>td:nth-child(2)').innerText;
+    const matches = liabilityAmountInfo.match(/Liability Amount\s*:\s*K\s*(.+)/);
+    [, data.liabilityAmount] = matches;
   }
 
   return data;

@@ -2,6 +2,30 @@ import { createClientAction } from '../base';
 import { ReturnHistoryRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
 import { downloadPage } from '../utils';
 
+/**
+ * @typedef {Object} AckReceiptRequestOptions
+ * @property {string} url
+ * @property {Object} data
+ */
+
+/**
+ * Gets POST options to fetch an acknowledgement of a return receipt.
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} taxTypeId
+ * @param {string} referenceNumber
+ * @returns {AckReceiptRequestOptions}
+ */
+export function getAckReceiptPostOptions(taxTypeId, referenceNumber) {
+  return {
+    url: 'https://www.zra.org.zm/retHist.htm',
+    data: {
+      actionCode: 'printReceipt',
+      flag: 'rtnHistRcpt',
+      ackNo: referenceNumber,
+      rtnType: taxTypeId,
+    },
+  };
+}
+
 /** @type {import('./base').ReturnHistoryDownloadFn} */
 function downloadAckReceipt({
   taxReturn, client, taxType, parentTaskId,
@@ -16,15 +40,7 @@ function downloadAckReceipt({
     }),
     taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
-    createTabPostOptions: {
-      url: 'https://www.zra.org.zm/retHist.htm',
-      data: {
-        actionCode: 'printReceipt',
-        flag: 'rtnHistRcpt',
-        ackNo: referenceNumber,
-        rtnType: taxType,
-      },
-    },
+    createTabPostOptions: getAckReceiptPostOptions(taxType, referenceNumber),
   });
 }
 

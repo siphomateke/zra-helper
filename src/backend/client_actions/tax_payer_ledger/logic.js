@@ -3,8 +3,13 @@ import parseNarration, { narrationGroups, narrationTypes } from './narration';
 import { parseAmountString } from '@/backend/content_scripts/helpers/zra';
 import { pendingLiabilityColumns, pendingLiabilityTypes } from '../pending_liabilities';
 import { objectsEqual } from '@/utils';
+import getDataFromReceipt from '@/backend/content_scripts/helpers/receipt_data';
+import { getAckReceiptPostOptions } from '../return_history/ack_receipt';
+import { getAllReturnHistoryRecords } from '../return_history/base';
+import { getDocumentByAjax } from '@/backend/utils';
 
 /**
+ * @typedef {import('@/backend/constants').Date} Date
  * @typedef {import('@/backend/constants').UnixDate} UnixDate
  * @typedef {import('./narration').ParsedNarrationType} ParsedNarrationType
  */
@@ -22,8 +27,11 @@ export const ledgerSystemErrors = {
 * @property {number} debit
 * @property {number} credit
 * @property {UnixDate} transactionDate
+* @property {Date} transactionDateString
 * @property {UnixDate} fromDate
+* @property {Date} fromDateString
 * @property {UnixDate} toDate
+* @property {Date} toDateString
 */
 
 /**
@@ -55,8 +63,11 @@ export function parseLedgerRecords(records) {
       debit: parseAmountString(record.debit),
       credit: parseAmountString(record.credit),
       transactionDate: parseDate(record.transactionDate),
+      transactionDateString: record.transactionDate,
       fromDate: parseDate(record.fromDate),
       toDate: parseDate(record.toDate),
+      fromDateString: record.fromDate,
+      toDateString: record.toDate,
     }));
   }
   return parsedRecords;
@@ -477,6 +488,59 @@ export function closingBalanceIsZero(record) {
 }
 
 /**
+ * @typedef {Object} GetLiabilityAmountFromAckReceiptFnOptions
+ * @property {number} options.parentTaskId
+ * @property {import('@/backend/constants').TPIN} options.tpin
+ * @property {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
+ * @property {ParsedTaxPayerLedgerRecord} options.record
+ */
+
+/**
+ * Gets liability amounts from all acknowledgement receipts that match a provided record
+ * from the ledger.
+ *
+ * Since more than one return can be filed on a particular day, there may be more than one possible
+ * matching acknowledgement receipt and thus liability amounts.
+ * @param {GetLiabilityAmountFromAckReceiptFnOptions} options
+ * @returns {Promise<number[]>} The possible liability amounts.
+ */
+// TODO: Add tests
+async function getLiabilityAmountFromAckReceipt({
+  parentTaskId,
+  tpin,
+  taxTypeId,
+  record,
+}) {
+  // TODO: Handle failed pages
+  const { data: taxReturns } = await getAllReturnHistoryRecords({
+    parentTaskId,
+    tpin,
+    taxTypeId,
+    fromDate: record.fromDateString,
+    toDate: record.toDateString,
+  });
+  const possibleAmounts = [];
+  const documentPromises = [];
+  for (const taxReturn of taxReturns) {
+    const referenceNumber = taxReturn.referenceNo;
+    const requestOptions = getAckReceiptPostOptions(taxTypeId, referenceNumber);
+    documentPromises.push(getDocumentByAjax({
+      ...requestOptions,
+      method: 'post',
+    }));
+  }
+  const docs = await Promise.all(documentPromises);
+  for (const doc of docs) {
+    const data = getDataFromReceipt(doc, 'ack_return');
+    if (data.registrationDate === record.transactionDateString) {
+      const amount = parseAmountString(data.liabilityAmount);
+      possibleAmounts.push(amount);
+    }
+  }
+  return possibleAmounts;
+}
+
+/**
  * @typedef {Object} ChangeReasonDetails
  * @property {UnixDate} fromDate
  * @property {UnixDate} toDate
@@ -494,14 +558,20 @@ export function closingBalanceIsZero(record) {
  * @param {string} options.pendingLiabilityType Pending liability type. E.g. 'principal', 'interest'
  * @param {ParsedPendingLiability[]} options.parsedPendingLiabilities
  * @param {ClosingBalancesByPeriod} options.closingBalances
- * @returns {ChangeReasonDetails}
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
+ * @param {import('@/backend/constants').Client} options.client
+ * @param {number} options.parentTaskId
+ * @returns {Promise.<ChangeReasonDetails>}
  */
-function generateChangeReasonDetails({
+async function generateChangeReasonDetails({
   record,
   difference,
   pendingLiabilityType,
   parsedPendingLiabilities,
   closingBalances,
+  taxTypeId,
+  client,
+  parentTaskId,
 }) {
   /** @type {ChangeReasonDetails} */
   const details = {
@@ -521,15 +591,27 @@ function generateChangeReasonDetails({
     if (pendingLiabilityType === 'principal' && difference < 1) {
       // In this case, the return has been rounded up but the payment is still exact and correct.
       // Double check that that is the case.
-      // FIXME: To make sure this is the system error case, we must check ack return receipt.
+      // TODO: Add unit tests for this specific case
       if (
         !record.returnData.paymentsMatchReturn
         && Math.ceil(record.returnData.amount) === record.returnData.paymentsSum
       ) {
-        details.systemError = ledgerSystemErrors.RETURN_ROUNDED_UP;
-      } else {
-        // Assumption was incorrect. This is an unknown case.
-        // TODO: Show warning?
+        // It's pretty likely this is the system error case but just to be absolutely sure, check
+        // the acknowledgement of return receipt. It has the accurate return amount.
+        const possibleLiabilityAmounts = await getLiabilityAmountFromAckReceipt({
+          tpin: client.username,
+          parentTaskId,
+          taxTypeId,
+          record,
+        });
+        if (possibleLiabilityAmounts.length === 1) {
+          const liabilityAmount = possibleLiabilityAmounts[0];
+          if (record.returnData.paymentsSum === liabilityAmount) {
+            details.systemError = ledgerSystemErrors.RETURN_ROUNDED_UP;
+          }
+        } else {
+          // TODO: Make a note that it's probably a system error but we can't confirm it.
+        }
       }
     } else {
       // TODO: Confirm that this shouldn't run if principal increased by less than a Kwacha.
@@ -565,13 +647,15 @@ function generateChangeReasonDetails({
   return details;
 }
 
-export default function taxPayerLedgerLogic({
+export default async function taxPayerLedgerLogic({
   taxTypeId,
   lastPendingLiabilityTotals,
   pendingLiabilities,
   pendingLiabilityTotals,
   taxPayerLedgerRecords,
   currentDate = new Date().valueOf(), // FIXME: Remove this
+  client,
+  parentTaskId,
 }) {
   // const parsedPendingLiabilities = parsePendingLiabilities(pendingLiabilities);
   const parsedPendingLiabilities = [];
@@ -632,14 +716,21 @@ export default function taxPayerLedgerLogic({
         // TODO: Make a note of this
       }
 
+      const promises = [];
       for (const record of changeRecords) {
-        const details = generateChangeReasonDetails({
+        promises.push(generateChangeReasonDetails({
           record,
           closingBalances,
           difference,
           pendingLiabilityType,
           parsedPendingLiabilities,
-        });
+          taxTypeId,
+          client,
+          parentTaskId,
+        }));
+      }
+      const allChangeReasonDetails = await Promise.all(promises);
+      for (const details of allChangeReasonDetails) {
         changeReasons.push(details);
       }
       changeReasonsByLiability[pendingLiabilityType] = changeReasons;
