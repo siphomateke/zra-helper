@@ -238,6 +238,23 @@ export class LedgerError extends ExtendedError {
 }
 
 /**
+ * Thrown when a closing balance for a record couldn't be found with the same period as the record.
+ * This is checked when trying to determine if a return has any unallocated advance payments.
+ */
+export class ClosingBalanceMissingError extends LedgerError {
+  /**
+   *
+   * @param {Object} props
+   * @param {Object} props.record
+   * The record for which a closing balance in the same period could not be found.
+   */
+  constructor(message, code = null, props = { record: null }) {
+    super(message, code, props);
+    this.setType('ClosingBalanceMissing');
+  }
+}
+
+/**
  * @typedef JsonError
  * @property {string} message
  * @property {string} [code]

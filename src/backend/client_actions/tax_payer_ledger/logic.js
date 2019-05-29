@@ -2,13 +2,13 @@ import moment from 'moment';
 import parseNarration, { narrationGroups, narrationTypes } from './narration';
 import { parseAmountString, scaleZraAmount } from '@/backend/content_scripts/helpers/zra';
 import { pendingLiabilityTypes } from '../pending_liabilities';
-import { objectsEqual } from '@/utils';
+import { objectsEqual, deepClone } from '@/utils';
 import getDataFromReceipt from '@/backend/content_scripts/helpers/receipt_data';
 import { generateAckReceiptRequest } from '../return_history/ack_receipt';
 import { getAllReturnHistoryRecords } from '../return_history/base';
 import { getDocumentByAjax } from '@/backend/utils';
 import generateChangeReasonString from './reason_string';
-import { LedgerError } from '@/backend/errors';
+import { LedgerError, ClosingBalanceMissingError } from '@/backend/errors';
 
 /**
  * @typedef {import('@/backend/constants').Date} Date
@@ -17,6 +17,13 @@ import { LedgerError } from '@/backend/errors';
  * @typedef {import('@/backend/reports').TaxPayerLedgerRecord} TaxPayerLedgerRecord
  * @typedef {import('./narration').NarrationType} NarrationType
  * @typedef {import('../pending_liabilities').PendingLiabilityType} PendingLiabilityType
+ * @typedef {import('@/backend/errors').ExtendedError} ExtendedError
+ */
+
+/**
+ * Errors that occurred processing the ledger that the user should know about. They aren't errors
+ * per-say but are more hints that the output may be incorrect.
+ * @typedef {ExtendedError[]} ProcessingErrors
  */
 
 /** @typedef {string} LedgerSystemError */
@@ -106,7 +113,7 @@ export function recordMatchesReversalRecord(record1, record2) {
 /**
  * Finds the original record that the provided record is reversing.
  * @template {ParsedTaxPayerLedgerRecord} Record
- * @param {Map<string, Record>} records Records stored by serial number.
+ * @param {RecordsBySrNo<Record>} records Records stored by serial number.
  * @param {Record} reversalRecord
  * @returns {Record | null}
  */
@@ -149,8 +156,9 @@ export function getClosingBalances(records) {
 
 /**
  * Removes useless meta records such as closing balance.
- * @param {ParsedTaxPayerLedgerRecord[]} records
- * @returns {ParsedTaxPayerLedgerRecord[]}
+ * @template {ParsedTaxPayerLedgerRecord} Record
+ * @param {Record[]} records
+ * @returns {Record[]}
  */
 function removeMetaRecords(records) {
   return records.filter(record => record.narration.group !== narrationGroups.META);
@@ -158,10 +166,11 @@ function removeMetaRecords(records) {
 
 /**
  * Sorts records by the provided date field.
- * @param {ParsedTaxPayerLedgerRecord[]} records
+ * @template {ParsedTaxPayerLedgerRecord} Record
+ * @param {Record[]} records
  * @param {'transactionDate' | 'fromDate' | 'toDate'} field
  * @param {boolean} [asc]
- * @returns {ParsedTaxPayerLedgerRecord[]}
+ * @returns {Record[]}
  */
 function sortRecordsByDate(records, field, asc = true) {
   if (asc) {
@@ -171,9 +180,9 @@ function sortRecordsByDate(records, field, asc = true) {
 }
 
 /**
- *
- * @param {ParsedTaxPayerLedgerRecord[]} records
- * @returns {ParsedTaxPayerLedgerRecord[]}
+ * @template {ParsedTaxPayerLedgerRecord} Record
+ * @param {Record[]} records
+ * @returns {Record[]}
  */
 function sortRecordsBySerialNumber(records) {
   return records.slice().sort((a, b) => Number(a.srNo) - Number(b.srNo));
@@ -181,8 +190,13 @@ function sortRecordsBySerialNumber(records) {
 
 /**
  * @template {ParsedTaxPayerLedgerRecord} Record
+ * @typedef {Map<string, Record>} RecordsBySrNo
+ */
+
+/**
+ * @template {ParsedTaxPayerLedgerRecord} Record
  * @param {Record[]} records
- * @returns {Map<string, Record>}
+ * @returns {RecordsBySrNo<Record>}
  */
 function getRecordsBySerialNumber(records) {
   const recordsBySrNo = new Map();
@@ -550,6 +564,8 @@ export function pairRecords(records) {
       }
     }
     // TODO: Consider matching assessments to penalties and assessments to amended assessments.
+    // If we do that, we will have to run this before removing zero records. It only works now
+    // because payments would also be zero if their matching record was zero.
   }
   return pairedRecords;
 }
@@ -706,7 +722,7 @@ function getRecordPrn(record, recordsByPeriod) {
  * @property {UnixDate} [fromDate]
  * @property {UnixDate} [toDate]
  * @property {UnixDate} [transactionDate]
- * @property {LedgerSystemError} [systemError]
+ * @property {LedgerSystemError[]} [systemErrors]
  * @property {ParsedNarrationType} [narration]
  * @property {string|string[]} [prn]
  * @property {string|string[]} [assessmentNumber]
@@ -717,23 +733,11 @@ function getRecordPrn(record, recordsByPeriod) {
  * @param {Object} options
  * @param {PairedLedgerRecord} options.record
  * @param {RecordsByPeriod<any>} options.recordsByPeriod
- * @param {ClosingBalancesByPeriod<any>} options.closingBalances
- * @param {number} options.difference
- * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
- * @param {PendingLiabilityType} options.liabilityType
- * @param {import('@/backend/constants').Client} options.client
- * @param {number} options.parentTaskId
- * @returns {Promise.<ChangeReasonDetails>}
+ * @returns {ChangeReasonDetails}
  */
-async function generateChangeReasonDetails({
+function generateChangeReasonDetails({
   record,
   recordsByPeriod,
-  closingBalances,
-  difference,
-  taxTypeId,
-  liabilityType,
-  client,
-  parentTaskId,
 }) {
   /** @type {ChangeReasonDetails} */
   const details = {
@@ -742,7 +746,7 @@ async function generateChangeReasonDetails({
     toDate: record.toDate,
     transactionDate: record.transactionDate,
     narration: record.narration,
-    systemError: null,
+    systemErrors: [],
   };
 
   if (record.narration.group === narrationGroups.PAYMENTS) {
@@ -775,11 +779,43 @@ async function generateChangeReasonDetails({
     // TODO: Test getting assessment number from assessment in same period.
     details.assessmentNumber = getRecordAssessmentNumber(record, recordsByPeriod);
   }
+  return details;
+}
+
+/**
+ * @typedef GetReturnSystemErrorsFnResponse
+ * @property {LedgerSystemError[]} systemErrors
+ * @property {ProcessingErrors} processingErrors
+ */
+
+/**
+ * Checks if a return has any system errors. I.e. errors on ZRA's part.
+ * @param {Object} options
+ * @param {PairedLedgerRecord} options.record The return as a record
+ * @param {ClosingBalancesByPeriod<any>} options.closingBalances
+ * @param {number} options.difference The change in pending liabilities since last week.
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
+ * @param {PendingLiabilityType} options.liabilityType
+ * @param {import('@/backend/constants').Client} options.client
+ * @param {number} options.parentTaskId
+ * @returns {Promise<GetReturnSystemErrorsFnResponse>}
+ */
+async function getReturnSystemErrors({
+  record,
+  closingBalances,
+  difference,
+  taxTypeId,
+  liabilityType,
+  client,
+  parentTaskId,
+}) {
+  /** @type {ProcessingErrors} */
+  const processingErrors = [];
+  /** @type {LedgerSystemError[]} */
+  const systemErrors = [];
 
   // If pending liabilities increased from last week
-  // FIXME: Make sure the record is a return. E.g. if the cause was actually a payment, we need to
-  // check its return, not the payment.
-  if (difference > 0 && record.narration.group === narrationGroups.RETURNS) {
+  if (difference > 0) {
     // If specifically principal increased by less than a kwacha
     if (liabilityType === 'principal' && difference < scaleZraAmount(1)) {
       // In this case, the return has been rounded up but the payment is still exact and correct.
@@ -801,31 +837,192 @@ async function generateChangeReasonDetails({
         if (possibleLiabilityAmounts.length === 1) {
           const liabilityAmount = possibleLiabilityAmounts[0];
           if (record.paymentsSum === liabilityAmount) {
-            details.systemError = ledgerSystemErrors.RETURN_ROUNDED_UP;
+            systemErrors.push(ledgerSystemErrors.RETURN_ROUNDED_UP);
           }
         } else {
           for (const amount of possibleLiabilityAmounts) {
             if (record.paymentsSum === amount) {
-              details.systemError = ledgerSystemErrors.RETURN_ROUNDED_UP;
+              systemErrors.push(ledgerSystemErrors.RETURN_ROUNDED_UP);
               break;
             }
           }
           // TODO: Make a note that it's probably a system error but we can't confirm it.
         }
       }
-    } else {
-      // TODO: Confirm that this shouldn't run if principal increased by less than a Kwacha.
-      // FIXME: Handle closing balance not existing. This shouldn't happen but just in case.
+    }
+    if (record.fromDate in closingBalances) {
       const closingBalance = closingBalances[record.fromDate];
       // Note: No need to make sure advance payments are greater than zero and thus contributed to
       // the closing balance because zero records will have already been removed.
       if (closingBalanceIsZero(closingBalance) && record.advancePayments.length > 0) {
         // TODO: Make sure this check works
-        details.systemError = ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT;
+        systemErrors.push(ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT);
+      }
+    } else {
+      processingErrors.push(new ClosingBalanceMissingError(
+        `A closing balance in the same period as return record '${record.srNo}' could not be found.`,
+        null,
+        {
+          record: deepClone(record),
+        },
+      ));
+    }
+  }
+  return {
+    systemErrors,
+    processingErrors,
+  };
+}
+
+/**
+ * @typedef {Object} ReasonStringRecord
+ * @property {PairedLedgerRecord} record
+ * @property {LedgerSystemError[]} systemErrors
+ */
+
+/**
+ * Records and any corresponding system errors that should both be used to generate reason strings.
+ * They are stored by records serial number.
+ * @typedef {Map<string, ReasonStringRecord>} ReasonStringRecordMap
+ */
+
+/**
+ * @typedef {Object} GetReasonStringRecordsFnResponse
+ * @property {ReasonStringRecordMap} reasonStringRecords
+ * @property {ProcessingErrors} processingErrors
+ */
+
+/**
+ * Gets the records that should be used to actually generate the final reason strings output.
+ * @param {Object} options
+ * @param {PairedLedgerRecord[]} options.records
+ * All the records that could have caused a change in pending liabilities since last week.
+ * @param {RecordsBySrNo<PairedLedgerRecord>} options.recordsBySrNo
+ * @param {ClosingBalancesByPeriod<any>} options.closingBalances
+ * @param {number} options.difference The change in pending liabilities since last week.
+ * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
+ * @param {PendingLiabilityType} options.liabilityType
+ * @param {import('@/backend/constants').Client} options.client
+ * @param {number} options.parentTaskId
+ * @returns {Promise<GetReasonStringRecordsFnResponse>}
+ */
+// TODO: Add tests to make sure payments are added if there returns don't have system errors
+async function getReasonStringRecords({
+  records,
+  recordsBySrNo,
+  closingBalances,
+  difference,
+  taxTypeId,
+  liabilityType,
+  client,
+  parentTaskId,
+}) {
+  /** @type {ProcessingErrors} */
+  const processingErrors = [];
+  /** @type {ReasonStringRecordMap} */
+  const reasonStringRecords = new Map();
+  for (const record of records) {
+    /**
+     * The return that this payment is of, if this record is a payment or the this record itself if
+     * its a return. Returns need to be checked for common system errors.
+     * @type {PairedLedgerRecord | null}
+     */
+    let returnRecord = null;
+    // If this record is a payment, it may have a corresponding return that needs to be checked
+    // for system errors
+    if (
+      record.narration.group === narrationGroups.PAYMENTS
+      && recordsBySrNo.has(record.paymentOf)
+    ) {
+      /** The payment's corresponding return */
+      const paymentsReturn = recordsBySrNo.get(record.paymentOf);
+      if (paymentsReturn.narration.group === narrationGroups.RETURNS) {
+        returnRecord = paymentsReturn;
+      }
+    } else if (record.narration.group === narrationGroups.RETURNS) {
+      // If this record is a return, check it for system errors.
+      returnRecord = record;
+    }
+    // If we already established the return to have any system errors, don't check it again or add
+    // any records.
+    // TODO: Add unit test to make sure this works
+    if (
+      returnRecord !== null
+      && reasonStringRecords.has(returnRecord.srNo)
+      && reasonStringRecords.get(returnRecord.srNo).systemErrors.length > 0
+    ) {
+      break;
+    }
+
+    /**
+     * New records and their system errors to use to generate reason strings.
+     * @type {ReasonStringRecord[]}
+     */
+    let reasonStringRecordsToAdd = [
+      {
+        record,
+        systemErrors: [],
+      },
+    ];
+
+    if (returnRecord !== null) {
+      // We must process the records sequentially so we don't re-compute system errors for the
+      // same record twice.
+      // eslint-disable-next-line no-await-in-loop
+      const response = await getReturnSystemErrors({
+        record: returnRecord,
+        closingBalances,
+        difference,
+        taxTypeId,
+        liabilityType,
+        client,
+        parentTaskId,
+      });
+      processingErrors.push(...response.processingErrors);
+
+      const { systemErrors } = response;
+      if (systemErrors.length > 0) {
+        // Remove original record. E.g. if it was a payment, we will only need the return.
+        reasonStringRecordsToAdd = [];
+
+        // If the system error was that an advance payment was not properly allocated to a return,
+        // we will use the very same advance payment to generate a reason string.
+        if (systemErrors.includes(ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT)) {
+          for (const advancePaymentSrNo of returnRecord.advancePayments) {
+            const advancePayment = recordsBySrNo[advancePaymentSrNo];
+            reasonStringRecordsToAdd.push({
+              record: advancePayment,
+              systemErrors: [ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT],
+            });
+          }
+        }
+        // If the system error was that a return was rounded up and didn't match its payments,
+        // we will use the return not the payments to generate a reason string.
+        if (systemErrors.includes(ledgerSystemErrors.RETURN_ROUNDED_UP)) {
+          reasonStringRecordsToAdd.push({
+            record: returnRecord,
+            systemErrors: [ledgerSystemErrors.RETURN_ROUNDED_UP],
+          });
+        }
+      }
+    }
+    for (const item of reasonStringRecordsToAdd) {
+      // Make sure not to add it twice. Otherwise, this might happen if, for example, there are
+      // multiple payments for a return that was rounded up. Each payment will find their source
+      // return (which will be the same one) and the return will be added multiple times.
+      if (!reasonStringRecords.has(item.record.srNo)) {
+        reasonStringRecords.set(item.record.srNo, {
+          record: item.record,
+          systemErrors: item.systemErrors,
+        });
       }
     }
   }
-  return details;
+
+  return {
+    processingErrors,
+    reasonStringRecords,
+  };
 }
 
 /**
@@ -891,6 +1088,33 @@ function filterRecordsByLiabilityType(records, liabilityType) {
   return records.filter(record => recordAffectsLiabilityType(record, liabilityType));
 }
 
+/**
+ * Gets unbalanced records from a `PastWeekRecordsResponse`.
+ * @template {ParsedTaxPayerLedgerRecord} Record
+ * @param {PastWeekRecordsResponse<Record>} pastWeekRecords
+ * @returns The unbalanced records.
+ */
+function getUnbalancedRecordsFromPastWeek(pastWeekRecords) {
+  let records = pastWeekRecords.withinLastWeek;
+  // The ZRA website sorts by fromDate by default but since we sorted by transaction date we
+  // have to restore the original order.
+  records = sortRecordsBySerialNumber(records);
+  records = removeReversals(records);
+  const pairedRecords = pairRecords(records);
+  return removeBalancedRecords(pairedRecords);
+}
+
+/**
+ * Figures out what all the records match up with. Primarily finds out payments returns.
+ * @template {ParsedTaxPayerLedgerRecord} Record
+ * @param {Record[]} parsedLedgerRecords
+ * @returns {PairedLedgerRecord[]}
+ */
+function getAllPairedRecords(parsedLedgerRecords) {
+  const records = removeReversals(parsedLedgerRecords);
+  return pairRecords(records);
+}
+
 export default async function taxPayerLedgerLogic({
   taxTypeId,
   lastPendingLiabilityTotals,
@@ -900,6 +1124,9 @@ export default async function taxPayerLedgerLogic({
   client,
   parentTaskId,
 }) {
+  /** @type {ProcessingErrors} */
+  // FIXME: Actually output/use these errors
+  const processingErrors = [];
   let parsedLedgerRecords = parseLedgerRecords(taxPayerLedgerRecords);
 
   // Extract closing balances
@@ -909,29 +1136,16 @@ export default async function taxPayerLedgerLogic({
   // Note: It's OK to do this before removing reversals because the reversals will also be zero.
   parsedLedgerRecords = removeZeroRecords(parsedLedgerRecords);
 
-  // FIXME: This should only be done when actually looking for records that caused a change.
-  // This is because to detect various system errors and extract PRNs and assessment numbers, we
-  // need all the records. E.g. if a payment caused the change from last week but only because of
-  // a system error, to detect the error we need to see the return which may have been filed before
-  // last week.
+  // Find all the unbalanced records from the past week.
   const pastWeekRecords = getRecordsFromPastWeek(parsedLedgerRecords, currentDate);
-  parsedLedgerRecords = pastWeekRecords.withinLastWeek;
+  const unbalancedRecords = getUnbalancedRecordsFromPastWeek(pastWeekRecords);
 
-  // The ZRA website sorts by fromDate by default but since we sorted by transaction date we
-  // have to restore the original order.
-  parsedLedgerRecords = sortRecordsBySerialNumber(parsedLedgerRecords);
-  // Remove any records that were later reversed
-  parsedLedgerRecords = removeReversals(parsedLedgerRecords);
+  // Match records to what they are related to.
+  const pairedRecords = getAllPairedRecords(parsedLedgerRecords);
+  const pairedRecordsBySrNo = getRecordsBySerialNumber(pairedRecords);
+  const pairedRecordsByPeriod = getRecordsByPeriod(pairedRecords);
 
-  // TODO: Find out if we shouldn't remove zero records before running pair records. It's
-  // probably OK because any pairs would also have to be zero. Not sure though because
-  // penalties seem to still apply to zero records.
-  const pairedRecords = pairRecords(parsedLedgerRecords);
-
-  const unbalancedRecords = removeBalancedRecords(pairedRecords);
-
-  const recordsByPeriod = getRecordsByPeriod(unbalancedRecords);
-
+  /** @type {Object.<string, string>} */
   const changeReasonsByLiability = {};
   const liabilityPromises = pendingLiabilityTypes.map(liabilityType => (async () => {
     /** @type {ChangeReasonDetails[]} */
@@ -983,23 +1197,40 @@ export default async function taxPayerLedgerLogic({
         }
       }
 
-      // FIXME: Somehow merge counterparts when generating reasons. E.g. if the change records are
-      // a return and its payments we probably don't want all the payments.
-
-      changeReasonDetails = await Promise.all(
-        changeRecords.map(
-          record => generateChangeReasonDetails({
-            record,
-            recordsByPeriod,
-            closingBalances,
-            difference,
-            taxTypeId,
-            liabilityType,
-            client,
-            parentTaskId,
-          }),
-        ),
+      // Get all the records each change record is linked to, if the record they are linked to
+      // is not from within the last week. This is needed to generate system errors from, e.g.
+      // payment's returns.
+      const changeRecordsWithPairInfo = changeRecords.map(
+        record => pairedRecordsBySrNo.get(record.srNo),
       );
+
+      const response = await getReasonStringRecords({
+        records: changeRecordsWithPairInfo,
+        recordsBySrNo: pairedRecordsBySrNo,
+        closingBalances,
+        difference,
+        taxTypeId,
+        liabilityType,
+        client,
+        parentTaskId,
+      });
+
+      // Generate change reason details for each reason string record (@see `reasonStringRecords`)
+      // and add any system errors that the reason string records might have.
+      for (const { record, systemErrors } of response.reasonStringRecords.values()) {
+        const details = generateChangeReasonDetails({
+          record,
+          recordsByPeriod: pairedRecordsByPeriod,
+        });
+        if (systemErrors.length > 0) {
+          details.systemErrors.push(...systemErrors);
+        }
+        changeReasonDetails.push(details);
+      }
+
+      if (response.processingErrors.length > 0) {
+        processingErrors.push(...response.processingErrors);
+      }
     } else {
       changeReasonDetails.push({ change: false });
     }
