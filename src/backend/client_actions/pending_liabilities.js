@@ -25,10 +25,22 @@ export const pendingLiabilityColumns = [
   'total',
 ];
 
+export const pendingLiabilityColumnNamesMap = {
+  principal: 'Principal',
+  interest: 'Interest',
+  penalty: 'Penalty',
+  total: 'Gr.total',
+};
+
 /**
  * @typedef {Object.<string, string>} Totals
  * Totals with two decimal places. The possible totals are all the items in
  * `pendingLiabilityColumns`.
+ */
+
+/**
+ * @typedef {Object.<string, Totals>} TotalsByTaxTypeCode
+ * Totals by tax type code.
  */
 
 /**
@@ -240,7 +252,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
 /**
  * @typedef {Object} ParsedPendingLiabilitiesOutput
  * @property {string} client
- * @property {Object.<import('@/backend/constants').TaxTypeCode, Object.<string, string>>} totals
+ * @property {TotalsByTaxTypeCode} totals
  */
 
 /**
