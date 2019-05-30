@@ -48,9 +48,10 @@ async function fullLogicTest(testName, filename) {
       const ledgerTaxTypeOutput = output.data[taxTypeId];
       promises.push(taxPayerLedgerLogic({
         taxTypeId,
-        lastPendingLiabilityTotals: ledgerTaxTypeOutput.previousWeekLiabilities,
-        pendingLiabilityTotals: ledgerTaxTypeOutput.currentWeekLiabilities,
+        previousPendingLiabilityTotals: ledgerTaxTypeOutput.previousWeekLiabilities,
+        currentPendingLiabilityTotals: ledgerTaxTypeOutput.currentWeekLiabilities,
         taxPayerLedgerRecords: records,
+        previousDate: output.previousWeekEnding,
         currentDate: output.currentWeekEnding,
         parentTaskId: null,
         client: null, // FIXME: Mock whatever the client data is needed for

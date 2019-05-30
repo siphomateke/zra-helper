@@ -16,7 +16,9 @@ import { pendingLiabilityColumnNamesMap, pendingLiabilityTypes, pendingLiability
 /* eslint-disable max-len */
 /**
  * @typedef {Object} RunnerInput
- * @property {import('@/backend/client_actions/pending_liabilities').ParsedPendingLiabilitiesOutput[]} lastPendingLiabilities
+ * @property {import('@/backend/client_actions/pending_liabilities').ParsedPendingLiabilitiesOutput[]} previousPendingLiabilities
+ * @property {Date} previousDate
+ * @property {Date} currentDate
  */
 /* eslint-enable max-len */
 
@@ -49,9 +51,9 @@ function outputFormatter({
     for (let i = 0; i < numberOfColumns; i++) {
       headers.push('');
     }
-    headers[1] = `Previous week ending ${firstOutput.previousWeekEnding}`;
+    headers[1] = `Previous week ending ${firstOutput.previousDate}`;
     headers[6] = 'Reason for movement';
-    headers[9] = `Current week ending ${firstOutput.currentWeekEnding}`;
+    headers[9] = `Current week ending ${firstOutput.currentDate}`;
     rows.push(headers);
 
     const pendingLiabilityColumnNames = Object.values(pendingLiabilityColumnNamesMap);
@@ -150,7 +152,14 @@ const PendingLiabilityChangeReasonsClientAction = createClientAction({
   name: 'Get reasons for pending liabilities',
   requiresTaxTypes: true,
   requiredActions: ['getAllPendingLiabilities', 'taxPayerLedger'],
-  defaultInput: () => ({}),
+  defaultInput: () => {
+    const today = moment();
+    const weekAgo = today.clone().subtract(7, 'days');
+    return {
+      previousDate: weekAgo.format('DD/MM/YYYY'),
+      currentDate: today.format('DD/MM/YYYY'),
+    };
+  },
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {
     return createOutputFile({
@@ -165,8 +174,8 @@ const PendingLiabilityChangeReasonsClientAction = createClientAction({
 
 /**
  * @typedef {Object} ChangeReasonsActionOutput
- * @property {Date} previousWeekEnding
- * @property {Date} currentWeekEnding
+ * @property {Date} previousDate
+ * @property {Date} currentDate
  * @property {TotalsByTaxTypeCode} previousTotals
  * @property {TotalsByTaxTypeCode} currentTotals
  * @property {Object.<string, import('./logic').TaxPayerLedgerLogicFnResponse>} taxTypes
@@ -179,10 +188,11 @@ PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRun
     this.records = [];
   }
 
-  getLastPendingLiabilities() {
+  // FIXME: Handle `previousPendingLiabilities` not existing
+  getPreviousPendingLiabilities() {
     /** @type {{input: RunnerInput, client: import('@/backend/constants').Client}} */
     const { client, input } = this.storeProxy;
-    const match = input.lastPendingLiabilities.find(item => item.client === client.name);
+    const match = input.previousPendingLiabilities.find(item => item.client === client.name);
     if (match) {
       return match.totals;
     }
@@ -195,19 +205,23 @@ PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRun
     // We have to get all records in case a transaction recently references a very old one.
     /* const fromDate = '01/01/2013';
     const toDate = moment().format('DD/MM/YYYY'); */
+    /** @type {{input: RunnerInput}} */
+    const { input } = this.storeProxy;
+    const previousDate = moment(input.previousDate, 'DD/MM/YYYY');
+    const currentDate = moment(input.currentDate, 'DD/MM/YYYY');
 
-    const lastPendingLiabilityTotals = this.getLastPendingLiabilities();
+    const previousPendingLiabilityTotals = this.getPreviousPendingLiabilities();
     /** @type {import('../pending_liabilities').ParsedPendingLiabilitiesOutput} */
+    // TODO: Allow uploading old pending liabilities instead of getting them at runtime
     const currentPendingLiabilitiesOutput = this.getInstance('getAllPendingLiabilities').output;
     /** @type {import('./index').LedgerOutput} */
     const recordsByTaxTypeId = this.getInstance('taxPayerLedger').output;
 
     /** @type {ChangeReasonsActionOutput} */
     const output = {
-      // FIXME: Add actual previous week ending date
-      previousWeekEnding: 'DD-MM-YY',
-      currentWeekEnding: moment().format('DD-MM-YY'),
-      previousTotals: lastPendingLiabilityTotals,
+      previousDate: previousDate.format('DD-MM-YY'),
+      currentDate: currentDate.format('DD-MM-YY'),
+      previousTotals: previousPendingLiabilityTotals,
       currentTotals: currentPendingLiabilitiesOutput.totals,
       taxTypes: {},
     };
@@ -234,8 +248,10 @@ PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRun
               client,
               parentTaskId,
               taxTypeId,
-              lastPendingLiabilityTotals: lastPendingLiabilityTotals[taxTypeCode],
-              pendingLiabilityTotals: currentPendingLiabilitiesOutput.totals[taxTypeCode],
+              previousDate: previousDate.valueOf(),
+              currentDate: currentDate.valueOf(),
+              previousPendingLiabilityTotals: previousPendingLiabilityTotals[taxTypeCode],
+              currentPendingLiabilityTotals: currentPendingLiabilitiesOutput.totals[taxTypeCode],
               taxPayerLedgerRecords: recordsByTaxTypeId[taxTypeId],
             });
 

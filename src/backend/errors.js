@@ -263,14 +263,14 @@ export class SumOfChangeRecordsNotEqualToDifference extends LedgerError {
    * @param {number} props.changeRecordsSum
    * The sum of the records determined to have caused a change in pending liabilities.
    * @param {number} props.pendingLiabilityDifference
-   * The actual change in pending liabilities from last week.
-   * @param {string[]} props.recordsFromExactlyAWeekAgo
-   * Serial numbers of records that took place exactly a week ago.
+   * The actual change in pending liabilities.
+   * @param {string[]} props.recordsExactlyInDateRange
+   * Serial numbers of records that took place on the starting or ending date.
    */
   constructor(message, code = null, props = {
     changeRecordsSum: null,
     pendingLiabilityDifference: null,
-    recordsFromExactlyAWeekAgo: null,
+    recordsExactlyInDateRange: null,
   }) {
     super(message, code, props);
     this.setType('SumOfChangeRecordsNotEqualToDifference');
