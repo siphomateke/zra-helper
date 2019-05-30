@@ -61,6 +61,7 @@ import { taskFunction, getClientIdentifier } from '@/backend/client_actions/util
  * @property {number} clientId
  * @property {Object} [value]
  * @property {Error|null} [error]
+ * @property {Object} input
  */
 
 /**
@@ -517,6 +518,7 @@ const vuexModule = {
             clientId: instance.client.id,
             value: instance.output,
             error: instance.error,
+            input: instance.input,
           };
         }
       }

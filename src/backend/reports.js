@@ -158,6 +158,17 @@ export function getPendingLiabilityPage({
  * @property {string} cumulativeBalance
  */
 
+export const ledgerColumns = [
+  'srNo',
+  'transactionDate',
+  'fromDate',
+  'toDate',
+  'narration',
+  'debit',
+  'credit',
+  'cumulativeBalance',
+];
+
 /**
  * Gets a single page from the tax payer ledger.
  * @param {Object} options
@@ -186,15 +197,6 @@ export function getTaxPayerLedgerPage({
       prm1_ajaxComboTarget: '',
       // prm1_loc_code: '',
     },
-    reportHeaders: [
-      'srNo',
-      'transactionDate',
-      'fromDate',
-      'toDate',
-      'narration',
-      'debit',
-      'credit',
-      'cumulativeBalance',
-    ],
+    reportHeaders: ledgerColumns,
   });
 }

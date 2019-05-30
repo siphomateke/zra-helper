@@ -1,17 +1,58 @@
-import { getPagedData, parallelTaskMap, taskFunction } from '@/backend/client_actions/utils';
-import { taxTypes } from '@/backend/constants';
-import { getTaxPayerLedgerPage } from '@/backend/reports';
+import {
+  getPagedData, parallelTaskMap, taskFunction, getClientIdentifier,
+} from '@/backend/client_actions/utils';
+import { taxTypes, exportFormatCodes } from '@/backend/constants';
+import { getTaxPayerLedgerPage, ledgerColumns } from '@/backend/reports';
 import getAccountCodeTask from '@/backend/tax_account_code';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
-import { createClientAction, ClientActionRunner } from '../base';
+import { createClientAction, ClientActionRunner, createOutputFile } from '../base';
 import moment from 'moment';
+import { unparseCsv, writeJson } from '@/backend/file_utils';
 
 /**
  * @typedef {Object} RunnerInput
  * @property {import('@/backend/constants').Date} [fromDate]
  * @property {import('@/backend/constants').Date} [toDate]
  */
+
+function outputFormatter({ output, format }) {
+  if (format === exportFormatCodes.CSV) {
+    const rows = [];
+    const headers = ['taxTypeId', ...ledgerColumns];
+    rows.push(headers);
+
+    // TODO: Indicate output errors
+    const numberOfColumns = headers.length;
+    for (const taxTypeId of Object.keys(output)) {
+      let i = 0;
+      const records = output[taxTypeId];
+      for (const record of records) {
+        let firstCol = '';
+        if (i === 0) {
+          firstCol = taxTypeId;
+        }
+        const row = [firstCol];
+        for (const col of ledgerColumns) {
+          row.push(record[col]);
+        }
+        // Fill empty columns
+        while (row.length < numberOfColumns) {
+          row.push('');
+        }
+        rows.push(row);
+        i++;
+      }
+    }
+    // TODO: Make output options configurable by user
+    return unparseCsv(rows);
+  }
+  return writeJson(output);
+}
+
+function sanitizeDates(date) {
+  return date.replace(/\//g, '-');
+}
 
 const TaxPayerLedgerClientAction = createClientAction({
   id: 'taxPayerLedger',
@@ -21,6 +62,34 @@ const TaxPayerLedgerClientAction = createClientAction({
     fromDate: '01/01/2013',
     toDate: moment().format('DD/MM/YYYY'),
   }),
+  hasOutput: true,
+  generateOutputFiles({ clients, outputs }) {
+    const outputFiles = [];
+    for (const client of clients) {
+      if (!(client.id in outputs)) break;
+      const output = outputs[client.id];
+      /** @type {{input: RunnerInput}} */
+      const { input } = output;
+      const period = `${sanitizeDates(input.fromDate)}_${sanitizeDates(input.toDate)}`;
+      const filename = `ledger_${client.username}_${period}`;
+      /** @type {LedgerOutput | null} */
+      const outputValue = output.value;
+      if (outputValue !== null) {
+        outputFiles.push(createOutputFile({
+          label: `${getClientIdentifier(client)} ledger records`,
+          filename,
+          formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+          value: outputValue,
+          formatter: outputFormatter,
+        }));
+      }
+    }
+    return createOutputFile({
+      label: 'Ledger records for each client',
+      wrapper: true,
+      children: outputFiles,
+    });
+  },
 });
 
 /**
