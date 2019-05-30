@@ -23,6 +23,7 @@ import AckReturnsInput from '@/components/ClientActionInputs/AckReturnsInput.vue
 import PaymentReceiptsInput from '@/components/ClientActionInputs/PaymentReceiptsInput.vue';
 import AccountApprovalStatusInput from '@/components/ClientActionInputs/AccountApprovalStatusInput.vue';
 import TaxPayerLedgerInput from '@/components/ClientActionInputs/TaxPayerLedgerInput.vue';
+import ClientActionPendingLiabilityChangeReasonsInput from '@/components/ClientActionInputs/PendingLiabilityChangeReasonsInput.vue';
 import { generateValueSyncMixin } from '@/mixins/sync_prop';
 
 export const actionInputComponents = {
@@ -32,6 +33,7 @@ export const actionInputComponents = {
   getPaymentReceipts: PaymentReceiptsInput,
   checkAccountApprovalStatus: AccountApprovalStatusInput,
   taxPayerLedger: TaxPayerLedgerInput,
+  pendingLiabilityChangeReasons: ClientActionPendingLiabilityChangeReasonsInput,
 };
 
 export default {
