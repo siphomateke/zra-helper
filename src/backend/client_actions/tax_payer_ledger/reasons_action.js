@@ -1,10 +1,17 @@
-// import moment from 'moment';
+import moment from 'moment';
 import taxPayerLedgerLogic from './logic';
-import { ClientActionRunner, createClientAction } from '../base';
-import { taskFunction, parallelTaskMap } from '../utils';
+import { ClientActionRunner, createClientAction, createOutputFile } from '../base';
+import { taskFunction, parallelTaskMap, getClientIdentifier } from '../utils';
 import createTask from '@/transitional/tasks';
-import { taxTypes } from '@/backend/constants';
+import { taxTypes, exportFormatCodes } from '@/backend/constants';
 import store from '@/store';
+import { unparseCsv, writeJson } from '@/backend/file_utils';
+import { pendingLiabilityColumnNamesMap, pendingLiabilityTypes, pendingLiabilityColumns } from '../pending_liabilities';
+
+/**
+ * @typedef {import('@/backend/constants').Date} Date
+ * @typedef {import('../pending_liabilities').TotalsByTaxTypeCode} TotalsByTaxTypeCode
+ */
 
 /* eslint-disable max-len */
 /**
@@ -13,13 +20,158 @@ import store from '@/store';
  */
 /* eslint-enable max-len */
 
+/**
+ *
+ * @param {Object} options
+ * @param {import('@/backend/constants').Client[]} options.clients
+ * @param {import('@/store/modules/client_actions').ClientActionOutputs} options.output
+ * @param {import('@/backend/constants').ExportFormatCode} options.format
+ * @param {boolean} options.anonymizeClients
+ */
+// FIXME: Handle errors that occurred when getting the output. E.g. pending liabilities missing.
+function outputFormatter({
+  clients,
+  output: clientOutputs,
+  format,
+  anonymizeClients,
+}) {
+  if (format === exportFormatCodes.CSV) {
+    const rows = [];
+    // TODO: Don't depend on getting input from first client. Somehow get original user input.
+    if (clients.length === 0) return '';
+    if (!(clients[0].id in clientOutputs)) return '';
+    /** @type {ChangeReasonsActionOutput} */
+    const firstOutput = clientOutputs[clients[0].id].value;
+    if (firstOutput === null) return '';
+
+    const numberOfColumns = 14;
+    const headers = [];
+    for (let i = 0; i < numberOfColumns; i++) {
+      headers.push('');
+    }
+    headers[1] = `Previous week ending ${firstOutput.previousWeekEnding}`;
+    headers[6] = 'Reason for movement';
+    headers[9] = `Current week ending ${firstOutput.currentWeekEnding}`;
+    rows.push(headers);
+
+    const pendingLiabilityColumnNames = Object.values(pendingLiabilityColumnNamesMap);
+    const subHeaders = [
+      'Client',
+      'Tax type',
+      ...pendingLiabilityColumnNames,
+      ...pendingLiabilityTypes.map(t => pendingLiabilityColumnNamesMap[t]),
+      'Tax type',
+      ...pendingLiabilityColumnNames,
+    ];
+    rows.push(subHeaders);
+
+    for (const client of clients) {
+      let i = 0;
+      let outputValue = null;
+      if (client.id in clientOutputs) {
+        /** @type {import('@/store/modules/client_actions').ClientActionOutput} */
+        const output = clientOutputs[client.id];
+        /** @type {ChangeReasonsActionOutput} */
+        outputValue = output.value;
+      }
+      for (const taxTypeId of Object.keys(taxTypes)) {
+        const taxTypeCode = taxTypes[taxTypeId];
+        let firstCol = '';
+        if (i === 0) {
+          firstCol = getClientIdentifier(client, anonymizeClients);
+        }
+        const row = [firstCol, taxTypeCode];
+        if (outputValue !== null && taxTypeId in outputValue.taxTypes) {
+          const reasonsResponse = outputValue.taxTypes[taxTypeId];
+          // Note: The pending liabilities action's output uses tax type codes, not IDs.
+          const previousTotals = outputValue.previousTotals[taxTypeCode];
+          for (const liabilityColumn of pendingLiabilityColumns) {
+            const total = previousTotals[liabilityColumn];
+            row.push(total);
+          }
+
+          for (const liabilityType of pendingLiabilityTypes) {
+            const reasons = reasonsResponse.changeReasonsByLiability[liabilityType];
+            row.push(reasons);
+          }
+
+          row.push(taxTypeCode);
+          // Note: The pending liabilities action's output uses tax type codes, not IDs.
+          const currentTotals = outputValue.currentTotals[taxTypeCode];
+          for (const liabilityColumn of pendingLiabilityColumns) {
+            const total = currentTotals[liabilityColumn];
+            row.push(total);
+          }
+        }
+        if (typeof row[9] === 'undefined') {
+          row[9] = taxTypeCode;
+        }
+        // Fill empty columns
+        while (row.length < numberOfColumns) {
+          row.push('');
+        }
+        rows.push(row);
+        i++;
+      }
+    }
+
+    return unparseCsv(rows);
+  }
+  const json = {};
+  // TODO: Share code with pending liabilities
+  for (const client of clients) {
+    if (client.id in clientOutputs) {
+      const output = clientOutputs[client.id];
+      let jsonClient = { id: client.id };
+      if (!anonymizeClients) {
+        jsonClient = Object.assign(jsonClient, {
+          name: client.name,
+          username: client.username,
+        });
+      }
+      /** @type {ChangeReasonsActionOutput} */
+      const outputValue = output.value;
+      if (outputValue !== null) {
+        json[client.id] = {
+          client: jsonClient,
+          error: output.error,
+          ...outputValue,
+        };
+      } else {
+        json[client.id] = null;
+      }
+    }
+  }
+  return writeJson(json);
+}
+
 const PendingLiabilityChangeReasonsClientAction = createClientAction({
   id: 'pendingLiabilityChangeReasons',
   name: 'Get reasons for pending liabilities',
   requiresTaxTypes: true,
   requiredActions: ['getAllPendingLiabilities', 'taxPayerLedger'],
   defaultInput: () => ({}),
+  hasOutput: true,
+  generateOutputFiles({ clients, outputs }) {
+    return createOutputFile({
+      label: 'Pending liability changes',
+      filename: 'pendingLiabilityChanges',
+      formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+      value: outputs,
+      formatter: options => outputFormatter(Object.assign({ clients }, options)),
+    });
+  },
 });
+
+/**
+ * @typedef {Object} ChangeReasonsActionOutput
+ * @property {Date} previousWeekEnding
+ * @property {Date} currentWeekEnding
+ * @property {TotalsByTaxTypeCode} previousTotals
+ * @property {TotalsByTaxTypeCode} currentTotals
+ * @property {Object.<string, import('./logic').TaxPayerLedgerLogicFnResponse>} taxTypes
+ * Change reason response by tax type Id.
+ */
 
 PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
@@ -46,11 +198,19 @@ PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRun
 
     const lastPendingLiabilityTotals = this.getLastPendingLiabilities();
     /** @type {import('../pending_liabilities').ParsedPendingLiabilitiesOutput} */
-    const pendingLiabilitiesOutput = this.getActionOutput('getAllPendingLiabilities');
+    const currentPendingLiabilitiesOutput = this.getInstance('getAllPendingLiabilities').output;
     /** @type {import('./index').LedgerOutput} */
-    const recordsByTaxTypeId = this.getActionOutput('taxPayerLedger');
+    const recordsByTaxTypeId = this.getInstance('taxPayerLedger').output;
 
-    const output = {};
+    /** @type {ChangeReasonsActionOutput} */
+    const output = {
+      // FIXME: Add actual previous week ending date
+      previousWeekEnding: 'DD-MM-YY',
+      currentWeekEnding: moment().format('DD-MM-YY'),
+      previousTotals: lastPendingLiabilityTotals,
+      currentTotals: currentPendingLiabilitiesOutput.totals,
+      taxTypes: {},
+    };
 
     // Run on each tax account
     await parallelTaskMap({
@@ -75,11 +235,11 @@ PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRun
               parentTaskId,
               taxTypeId,
               lastPendingLiabilityTotals: lastPendingLiabilityTotals[taxTypeCode],
-              pendingLiabilityTotals: pendingLiabilitiesOutput.totals[taxTypeCode],
+              pendingLiabilityTotals: currentPendingLiabilitiesOutput.totals[taxTypeCode],
               taxPayerLedgerRecords: recordsByTaxTypeId[taxTypeId],
             });
 
-            output[taxTypeId] = reasonsResponse;
+            output.taxTypes[taxTypeId] = reasonsResponse;
           },
         });
       },

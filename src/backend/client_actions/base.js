@@ -289,12 +289,15 @@ export class ClientActionRunner {
     this.storeProxy.retryReason = reason;
   }
 
-  getActionOutput(actionId) {
+  /**
+   * @param {string} actionId
+   * @returns {import('@/store/modules/client_actions').ActionInstanceData}
+   */
+  getInstance(actionId) {
     // TODO: Change this to support multiple actions of the same type in a client
     const { currentRunId } = store.state.clientActions;
-    /** @type {import('@/store/modules/client_actions').ActionInstanceData} */
     const instance = store.getters['clientActions/getInstance'](currentRunId, actionId, this.storeProxy.client.id);
-    return instance.output;
+    return instance;
   }
 }
 

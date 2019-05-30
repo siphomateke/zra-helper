@@ -27,7 +27,7 @@ export const pendingLiabilityColumns = [
 ];
 
 // TODO: Type keys as totalsColumn when using TypeScript
-const totalsColumnsNames = {
+export const pendingLiabilityColumnNamesMap = {
   principal: 'Principal',
   interest: 'Interest',
   penalty: 'Penalty',
@@ -38,6 +38,11 @@ const totalsColumnsNames = {
  * @typedef {Object.<string, string>} Totals
  * Totals with two decimal places. The possible totals are all the items in
  * `pendingLiabilityColumns`.
+ */
+
+/**
+ * @typedef {Object.<string, Totals>} TotalsByTaxTypeCode
+ * Totals by tax type code.
  */
 
 /**
@@ -168,7 +173,7 @@ function outputFormatter({
       ['taxType', 'Tax type'],
     ]);
     pendingLiabilityColumns.forEach((c) => {
-      columns.set(c, totalsColumnsNames[c]);
+      columns.set(c, pendingLiabilityColumnNamesMap[c]);
     });
     columns.set('error', 'Error');
     const rows = objectToCsvTable(csvOutput, columns);
@@ -240,7 +245,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
 /**
  * @typedef {Object} ParsedPendingLiabilitiesOutput
  * @property {string} client
- * @property {Object.<import('@/backend/constants').TaxTypeCode, Object.<string, string>>} totals
+ * @property {TotalsByTaxTypeCode} totals
  */
 
 /**
