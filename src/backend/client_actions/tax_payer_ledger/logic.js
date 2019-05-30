@@ -296,36 +296,40 @@ function getDifferenceInDays(date1, date2) {
 
 /**
  * @template {ParsedTaxPayerLedgerRecord} Record
- * @typedef {Object} PastWeekRecordsResponse
- * @property {Record[]} withinLastWeek
- * @property {Record[]} exactlyAWeekAgo
+ * @typedef {Object} RecordsDateRangeResponse
+ * @property {Record[]} withinDateRange
+ * @property {Record[]} exactlyInRange
+ * Records that were either exactly on the `olderDate` or the `newerDate`.
  */
 
 /**
- * Gets all transactions that took place in the past week.
+ * Gets all transactions that took place within the two dates specified.
  * @template {ParsedTaxPayerLedgerRecord} Record
  * @param {Record[]} records
- * @param {UnixDate} currentDate
- * @returns {PastWeekRecordsResponse<Record>}
+ * @param {UnixDate} olderDate The older date
+ * @param {UnixDate} newerDate The newer date
+ * @returns {RecordsDateRangeResponse<Record>}
  */
-export function getRecordsFromPastWeek(records, currentDate = new Date().valueOf()) {
+export function getRecordsInDateRange(records, olderDate, newerDate) {
   const sorted = sortRecordsByDate(records, 'transactionDate', false);
-  const exactlyAWeekAgo = [];
-  const withinLastWeek = [];
+  const exactlyInRange = [];
+  const withinDateRange = [];
   for (const record of sorted) {
-    const diff = getDifferenceInDays(currentDate, record.transactionDate);
-    if (diff >= 0 && diff <= 7) {
-      withinLastWeek.push(record);
-      if (diff === 7) {
-        exactlyAWeekAgo.push(record);
+    const diff1 = getDifferenceInDays(record.transactionDate, olderDate);
+    const diff2 = getDifferenceInDays(record.transactionDate, newerDate);
+    if (diff1 >= 0 && diff2 <= 0) {
+      withinDateRange.push(record);
+      if (diff1 === 0 || diff2 === 0) {
+        exactlyInRange.push(record);
       }
-    } else if (diff > 7) {
+    } else if (diff1 < 0) {
+      // Since records are sorted newest to oldest, once we reach one older than the old date, stop.
       break;
     }
   }
   return {
-    withinLastWeek,
-    exactlyAWeekAgo,
+    withinDateRange,
+    exactlyInRange,
   };
 }
 
@@ -799,7 +803,7 @@ function generateChangeReasonDetails({
  * @param {Object} options
  * @param {PairedLedgerRecord} options.record The return as a record
  * @param {ClosingBalancesByPeriod<any>} options.closingBalances
- * @param {number} options.difference The change in pending liabilities since last week.
+ * @param {number} options.difference The change in pending liabilities.
  * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {PendingLiabilityType} options.liabilityType
  * @param {Client} options.client
@@ -820,7 +824,7 @@ async function getReturnSystemErrors({
   /** @type {LedgerSystemError[]} */
   const systemErrors = [];
 
-  // If pending liabilities increased from last week
+  // If pending liabilities increased since last time
   if (difference > 0) {
     // If specifically principal increased by less than a kwacha
     if (liabilityType === 'principal' && difference < scaleZraAmount(1)) {
@@ -917,10 +921,10 @@ async function getReturnSystemErrors({
  * Gets the records that should be used to actually generate the final reason strings output.
  * @param {Object} options
  * @param {PairedLedgerRecord[]} options.records
- * All the records that could have caused a change in pending liabilities since last week.
+ * All the records that could have caused a change in pending liabilities.
  * @param {RecordsBySrNo<PairedLedgerRecord>} options.recordsBySrNo
  * @param {ClosingBalancesByPeriod<any>} options.closingBalances
- * @param {number} options.difference The change in pending liabilities since last week.
+ * @param {number} options.difference The change in pending liabilities.
  * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
  * @param {PendingLiabilityType} options.liabilityType
  * @param {Client} options.client
@@ -1113,15 +1117,15 @@ function filterRecordsByLiabilityType(records, liabilityType) {
 }
 
 /**
- * Gets unbalanced records from a `PastWeekRecordsResponse`.
+ * Gets unbalanced records from records that were sorted by transaction date.
  * @template {ParsedTaxPayerLedgerRecord} Record
- * @param {PastWeekRecordsResponse<Record>} pastWeekRecords
+ * @param {Record[]} recordsInDateRange
  * @returns The unbalanced records.
  */
-function getUnbalancedRecordsFromPastWeek(pastWeekRecords) {
-  let records = pastWeekRecords.withinLastWeek;
-  // The ZRA website sorts by fromDate by default but since we sorted by transaction date we
-  // have to restore the original order.
+function getUnbalancedRecordsInDateRange(recordsInDateRange) {
+  let records = recordsInDateRange;
+  // The ZRA website already sorts by fromDate by default but since we sorted by transaction date
+  // we have to restore the original order.
   records = sortRecordsBySerialNumber(records);
   records = removeReversals(records);
   const pairedRecords = pairRecords(records);
@@ -1150,17 +1154,18 @@ function getAllPairedRecords(parsedLedgerRecords) {
  */
 
 /**
- * Processes records from the tax payer ledger to determine why pending liabilities have changed
- * since the last week.
+ * Processes records from the tax payer ledger to determine why pending liabilities between two
+ * dates.
  * @param {Object} options
  * @param {import('@/backend/constants').TaxTypeNumericalCode} options.taxTypeId
- * @param {PendingLiabilityTotals} options.lastPendingLiabilityTotals
- * The pending liability grand totals from the previous week
- * @param {PendingLiabilityTotals} options.pendingLiabilityTotals
- * The pending liability grand totals from this week.
+ * @param {PendingLiabilityTotals} options.previousPendingLiabilityTotals
+ * Pending liability grand totals from a date older than `currentPendingLiabilityTotals`.
+ * @param {PendingLiabilityTotals} options.currentPendingLiabilityTotals
+ * Pending liability grand totals from a date newer than `previousPendingLiabilityTotals`.
+ * @param {UnixDate} [options.previousDate]
+ * The previous date. Should match when `previousPendingLiabilityTotals` were retrieved.
  * @param {UnixDate} [options.currentDate]
- * The current date. Should match when `pendingLiabilityTotals` were retrieved and be a week from
- * when `lastPendingLiabilityTotals` were retrieved.
+ * The current date. Should match when `currentPendingLiabilityTotals` were retrieved.
  * @param {TaxPayerLedgerRecord[]} options.taxPayerLedgerRecords
  * All records in the tax payer ledger.
  * @param {Client} options.client
@@ -1169,9 +1174,10 @@ function getAllPairedRecords(parsedLedgerRecords) {
  */
 export default async function taxPayerLedgerLogic({
   taxTypeId,
-  lastPendingLiabilityTotals,
-  pendingLiabilityTotals,
-  currentDate = new Date().valueOf(), // FIXME: Remove this
+  previousPendingLiabilityTotals,
+  currentPendingLiabilityTotals,
+  previousDate,
+  currentDate,
   taxPayerLedgerRecords,
   client,
   parentTaskId,
@@ -1188,9 +1194,9 @@ export default async function taxPayerLedgerLogic({
   // Note: It's OK to do this before removing reversals because the reversals will also be zero.
   parsedLedgerRecords = removeZeroRecords(parsedLedgerRecords);
 
-  // Find all the unbalanced records from the past week.
-  const pastWeekRecords = getRecordsFromPastWeek(parsedLedgerRecords, currentDate);
-  const unbalancedRecords = getUnbalancedRecordsFromPastWeek(pastWeekRecords);
+  // Find all the unbalanced records within the date range (usually the last week).
+  const recordsInDateRange = getRecordsInDateRange(parsedLedgerRecords, previousDate, currentDate);
+  const unbalancedRecords = getUnbalancedRecordsInDateRange(recordsInDateRange.withinDateRange);
 
   // Match records to what they are related to.
   const pairedRecords = getAllPairedRecords(parsedLedgerRecords);
@@ -1202,12 +1208,12 @@ export default async function taxPayerLedgerLogic({
   const liabilityPromises = pendingLiabilityTypes.map(liabilityType => (async () => {
     /** @type {ChangeReasonDetails[]} */
     let changeReasonDetails = [];
-    const lastWeek = parseAmountString(lastPendingLiabilityTotals[liabilityType]);
-    const thisWeek = parseAmountString(pendingLiabilityTotals[liabilityType]);
-    if (lastWeek === null || thisWeek === null) {
+    const lastTotal = parseAmountString(previousPendingLiabilityTotals[liabilityType]);
+    const currentTotal = parseAmountString(currentPendingLiabilityTotals[liabilityType]);
+    if (lastTotal === null || currentTotal === null) {
       throw new LedgerError('Invalid pending liability totals', 'InvalidTotals');
     }
-    const difference = thisWeek - lastWeek;
+    const difference = currentTotal - lastTotal;
     if (Math.abs(difference) > 0) {
       // TODO: Test this. `example1_output.csv` is a good sample.
       /** Records that could have contributed to the current pending liability type changing. */
@@ -1236,7 +1242,7 @@ export default async function taxPayerLedgerLogic({
         }
 
         // If there is no single record that exactly matches the amount, then any of the unbalanced
-        // records from the last week could have contributed to the change.
+        // records from within the date range could have contributed to the change.
         changeRecords = potentialChangeRecords;
       }
 
@@ -1250,13 +1256,14 @@ export default async function taxPayerLedgerLogic({
       }
       if (changeRecordsSum !== difference) {
         let errorMessage = 'The sum of the records determined to have caused a change in pending liabilities doesn\'t match the actual change in pending liabilities.';
-        // Check if any transactions took place exactly 7 days ago.
-        let exactlyAWeekAgoSrNos = [];
-        if (pastWeekRecords.exactlyAWeekAgo.length > 0) {
+        // Check if any transactions took place either on the `previousDate` or the `currentDate`.
+        let exactlyInDateRangeSrNos = [];
+        if (recordsInDateRange.exactlyInRange.length > 0) {
           // If some did, that could be why things don't add up.
-          exactlyAWeekAgoSrNos = pastWeekRecords.exactlyAWeekAgo.map(r => r.srNo);
-          errorMessage += ` The following records were from exactly a week ago [${exactlyAWeekAgoSrNos.join(',')}] and could have caused the mismatch.`;
-          // TODO: Consider retrying without those from exactly a week ago
+          exactlyInDateRangeSrNos = recordsInDateRange.exactlyInRange.map(r => r.srNo);
+          errorMessage += ` The following records took place on the previous date or current date [${exactlyInDateRangeSrNos.join(',')}] and could have caused the mismatch.`;
+          // TODO: Consider retrying without those that were exactly on the `previousDate` or
+          // `currentDate`
         }
         processingErrors.push(new SumOfChangeRecordsNotEqualToDifference(
           errorMessage,
@@ -1264,13 +1271,13 @@ export default async function taxPayerLedgerLogic({
           {
             changeRecordsSum,
             pendingLiabilityDifference: difference,
-            recordsFromExactlyAWeekAgo: exactlyAWeekAgoSrNos,
+            recordsExactlyInDateRange: exactlyInDateRangeSrNos,
           },
         ));
       }
 
-      // Get all the records each change record is linked to, if the record they are linked to
-      // is not from within the last week. This is needed to generate system errors from, e.g.
+      // Get all the records each change record is linked to, even if the record they are linked to
+      // is not from within the date range. This is needed to generate system errors from, e.g.
       // payment's returns.
       const changeRecordsWithPairInfo = changeRecords.map(
         record => pairedRecordsBySrNo.get(record.srNo),
