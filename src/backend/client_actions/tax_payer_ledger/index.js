@@ -7,43 +7,50 @@ import createTask from '@/transitional/tasks';
 import { createClientAction, ClientActionRunner } from '../base';
 import moment from 'moment';
 
-/* eslint-disable max-len */
 /**
  * @typedef {Object} RunnerInput
- * @property {import('@/backend/client_actions/pending_liabilities').ParsedPendingLiabilitiesOutput[]} lastPendingLiabilities
+ * @property {import('@/backend/constants').Date} [fromDate]
+ * @property {import('@/backend/constants').Date} [toDate]
  */
-/* eslint-enable max-len */
 
 const TaxPayerLedgerClientAction = createClientAction({
   id: 'taxPayerLedger',
-  name: 'Get tax payer ledger',
+  name: 'Get records from tax payer ledger',
   requiresTaxTypes: true,
-  defaultInput: () => ({}),
+  defaultInput: () => ({
+    fromDate: '01/01/2013',
+    toDate: moment().format('DD/MM/YYYY'),
+  }),
 });
+
+/**
+ * @typedef {Object.<string, import('@/backend/reports').TaxPayerLedgerRecord[]>} LedgerOutput
+ * Ledger records by tax type ID
+ */
 
 TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
   constructor(data) {
     super(data, TaxPayerLedgerClientAction);
-    this.records = [];
   }
 
   async runInternal() {
     const { task: parentTask, client } = this.storeProxy;
     /** @type {{input: RunnerInput}} */
     const { input } = this.storeProxy;
-    const fromDate = '01/01/2013';
-    const toDate = moment().format('DD/MM/YYYY');
+    const { fromDate, toDate } = input;
 
     // Get data for each tax account
-    this.records = await parallelTaskMap({
+    const recordsResponses = await parallelTaskMap({
       task: parentTask,
       list: client.registeredTaxAccounts,
       /**
        * @param {import('../utils').TaxAccount} taxAccount
        */
       async func(taxAccount, parentTaskId) {
+        const { taxTypeId } = taxAccount;
+        const taxTypeCode = taxTypes[taxTypeId];
         const taxAccountTask = await createTask(store, {
-          title: `Get ${taxTypes[taxAccount.taxTypeId]} tax payer ledger`,
+          title: `Get ${taxTypeCode} tax payer ledger`,
           parent: parentTaskId,
         });
         return taskFunction({
@@ -53,7 +60,7 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
             const accountCode = await getAccountCodeTask({
               parentTaskId: taxAccountTask.id,
               accountName: taxAccount.accountName,
-              taxTypeId: taxAccount.taxTypeId,
+              taxTypeId,
             });
 
             const task = await createTask(store, {
@@ -86,6 +93,7 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
               },
             });
 
+            /** @type {import('@/backend/reports').TaxPayerLedgerRecord[]} */
             const records = [];
             for (const response of Object.values(allResponses)) {
               if (!('error' in response)) {
@@ -100,6 +108,12 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
         });
       },
     });
+
+    const output = {};
+    for (const recordsResponse of recordsResponses) {
+      output[recordsResponse.item.taxTypeId] = recordsResponse.value;
+    }
+    this.storeProxy.output = output;
   }
 };
 export default TaxPayerLedgerClientAction;
