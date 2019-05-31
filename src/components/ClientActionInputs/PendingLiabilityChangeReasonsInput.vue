@@ -23,19 +23,6 @@
         />
       </b-field>
     </b-field>
-    <b-field grouped>
-      <b-field
-        :message="fields.currentDate.error"
-        :type="fields.currentDate.type"
-        label="Current date"
-      >
-        <DateInput
-          :value="input.currentDate"
-          :disabled="disabled"
-          @input="onCurrentDateChanged"
-        />
-      </b-field>
-    </b-field>
   </div>
 </template>
 
@@ -66,10 +53,6 @@ export default {
     return {
       fields: {
         previousDate: {
-          error: null,
-          type: '',
-        },
-        currentDate: {
           error: null,
           type: '',
         },
@@ -133,14 +116,9 @@ export default {
     },
     validateDates() {
       this.validateDate('previous');
-      this.validateDate('current');
     },
     onPreviousDateChanged(value) {
       this.input.previousDate = value;
-      this.validateDates();
-    },
-    onCurrentDateChanged(value) {
-      this.input.currentDate = value;
       this.validateDates();
     },
   },
