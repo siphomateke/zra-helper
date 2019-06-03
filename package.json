@@ -40,6 +40,7 @@
     "ocrad.js": "0.0.1",
     "papaparse": "^4.5.0",
     "text-table": "^0.2.0",
+    "vee-validate": "^2.2.9",
     "vue": "^2.5.17",
     "vue-clipboard2": "^0.2.1",
     "vue-highlightjs": "^1.3.3",

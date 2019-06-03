@@ -1,12 +1,20 @@
 <template>
-  <component
-    :is="actionInputComponent"
-    :disabled="disabled"
-    v-model="input"
-  />
+  <form @submit.prevent="submit">
+    <component
+      :is="actionInputComponent"
+      :disabled="disabled"
+      :bus="bus"
+      v-model="input"
+    />
+    <button
+      v-show="false"
+      type="submit"
+    >Submit</button>
+  </form>
 </template>
 
 <script>
+import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import PendingLiabilitiesInput from '@/components/ClientActionInputs/PendingLiabilitiesInput.vue';
 import ReturnsInput from '@/components/ClientActionInputs/ReturnsInput.vue';
@@ -38,6 +46,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Event bus */
+    bus: {
+      type: Object,
+      default: new Vue(),
+    },
   },
   computed: {
     ...mapGetters('clientActions', [
@@ -51,6 +64,11 @@ export default {
     if (this.input === null) {
       this.input = this.getDefaultActionInput(this.id);
     }
+  },
+  methods: {
+    submit() {
+      this.bus.$emit('submit');
+    },
   },
 };
 </script>

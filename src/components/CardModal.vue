@@ -2,6 +2,7 @@
   <b-modal
     :active.sync="internalActive"
     has-modal-card
+    @close="$emit('close')"
   >
     <div
       :class="{overflow: !scrollable}"

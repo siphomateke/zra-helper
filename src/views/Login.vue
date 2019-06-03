@@ -8,42 +8,46 @@
         <div class="column">
           <!-- eslint-disable max-len -->
           <b-field
-            :type="fields.loginDetails.type"
-            :message="fields.loginDetails.message"
+            :type="$bFieldType('login_details')"
+            :message="$bFieldValidationError('login_details')"
             title="Client login details separated by tabs or commas. The details can either be name, username and password or just username and password."
             label="Login details"
           >
             <!-- eslint-enable max-len -->
             <b-input
+              v-validate="'loginDetails'"
               ref="loginDetailsInput"
               v-model="loginDetails"
+              name="login_details"
               @blur="updateLoginDetails"
             />
           </b-field>
         </div>
         <div class="column">
           <b-field
-            :type="fields.username.type"
-            :message="fields.username.message"
+            :type="$bFieldType('username')"
+            :message="$bFieldValidationError('username')"
             label="Username"
           >
             <b-input
+              v-validate="'required|clientUsername'"
               v-model="username"
-              @blur="onBlurUsername"
+              name="username"
             />
           </b-field>
         </div>
         <div class="column">
           <b-field
-            :type="fields.password.type"
-            :message="fields.password.message"
+            :type="$bFieldType('password')"
+            :message="$bFieldValidationError('password')"
             label="Password"
           >
             <b-input
+              v-validate="'required|clientPassword'"
               v-model="password"
+              name="password"
               type="password"
               password-reveal
-              @blur="onBlurPassword"
             />
           </b-field>
         </div>
@@ -62,15 +66,16 @@
 
 <script>
 import TaskList from '@/components/tasks/TaskList.vue';
-import { validateClientUsername, validateClientPassword } from '../backend/client_file_reader';
 import { robustLogin } from '@/backend/client_actions/user';
 import createTask from '@/transitional/tasks';
 import { taskFunction } from '@/backend/client_actions/utils';
-import Papa from 'papaparse';
-import { clientPropValidationErrorMessages } from '@/backend/constants';
+import parseAndValidateLoginDetails from '@/validation/rules/loginDetails';
 
 export default {
   name: 'LoginView',
+  $_veeValidate: {
+    validator: 'new',
+  },
   components: {
     TaskList,
   },
@@ -79,20 +84,6 @@ export default {
       loginDetails: '',
       username: '',
       password: '',
-      fields: {
-        loginDetails: {
-          type: '',
-          message: '',
-        },
-        username: {
-          type: '',
-          message: '',
-        },
-        password: {
-          type: '',
-          message: '',
-        },
-      },
       tasks: [],
     };
   },
@@ -105,102 +96,12 @@ export default {
     });
   },
   methods: {
-    showFieldValidation(field, valid, errors) {
-      if (!valid) {
-        this.fields[field].type = 'is-danger';
-        this.fields[field].message = errors.join(', ');
-      } else {
-        this.fields[field].type = 'is-success';
-        this.fields[field].message = '';
-      }
-    },
-    getErrorMessageFromCode(code) {
-      if (code in clientPropValidationErrorMessages) {
-        return clientPropValidationErrorMessages[code];
-      }
-      return 'Unknown error';
-    },
-    validateProperty(prop, validationFunc) {
-      const validation = validationFunc(this[prop]);
-      const errors = validation.errors.map(code => this.getErrorMessageFromCode(code));
-      this.showFieldValidation(prop, validation.valid, errors);
-      return validation.valid;
-    },
-    validateUsername() {
-      return this.validateProperty('username', validateClientUsername);
-    },
-    validatePassword() {
-      return this.validateProperty('password', validateClientPassword);
-    },
-    validateLoginDetails() {
-      let valid = true;
-      let errorMessage = '';
-      const data = {
-        name: '',
-        username: '',
-        password: '',
-      };
-      if (this.loginDetails) {
-        const parsed = Papa.parse(this.loginDetails);
-        if (parsed.errors.length > 0) {
-          valid = false;
-          errorMessage += parsed.errors.map(error => error.message).join(', ');
-        } else {
-          const fields = parsed.data[0];
-          if (fields.length === 2 || fields.length === 3) {
-            if (fields.length === 2) {
-              [data.username, data.password] = fields;
-            } else {
-              [data.name, data.username, data.password] = fields;
-            }
-            if (data.username.length === 0 || data.password.length === 0) {
-              valid = false;
-              if (data.username.length === 0 && data.password.length === 0) {
-                errorMessage = 'Username and password must not be blank.';
-              } else if (data.username.length === 0) {
-                errorMessage = 'Username must not be blank.';
-              } else if (data.password.length === 0) {
-                errorMessage = 'Password must not be blank.';
-              }
-            }
-          } else {
-            valid = false;
-            if (fields.length > 3) {
-              errorMessage += 'Too many fields.';
-            } else {
-              errorMessage += 'Too few fields. Must contain at least a username and password separated by a tab or a comma.';
-            }
-          }
-        }
-      }
-      this.showFieldValidation('loginDetails', valid, [errorMessage]);
-      return {
-        valid,
-        data,
-      };
-    },
-    onBlurUsername() {
-      this.validateUsername();
-    },
-    onBlurPassword() {
-      this.validatePassword();
-    },
     updateLoginDetails() {
-      const response = this.validateLoginDetails();
-      if (this.loginDetails && response.valid) {
+      const response = parseAndValidateLoginDetails(this.loginDetails);
+      if (response.valid) {
         this.username = response.data.username;
         this.password = response.data.password;
-        this.validateUsername();
-        this.validatePassword();
       }
-    },
-    validateForm() {
-      const validations = [];
-      const validationResult = this.validateLoginDetails();
-      validations.push(validationResult.valid);
-      validations.push(this.validateUsername());
-      validations.push(this.validatePassword());
-      return !validations.includes(false);
     },
     async login() {
       const task = await createTask(this.$store, {
@@ -224,8 +125,7 @@ export default {
       });
     },
     async submit() {
-      this.updateLoginDetails();
-      const valid = this.validateForm();
+      const valid = await this.$validator.validateAll();
       if (valid) {
         await this.login();
       }
