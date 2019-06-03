@@ -199,23 +199,21 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   }),
   hasOutput: true,
   generateOutputFiles({ clients, allClients, outputs }) {
-    return [
-      createOutputFile({
-        label: 'All clients pending liabilities',
-        filename: 'pendingLiabilities',
-        value: outputs,
-        preview: true,
-        formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-        defaultFormat: exportFormatCodes.CSV,
-        formatter: ({ output, format, anonymizeClients }) => outputFormatter({
-          clients,
-          allClients,
-          clientOutputs: output,
-          format,
-          anonymizeClients,
-        }),
+    return createOutputFile({
+      label: 'All clients pending liabilities',
+      filename: 'pendingLiabilities',
+      value: outputs,
+      preview: true,
+      formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+      defaultFormat: exportFormatCodes.CSV,
+      formatter: ({ output, format, anonymizeClients }) => outputFormatter({
+        clients,
+        allClients,
+        clientOutputs: output,
+        format,
+        anonymizeClients,
       }),
-    ];
+    });
   },
 });
 

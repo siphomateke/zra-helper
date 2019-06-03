@@ -1,9 +1,11 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
+import { Dialog } from 'buefy/dist/components/dialog';
 import config from './modules/config';
 import tasks from './modules/tasks';
 import log from './modules/log';
 import { getPlatformEol } from '@/backend/file_utils';
+import { errorToString } from '@/backend/errors';
 
 Vue.use(Vuex);
 
@@ -55,6 +57,28 @@ export const storeOptions = {
           break;
       }
       commit('setEol', char);
+    },
+    /**
+     *
+     * @param {Object} options
+     * @param {string} options.title
+     * @param {string} [options.error]
+     * @param {string} [options.message]
+     */
+    showError(_ctx, options) {
+      let message = '';
+      if ('error' in options) {
+        message = errorToString(options.error);
+      } else if ('message' in options) {
+        ({ message } = options);
+      }
+      Dialog.alert({
+        title: options.title,
+        message,
+        hasIcon: true,
+        type: 'is-danger',
+        iconPack: 'fas', // FIXME: Use default icon pack defined in vue_init
+      });
     },
   },
   strict: process.env.NODE_ENV !== 'production',

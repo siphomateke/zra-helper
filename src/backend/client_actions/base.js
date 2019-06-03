@@ -56,7 +56,7 @@ import { taskStates } from '@/store/modules/tasks';
  *
  * @callback ClientActionOutputFilesGenerator
  * @param {ClientActionOutputFilesGeneratorFnOptions} options
- * @returns {ClientActionOutputFile[]}
+ * @returns {ClientActionOutputFile}
  */
 
 /**
