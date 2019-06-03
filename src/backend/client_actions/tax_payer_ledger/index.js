@@ -6,7 +6,12 @@ import { getTaxPayerLedgerPage, ledgerColumns } from '@/backend/reports';
 import getAccountCodeTask from '@/backend/tax_account_code';
 import store from '@/store';
 import createTask from '@/transitional/tasks';
-import { createClientAction, ClientActionRunner, createOutputFile } from '../base';
+import {
+  createClientAction,
+  ClientActionRunner,
+  createOutputFile,
+  inInput,
+} from '../base';
 import moment from 'moment';
 import { unparseCsv, writeJson } from '@/backend/file_utils';
 
@@ -14,6 +19,7 @@ import { unparseCsv, writeJson } from '@/backend/file_utils';
  * @typedef {Object} RunnerInput
  * @property {import('@/backend/constants').Date} [fromDate]
  * @property {import('@/backend/constants').Date} [toDate]
+ * @property {import('@/backend/constants').TaxTypeNumericalCode[]} [taxTypeIds]
  */
 
 function outputFormatter({ output, format }) {
@@ -61,6 +67,7 @@ const TaxPayerLedgerClientAction = createClientAction({
   defaultInput: () => ({
     fromDate: '01/01/2013',
     toDate: moment().format('DD/MM/YYYY'),
+    taxTypeIds: Object.keys(taxTypes),
   }),
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {
@@ -108,10 +115,16 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
     const { input } = this.storeProxy;
     const { fromDate, toDate } = input;
 
+    let taxAccounts = client.registeredTaxAccounts;
+
+    if (inInput(input, 'taxTypeIds')) {
+      taxAccounts = taxAccounts.filter(account => input.taxTypeIds.includes(account.taxTypeId));
+    }
+
     // Get data for each tax account
     const recordsResponses = await parallelTaskMap({
       task: parentTask,
-      list: client.registeredTaxAccounts,
+      list: taxAccounts,
       /**
        * @param {import('../utils').TaxAccount} taxAccount
        */
