@@ -10,6 +10,9 @@ export default {
       tax_types: 'tax types',
       from_date: 'from date',
       to_date: 'to date',
+
+      // tasks viewer
+      tasks_json: 'tasks JSON',
     },
     custom: {
       tax_types: {
