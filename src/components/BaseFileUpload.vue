@@ -1,5 +1,8 @@
 <template>
-  <b-upload @input="fileInput">
+  <b-upload
+    v-bind="$attrs"
+    @input="fileInput"
+  >
     <div
       :class="{'has-name': file}"
       class="file"
@@ -24,8 +27,15 @@
 </template>
 
 <script>
+// FIXME: Indicate that upload is disabled
 export default {
   name: 'BaseFileUpload',
+  $_veeValidate: {
+    value() {
+      // Tell VeeValidate that this input is not empty
+      return this.file;
+    },
+  },
   data() {
     return {
       file: null,
