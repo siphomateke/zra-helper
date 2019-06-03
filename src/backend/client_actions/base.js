@@ -59,7 +59,7 @@ import { has, get } from 'dot-prop';
  *
  * @callback ClientActionOutputFilesGenerator
  * @param {ClientActionOutputFilesGeneratorFnOptions} options
- * @returns {ClientActionOutputFile[]}
+ * @returns {ClientActionOutputFile}
  */
 
 /**

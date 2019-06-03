@@ -8,12 +8,10 @@
           message="Getting output"
         />
         <ClientActionOutputFileWrapper
-          v-for="(outputFile, idx) in outputFiles"
-          :key="idx"
           :clients="clients"
           :action-id="actionId"
-          :output-file="outputFile"
-          :is-only-output="outputFiles.length === 1 && outputFile.children.length === 0"
+          :output-file="rootOutputFile"
+          :is-only-output="isOnlyOutput"
         />
       </div>
     </div>
@@ -21,9 +19,9 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 import LoadingMessage from '@/components/LoadingMessage.vue';
 import ClientActionOutputFileWrapper from './ClientActionOutputFileWrapper.vue';
-import { mapGetters } from 'vuex';
 
 export default {
   name: 'ClientActionOutput',
@@ -66,7 +64,10 @@ export default {
     clientOutputs() {
       return this.getOutputsOfAction(this.runId, this.actionId);
     },
-    outputFiles() {
+    isOnlyOutput() {
+      return this.rootOutputFile.children.length === 0;
+    },
+    rootOutputFile() {
       if (this.clientOutputs) {
         return this.action.generateOutputFiles({
           clients: this.clients,
