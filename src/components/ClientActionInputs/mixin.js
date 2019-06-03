@@ -1,27 +1,47 @@
+import Vue from 'vue';
+import { deepClone } from '@/utils';
+
+/** @type {import('vue').ComponentOptions} */
 export default {
+  $_veeValidate: {
+    validator: 'new',
+  },
   props: {
     disabled: {
       type: Boolean,
       default: false,
     },
+    bus: {
+      type: Object,
+      default: new Vue(),
+    },
   },
   data() {
     return {
-      input: null,
+      input: deepClone(this.value),
     };
   },
   watch: {
-    value: {
-      handler(value) {
-        this.input = value;
-      },
-      immediate: true,
+    value(value) {
+      this.input = deepClone(value);
     },
-    input: {
-      handler(value) {
-        this.$emit('input', value);
-      },
-      deep: true,
+  },
+  created() {
+    this.bus.$on('submit', this.submit);
+  },
+  destroyed() {
+    this.bus.$off('submit', this.submit);
+  },
+  methods: {
+    submit() {
+      // Make sure the new inputs have been actually processed before validating.
+      // If we don't wait till the next tick, inputs like the datepicker may still be set to an
+      // outdated value when the form is submitted and validated after pressing enter.
+      this.$nextTick(() => {
+        this.$validator.validateAll().then((valid) => {
+          if (valid) this.$emit('input', this.input);
+        });
+      });
     },
   },
 };

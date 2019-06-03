@@ -13,7 +13,11 @@
       :message="fileUploadFieldMessage"
       label="Tasks JSON"
     >
-      <FileUpload @input="fileUploaded"/>
+      <FileUpload
+        v-validate="'ext:json'"
+        name="tasks_json"
+        @input="onFileUpload"
+      />
     </b-field>
     <b-loading
       :active="importing || configIsLoading"
@@ -29,7 +33,7 @@
 <script>
 import FileUpload from '@/components/BaseFileUpload.vue';
 import TaskList from '@/components/tasks/TaskList.vue';
-import { loadFile, getExtension } from '@/backend/file_utils';
+import { loadFile } from '@/backend/file_utils';
 import configMixin from '@/mixins/config';
 
 // FIXME: Keep this in sync with the actual task properties somehow.
@@ -77,8 +81,12 @@ function getTasksObjectFromJson(version, jsonTasks, allTasks = {}) {
 }
 
 // FIXME: Make this not inefere with tasks in the dashboard.
+// TODO: Fully move validation to VeeValidate
 export default {
   name: 'TaskViewerView',
+  $_veeValidate: {
+    validator: 'new',
+  },
   components: {
     FileUpload,
     TaskList,
@@ -88,7 +96,7 @@ export default {
     return {
       taskListName: 'taskViewer',
       importedTasks: {},
-      imported: false,
+      fileWasUploaded: false,
       importSuccess: false,
       errorMessage: null,
       importing: false,
@@ -102,13 +110,33 @@ export default {
       return Object.keys(this.importedTasks).length;
     },
     fileUploadFieldType() {
-      if (this.imported) {
-        return this.importSuccess ? 'is-success' : 'is-danger';
+      let error = false;
+      let success = false;
+      const hasValidationError = this.$errors.has('tasks_json');
+      if (hasValidationError) {
+        error = true;
+      }
+      if (this.fileWasUploaded) {
+        if (this.importSuccess) {
+          success = true;
+        } else {
+          error = true;
+        }
+      }
+      if (error) {
+        return 'is-danger';
+      }
+      if (success) {
+        return 'is-success';
       }
       return '';
     },
     fileUploadFieldMessage() {
-      if (this.imported) {
+      const validationError = this.$bFieldValidationError('tasks_json');
+      if (validationError) {
+        return validationError;
+      }
+      if (this.fileWasUploaded) {
         if (this.importSuccess) {
           return `Successfully imported ${this.importedTaskCount} task(s).`;
         }
@@ -157,28 +185,27 @@ export default {
         }
       }
     },
-    async fileUploaded(file) {
-      this.importing = true;
-      try {
-        const ext = getExtension(file.name);
-        if (ext !== 'json') {
-          throw new Error(`Tasks file must be a JSON file. The uploaded file's extension was '.${ext}' instead of '.json'.`);
+    async onFileUpload(file) {
+      const valid = await this.$validator.validate('tasks_json');
+      if (valid) {
+        this.importing = true;
+        try {
+          const text = await loadFile(file);
+          await this.createTasksFromJson(JSON.parse(text));
+          this.importSuccess = true;
+          this.errorMessage = null;
+        } catch (error) {
+          this.importSuccess = false;
+          this.errorMessage = error.toString();
+          this.$showError({
+            title: 'Error importing tasks',
+            message: this.errorMessage,
+          });
+        } finally {
+          this.importing = false;
         }
-        const text = await loadFile(file);
-        await this.createTasksFromJson(JSON.parse(text));
-        this.importSuccess = true;
-        this.errorMessage = null;
-      } catch (error) {
-        this.importSuccess = false;
-        this.errorMessage = error.toString();
-        this.$showError({
-          title: 'Error importing tasks',
-          message: this.errorMessage,
-        });
-      } finally {
-        this.imported = true;
-        this.importing = false;
       }
+      this.fileWasUploaded = true;
     },
     warningDismissed() {
       this.$store.dispatch('config/set', {

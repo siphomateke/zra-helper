@@ -1,15 +1,27 @@
 <template>
   <b-field grouped>
-    <b-field label="From date">
+    <b-field
+      :type="$bFieldType('from_date')"
+      :message="$bFieldValidationError('from_date')"
+      label="From date"
+    >
       <DateInput
+        v-validate="fromDateValidation"
         v-model="fromDate"
         :disabled="disabled"
+        name="from_date"
       />
     </b-field>
-    <b-field label="To date">
+    <b-field
+      :type="$bFieldType('to_date')"
+      :message="$bFieldValidationError('to_date')"
+      label="To date"
+    >
       <DateInput
+        v-validate="toDateValidation"
         v-model="toDate"
         :disabled="disabled"
+        name="to_date"
       />
     </b-field>
   </b-field>
@@ -23,6 +35,7 @@ export default {
   components: {
     DateInput,
   },
+  inject: ['$validator'],
   props: {
     value: {
       type: Array,
@@ -50,6 +63,26 @@ export default {
       return {
         fromDate: this.fromDate,
         toDate: this.toDate,
+      };
+    },
+    fromDateValidation() {
+      return {
+        required: true,
+        date_format: 'dd/MM/yyyy',
+        before: [
+          this.toDate,
+          true, // include current date
+        ],
+      };
+    },
+    toDateValidation() {
+      return {
+        required: true,
+        date_format: 'dd/MM/yyyy',
+        after: [
+          this.fromDate,
+          true, // include current date
+        ],
       };
     },
   },

@@ -5,6 +5,7 @@ import Buefy from 'buefy';
 import DialogPlugin from '@/plugins/dialog';
 import VueClipboard from 'vue-clipboard2';
 import VueHighlightJS from 'vue-highlightjs';
+import './validation';
 import moment from 'moment';
 import store from './store';
 import initClientActions from './store/modules/client_actions/init';

@@ -3,16 +3,22 @@
     <label class="label">{{ fieldLabel }}</label>
     <template v-if="multiple">
       <CheckboxList
+        v-validate="'required'"
+        key="tax-type-checkbox-list"
         v-model="taxTypeIds"
         :checkboxes="checkboxes"
         :disabled="disabled"
+        name="tax_types"
       />
     </template>
     <b-select
+      v-validate="'required'"
       v-else
+      key="tax-type-select"
       :value="value"
       :multiple="multiple"
       :disabled="disabled"
+      name="tax_types"
       @input="onInput"
     >
       <option
@@ -21,6 +27,10 @@
         :value="taxTypeId"
       >{{ taxTypeLabels[taxTypeId] }}</option>
     </b-select>
+    <p
+      v-if="$errors.has('tax_types')"
+      class="help is-danger"
+    >{{ $errors.first('tax_types') }}</p>
   </div>
 </template>
 
@@ -33,6 +43,7 @@ export default {
   components: {
     CheckboxList,
   },
+  inject: ['$validator'],
   props: {
     value: {
       type: [String, Array],
