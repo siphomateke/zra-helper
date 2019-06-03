@@ -3,8 +3,9 @@ export default {
     attributes: {
       // login tab
       login_details: 'login details',
-      username: 'username',
-      password: 'password',
+      client_name: 'client name',
+      client_username: 'username',
+      client_password: 'password',
 
       // client action inputs
       tax_types: 'tax types',
