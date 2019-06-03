@@ -19,7 +19,7 @@
               ref="loginDetailsInput"
               v-model="loginDetails"
               name="login_details"
-              @blur="updateLoginDetails"
+              @input="updateLoginDetails"
             />
           </b-field>
         </div>
