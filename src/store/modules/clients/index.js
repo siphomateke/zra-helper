@@ -104,3 +104,53 @@ const vuexModule = {
   },
 };
 export default vuexModule;
+
+/**
+ * @typedef {Object} GetUniqueClientsFnResponse
+ * @property {Client[]} uniqueClients
+ * @property {string[]} invalidUsernames Usernames with multiple passwords.
+ * @property {Client[]} invalidClients
+ * Duplicate clients that were removed for having different passwords.
+ */
+
+/**
+ * Removes duplicate clients from an array of clients. Only duplicate clients with the same
+ * password are removed. Those that have different passwords are removed entirely and returned.
+ * @param {Client[]} clients
+ * @returns {GetUniqueClientsFnResponse}
+ */
+export function getUniqueClients(clients) {
+  const unique = new Map();
+  const invalidUsernames = [];
+  const invalidClients = {};
+  for (const client of clients) {
+    if (!unique.has(client.username)) {
+      unique.set(client.username, client);
+    } else {
+      // Make sure the clients' passwords are the same
+      const existingClient = unique.get(client.username);
+      if (client.password !== existingClient.password) {
+        if (!invalidUsernames.includes(client.username)) {
+          invalidUsernames.push(client.username);
+        }
+
+        // Both clients are invalid
+        if (!(existingClient.id in invalidClients)) {
+          invalidClients[existingClient.id] = existingClient;
+        }
+        if (!(client.id in invalidClients)) {
+          invalidClients[client.id] = client;
+        }
+      }
+    }
+  }
+  for (const username of invalidUsernames) {
+    unique.delete(username);
+  }
+  const uniqueClients = Array.from(unique.values());
+  return {
+    uniqueClients,
+    invalidUsernames,
+    invalidClients: Object.values(invalidClients),
+  };
+}

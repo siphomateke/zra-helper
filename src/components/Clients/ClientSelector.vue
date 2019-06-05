@@ -29,6 +29,11 @@
           field="username"
           label="Username"
         >{{ row.username }}</b-table-column>
+        <b-table-column
+          :sortable="true"
+          field="password"
+          label="Password"
+        >{{ row.password }}</b-table-column>
       </template>
     </b-table>
   </div>

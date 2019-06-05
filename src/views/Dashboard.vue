@@ -20,14 +20,20 @@
             ref="singleClientInput"
             @input="addSingleClient"
           />
-          <div class="buttons">
+          <div
+            class="buttons"
+            v-if="clients.length > 0"
+          >
             <OpenModalButton
-              v-if="clients.length > 0"
               label="View parsed clients"
               @click="parsedClientsViewerVisible = true"
             />
             <OpenModalButton
-              v-if="clients.length > 0"
+              title="Change and view which clients were deemed to be valid"
+              label="Select valid clients"
+              @click="validClientSelectorVisible = true"
+            />
+            <OpenModalButton
               label="Select clients"
               @click="clientSelectorVisible = true"
             />
@@ -147,6 +153,25 @@
       </ClientListModal>
       <ClientListModal
         :client-ids="clientIds"
+        :active.sync="validClientSelectorVisible"
+        title="Valid client selector"
+      >
+        <template slot-scope="{ clientIds }">
+          <ClientSelector
+            v-model="selectedValidClientIds"
+            :client-ids="clientIds"
+            :disabled="clientActionsRunning"
+          />
+        </template>
+        <div slot="foot">
+          <button
+            class="button"
+            @click="autoSelectValidClients"
+          >Auto-select valid clients</button>
+        </div>
+      </ClientListModal>
+      <ClientListModal
+        :client-ids="selectedValidClientIds"
         :active.sync="clientSelectorVisible"
         title="Client selector"
       >
@@ -188,6 +213,8 @@ import ClientActionFailures from '@/components/ClientActionFailures.vue';
 import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
 import { validateClient } from '../backend/client_file_reader';
+import { getUniqueClients } from '@/store/modules/clients';
+import ClientListDialog from '@/components/dialogs/ClientListDialog.vue';
 
 export default {
   name: 'DashboardView',
@@ -213,9 +240,11 @@ export default {
   data() {
     return {
       selectedClientIds: [],
+      selectedValidClientIds: [],
       selectedClientActions: [],
       parsedClientsViewerVisible: false,
       clientSelectorVisible: false,
+      validClientSelectorVisible: false,
       failuresRunId: null,
       failuresModalVisible: false,
       actionInputs: {},
@@ -293,13 +322,16 @@ export default {
   watch: {
     clientIds() {
       // Remove all the selected clients which no longer exist.
-      for (let i = this.selectedClientIds.length - 1; i >= 0; i--) {
-        const id = this.selectedClientIds[i];
+      this.removeInvalidClientsFromList('selectedValidClientIds', (id) => {
         const client = this.getClientById(id);
-        if (!client) {
-          this.selectedClientIds.splice(i);
-        }
-      }
+        return !client;
+      });
+      // Note: selectedValidClientIds doesn't need to be updated when clientIds changes as it
+      // will automatically change to remove any that were removed from selectedValidClientIds.
+    },
+    selectedValidClientIds(validIds) {
+      // Remove any previously selected client IDs that no longer exist in selectedValidClientIds.
+      this.removeInvalidClientsFromList('selectedClientIds', id => !validIds.includes(id));
     },
     clientActionsRunning(running) {
       if (!running && this.currentRunFailed) {
@@ -331,15 +363,53 @@ export default {
         await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
           actionIds: this.selectedClientActions,
           clientIds: this.selectedClientIds,
+          allClientIds: this.clientIds,
           actionInputs: this.actionInputs,
         });
       }
     },
-    async updateClients(clients) {
-      await this.$store.dispatch('clients/update', clients);
+    /**
+     * Removes clients that are no longer valid from a list.
+     * @param {string} list The name of the list to remove clients from.
+     * @param {(id: number) => boolean} test
+     * Function that, given the ID of a client, decides whether said client should be removed.
+     */
+    removeInvalidClientsFromList(list, test) {
+      for (let i = this[list].length - 1; i >= 0; i--) {
+        const id = this[list][i];
+        const shouldRemove = test(id);
+        if (shouldRemove) {
+          this[list].splice(i);
+        }
+      }
+    },
+    autoSelectValidClients() {
+      const clients = this.clientIds.map(id => this.getClientById(id));
+      const response = getUniqueClients(clients);
+      if (response.invalidUsernames.length > 0) {
+        const props = {
+          title: 'Warning',
+          confirmMessage: 'Duplicate clients with different passwords were detected. The following clients will not be run because of this:',
+          type: 'is-warning',
+          hasIcon: true,
+          clients: response.invalidClients,
+        };
+        this.$modal.open({
+          component: ClientListDialog,
+          hasModalCard: true,
+          props,
+        });
+      }
+      let selectedClients = response.uniqueClients;
+      selectedClients = selectedClients.filter(client => client.valid);
+      this.selectedValidClientIds = selectedClients.map(client => client.id);
+    },
+    async updateClients(clientIds) {
+      await this.$store.dispatch('clients/update', clientIds);
 
-      // Select all clients by default
-      this.selectedClientIds = this.clientIds;
+      // Select all non-duplicated clients by default
+      this.autoSelectValidClients();
+      this.selectedClientIds = this.selectedValidClientIds;
     },
     async addSingleClient(client) {
       const valid = await this.$refs.singleClientInput.$validator.validate();

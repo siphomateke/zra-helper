@@ -103,6 +103,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
   outputFormatter({
     clients,
+    allClients,
     outputs: clientOutputs,
     format,
     anonymizeClients,
@@ -112,10 +113,17 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
       const columnOrder = totalsColumns;
       // Columns are: client identifier, ...totals, error
       const numberOfColumns = 2 + totalsColumns.length + 1;
-      for (const client of clients) {
+
+      const clientOutputsByUsername = {};
+      for (const clientId of Object.keys(clientOutputs)) {
+        const client = allClients[clientId];
+        clientOutputsByUsername[client.username] = clientOutputs[clientId];
+      }
+
+      for (const client of allClients) {
         let value = null;
-        if (client.id in clientOutputs) {
-          ({ value } = clientOutputs[client.id]);
+        if (client.username in clientOutputsByUsername) {
+          ({ value } = clientOutputsByUsername[client.username]);
         }
         const totalsObjects = value ? value.totals : null;
         let i = 0;
