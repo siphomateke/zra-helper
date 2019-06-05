@@ -14,6 +14,7 @@ import { CaptchaLoadError, LogoutError } from '@/backend/errors';
 import OCRAD from 'ocrad.js';
 import md5 from 'md5';
 import { checkLogin } from '../content_scripts/helpers/check_login';
+import { taskStates } from '@/store/modules/tasks';
 
 /**
  * Creates a canvas from a HTML image element
@@ -125,6 +126,13 @@ async function getCaptchaText(maxCaptchaRefreshes) {
 /** @typedef {import('@/backend/constants').Client} Client */
 
 /**
+ * @typedef {Object} LoginResponse
+ * @property {number} tabId The ID of the logged in tab.
+ * @property {any} [checkLoginError]
+ * Any error that occurred checking if the client was successfully logged in.
+ */
+
+/**
  * Creates a new tab, logs in and then closes the tab
  * @param {Object} payload
  * @param {Client} payload.client
@@ -132,9 +140,9 @@ async function getCaptchaText(maxCaptchaRefreshes) {
  * @param {boolean} [payload.keepTabOpen]
  * Whether the logged in tab should be kept open after logging in.
  * @param {boolean} [payload.closeOnErrors]
- * Whether to close the tab if any errors occur getting its ID. Only used when `keepTabOpen`
- * is true.
- * @returns {Promise.<number>} The ID of the logged in tab.
+ * Whether to close the tab if any errors occurred when checking if the client was successfully
+ * logged in. Only used when `keepTabOpen` is true.
+ * @returns {Promise.<LoginResponse>}
  * @throws {import('@/backend/errors').ExtendedError}
  */
 export async function login({
@@ -155,6 +163,7 @@ export async function login({
 
   return taskFunction({
     task,
+    setState: false,
     async func() {
       // Retrieve login page to get hidden 'pwd' field's value.
       const doc = await getDocumentByAjax({
@@ -185,27 +194,45 @@ export async function login({
           const tab = await createTabPost(loginRequest);
           tabId = tab.id;
           await tabLoaded(tabId);
-          task.addStep('Checking if login was successful');
-          await runContentScript(tabId, 'check_login', { client });
         } else {
           doc = await getDocumentByAjax(Object.assign({ method: 'post' }, loginRequest));
-          task.addStep('Checking if login was successful');
-          checkLogin(doc, client);
         }
 
-        log.log(`Done logging in "${client.name}"`);
-        return tabId;
+        let checkLoginError;
+        try {
+          task.addStep('Checking if login was successful');
+          if (keepTabOpen) {
+            await runContentScript(tabId, 'check_login', { client });
+          } else {
+            checkLogin(doc, client);
+          }
+          log.log(`Done logging in "${client.name}"`);
+          task.state = taskStates.SUCCESS;
+        } catch (error) {
+          task.setError(error);
+          checkLoginError = error;
+          // By default, close the tab if logging in failed. This can be disabled by setting
+          // `closeOnErrors` to false.
+          if (keepTabOpen && closeOnErrors && tabId !== null) {
+            // TODO: Catch tab close errors
+            closeTab(tabId);
+          }
+        }
+
+        return {
+          tabId,
+          checkLoginError,
+        };
       } catch (error) {
         /*
-        If login doesn't get to the end, the tab ID will never be returned.
+        If opening the login tab failed, the tab ID will never be returned.
         Thus, nothing else will be able to close the login tab and it must be closed
         here instead.
 
         We may want to make it possible to return the tab ID even if an error occurs in the future,
-        however, this is not necessary at the moment since nothing else can run if logging in
-        fails.
+        however, this is not necessary at the moment since the tab is useless if it didn't load.
         */
-        if (keepTabOpen && closeOnErrors && tabId !== null) {
+        if (keepTabOpen && tabId !== null) {
           // TODO: Catch tab close errors
           closeTab(tabId);
         }
@@ -262,8 +289,9 @@ export async function logout({ parentTaskId }) {
  * The maximum number of times an attempt should be made to login to a client.
  * @param {boolean} [payload.keepTabOpen] Whether the logged in tab should be kept open.
  * @param {boolean} [payload.closeOnErrors]
- * Whether to close the tab if any errors occur getting its ID. Only used when `keepTabOpen`
- * is true.
+ * Whether to close the tab if any errors occur when checking if the client was successfully logged
+ * in. Only used when `keepTabOpen` is true. If more than one login attempt is made, only the tab
+ * from the last attempt will be kept open on errors.
  * @returns {Promise.<number>} The ID of the logged in tab.
  */
 export async function robustLogin({
@@ -296,12 +324,23 @@ export async function robustLogin({
           } else {
             task.status = 'Logging in';
           }
-          loggedInTabId = await login({
-            client, parentTaskId: task.id, keepTabOpen, closeOnErrors,
+          const response = await login({
+            client,
+            parentTaskId: task.id,
+            keepTabOpen,
+            closeOnErrors,
           });
+          loggedInTabId = response.tabId;
+          if (typeof response.checkLoginError !== 'undefined') {
+            throw response.checkLoginError;
+          }
           run = false;
         } catch (error) {
           if (error.type === 'LoginError' && error.code === 'WrongClient' && attempts + 1 < maxAttempts) {
+            // Even if `closeOnErrors` is false, close the tab as we are about to make another.
+            if (loggedInTabId !== null) {
+              closeTab(loggedInTabId);
+            }
             log.setCategory('login');
             log.showError(error, true);
             task.status = 'Logging out';
