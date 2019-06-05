@@ -30,6 +30,10 @@
         />
       </section>
     </template>
+    <slot
+      slot="foot"
+      name="foot"
+    />
   </CardModal>
 </template>
 

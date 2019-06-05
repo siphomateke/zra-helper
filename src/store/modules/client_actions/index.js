@@ -30,7 +30,8 @@ import { taskFunction, getClientIdentifier } from '@/backend/client_actions/util
  * it easier to combine all outputs from all clients of a single action into a single output.
  * @property {number} taskId The ID of the task associated with this run.
  * @property {boolean} running Whether the run is still in progress or has completed.
- * @property {Client[]} clients
+ * @property {Client[]} allClients All clients from the client list
+ * @property {Client[]} clients The clients that actions were actually run on.
  */
 
 /**
@@ -336,13 +337,19 @@ const vuexModule = {
      * @param {Object} payload
      * @param {number} payload.taskId ID of the task associated with this run.
      * @param {Client[]} payload.clients
+     * @param {Client[]} payload.allClients
      */
-    startNewRun(state, { taskId, clients }) {
+    startNewRun(state, {
+      taskId,
+      clients,
+      allClients,
+    }) {
       const runsLength = state.runs.push({
         instancesByActionId: {},
         taskId,
         running: true,
         clients,
+        allClients,
       });
       const runId = runsLength - 1;
       state.currentRunId = runId;
@@ -702,7 +709,8 @@ const vuexModule = {
      * A root task is wrapped around each client and a notification is sent once all are complete.
      * @param {VuexActionContext} context
      * @param {Object} payload
-     * @param {Client[]} payload.clients
+     * @param {Client[]} payload.clients The clients that the actions should be run on.
+     * @param {Client[]} [payload.allClients] All the clients in the client list.
      * @param {GetClientsActionIds} payload.getClientsActionIds
      * Function that decides the actions to run on each client.
      * @param {Object.<string, Object>} [payload.actionInputs] Inputs by action ID
@@ -711,6 +719,7 @@ const vuexModule = {
      */
     async run(context, {
       clients,
+      allClients = clients.slice(),
       getClientsActionIds,
       actionInputs = {},
       retry = false,
@@ -738,7 +747,11 @@ const vuexModule = {
           list: 'clientActions',
         });
 
-        commit('startNewRun', { taskId: rootTask.id, clients });
+        commit('startNewRun', {
+          taskId: rootTask.id,
+          clients: validClients,
+          allClients,
+        });
         rootTask.title += ` #${state.currentRunId + 1}`;
         rootTask.anonymousTitle = rootTask.title;
         try {
@@ -803,16 +816,26 @@ const vuexModule = {
      * @param {Object} payload
      * @param {number[]} payload.actionIds
      * @param {number[]} payload.clientIds
+     * @param {number[]} payload.allClientIds
      * @param {Object.<string, Object>} payload.actionInputs Inputs by action ID
      */
     async runSelectedActionsOnAllClients(
       { dispatch, rootGetters },
-      { actionIds, clientIds, actionInputs },
+      {
+        actionIds,
+        clientIds,
+        allClientIds,
+        actionInputs,
+      },
     ) {
+      const getClientById = rootGetters['clients/getClientById'];
+      /** All selected clients including the invalid ones. */
+      const clients = clientIds.map(id => getClientById(id));
       /** All clients including the invalid ones. */
-      const clients = clientIds.map(id => rootGetters['clients/getClientById'](id));
+      const allClients = allClientIds.map(id => getClientById(id));
       await dispatch('run', {
         clients,
+        allClients,
         getClientsActionIds: () => actionIds,
         actionInputs,
       });

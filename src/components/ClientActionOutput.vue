@@ -133,6 +133,9 @@ export default {
     clients() {
       return this.run.clients;
     },
+    allClients() {
+      return this.run.allClients;
+    },
     action() {
       return this.getActionById(this.actionId);
     },
@@ -194,20 +197,12 @@ export default {
       this.clientOutputs = this.getOutputsOfAction(this.runId, this.actionId);
     },
     /**
-     * Gets a client that has a certain ID.
-     * @param {string} id The ID of the client we wish to retreive.
-     * @returns {import('@/backend/constants').Client}
-     */
-    clientFromId(id) {
-      return this.clients[id];
-    },
-    /**
      * @param {import('@/backend/constants').ExportFormatCode} format
      */
     async formatOutput(format, anonymizeClients = false) {
-      const clients = Object.keys(this.clients).map(id => this.clientFromId(id));
       return this.action.outputFormatter({
-        clients,
+        clients: this.clients,
+        allClients: this.allClients,
         outputs: this.clientOutputs,
         format,
         anonymizeClients,

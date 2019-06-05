@@ -15,6 +15,7 @@ import { taskStates } from '@/store/modules/tasks';
  *
  * @typedef {Object} ClientActionOutputFormatterOptions
  * @property {Client[]} clients
+ * @property {Client[]} allClients
  * @property {ClientActionOutputs} outputs
  * @property {ExportFormatCode} format
  * @property {boolean} anonymizeClients Whether client data in the output should be anonymized.
