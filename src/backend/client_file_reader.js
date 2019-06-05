@@ -57,7 +57,7 @@ export function validateClientPassword(password) {
  * @param {LoadedClient} client The client to validate
  * @returns {ClientValidationResult}
  */
-function validateClient(client) {
+export function validateClient(client) {
   /** Properties that must exist on each client */
   const requiredProps = ['name', 'username', 'password'];
   const propErrors = {};

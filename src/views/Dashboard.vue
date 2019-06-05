@@ -1,14 +1,25 @@
 <template>
   <div id="dashboard">
     <section class="dashboard-section">
-      <form @submit.prevent>
+      <form @submit.prevent="submit">
         <div>
-          <div class="field">
+          <b-field>
+            <b-checkbox v-model="useCsvForClientList">Use CSV to add clients</b-checkbox>
+          </b-field>
+          <div
+            v-if="useCsvForClientList"
+            class="field"
+          >
             <label class="label">Client list</label>
             <div class="control">
               <ClientListFileUpload @input="updateClients"/>
             </div>
           </div>
+          <SingleClientInput
+            v-else
+            ref="singleClientInput"
+            @input="addSingleClient"
+          />
           <div class="buttons">
             <OpenModalButton
               v-if="clients.length > 0"
@@ -37,8 +48,7 @@
           :disabled="runActionsButtonDisabled"
           :title="runActionsButtonDisabledReason"
           class="button is-primary"
-          type="button"
-          @click="submit"
+          type="submit"
         >Run selected action(s)</button>
       </form>
     </section>
@@ -163,6 +173,7 @@
 
 <script>
 import ClientListFileUpload from '@/components/Clients/ClientListFileUpload.vue';
+import SingleClientInput from '@/components/Clients/SingleClientInput.vue';
 import ClientListModal from '@/components/Clients/ClientListModal.vue';
 import ParsedClientsViewer from '@/components/Clients/ParsedClientsViewer.vue';
 import ClientSelector from '@/components/Clients/ClientSelector.vue';
@@ -176,11 +187,16 @@ import CardModal from '@/components/CardModal.vue';
 import ClientActionFailures from '@/components/ClientActionFailures.vue';
 import { mapState, mapGetters } from 'vuex';
 import configMixin from '@/mixins/config';
+import { validateClient } from '../backend/client_file_reader';
 
 export default {
   name: 'DashboardView',
+  $_veeValidate: {
+    validator: 'new',
+  },
   components: {
     ClientListFileUpload,
+    SingleClientInput,
     ClientListModal,
     ParsedClientsViewer,
     ClientSelector,
@@ -203,6 +219,7 @@ export default {
       failuresRunId: null,
       failuresModalVisible: false,
       actionInputs: {},
+      useCsvForClientList: true,
     };
   },
   computed: {
@@ -235,6 +252,7 @@ export default {
     noActionsSelected() {
       return this.selectedClientActions.length === 0;
     },
+    // TODO: Validate form using VeeValidate
     runActionsButtonDisabled() {
       return this.noActionsSelected
         || this.selectedClientIds.length === 0
@@ -309,17 +327,28 @@ export default {
   },
   methods: {
     async submit() {
-      await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
-        actionIds: this.selectedClientActions,
-        clientIds: this.selectedClientIds,
-        actionInputs: this.actionInputs,
-      });
+      if (!this.runActionsButtonDisabled) {
+        await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
+          actionIds: this.selectedClientActions,
+          clientIds: this.selectedClientIds,
+          actionInputs: this.actionInputs,
+        });
+      }
     },
     async updateClients(clients) {
       await this.$store.dispatch('clients/update', clients);
 
       // Select all clients by default
       this.selectedClientIds = this.clientIds;
+    },
+    async addSingleClient(client) {
+      const valid = await this.$refs.singleClientInput.$validator.validate();
+      if (valid) {
+        const clientCopy = Object.assign({}, client);
+        const validationResult = validateClient(client);
+        Object.assign(clientCopy, validationResult);
+        await this.updateClients([clientCopy]);
+      }
     },
     async retryFailures(runId) {
       await this.$store.dispatch('clientActions/retryFailures', { runId });
