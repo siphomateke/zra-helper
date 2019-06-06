@@ -1,0 +1,21 @@
+srNo,transactionDate,fromDate,toDate,narration,debit,credit,cumulativeBalance
+1,13/10/2013,01/09/2013,30/09/13,Advance payment from CLIENT Ref. PRN: 100000000001 (Payment Date: 13-OCT-2013),0,420,
+2,14/10/2013,01/09/2013,30/09/13,REVERSAL OF - Advance payment from CLIENT Ref. PRN: 100000000001 (Payment Date: 13-OCT-2013),420,0,
+3,14/10/2013,01/09/2013,30/09/13,Original Return,420,0,
+4,14/10/2013,01/09/2013,30/09/13,Payment Reconciliation (PRN: 100000000001 ) against PRINCIPAL LIABILITY (Payment Date: 13-OCT-2013),0,420,
+5,,01/09/2013,30/09/13,Closing Balance - 01/09/2013 to 30/09/2013,0,,0
+6,13/11/2013,01/10/2013,31/10/2013,Advance payment from CLIENT Ref. PRN: 100000000002 (Payment Date: 13-NOV-2013),0,420,
+7,13/11/2013,01/10/2013,31/10/2013,REVERSAL OF - Advance payment from CLIENT Ref. PRN: 100000000002 (Payment Date: 13-NOV-2013),420,0,
+8,13/11/2013,01/10/2013,31/10/2013,Original Return,420,0,
+9,13/11/2013,01/10/2013,31/10/2013,Payment Reconciliation (PRN: 100000000002 ) against PRINCIPAL LIABILITY (Payment Date: 13-NOV-2013),0,420,
+10,,01/10/2013,31/10/2013,Closing Balance - 01/10/2013 to 31/10/2013,0,,0
+11,13/12/2013,01/11/2013,30/11/13,Advance payment from CLIENT Ref. PRN: 100000000003 (Payment Date: 13-DEC-2013),0,420,
+12,13/12/2013,01/11/2013,30/11/13,REVERSAL OF - Advance payment from CLIENT Ref. PRN: 100000000003 (Payment Date: 13-DEC-2013),420,0,
+13,13/12/2013,01/11/2013,30/11/13,Original Return,420,0,
+14,13/12/2013,01/11/2013,30/11/13,Payment Reconciliation (PRN: 100000000003 ) against PRINCIPAL LIABILITY (Payment Date: 13-DEC-2013),0,420,
+15,,01/11/2013,30/11/13,Closing Balance - 01/11/2013 to 30/11/2013,0,,0
+16,21/06/2014,01/12/2013,31/12/2013,Original Return,0,0,
+17,21/06/2014,01/12/2013,31/12/2013,Late Return Penalty,5160,0,
+18,26/07/2015,01/12/2013,31/12/2013,REVERSAL OF - Late Return Penalty,0,5160,
+19,,01/12/2013,31/12/2013,Closing Balance - 01/12/2013 to 31/12/2013,0,,0
+20,21/06/2014,01/01/2014,28/01/2014,Original Return,0,0,
