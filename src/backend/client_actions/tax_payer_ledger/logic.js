@@ -206,7 +206,7 @@ function sortRecordsBySerialNumber(records) {
  * @param {Record[]} records
  * @returns {RecordsBySrNo<Record>}
  */
-function getRecordsBySerialNumber(records) {
+export function getRecordsBySerialNumber(records) {
   const recordsBySrNo = new Map();
   for (const record of records) {
     recordsBySrNo.set(record.srNo, record);
@@ -249,8 +249,7 @@ export function removeReversals(records) {
  * @param {Record[]} records
  * @returns {Record[]}
  */
-// TODO: Add unit tests
-function removeZeroRecords(records) {
+export function removeZeroRecords(records) {
   const nonZeroRecords = [];
   for (const record of records) {
     if (record.debit > 0 || record.credit > 0) {
@@ -390,7 +389,7 @@ function getRecordsInSamePeriod(record, recordsByPeriod) {
  * @param {ParsedTaxPayerLedgerRecord} payment
  * @returns {PaymentRecordMatchInfo}
  */
-function recordMatchesPayment(record, payment) {
+export function recordMatchesPayment(record, payment) {
   const { against } = payment.narration.meta;
   const t = narrationTypes;
   /** @type {Object.<string, NarrationType | (() => boolean)>} */
@@ -1139,6 +1138,8 @@ function getUnbalancedRecordsInDateRange(recordsInDateRange) {
  * @returns {PairedLedgerRecord[]}
  */
 function getAllPairedRecords(parsedLedgerRecords) {
+  // FIXME: Don't remove reversals when matching records. We need them since the change records
+  // can include reversals.
   const records = removeReversals(parsedLedgerRecords);
   return pairRecords(records);
 }

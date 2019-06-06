@@ -328,7 +328,7 @@ export const narrationGroups = {
  * @type {Object.<NarrationGroup, NarrationType[]>}
  */
 // TODO: Strictly define this once TypeScript is used
-const narrationTypesByGroup = {
+export const narrationTypesByGroup = {
   [narrationGroups.PAYMENTS]: [
     t.ADVANCE_PAYMENT,
     t.PAYMENT,
@@ -380,11 +380,11 @@ for (const group of Object.keys(narrationTypesByGroup)) {
 
 /**
  * Determines which group a narration type belongs to.
- * @param {ParsedNarrationPreGroup} narration
+ * @param {NarrationType} narrationType
  * @returns {NarrationGroup}
  */
-function getNarrationType(narration) {
-  return narrationTypesGroupsMap[narration.type];
+export function getNarrationType(narrationType) {
+  return narrationTypesGroupsMap[narrationType];
 }
 
 /**
@@ -423,6 +423,6 @@ export default function parseNarration(originalNarration) {
       break;
     }
   }
-  result.group = getNarrationType(result);
+  result.group = getNarrationType(result.type);
   return result;
 }
