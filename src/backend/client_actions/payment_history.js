@@ -5,7 +5,7 @@ import {
   taskFunction,
   downloadPages,
   downloadPage,
-  getQuarterFromPeriod,
+  getQuarterFromPeriodMonths,
 } from './utils';
 import {
   startDownloadingReceipts,
@@ -204,7 +204,7 @@ function getPaymentReceiptFilenames(client, receiptData) {
       const periodToMonth = periodTo.format('MM');
       // Don't add quarter if the period is a whole year
       if (Number(periodToMonth) - Number(periodFromMonth) < 11) {
-        const chargeQuater = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+        const chargeQuater = getQuarterFromPeriodMonths(periodFromMonth, periodToMonth);
         if (chargeQuater !== null) {
           filename += `-${chargeQuater}`;
         }

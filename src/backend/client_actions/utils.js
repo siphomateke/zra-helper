@@ -1,3 +1,4 @@
+import moment from 'moment';
 import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
 import createTask from '@/transitional/tasks';
@@ -694,23 +695,48 @@ export async function downloadPages({
   return response;
 }
 
-/** Gets the quarter number from a period.
- * @param {string} from The month the period started. E.g. '01'
- * @param {string} to The month the period ended.E.g. '03'
+const quarterMap = [
+  ['01', '03'],
+  ['04', '06'],
+  ['07', '09'],
+  ['10', '12'],
+];
+
+/**
+ * Gets the quarter number from a period.
+ * @param {string} fromMonth The month the period started. E.g. '01'
+ * @param {string} toMonth The month the period ended.E.g. '03'
+ * @returns {number|null}
  */
-export function getQuarterFromPeriod(from, to) {
-  const quarterMap = [
-    ['01', '03'],
-    ['04', '06'],
-    ['07', '09'],
-    ['10', '12'],
-  ];
+export function getQuarterFromPeriodMonths(fromMonth, toMonth) {
   let quarter = null;
   for (let i = 0; i < quarterMap.length; i++) {
-    if (from === quarterMap[i][0] && to === quarterMap[i][1]) {
+    if (fromMonth === quarterMap[i][0] && toMonth === quarterMap[i][1]) {
       quarter = i + 1;
       break;
     }
   }
   return quarter;
+}
+
+/**
+ * Gets the start and end months of the period a quarter represents
+ * @param {number} quarter
+ * @returns {{fromMonth: string, toMonth: string}}
+ */
+export function getPeriodMonthsFromQuarter(quarter) {
+  const [fromMonth, toMonth] = quarterMap[quarter - 1];
+  return { fromMonth, toMonth };
+}
+
+/**
+ *
+ * @param {import('../constants').Date} fromDate
+ * @param {import('../constants').Date} toDate
+ * @returns {number|null}
+ */
+export function getQuarterFromPeriodDates(fromDate, toDate) {
+  const periodFromMonth = moment(fromDate, 'DD/MM/YYYY').format('MM');
+  const periodToMonth = moment(toDate, 'DD/MM/YYYY').format('MM');
+  return getQuarterFromPeriodMonths(periodFromMonth, periodToMonth);
 }

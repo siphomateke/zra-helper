@@ -1,5 +1,4 @@
-import moment from 'moment';
-import { getQuarterFromPeriod } from '../utils';
+import { getQuarterFromPeriodDates } from '../utils';
 
 // TODO: Consider renaming 'narrations' to 'reason for change'
 
@@ -201,9 +200,7 @@ const narrationTypeMatchers = {
     },
     transformer(parsed) {
       // FIXME: Only parse date once. Moment shouldn't run in the transformer and again elsewhere.
-      const periodFromMonth = moment(parsed.meta.fromDate, 'DD/MM/YYYY').format('MM');
-      const periodToMonth = moment(parsed.meta.toDate, 'DD/MM/YYYY').format('MM');
-      parsed.meta.quarter = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+      parsed.meta.quarter = getQuarterFromPeriodDates(parsed.meta.fromDate, parsed.meta.toDate);
       return parsed;
     },
   },
@@ -215,9 +212,7 @@ const narrationTypeMatchers = {
     },
     transformer(parsed) {
       // FIXME: Only parse date once. Moment shouldn't run in the transformer and again elsewhere.
-      const periodFromMonth = moment(parsed.meta.fromDate, 'DD/MM/YYYY').format('MM');
-      const periodToMonth = moment(parsed.meta.toDate, 'DD/MM/YYYY').format('MM');
-      parsed.meta.quarter = getQuarterFromPeriod(periodFromMonth, periodToMonth);
+      parsed.meta.quarter = getQuarterFromPeriodDates(parsed.meta.fromDate, parsed.meta.toDate);
       return parsed;
     },
   },
