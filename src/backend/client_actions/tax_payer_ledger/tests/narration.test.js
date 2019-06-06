@@ -58,6 +58,7 @@ const samples = [
   'Payment Reconciliation (PRN: 100000000000 ) against PAYMENT PENALTY (Payment Date: 01-JAN-2013) from (Legacy Payment receipt no: 1234567)',
   'Payment Reconciliation (PRN: 100000000000 ) against ASSESSMENT LIABILITY (Payment Date: 01-JAN-2018)',
   'Payment Reconciliation (PRN: 100000000000 ) against ASSESSMENT MANUAL PENALTY (Payment Date: 01-JAN-2018)',
+  'Payment Reconciliation (PRN: 100000000000 ) against ASSESSMENT LIABILITY (Payment Date: 01-JAN-2018) (Assmt No : 10000000000123)',
   'REVERSAL OF - Payment Reconciliation (PRN: 100000000000 ) against PRINCIPAL LIABILITY (Payment Date: 01-JAN-2018)',
 ];
 // TODO: Add more reversed samples, preferably dynamically.
@@ -118,6 +119,7 @@ const sampleTypes = [
   t.PAYMENT,
   t.PAYMENT,
   t.PAYMENT,
+  t.PAYMENT,
 ];
 const sampleReverseState = [
   false,
@@ -160,6 +162,7 @@ const sampleReverseState = [
   false,
   true,
   true,
+  false,
   false,
   false,
   false,

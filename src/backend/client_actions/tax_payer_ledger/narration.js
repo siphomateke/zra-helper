@@ -59,6 +59,7 @@ Payment Reconciliation (PRN: 100000000000 ) against LATE RETURN PENALTY (Payment
 Payment Reconciliation (PRN: 100000000000 ) against PAYMENT PENALTY (Payment Date: 01-JAN-2018)
 Payment Reconciliation (PRN: 100000000000 ) against PAYMENT PENALTY (Payment Date: 01-JAN-2013) from (Legacy Payment receipt no: 1234567)
 Payment Reconciliation (PRN: 100000000000 ) against ASSESSMENT LIABILITY (Payment Date: 01-JAN-2018)
+Payment Reconciliation (PRN: 100000000001 ) against ASSESSMENT LIABILITY (Payment Date: 29-APR-2018) (Assmt No : 10000000000123)
 Payment Reconciliation (PRN: 100000000000 ) against ASSESSMENT MANUAL PENALTY (Payment Date: 01-JAN-2018)
 REVERSAL OF - Payment Reconciliation (PRN: 100000000000 ) against PRINCIPAL LIABILITY (Payment Date: 01-JAN-2018)
 */
@@ -148,6 +149,7 @@ const narrationTypeMatchers = {
       fromReceiptNumber: /from \(legacy payment receipt no: (\d+)\)/,
       quarter: /for quarter {q(\d+)}/,
       via: /via\. (.+)/,
+      // TODO: Find out if advance payments can have assessment numbers too
     },
   },
   [narrationTypes.PAYMENT]: {
@@ -159,6 +161,7 @@ const narrationTypeMatchers = {
       fromReceiptNumber: /from \(legacy payment receipt no: (\d+)\)/,
       quarter: /for quarter {q(\d+)}/,
       via: /via\. (.+)/,
+      assessmentNumber: /assmt no : (\d+)/,
     },
     transformer(parsed) {
       if (
