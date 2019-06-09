@@ -203,7 +203,6 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
       label: 'All clients pending liabilities',
       filename: 'pendingLiabilities',
       value: outputs,
-      preview: true,
       formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
       defaultFormat: exportFormatCodes.CSV,
       formatter: ({ output, format, anonymizeClients }) => outputFormatter({
