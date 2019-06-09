@@ -2,31 +2,24 @@
   <div class="client-action-output">
     <div class="field">
       <label class="label">{{ action.name }} output</label>
-      <div class="bordered-section">
-        <LoadingMessage
-          v-if="loading"
-          message="Getting output"
-        />
-        <ClientActionOutputFileWrapper
-          :clients="clients"
-          :action-id="actionId"
-          :output-file="rootOutputFile"
-          :is-only-output="isOnlyOutput"
-        />
-      </div>
+      <ClientActionOutputFileWrapper
+        :clients="clients"
+        :action-id="actionId"
+        :output-file="rootOutputFile"
+        :loading="loading"
+        :is-only-output="isOnlyOutput"
+      />
     </div>
   </div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex';
-import LoadingMessage from '@/components/LoadingMessage.vue';
 import ClientActionOutputFileWrapper from './ClientActionOutputFileWrapper.vue';
 
 export default {
   name: 'ClientActionOutput',
   components: {
-    LoadingMessage,
     ClientActionOutputFileWrapper,
   },
   props: {

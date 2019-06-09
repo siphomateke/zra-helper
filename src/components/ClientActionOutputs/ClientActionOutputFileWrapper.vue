@@ -33,6 +33,11 @@
       :animation="null"
     >
       <div class="card-content">
+        <LoadingMessage
+          v-if="loading"
+          message="Getting output"
+        />
+
         <ClientActionOutputFile
           v-if="!outputFile.wrapper"
           :clients="clients"
@@ -56,12 +61,14 @@
 
 <script>
 import ClientActionOutputFile from './ClientActionOutputFile.vue';
+import LoadingMessage from '@/components/LoadingMessage.vue';
 import { validateActionOutputFile } from '../../backend/client_actions/base';
 
 export default {
   name: 'ClientActionOutputFileWrapper',
   components: {
     ClientActionOutputFile,
+    LoadingMessage,
   },
   props: {
     clients: {
@@ -81,6 +88,10 @@ export default {
       },
     },
     isOnlyOutput: {
+      type: Boolean,
+      default: false,
+    },
+    loading: {
       type: Boolean,
       default: false,
     },
