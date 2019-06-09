@@ -1,5 +1,6 @@
 <template>
   <b-upload
+    :disabled="disabled"
     v-bind="$attrs"
     @input="fileInput"
   >
@@ -30,6 +31,12 @@
 // FIXME: Indicate that upload is disabled
 export default {
   name: 'BaseFileUpload',
+  props: {
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+  },
   $_veeValidate: {
     value() {
       // Tell VeeValidate that this input is not empty

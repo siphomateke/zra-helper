@@ -2,23 +2,26 @@
   <div>
     <b-field grouped>
       <b-field
-        :message="fields.previousDate.error"
-        :type="fields.previousDate.type"
+        :type="$bFieldType('previous_date')"
+        :message="$bFieldValidationError('previous_date')"
         label="Previous date"
       >
         <DateInput
-          :value="input.previousDate"
+          v-validate="previousDateValidation"
+          v-model="input.previousDate"
           :disabled="disabled"
-          @input="onPreviousDateChanged"
+          name="previous_date"
         />
       </b-field>
       <b-field
-        :message="fields.previousTotals.error"
-        :type="fields.previousTotals.type"
+        :type="$bFieldType('previous_totals')"
+        :message="$bFieldValidationError('previous_totals')"
         label="Previous pending liability totals"
       >
         <FileUpload
+          v-validate="'required|ext:csv|pendingLiabilitiesFile'"
           :disabled="disabled"
+          name="previous_totals"
           @input="previousTotalsUploaded"
         />
       </b-field>
@@ -30,12 +33,12 @@
 import FileUpload from '@/components/BaseFileUpload.vue';
 import DateInput from '@/components/fields/DateInput.vue';
 import ClientActionInputMixin from './mixin';
-import { getExtension, loadFile } from '@/backend/file_utils';
+import { loadFile } from '@/backend/file_utils';
 import { csvOutputParser } from '@/backend/client_actions/pending_liabilities';
-import { errorToString } from '@/backend/errors';
-import moment from 'moment';
 
-// FIXME: Validate on close
+// FIXME: Decide how to display long error messages from pending liabilities validation
+// TODO: Indicate that pending liabilities are in input despite the uploaded file no longer
+// showing up after the input modal is closed.
 export default {
   name: 'ClientActionPendingLiabilityChangeReasonsInput',
   components: {
@@ -49,77 +52,28 @@ export default {
       default: () => ({}),
     },
   },
-  data() {
-    return {
-      fields: {
-        previousDate: {
-          error: null,
-          type: '',
-        },
-        previousTotals: {
-          error: null,
-          type: '',
-        },
-      },
-    };
+  computed: {
+    previousDateValidation() {
+      return {
+        required: true,
+        date_format: 'dd/MM/yyyy',
+        before: [
+          this.input.currentDate,
+          true, // include current date
+        ],
+      };
+    },
   },
   methods: {
-    setFieldValidation(field, valid, error = null) {
-      if (valid) {
-        this.fields[field].error = null;
-        this.fields[field].type = 'is-success';
-      } else {
-        this.fields[field].error = errorToString(error);
-        this.fields[field].type = 'is-danger';
-      }
-    },
     async previousTotalsUploaded(file) {
       try {
-        const fileExtension = getExtension(file.name);
-        if (fileExtension !== 'csv') {
-          throw new Error(`Pending liability totals file's extension must be '.csv' not '.${fileExtension}'.`);
-        }
         const csvString = await loadFile(file);
-
-        const pendingLiabilities = csvOutputParser(csvString);
-        // FIXME: Validate pending liabilities
-        this.input.previousPendingLiabilities = pendingLiabilities;
-
-        this.setFieldValidation('previousTotals', true);
-      } catch (error) {
-        this.setFieldValidation('previousTotals', false, error);
+        const totals = csvOutputParser(csvString);
+        this.input.previousPendingLiabilities = totals;
+      } catch (e) {
+        // Errors are already handled during validation
+        // TODO: Make sure there is zero possibility that a non-validation error could occur.
       }
-    },
-    datesValid() {
-      if (this.input.currentDate && this.input.previousDate) {
-        const previousDate = moment(this.input.previousDate, 'DD/MM/YYYY');
-        const currentDate = moment(this.input.currentDate, 'DD/MM/YYYY');
-        return currentDate.diff(previousDate, 'days') > 0;
-      }
-      return false;
-    },
-    validateDate(type) {
-      const propName = type === 'previous' ? 'previousDate' : 'currentDate';
-      let error = null;
-      if (!this.datesValid()) {
-        if (type === 'previous') {
-          error = 'Previous date must be before current date';
-        } else {
-          error = 'Current date must be after previous date';
-        }
-      }
-      if (error !== null) {
-        this.setFieldValidation(propName, false, error);
-      } else {
-        this.setFieldValidation(propName, true);
-      }
-    },
-    validateDates() {
-      this.validateDate('previous');
-    },
-    onPreviousDateChanged(value) {
-      this.input.previousDate = value;
-      this.validateDates();
     },
   },
 };

@@ -9,7 +9,8 @@ import {
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
-import { deepAssign } from '@/utils';
+import { deepAssign, joinSpecialLast } from '@/utils';
+import { parseAmountString } from '../content_scripts/helpers/zra';
 
 /** @typedef {'principal'|'interest'|'penalty'} PendingLiabilityType */
 
@@ -249,6 +250,46 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
  */
 
 /**
+ * Checks if a parsed pending liability totals file is valid.
+ * @param {ParsedPendingLiabilitiesOutput[]} parsedOutput
+ * @returns {string[]} Validation errors
+ */
+function validateParsedCsvOutput(parsedOutput) {
+  const errors = [];
+  if (Array.isArray(parsedOutput)) {
+    for (const item of parsedOutput) {
+      const expectedTaxTypeCodes = Object.values(taxTypes);
+      const missingTaxTypeCodes = [];
+      for (const taxTypeCode of expectedTaxTypeCodes) {
+        if (!(taxTypeCode in item.totals)) {
+          missingTaxTypeCodes.push(taxTypeCode);
+        }
+      }
+      if (missingTaxTypeCodes.length > 0) {
+        errors.push(`Client '${item.client}' is missing the following tax types: ${joinSpecialLast(missingTaxTypeCodes, ', ', ' and ')}`);
+      }
+      for (const taxTypeCode of expectedTaxTypeCodes) {
+        if (taxTypeCode in item.totals) {
+          const taxTypeTotals = item.totals[taxTypeCode];
+          for (const liabilityTotal of Object.values(taxTypeTotals)) {
+            const parsedAmount = parseAmountString(liabilityTotal);
+            if (
+              liabilityTotal !== ''
+              && (typeof parsedAmount !== 'number' || Number.isNaN(parsedAmount))
+            ) {
+              errors.push(`'${liabilityTotal}' in ${item.client}->${taxTypeCode}->${liabilityTotal} is not a valid amount`);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    errors.push('Not array');
+  }
+  return errors;
+}
+
+/**
  * Parses the pending liabilities CSV output.
  * @param {string} csvString
  * @returns {ParsedPendingLiabilitiesOutput[]}
@@ -262,7 +303,10 @@ export function csvOutputParser(csvString) {
   const pendingLiabilities = [];
   let totals = {};
   let currentClient = '';
-  const { data: rows } = parsed;
+  const { data: rows, errors: csvParseErrors } = parsed;
+  if (csvParseErrors.length > 0) {
+    throw new Error(`CSV parsing failed: ${csvParseErrors.map(e => e.message).join(', ')}`);
+  }
   for (const row of rows) {
     if (row[0].length > 0) {
       if (currentClient !== '') {
@@ -281,6 +325,10 @@ export function csvOutputParser(csvString) {
       taxTypeTotals[pendingLiabilityColumns[i]] = row[i + 2];
     }
     totals[taxType] = taxTypeTotals;
+  }
+  const errors = validateParsedCsvOutput(pendingLiabilities);
+  if (errors.length > 0) {
+    throw new Error(`Invalid pending liability totals: ${errors.join(', ')}`);
   }
   return pendingLiabilities;
 }
