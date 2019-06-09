@@ -4,7 +4,7 @@ import { exportFormatCodes, taxTypes } from '../constants';
 import { writeJson, unparseCsv, objectToCsvTable } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import {
-  createClientAction, ClientActionRunner, getInput,
+  createClientAction, ClientActionRunner, getInput, createOutputFile,
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
@@ -102,6 +102,91 @@ async function getPendingLiabilities(client, taxTypeId, parentTaskId) {
   });
 }
 
+function outputFormatter({
+  clients,
+  allClients,
+  clientOutputs,
+  format,
+  anonymizeClients,
+}) {
+  if (format === exportFormatCodes.CSV) {
+    const allClientsById = new Map();
+    for (const client of allClients) {
+      allClientsById.set(String(client.id), client);
+    }
+
+    const clientOutputsByUsername = {};
+    for (const clientId of Object.keys(clientOutputs)) {
+      const client = allClientsById.get(clientId);
+      clientOutputsByUsername[client.username] = clientOutputs[clientId];
+    }
+
+    const csvOutput = {};
+    for (const client of allClients) {
+      let value = null;
+      if (client.username in clientOutputsByUsername) {
+        ({ value } = clientOutputsByUsername[client.username]);
+      }
+      const totalsObjects = value ? value.totals : null;
+      const clientOutput = {};
+      for (const taxType of Object.values(taxTypes)) {
+        const row = {};
+        if (value && (taxType in totalsObjects)) {
+          Object.assign(row, totalsObjects[taxType]);
+        } else if (value && (taxType in value.retrievalErrors)) {
+          // Indicate that this tax type had an error
+          row.error = '!';
+        }
+        clientOutput[taxType] = [row];
+      }
+      const clientIdentifier = getClientIdentifier(client, anonymizeClients);
+      csvOutput[clientIdentifier] = clientOutput;
+    }
+    const columns = new Map([
+      ['client', 'Client'],
+      ['taxType', 'Tax type'],
+    ]);
+    totalsColumns.forEach((c) => {
+      columns.set(c, totalsColumnsNames[c]);
+    });
+    columns.set('error', 'Error');
+    const rows = objectToCsvTable(csvOutput, columns);
+    // TODO: Make output options configurable by user
+    return unparseCsv(rows);
+  }
+  const json = {};
+  for (const client of clients) {
+    if (client.id in clientOutputs) {
+      const output = clientOutputs[client.id];
+      let jsonClient = { id: client.id };
+      if (!anonymizeClients) {
+        jsonClient = Object.assign(jsonClient, {
+          name: client.name,
+          username: client.username,
+        });
+      }
+      const outputValue = output.value;
+      if (outputValue !== null) {
+        const taxTypeErrors = {};
+        for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
+          const error = outputValue.retrievalErrors[taxTypeCode];
+          taxTypeErrors[taxTypeCode] = errorToString(error);
+        }
+        json[client.id] = {
+          client: jsonClient,
+          actionId: output.actionId,
+          totals: outputValue.totals,
+          taxTypeErrors,
+          error: output.error,
+        };
+      } else {
+        json[client.id] = null;
+      }
+    }
+  }
+  return writeJson(json);
+}
+
 const GetAllPendingLiabilitiesClientAction = createClientAction({
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
@@ -113,91 +198,24 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
     taxTypeIds: 'required|taxTypeIds',
   },
   hasOutput: true,
-  defaultOutputFormat: exportFormatCodes.CSV,
-  outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-  outputFormatter({
-    clients,
-    allClients,
-    outputs: clientOutputs,
-    format,
-    anonymizeClients,
-  }) {
-    if (format === exportFormatCodes.CSV) {
-      const allClientsById = new Map();
-      for (const client of allClients) {
-        allClientsById.set(String(client.id), client);
-      }
-
-      const clientOutputsByUsername = {};
-      for (const clientId of Object.keys(clientOutputs)) {
-        const client = allClientsById.get(clientId);
-        clientOutputsByUsername[client.username] = clientOutputs[clientId];
-      }
-
-      const csvOutput = {};
-      for (const client of allClients) {
-        let value = null;
-        if (client.username in clientOutputsByUsername) {
-          ({ value } = clientOutputsByUsername[client.username]);
-        }
-        const totalsObjects = value ? value.totals : null;
-        const clientOutput = {};
-        for (const taxType of Object.values(taxTypes)) {
-          const row = {};
-          if (value && (taxType in totalsObjects)) {
-            Object.assign(row, totalsObjects[taxType]);
-          } else if (value && (taxType in value.retrievalErrors)) {
-            // Indicate that this tax type had an error
-            row.error = '!';
-          }
-          clientOutput[taxType] = [row];
-        }
-        const clientIdentifier = getClientIdentifier(client, anonymizeClients);
-        csvOutput[clientIdentifier] = clientOutput;
-      }
-      const columns = new Map([
-        ['client', 'Client'],
-        ['taxType', 'Tax type'],
-      ]);
-      totalsColumns.forEach((c) => {
-        columns.set(c, totalsColumnsNames[c]);
-      });
-      columns.set('error', 'Error');
-      const rows = objectToCsvTable(csvOutput, columns);
-      // TODO: Make output options configurable by user
-      return unparseCsv(rows);
-    }
-    const json = {};
-    for (const client of clients) {
-      if (client.id in clientOutputs) {
-        const output = clientOutputs[client.id];
-        let jsonClient = { id: client.id };
-        if (!anonymizeClients) {
-          jsonClient = Object.assign(jsonClient, {
-            name: client.name,
-            username: client.username,
-          });
-        }
-        const outputValue = output.value;
-        if (outputValue !== null) {
-          const taxTypeErrors = {};
-          for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
-            const error = outputValue.retrievalErrors[taxTypeCode];
-            taxTypeErrors[taxTypeCode] = errorToString(error);
-          }
-          json[client.id] = {
-            client: jsonClient,
-            actionId: output.actionId,
-            totals: outputValue.totals,
-            taxTypeErrors,
-            error: output.error,
-          };
-        } else {
-          json[client.id] = null;
-        }
-      }
-    }
-    return writeJson(json);
+  generateOutputFiles({ clients, allClients, outputs }) {
+    return [
+      createOutputFile({
+        label: 'All clients pending liabilities',
+        filename: 'pendingLiabilities',
+        value: outputs,
+        preview: true,
+        formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+        defaultFormat: exportFormatCodes.CSV,
+        formatter: ({ output, format, anonymizeClients }) => outputFormatter({
+          clients,
+          allClients,
+          clientOutputs: output,
+          format,
+          anonymizeClients,
+        }),
+      }),
+    ];
   },
 });
 

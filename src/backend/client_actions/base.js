@@ -13,19 +13,53 @@ import { has, get } from 'dot-prop';
  * @typedef {import('@/transitional/tasks').TaskObject} TaskObject
  */
 
+/** @typedef {any} ClientActionOutputFileValue */
+
 /**
  * @typedef {import('@/store/modules/client_actions').ClientActionOutputs} ClientActionOutputs
  *
  * @typedef {Object} ClientActionOutputFormatterOptions
  * @property {Client[]} clients
  * @property {Client[]} allClients
- * @property {ClientActionOutputs} outputs
+ * @property {ClientActionOutputFileValue} output
  * @property {ExportFormatCode} format
  * @property {boolean} anonymizeClients Whether client data in the output should be anonymized.
  *
  * @callback ClientActionOutputFormatter
  * @param {ClientActionOutputFormatterOptions} options
  * @returns {string}
+ */
+
+/**
+ * @typedef {Object} ClientActionOutputFile
+ * @property {string} label
+ * @property {boolean} wrapper
+ * Whether this output file is not an actual output file but just a wrapper for others. If this is
+ * set to true, `children` must also be set.
+ * @property {string} [filename]
+ * @property {ClientActionOutputFileValue} [value]
+ * The actual value of this output file that will be passed to the formatter.
+ * @property {ExportFormatCode[]} [formats]
+ * The export formats this client action can output. Must be set if `wrapper` is false.
+ * @property {ExportFormatCode} [defaultFormat]
+ * Default output format. Must be set if `wrapper` is false.
+ * If not provided, the first format will be the default.
+ * @property {ClientActionOutputFormatter} [formatter]
+ * Function that formats the output into different formats such as CSV and JSON.
+ * @property {boolean} [preview]
+ * Whether this output should be shown to the user without having to use one of the export buttons.
+ * @property {ClientActionOutputFile[]} children
+ */
+
+/**
+ * @typedef {Object} ClientActionOutputFilesGeneratorFnOptions
+ * @property {Client[]} clients
+ * @property {Client[]} allClients
+ * @property {ClientActionOutputs} outputs
+ *
+ * @callback ClientActionOutputFilesGenerator
+ * @param {ClientActionOutputFilesGeneratorFnOptions} options
+ * @returns {ClientActionOutputFile[]}
  */
 
 /**
@@ -44,12 +78,8 @@ import { has, get } from 'dot-prop';
  * about to be logged out.
  * @property {boolean} [requiresTaxTypes]
  * @property {boolean} [hasOutput] Whether this client action returns an output.
- * @property {ExportFormatCode} [defaultOutputFormat]
- * Default output format. Must be set if `hasOutput` is set.
- * @property {ExportFormatCode[]} [outputFormats]
- * The export formats this client action can output. Must be set if `hasOutput` is set.
- * @property {ClientActionOutputFormatter} [outputFormatter]
- * Function that formats the output into different formats such as CSV and JSON.
+ * @property {ClientActionOutputFilesGenerator} [generateOutputFiles]
+ * Function that generates output(s) of the action based on the raw output data of each client.
  *
  * @typedef {Object} ClientActionObject_Temp
  * @property {string} logCategory The log category to use when logging anything in this action.
@@ -256,29 +286,38 @@ export class ClientActionRunner {
 }
 
 /**
- * Validates a client action's options.
- * @param {ClientActionObject} options
- * @throws {Error}
+ * Validates a client action output file.
+ * @param {Partial<ClientActionOutputFile>} options
+ * @returns {string[]} Validation errors
  */
-function validateActionOptions(options) {
+export function validateActionOutputFile(options) {
   const errors = [];
-  if (options.hasOutput) {
-    const validFormats = Object.values(exportFormatCodes);
 
-    const requiredProperties = ['defaultOutputFormat', 'outputFormats', 'outputFormatter'];
-    const { missing } = objectHasProperties(options, requiredProperties);
+  const nonWrapperProperties = [
+    'value',
+    'filename',
+    'formats',
+    'defaultFormat',
+    'formatter',
+    'preview',
+  ];
+
+  if (!options.wrapper) {
+    const { missing } = objectHasProperties(options, nonWrapperProperties);
+
+    const validFormats = Object.values(exportFormatCodes);
     if (
-      !missing.includes('defaultOutputFormat')
-      && !validFormats.includes(options.defaultOutputFormat)
+      !missing.includes('defaultFormat')
+      && !validFormats.includes(options.defaultFormat)
     ) {
-      errors.push(`${JSON.stringify(options.defaultOutputFormat)} is not a valid default output format`);
+      errors.push(`${JSON.stringify(options.defaultFormat)} is not a valid default output format`);
     }
-    if (!missing.includes('outputFormats')) {
-      if (!(Array.isArray(options.outputFormats))) {
-        errors.push("Property 'outputFormats' must be an array");
+    if (!missing.includes('formats')) {
+      if (!(Array.isArray(options.formats))) {
+        errors.push("Property 'formats' must be an array");
       } else {
         const invalid = [];
-        for (const format of options.outputFormats) {
+        for (const format of options.formats) {
           if (!validFormats.includes(format)) {
             invalid.push(format);
           }
@@ -288,17 +327,99 @@ function validateActionOptions(options) {
         }
       }
     }
-    if (!missing.includes('outputFormatter') && !(typeof options.outputFormatter === 'function')) {
-      errors.push('Output formatter must be a function');
+    if (!missing.includes('formatter') && typeof options.formatter !== 'function') {
+      errors.push('Output file formatter must be a function');
     }
+    if (missing.length > 0) {
+      errors.push(`Output file's require the following properties: ${joinSpecialLast(missing, ', ', ' and ')}`);
+    }
+  } else {
+    const { existing: invalidProperties } = objectHasProperties(options, nonWrapperProperties);
+    if (invalidProperties.length > 0) {
+      errors.push(`Output file wrapper has invalid properties: ${joinSpecialLast(invalidProperties, ', ', ' and ')}`);
+    }
+  }
+
+  if (options.children.length > 0) {
+    if (!options.wrapper) {
+      errors.push('Only wrapper output files can have children');
+    } else {
+      for (const child of options.children) {
+        const childErrors = validateActionOutputFile(child);
+        // FIXME: Indicate child errors better.
+        errors.push(...childErrors);
+      }
+    }
+  } else if (options.wrapper) {
+    errors.push('Wrapper output files must have children.');
+  }
+
+  return errors;
+}
+
+/**
+ * Validates a client action's options.
+ * @param {ClientActionObject} options
+ * @returns {string[]} Validation errors
+ */
+function validateActionOptions(options) {
+  const errors = [];
+  if (options.hasOutput) {
+    const requiredProperties = [
+      'generateOutputFiles',
+    ];
+    const { missing } = objectHasProperties(options, requiredProperties);
+    if (!missing.includes('generateOutputFiles') && typeof options.generateOutputFiles !== 'function') {
+      errors.push('generateOutputFiles property must be a function');
+    }
+    // FIXME: Figure out how to validate generateOutputFiles response before running. It's difficult
+    // because the output files are generated dynamically based on the output.
 
     if (missing.length > 0) {
       errors.push(`If 'hasOutput' is set to true, ${joinSpecialLast(missing, ', ', ' and ')} must be provided`);
     }
   }
-  if (errors.length > 0) {
-    throw new Error(`InvalidClientActionOptions: ${errors.join(', ')}`);
+  return errors;
+}
+
+/**
+ * Creates a client action output file and validates it.
+ * @param {Partial<ClientActionOutputFile>} options
+ * @returns {ClientActionOutputFile}
+ * @throws {Error}
+ */
+export function createOutputFile(options) {
+  if (typeof options !== 'object') {
+    throw new Error(`Client action output files must be objects, not ${typeof options}`);
   }
+  let outputFile = Object.assign({
+    label: '',
+    wrapper: false,
+    children: [],
+  }, options);
+
+
+  if (!outputFile.wrapper) {
+    // If a default format wasn't set, use the first one.
+    if (!('defaultFormat' in outputFile)
+      && 'formats' in outputFile
+      && outputFile.formats.length > 0
+    ) {
+      [outputFile.defaultFormat] = outputFile.formats;
+    }
+    outputFile = Object.assign({
+      filename: 'output',
+      value: null,
+      preview: false,
+    }, outputFile);
+  }
+
+  const errors = validateActionOutputFile(outputFile);
+  if (errors.length > 0) {
+    throw new Error(`InvalidClientActionOutputFile: ${errors.join(', ')}`);
+  }
+
+  return outputFile;
 }
 
 
@@ -307,6 +428,7 @@ function validateActionOptions(options) {
  * Default options are assigned and then the action is validated.
  * @param {ClientActionOptions} options
  * @returns {ClientActionObject}
+ * @throws {Error}
  */
 export function createClientAction(options) {
   const clientAction = Object.assign({
@@ -318,7 +440,10 @@ export function createClientAction(options) {
     logCategory: options.id,
   }, options);
 
-  validateActionOptions(clientAction);
+  const errors = validateActionOptions(clientAction);
+  if (errors.length > 0) {
+    throw new Error(`InvalidClientActionOptions: ${errors.join(', ')}`);
+  }
 
   return clientAction;
 }
