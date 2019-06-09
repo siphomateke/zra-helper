@@ -114,9 +114,14 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
       // Columns are: client identifier, ...totals, error
       const numberOfColumns = 2 + totalsColumns.length + 1;
 
+      const allClientsById = new Map();
+      for (const client of allClients) {
+        allClientsById.set(String(client.id), client);
+      }
+
       const clientOutputsByUsername = {};
       for (const clientId of Object.keys(clientOutputs)) {
-        const client = allClients[clientId];
+        const client = allClientsById.get(clientId);
         clientOutputsByUsername[client.username] = clientOutputs[clientId];
       }
 
