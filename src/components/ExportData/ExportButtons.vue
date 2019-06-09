@@ -48,8 +48,8 @@
   </div>
   <b-field
     v-else
-    grouped
-    group-multiline
+    :group-multiline="formats.length > 1"
+    :grouped="formats.length > 1"
   >
     <b-field
       v-for="format of formats"
@@ -97,7 +97,7 @@
 import CopyToClipboardButton from '@/components/ExportData/CopyToClipboardButton.vue';
 import DownloadButton from '@/components/ExportData/DownloadButton.vue';
 import PreviewButton from '@/components/ExportData/PreviewButton.vue';
-import { exportFormats, exportFormatCodes } from '@/backend/constants';
+import ExportGeneratorsMixin from './export_generators_mixin';
 
 export default {
   name: 'ExportButtons',
@@ -106,6 +106,7 @@ export default {
     DownloadButton,
     PreviewButton,
   },
+  mixins: [ExportGeneratorsMixin],
   props: {
     size: {
       type: String,
@@ -134,40 +135,8 @@ export default {
       type: Boolean,
       default: null,
     },
-    generators: {
-      type: Object,
-      default: () => ({}),
-      validator(value) {
-        for (const format of Object.keys(value)) {
-          const generator = value[format];
-          if (!(format in exportFormats) && typeof generator !== 'function') {
-            return false;
-          }
-        }
-        return true;
-      },
-      required: true,
-    },
-    /**
-     * Default export format used when buttons are not separate.
-     */
-    defaultFormat: {
-      type: String,
-      default: exportFormatCodes.TXT,
-    },
-  },
-  data() {
-    return {
-      selectedFormat: null,
-    };
   },
   computed: {
-    formats() {
-      return Object.keys(this.generators);
-    },
-    generator() {
-      return this.getGeneratorFromFormat(this.selectedFormat);
-    },
     separateButtonsInternal() {
       if (this.separateButtons !== null) {
         return this.separateButtons;
@@ -176,27 +145,6 @@ export default {
         return true;
       }
       return false;
-    },
-    defaultFormatInternal() {
-      if (this.formats.includes(this.defaultFormat)) {
-        // Make sure the default format exists.
-        return this.defaultFormat;
-      } if (this.formats.length > 0) {
-        // If it doesn't, just use the first format.
-        return this.formats[0];
-      }
-      return null;
-    },
-  },
-  created() {
-    this.selectedFormat = this.defaultFormatInternal;
-  },
-  methods: {
-    getFormatName(format) {
-      return exportFormats[format].name;
-    },
-    getGeneratorFromFormat(format) {
-      return this.generators[format];
     },
   },
 };

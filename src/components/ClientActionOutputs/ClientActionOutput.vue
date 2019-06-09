@@ -7,10 +7,13 @@
           v-if="loading"
           message="Getting output"
         />
-        <ExportButtons
-          :generators="generators"
-          :default-format="defaultFormat"
-          :filename="`${action.id}Output`"
+        <ClientActionOutputFileWrapper
+          v-for="(outputFile, idx) in outputFiles"
+          :key="idx"
+          :clients="clients"
+          :action-id="actionId"
+          :output-file="outputFile"
+          :is-only-output="outputFiles.length === 1 && outputFile.children.length === 0"
         />
       </div>
     </div>
@@ -18,17 +21,15 @@
 </template>
 
 <script>
-import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import EmptyMessage from '@/components/EmptyMessage.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
+import ClientActionOutputFileWrapper from './ClientActionOutputFileWrapper.vue';
 import { mapGetters } from 'vuex';
 
 export default {
   name: 'ClientActionOutput',
   components: {
-    ExportButtons,
-    EmptyMessage,
     LoadingMessage,
+    ClientActionOutputFileWrapper,
   },
   props: {
     runId: {
@@ -62,41 +63,18 @@ export default {
     action() {
       return this.getActionById(this.actionId);
     },
-    defaultFormat() {
-      return this.action.defaultOutputFormat;
-    },
-    anonymizeClientsInExports() {
-      return this.$store.state.config.debug.anonymizeClientsInExports;
-    },
-    generators() {
-      const generators = {};
-      for (const format of this.action.outputFormats) {
-        // `anonymizeClientsInExports` can't just be passed as an argument to formatOutput because
-        // vue.js won't re-compute `generators` when `anonymizeClientsInExports` changes.
-        if (this.anonymizeClientsInExports) {
-          generators[format] = () => this.formatOutput(format, true);
-        } else {
-          generators[format] = () => this.formatOutput(format, false);
-        }
-      }
-      return generators;
-    },
     clientOutputs() {
       return this.getOutputsOfAction(this.runId, this.actionId);
     },
-  },
-  methods: {
-    /**
-     * @param {import('@/backend/constants').ExportFormatCode} format
-     */
-    async formatOutput(format, anonymizeClients = false) {
-      return this.action.outputFormatter({
-        clients: this.clients,
-        allClients: this.allClients,
-        outputs: this.clientOutputs,
-        format,
-        anonymizeClients,
-      });
+    outputFiles() {
+      if (this.clientOutputs) {
+        return this.action.generateOutputFiles({
+          clients: this.clients,
+          allClients: this.allClients,
+          outputs: this.clientOutputs,
+        });
+      }
+      return null;
     },
   },
 };
