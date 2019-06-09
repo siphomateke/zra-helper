@@ -21,8 +21,8 @@
             @input="addSingleClient"
           />
           <div
-            class="buttons"
             v-if="clients.length > 0"
+            class="buttons"
           >
             <OpenModalButton
               label="View parsed clients"
@@ -205,7 +205,7 @@ import ClientSelector from '@/components/Clients/ClientSelector.vue';
 import OpenModalButton from '@/components/OpenModalButton.vue';
 import TaskList from '@/components/tasks/TaskList.vue';
 import Log from '@/components/TheLog.vue';
-import ClientActionOutput from '@/components/ClientActionOutput.vue';
+import ClientActionOutput from '@/components/ClientActionOutputs/ClientActionOutput.vue';
 import ClientActionSelector from '@/components/ClientActionSelector.vue';
 import ClientActionList from '@/components/ClientActionList.vue';
 import CardModal from '@/components/CardModal.vue';

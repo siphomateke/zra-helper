@@ -8,8 +8,7 @@ import VueHighlightJS from 'vue-highlightjs';
 import './validation';
 import moment from 'moment';
 import store from './store';
-import initClientActions from './store/modules/client_actions/init';
-import initClientsModule from './store/modules/clients/init';
+import initStoreModules from './store/modules/init';
 
 if (process.env.NODE_ENV === 'development' && store.state.config.debug.devtools) {
   devtools.connect();
@@ -26,5 +25,4 @@ Vue.use(DialogPlugin);
 Vue.use(VueClipboard);
 Vue.use(VueHighlightJS);
 
-initClientsModule();
-initClientActions();
+initStoreModules();
