@@ -28,26 +28,28 @@ function outputFormatter({ output, format }) {
     const headers = ['taxTypeId', ...ledgerColumns];
     rows.push(headers);
 
-    // TODO: Indicate output errors
-    const numberOfColumns = headers.length;
-    for (const taxTypeId of Object.keys(output)) {
-      let i = 0;
-      const records = output[taxTypeId];
-      for (const record of records) {
-        let firstCol = '';
-        if (i === 0) {
-          firstCol = taxTypeId;
+    if (output !== null) {
+      // TODO: Indicate output errors
+      const numberOfColumns = headers.length;
+      for (const taxTypeId of Object.keys(output)) {
+        let i = 0;
+        const records = output[taxTypeId];
+        for (const record of records) {
+          let firstCol = '';
+          if (i === 0) {
+            firstCol = taxTypeId;
+          }
+          const row = [firstCol];
+          for (const col of ledgerColumns) {
+            row.push(record[col]);
+          }
+          // Fill empty columns
+          while (row.length < numberOfColumns) {
+            row.push('');
+          }
+          rows.push(row);
+          i++;
         }
-        const row = [firstCol];
-        for (const col of ledgerColumns) {
-          row.push(record[col]);
-        }
-        // Fill empty columns
-        while (row.length < numberOfColumns) {
-          row.push('');
-        }
-        rows.push(row);
-        i++;
       }
     }
     // TODO: Make output options configurable by user
@@ -81,15 +83,13 @@ const TaxPayerLedgerClientAction = createClientAction({
       const filename = `ledger_${client.username}_${period}`;
       /** @type {LedgerOutput | null} */
       const outputValue = output.value;
-      if (outputValue !== null) {
-        outputFiles.push(createOutputFile({
-          label: `${getClientIdentifier(client)} ledger records`,
-          filename,
-          formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-          value: outputValue,
-          formatter: outputFormatter,
-        }));
-      }
+      outputFiles.push(createOutputFile({
+        label: `${getClientIdentifier(client)} ledger records`,
+        filename,
+        formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+        value: outputValue,
+        formatter: outputFormatter,
+      }));
     }
     return createOutputFile({
       label: 'Ledger records for each client',
