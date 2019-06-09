@@ -11,6 +11,8 @@ export default {
       tax_types: 'tax types',
       from_date: 'from date',
       to_date: 'to date',
+      previous_date: 'previous date',
+      previous_totals: 'previous totals',
 
       // tasks viewer
       tasks_json: 'tasks JSON',
