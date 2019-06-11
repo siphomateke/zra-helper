@@ -45,8 +45,8 @@ export const taskStates = {
  * @property {boolean} [isRoot=false]
  * Whether this task is at the highest level and has no parents. Root tasks are generally
  * associated with a single client action run.
- * @property {number} startedAt The Unix time at which this task was created.
- * @property {number} completedAt The Unix time at which this task completed.
+ * @property {number} [startedAt] The Unix time at which this task was created.
+ * @property {number} [completedAt] The Unix time at which this task completed.
  */
 
 /**
