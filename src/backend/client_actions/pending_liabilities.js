@@ -307,32 +307,30 @@ export function csvOutputParser(csvString) {
     header: false,
   });
 
-  const clients = [];
+  /** @type {ParsedPendingLiabilitiesOutput[]} */
   const pendingLiabilities = [];
-  let totals = {};
-  let currentClient = '';
+  let currentClientIdx = -1;
   const { data: rows, errors: csvParseErrors } = parsed;
   if (csvParseErrors.length > 0) {
     throw new Error(`CSV parsing failed: ${csvParseErrors.map(e => e.message).join(', ')}`);
   }
   for (const row of rows) {
+    // If the current row contains the name of a client in the first column,
+    // start storing totals for that client.
     if (row[0].length > 0) {
-      if (currentClient !== '') {
-        pendingLiabilities.push({
-          client: currentClient,
-          totals: Object.assign({}, totals),
-        });
-        totals = {};
-      }
-      [currentClient] = row;
-      clients.push(currentClient);
+      currentClientIdx++;
+      pendingLiabilities[currentClientIdx] = {
+        client: row[0],
+        totals: {},
+      };
     }
-    const taxType = row[1];
-    const taxTypeTotals = {};
+    const currentClientData = pendingLiabilities[currentClientIdx];
+    const taxTypeCode = row[1];
+    const taxTypeGrandTotal = {};
     for (let i = 0; i < pendingLiabilityColumns.length; i++) {
-      taxTypeTotals[pendingLiabilityColumns[i]] = row[i + 2];
+      taxTypeGrandTotal[pendingLiabilityColumns[i]] = row[i + 2];
     }
-    totals[taxType] = taxTypeTotals;
+    currentClientData.totals[taxTypeCode] = taxTypeGrandTotal;
   }
   const errors = validateParsedCsvOutput(pendingLiabilities);
   if (errors.length > 0) {
