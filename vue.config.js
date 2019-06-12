@@ -50,6 +50,7 @@ module.exports = {
         return [paths.concat(copy)];
       });
     config.resolve.alias.set('styles', path.resolve(__dirname, './src/assets/scss'));
+    config.resolve.alias.set('$tests', path.resolve(__dirname, './tests'));
 
     config
       .plugin('define')
