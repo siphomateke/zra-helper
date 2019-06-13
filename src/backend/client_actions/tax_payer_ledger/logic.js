@@ -735,6 +735,7 @@ function getRecordPrn(record, recordsByPeriod) {
  * @property {ParsedNarrationType} [narration]
  * @property {string|string[]} [prn]
  * @property {string|string[]} [assessmentNumber]
+ * @property {string} [quarter]
  */
 
 /**
@@ -787,6 +788,11 @@ function generateChangeReasonDetails({
     // TODO: Test getting assessment number from assessment in same period.
     details.assessmentNumber = getRecordAssessmentNumber(record, recordsByPeriod);
   }
+
+  if ('quarter' in record.narration.meta) {
+    details.quarter = record.narration.meta.quarter;
+  }
+
   return details;
 }
 
