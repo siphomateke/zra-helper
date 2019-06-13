@@ -332,7 +332,7 @@ describe('change reason details string', () => {
         fromDate: '01/01/2015',
         toDate: '31/03/2015',
       },
-      details: { quarter: '1' },
+      details: { quarter: 1 },
       expected: [
         '2015Q1 Return',
         'on 08/03/15',
@@ -343,7 +343,7 @@ describe('change reason details string', () => {
         fromDate: '01/04/2015',
         toDate: '30/06/2015',
       },
-      details: { quarter: '2' },
+      details: { quarter: 2 },
       expected: [
         '2015Q2 Return',
         'on 08/03/15',
@@ -354,7 +354,7 @@ describe('change reason details string', () => {
         fromDate: '01/07/2015',
         toDate: '30/09/2015',
       },
-      details: { quarter: '3' },
+      details: { quarter: 3 },
       expected: [
         '2015Q3 Return',
         'on 08/03/15',
@@ -365,7 +365,7 @@ describe('change reason details string', () => {
         fromDate: '01/10/2015',
         toDate: '31/12/2015',
       },
-      details: { quarter: '4' },
+      details: { quarter: 4 },
       expected: [
         '2015Q4 Return',
         'on 08/03/15',

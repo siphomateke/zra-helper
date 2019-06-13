@@ -232,7 +232,7 @@ describe('narration parsing', () => {
             advanceFrom: 'david',
             refPrn: '100000000005',
             paymentDate: '01-jan-2018',
-            quarter: '1',
+            quarter: 1,
           },
         },
         {
