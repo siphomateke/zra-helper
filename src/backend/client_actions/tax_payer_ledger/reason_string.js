@@ -95,7 +95,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     }
     // FIXME: Confirm this works
     if (
-      (type === t.PAYMENT && narration.meta.againstAssessment)
+      type === t.PAYMENT
       || type === t.LATE_PAYMENT_INTEREST
       || type === t.LATE_PAYMENT_PENALTY
     ) {
