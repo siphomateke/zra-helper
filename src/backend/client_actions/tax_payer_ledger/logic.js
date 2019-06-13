@@ -1090,15 +1090,22 @@ function removeDuplicateChangeReasonDetails(changeReasonDetails) {
  * @returns {boolean}
  */
 function recordAffectsLiabilityType(record, liabilityType) {
-  if (liabilityType === 'interest') {
-    return record.narration.group === narrationGroups.INTEREST;
-  } if (liabilityType === 'penalty') {
-    return record.narration.group === narrationGroups.PENALTIES;
-  } if (liabilityType === 'principal') {
-    return !(
-      record.narration.group === narrationGroups.INTEREST
-      || record.narration.group === narrationGroups.PENALTIES
+  const isInterest = record.narration.group === narrationGroups.INTEREST
+    || (
+      record.narration.type === narrationTypes.PAYMENT
+      && record.narration.meta.against === 'interest'
     );
+  const isPenalty = record.narration.group === narrationGroups.PENALTIES
+    || (
+      record.narration.type === narrationTypes.PAYMENT
+      && ['late return penalty', 'payment penalty'].includes(record.narration.meta.against)
+    );
+  if (liabilityType === 'interest') {
+    return isInterest;
+  } if (liabilityType === 'penalty') {
+    return isPenalty;
+  } if (liabilityType === 'principal') {
+    return !isInterest && !isPenalty;
   }
   throw new Error('Unknown liability type');
 }
