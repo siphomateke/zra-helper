@@ -743,11 +743,13 @@ function getRecordPrn(record, recordsByPeriod) {
  * @param {Object} options
  * @param {PairedLedgerRecord} options.record
  * @param {RecordsByPeriod<any>} options.recordsByPeriod
+ * @param {RecordsBySrNo<PairedLedgerRecord>} options.recordsBySrNo
  * @returns {ChangeReasonDetails}
  */
 function generateChangeReasonDetails({
   record,
   recordsByPeriod,
+  recordsBySrNo,
 }) {
   /** @type {ChangeReasonDetails} */
   const details = {
@@ -780,13 +782,16 @@ function generateChangeReasonDetails({
     record.narration.type === narrationTypes.PENALTY_FOR_AMENDED_ASSESSMENT
     || record.narration.type === narrationTypes.LATE_PAYMENT_INTEREST
     || record.narration.type === narrationTypes.LATE_PAYMENT_PENALTY
-    || (
-      record.narration.type === narrationTypes.PAYMENT
-      && record.narration.meta.againstAssessment
-    )
   ) {
     // TODO: Test getting assessment number from assessment in same period.
     details.assessmentNumber = getRecordAssessmentNumber(record, recordsByPeriod);
+  } else if (record.narration.type === narrationTypes.PAYMENT) {
+    // If the record is a payment of a record that has an assessment number, use that record's
+    // assessment number.
+    const paymentOfRecord = recordsBySrNo.get(record.paymentOf);
+    if (paymentOfRecord && paymentOfRecord.narration.meta.assessmentNumber) {
+      details.assessmentNumber = paymentOfRecord.narration.meta.assessmentNumber;
+    }
   }
 
   if ('quarter' in record.narration.meta) {
@@ -1313,6 +1318,7 @@ export default async function taxPayerLedgerLogic({
         const details = generateChangeReasonDetails({
           record,
           recordsByPeriod: pairedRecordsByPeriod,
+          recordsBySrNo: pairedRecordsBySrNo,
         });
         if (systemErrors.length > 0) {
           details.systemErrors.push(...systemErrors);
