@@ -763,7 +763,6 @@ function generateChangeReasonDetails({
   } else if ([
     narrationTypes.LATE_PAYMENT_INTEREST,
     narrationTypes.LATE_PAYMENT_PENALTY,
-    narrationTypes.LATE_RETURN_PENALTY,
   ].includes(record.narration.type)) {
     // TODO: Test getting PRN from payment in same period.
     details.prn = getRecordPrn(record, recordsByPeriod);
