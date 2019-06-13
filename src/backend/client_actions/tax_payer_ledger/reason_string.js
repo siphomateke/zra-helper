@@ -32,6 +32,8 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
   // If period is the whole year
   if (fromDate.month() === 0 && toDate.month() === 11) {
     periodString = fromDate.format('YYYY');
+  } else if (details.quarter) {
+    periodString = `${fromDate.format('YYYY')}Q${details.quarter}`;
   }
   const transactionString = `on ${transactionDate}`;
 
@@ -62,8 +64,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     type === t.PROVISIONAL_RETURN
     || type === t.REVISED_PROVISIONAL_RETURN
   ) {
-    const { quarter } = narration.meta;
-    let line = `${fromDate.format('YYYY')}Q${quarter} `;
+    let line = `${periodString} `;
     if (type === t.REVISED_PROVISIONAL_RETURN) {
       line += 'Revised provisional return';
     } else {
