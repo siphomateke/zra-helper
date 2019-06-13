@@ -37,6 +37,7 @@ Estimated Assessment (Assessment No : 00020316134466)
 REVERSAL OF - Estimated Assessment (Assessment No : 00020316134471)
 Fine for Audit assessment
 Being penalty amounting to 0.00 imposed under section 100(1)(e)(i)(A) for Additional assessment for the Return Period 01/01/2018 to 31/01/2018
+Being Penalty amounting 1000.00 imposed for under estimation for Provisional tax for the Return Period 01-JAN-18 - 31-DEC-18
 Amended assessment from Objection And Appeals Module (Assessment No : 10000000000000)
 Penalty for Amended assessment
 Refund Offset (PRN: 100000000000 ,Refund Period : 01-JAN-2018 to 31-JAN-2018 )

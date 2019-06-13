@@ -166,6 +166,17 @@ describe('change reason details string', () => {
       ],
     },
     {
+      name: 'advance payment',
+      record: { narration: 'Advance payment from  CLIENT  Ref. PRN: 100000000000 (Payment Date: 12-FEB-2013)' },
+      details: { prn: '100000000000' },
+      expected: [
+        'Advance payment',
+        '(PRN:100000000000)',
+        'of 01/13',
+        'on 12/02/13',
+      ],
+    },
+    {
       name: 'advance payment error',
       record: { narration: 'Advance payment from  CLIENT  Ref. PRN: 100000000000 (Payment Date: 12-FEB-2013)' },
       details: {
@@ -174,7 +185,7 @@ describe('change reason details string', () => {
       },
       expected: [
         'System error',
-        'Payment',
+        'Advance payment',
         '(PRN:100000000000)',
         'of 01/13',
         'on 12/02/13',
@@ -292,6 +303,20 @@ describe('change reason details string', () => {
       expected: [
         '01/13',
         'on 12/02/13',
+      ],
+    },
+    {
+      name: 'being penalty under estimation of provisional tax',
+      record: {
+        narration: 'Being Penalty amounting 522265.60 imposed for under estimation for Provisional tax for the Return Period 01-JAN-17 - 31-DEC-17',
+        fromDate: '01/01/2017',
+        toDate: '31/12/2017',
+        transactionDate: '13/05/2018',
+      },
+      expected: [
+        'Under estimation',
+        'of 2017 prov tax',
+        'on 13/05/18',
       ],
     },
   ];
