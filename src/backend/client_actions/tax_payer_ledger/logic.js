@@ -1012,7 +1012,7 @@ async function getReasonStringRecords({
         // we will use the very same advance payment to generate a reason string.
         if (systemErrors.includes(ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT)) {
           for (const advancePaymentSrNo of returnRecord.advancePayments) {
-            const advancePayment = recordsBySrNo[advancePaymentSrNo];
+            const advancePayment = recordsBySrNo.get(advancePaymentSrNo);
             reasonStringRecordsToAdd.push({
               record: advancePayment,
               systemErrors: [ledgerSystemErrors.UNALLOCATED_ADVANCE_PAYMENT],
