@@ -152,6 +152,12 @@ const narrationTypeMatchers = {
       via: /via\. (.+)/,
       // TODO: Find out if advance payments can have assessment numbers too
     },
+    transformer(parsed) {
+      if (parsed.meta.quarter) {
+        parsed.meta.quarter = Number(parsed.meta.quarter);
+      }
+      return parsed;
+    },
   },
   [narrationTypes.PAYMENT]: {
     typeMatch: /^payment reconciliation/,
@@ -170,6 +176,9 @@ const narrationTypeMatchers = {
         || parsed.meta.against === 'assessment liability'
       ) {
         parsed.meta.againstAssessment = true;
+      }
+      if (parsed.meta.quarter) {
+        parsed.meta.quarter = Number(parsed.meta.quarter);
       }
       return parsed;
     },

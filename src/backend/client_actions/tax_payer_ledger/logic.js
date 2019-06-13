@@ -740,7 +740,7 @@ function getRecordPrn(record, recordsByPeriod) {
  * @property {ParsedNarrationType} [narration]
  * @property {string|string[]} [prn]
  * @property {string|string[]} [assessmentNumber]
- * @property {string} [quarter]
+ * @property {number} [quarter]
  */
 
 /**
