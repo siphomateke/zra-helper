@@ -14,6 +14,7 @@ import {
   MultipleExactDifferenceMatches,
   SumOfChangeRecordsNotEqualToDifference,
   ExactAckReceiptNotFound,
+  NoChangeRecordsFoundError,
 } from '@/backend/errors';
 
 /**
@@ -1297,40 +1298,44 @@ export default async function taxPayerLedgerLogic({
         ));
       }
 
-      // Get all the records each change record is linked to, even if the record they are linked to
-      // is not from within the date range. This is needed to generate system errors from, e.g.
-      // payment's returns.
-      const changeRecordsWithPairInfo = changeRecords.map(
-        record => pairedRecordsBySrNo.get(record.srNo),
-      );
+      if (changeRecords.length === 0) {
+        processingErrors.push(new NoChangeRecordsFoundError(`Failed to find any records that caused a change of ${difference} in '${liabilityType}'`));
+      } else {
+        // Get all the records each change record is linked to, even if the record they are linked
+        // to is not from within the date range. This is needed to generate system errors from,
+        // e.g. payment's returns.
+        const changeRecordsWithPairInfo = changeRecords.map(
+          record => pairedRecordsBySrNo.get(record.srNo),
+        );
 
-      const response = await getReasonStringRecords({
-        records: changeRecordsWithPairInfo,
-        recordsBySrNo: pairedRecordsBySrNo,
-        closingBalances,
-        difference,
-        taxTypeId,
-        liabilityType,
-        client,
-        parentTaskId,
-      });
-
-      // Generate change reason details for each reason string record (@see `reasonStringRecords`)
-      // and add any system errors that the reason string records might have.
-      for (const { record, systemErrors } of response.reasonStringRecords.values()) {
-        const details = generateChangeReasonDetails({
-          record,
-          recordsByPeriod: pairedRecordsByPeriod,
+        const response = await getReasonStringRecords({
+          records: changeRecordsWithPairInfo,
           recordsBySrNo: pairedRecordsBySrNo,
+          closingBalances,
+          difference,
+          taxTypeId,
+          liabilityType,
+          client,
+          parentTaskId,
         });
-        if (systemErrors.length > 0) {
-          details.systemErrors.push(...systemErrors);
-        }
-        changeReasonDetails.push(details);
-      }
 
-      if (response.processingErrors.length > 0) {
-        processingErrors.push(...response.processingErrors);
+        // Generate change reason details for each reason string record (@see `reasonStringRecords`)
+        // and add any system errors that the reason string records might have.
+        for (const { record, systemErrors } of response.reasonStringRecords.values()) {
+          const details = generateChangeReasonDetails({
+            record,
+            recordsByPeriod: pairedRecordsByPeriod,
+            recordsBySrNo: pairedRecordsBySrNo,
+          });
+          if (systemErrors.length > 0) {
+            details.systemErrors.push(...systemErrors);
+          }
+          changeReasonDetails.push(details);
+        }
+
+        if (response.processingErrors.length > 0) {
+          processingErrors.push(...response.processingErrors);
+        }
       }
     } else {
       changeReasonDetails.push({ change: false });
