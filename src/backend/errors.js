@@ -227,6 +227,20 @@ export class LedgerError extends ExtendedError {
   }
 }
 
+export class NoChangeRecordsFoundError extends LedgerError {
+  /* eslint-disable max-len */
+  /**
+   *
+   * @param {Object} props
+   * @param {import('./client_actions/pending_liabilities').PendingLiabilityType} props.liabilityType
+   */
+  /* eslint-enable max-len */
+  constructor(message, code = null, props = { liabilityType: null }) {
+    super(message, code, props);
+    this.setType('NoChangeRecordsFoundError');
+  }
+}
+
 /**
  * Thrown when a closing balance for a record couldn't be found with the same period as the record.
  * This is checked when trying to determine if a return has any unallocated advance payments.
