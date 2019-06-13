@@ -85,7 +85,9 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
       paymentLines.push(`(PRN:${details.prn})`);
     }
     paymentLines.push(`of ${periodString}`);
-    // FIXME: Handle advance payments
+    if (type === t.ADVANCE_PAYMENT) {
+      paymentLines[0] = 'Advance payment';
+    }
     if (type === t.LATE_PAYMENT_INTEREST || type === t.LATE_PAYMENT_PENALTY) {
       paymentLines[0] = 'Late Payment';
       // FIXME: If there are multiple late returns or payments with the same details,
@@ -143,6 +145,14 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
     || type === t.BEING_REVERSAL_REPLICATED_TRANSACTION
   ) {
     lines.unshift(periodString);
+  } else if (type === t.BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX) {
+    lines.unshift(...[
+      'Under estimation',
+      `of ${fromDate.format('YYYY')} prov tax`,
+    ]);
+  } else {
+    // If the type doesn't have a certain output format, just use the type's code.
+    lines.unshift(type);
   }
   return lines.join('\n');
 }
