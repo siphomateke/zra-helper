@@ -511,8 +511,12 @@ export function pairRecords(records) {
     const indexOfRecordInPeriodRecords = recordsInSamePeriod.indexOf(record);
     // If it's a payment, find out what it's on.
     if (
-      record.narration.type === narrationTypes.PAYMENT
-      || record.narration.type === narrationTypes.ADVANCE_PAYMENT
+      // only get pair info for non-reversals
+      !record.narration.reversal
+      && (
+        record.narration.type === narrationTypes.PAYMENT
+        || record.narration.type === narrationTypes.ADVANCE_PAYMENT
+      )
     ) {
       // Search records that come before this one
       for (let j = indexOfRecordInPeriodRecords - 1; j >= 0; j--) {
@@ -1155,10 +1159,9 @@ function getUnbalancedRecordsInDateRange(recordsInDateRange) {
  * @returns {PairedLedgerRecord[]}
  */
 function getAllPairedRecords(parsedLedgerRecords) {
-  // FIXME: Don't remove reversals when matching records. We need them since the change records
-  // can include reversals.
-  const records = removeReversals(parsedLedgerRecords);
-  return pairRecords(records);
+  // Note: We don't remove reversals since we will use the paired records to get information about
+  // change records (which can include non-reversed records since they are in a certain date range).
+  return pairRecords(parsedLedgerRecords);
 }
 
 /**
