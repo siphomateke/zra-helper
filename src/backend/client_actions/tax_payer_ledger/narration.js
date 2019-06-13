@@ -285,8 +285,8 @@ const narrationTypeMatchers = {
     typeMatch: /^refund offset/,
     meta: {
       prn: /\(prn: (\d+)/,
-      fromDate: /refund period : (.+) to/,
-      toDate: /refund period : .+ to (.+)/,
+      fromDate: /refund period : ([^ ]+) to/,
+      toDate: /refund period : [^ ]+ to ([^ ]+)/,
     },
   },
   [narrationTypes.REFUND_PAID]: {
