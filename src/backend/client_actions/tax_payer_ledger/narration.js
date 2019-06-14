@@ -412,8 +412,8 @@ export default function parseNarration(originalNarration) {
     reversal: false,
     group: null,
   };
-  result.reversal = originalNarration.includes('reversal of') || originalNarration.includes('reversed');
-  const narration = originalNarration.replace(/^reversal of - /, '').replace(/reversed$/, '');
+  result.reversal = originalNarration.includes('reversal of') || originalNarration.includes('-reversed');
+  const narration = originalNarration.replace(/^reversal of - /, '').replace(/-reversed$/, '');
   for (const type of Object.keys(narrationTypeMatchers)) {
     const matcher = narrationTypeMatchers[type];
     if (narration.match(matcher.typeMatch)) {
