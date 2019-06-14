@@ -1138,6 +1138,16 @@ function filterRecordsByLiabilityType(records, liabilityType) {
 }
 
 /**
+ * Filters out all records that don't affect pending liabilities.
+ * @template {ParsedTaxPayerLedgerRecord} Record
+ * @param {Record[]} records
+ * @returns {Record[]}
+ */
+function getRecordsThatAffectLiabilities(records) {
+  return records.filter(r => r.narration.type !== narrationTypes.ADVANCE_PAYMENT);
+}
+
+/**
  * Gets unbalanced records from records that were sorted by transaction date.
  * @template {ParsedTaxPayerLedgerRecord} Record
  * @param {Record[]} recordsInDateRange
@@ -1219,6 +1229,7 @@ export default async function taxPayerLedgerLogic({
   // Find all the unbalanced records within the date range (usually the last week).
   const recordsInDateRange = getRecordsInDateRange(parsedLedgerRecords, previousDate, currentDate);
   const unbalancedRecords = getUnbalancedRecordsInDateRange(recordsInDateRange.withinDateRange);
+  const allPotentialChangeRecords = getRecordsThatAffectLiabilities(unbalancedRecords);
 
   // Match records to what they are related to.
   const pairedRecords = getAllPairedRecords(parsedLedgerRecords);
@@ -1239,7 +1250,10 @@ export default async function taxPayerLedgerLogic({
     if (Math.abs(difference) > 0) {
       // TODO: Test this. `example1_output.csv` is a good sample.
       /** Records that could have contributed to the current pending liability type changing. */
-      const potentialChangeRecords = filterRecordsByLiabilityType(unbalancedRecords, liabilityType);
+      const potentialChangeRecords = filterRecordsByLiabilityType(
+        allPotentialChangeRecords,
+        liabilityType,
+      );
 
       /**
        * The records that caused a change in pending liabilities.
