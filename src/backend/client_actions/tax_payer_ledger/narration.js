@@ -29,6 +29,7 @@ Provisional Return (01/07/2018-30/09/2018)
 Provisional Return (01/10/2018-31/12/2018)
 Revised Provisional Return (01/01/2018-31/03/2018)
 Original Return
+Supplementry Return
 Amended Return
 Audit assessment from Audit Module (Assessment No : 10000000000000) (14 digits)
 Additional assessment from Assessment Module (Assessment No : 10000000000000)
@@ -82,6 +83,7 @@ export const narrationTypes = {
   PROVISIONAL_RETURN: 'PROVISIONAL_RETURN',
   REVISED_PROVISIONAL_RETURN: 'REVISED_PROVISIONAL_RETURN',
   ORIGINAL_RETURN: 'ORIGINAL_RETURN',
+  SUPPLEMENTARY_RETURN: 'SUPPLEMENTARY_RETURN',
   AMENDED_RETURN: 'AMENDED_RETURN',
   AUDIT_ASSESSMENT: 'AUDIT_ASSESSMENT',
   ADDITIONAL_ASSESSMENT: 'ADDITIONAL_ASSESSMENT',
@@ -232,6 +234,9 @@ const narrationTypeMatchers = {
   [narrationTypes.ORIGINAL_RETURN]: {
     typeMatch: /^original return/,
   },
+  [narrationTypes.SUPPLEMENTARY_RETURN]: {
+    typeMatch: /^supplementry return/,
+  },
   [narrationTypes.AMENDED_RETURN]: {
     typeMatch: /^amended return/,
   },
@@ -348,6 +353,9 @@ export const narrationTypesByGroup = {
     t.REVISED_PROVISIONAL_RETURN, // ITX-only
     t.ORIGINAL_RETURN,
     t.AMENDED_RETURN,
+    // TODO: Don't treat supplementary return as a separate return. It must be linked to a normal
+    // return as it adds to it rather than replacing it like an amended return.
+    t.SUPPLEMENTARY_RETURN,
   ],
   [narrationGroups.INTEREST]: [
     t.LATE_PAYMENT_INTEREST,

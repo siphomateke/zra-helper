@@ -148,6 +148,7 @@ describe('narration parsing', () => {
       expected: { type: t.LATE_RETURN_PENALTY },
     },
     { name: 'original return', narration: 'Original Return', expected: { type: t.ORIGINAL_RETURN } },
+    { name: 'supplementary return', narration: 'Supplementry Return', expected: { type: t.SUPPLEMENTARY_RETURN } },
     { name: 'amended return', narration: 'Amended Return', expected: { type: t.AMENDED_RETURN } },
     {
       name: 'audit assessment',
