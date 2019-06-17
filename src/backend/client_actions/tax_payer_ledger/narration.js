@@ -100,6 +100,15 @@ export const narrationTypes = {
   BEING_REVERSAL_REPLICATED_TRANSACTION: 'BEING_REVERSAL_REPLICATED_TRANSACTION',
 };
 
+export const paymentAgainstTypes = [
+  'principal liability',
+  'interest',
+  'late return penalty',
+  'payment penalty',
+  'assessment liability',
+  'assessment manual penalty',
+];
+
 const t = narrationTypes;
 
 /**

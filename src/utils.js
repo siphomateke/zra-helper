@@ -116,6 +116,26 @@ export function objectHasProperties(obj, properties) {
 }
 
 /**
+ * Checks if the provided items are missing from or exist in an array.
+ * @template T
+ * @param {T[]} arr
+ * @param {T[]} items
+ * @return {{missing: T[], existing: T[]}} The missing and existing items.
+ */
+export function arrayHasItems(arr, items) {
+  const missing = [];
+  const existing = [];
+  for (const item of items) {
+    if (arr.indexOf(item) > -1) {
+      existing.push(item);
+    } else {
+      missing.push(item);
+    }
+  }
+  return { missing, existing };
+}
+
+/**
  * Standard array join except a different character can be provided for the last separator.
  * @param {Array} arr
  * @param {string} separator
