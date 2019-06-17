@@ -1,4 +1,4 @@
-import parseNarration, { narrationTypes } from '../narration';
+import parseNarration, { narrationTypes, paymentAgainstTypes } from '../narration';
 import { deepAssign, deepClone } from '@/utils';
 
 /**
@@ -342,14 +342,6 @@ describe('narration parsing', () => {
         paymentDate: '01-jan-2018',
       },
     };
-    const paymentAgainstTypes = [
-      'principal liability',
-      'interest',
-      'payment penalty',
-      'late return penalty',
-      'assessment liability',
-      'assessment manual penalty',
-    ];
     for (const againstType of paymentAgainstTypes) {
       const baseParsed = deepClone(baseBaseParsed);
       baseParsed.meta.against = againstType;
