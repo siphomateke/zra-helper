@@ -391,7 +391,7 @@ describe('narration parsing', () => {
   });
 
   describe('provisional return', () => {
-    function testProvisionalReturnQuarters(type) {
+    function testProvisionalReturnQuarters(type, withParenthesis) {
       const quarterDates = [
         ['01/01/2018', '31/03/2018'],
         ['01/04/2018', '30/06/2018'],
@@ -403,7 +403,12 @@ describe('narration parsing', () => {
       for (let i = 0; i < quarterDates.length; i++) {
         const quarter = i + 1;
         const [fromDate, toDate] = quarterDates[i];
-        let narration = `Provisional Return (${fromDate}-${toDate})`;
+        let narration = 'Provisional Return ';
+        if (withParenthesis) {
+          narration += `(${fromDate}-${toDate})`;
+        } else {
+          narration += `{${fromDate}-${toDate}}`;
+        }
         if (type === t.REVISED_PROVISIONAL_RETURN) {
           narration = `Revised ${narration}`;
         }
@@ -414,11 +419,16 @@ describe('narration parsing', () => {
         );
       }
     }
-    test('all normal provisional return quarters', () => {
-      testProvisionalReturnQuarters(t.PROVISIONAL_RETURN);
-    });
-    test('all revised provisional return quarters', () => {
-      testProvisionalReturnQuarters(t.REVISED_PROVISIONAL_RETURN);
-    });
+    for (let i = 0; i < 2; i++) {
+      const withParenthesis = i === 0;
+      describe(withParenthesis ? 'with parenthesis' : 'with braces', () => {
+        test('all normal provisional return quarters', () => {
+          testProvisionalReturnQuarters(t.PROVISIONAL_RETURN, withParenthesis);
+        });
+        test('all revised provisional return quarters', () => {
+          testProvisionalReturnQuarters(t.REVISED_PROVISIONAL_RETURN, withParenthesis);
+        });
+      });
+    }
   });
 });

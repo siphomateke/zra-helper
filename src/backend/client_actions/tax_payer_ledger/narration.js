@@ -24,10 +24,12 @@ Late Payment Interest-Reversed
 Late Payment Penalty-Reversed
 Late Return Penalty-Reversed
 Provisional Return (01/01/2018-31/03/2018)
+Provisional Return {01/01/2018-31/03/2018}
 Provisional Return (01/04/2018-30/06/2018)
 Provisional Return (01/07/2018-30/09/2018)
 Provisional Return (01/10/2018-31/12/2018)
 Revised Provisional Return (01/01/2018-31/03/2018)
+Revised Provisional Return {01/01/2018-31/03/2018}
 Original Return
 Supplementry Return
 Amended Return
@@ -219,8 +221,8 @@ const narrationTypeMatchers = {
   [narrationTypes.PROVISIONAL_RETURN]: {
     typeMatch: /^provisional return/,
     meta: {
-      fromDate: /\((.+)-.+\)/,
-      toDate: /\(.+-(.+)\)/,
+      fromDate: /(?:\(|{)(.+)-.+(?:\)|})/,
+      toDate: /(?:\(|{).+-(.+)(?:\)|})/,
     },
     transformer(parsed) {
       // FIXME: Only parse date once. Moment shouldn't run in the transformer and again elsewhere.
@@ -231,8 +233,8 @@ const narrationTypeMatchers = {
   [narrationTypes.REVISED_PROVISIONAL_RETURN]: {
     typeMatch: /^revised provisional return/,
     meta: {
-      fromDate: /\((.+)-.+\)/,
-      toDate: /\(.+-(.+)\)/,
+      fromDate: /(?:\(|{)(.+)-.+(?:\)|})/,
+      toDate: /(?:\(|{).+-(.+)(?:\)|})/,
     },
     transformer(parsed) {
       // FIXME: Only parse date once. Moment shouldn't run in the transformer and again elsewhere.
