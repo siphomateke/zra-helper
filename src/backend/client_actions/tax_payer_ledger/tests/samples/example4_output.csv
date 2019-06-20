@@ -3,10 +3,13 @@ Tax type,Principal,Interest,Penalty,Total,Gr. Total,Principal,Interest,Penalty,T
 ITX,,,,,"K60,000.00",,,,ITX,,,,,K0.00
 VAT,,,,,,,,,VAT,,,,,
 PAYE,"K60,000.00",K0.00,K0.00,"K60,000.00",,"Payment
+(PRN:100000000002)
 of 11/17
-(PRN:100000000002),
-of 12/17
+on 28/04/18
+
+Payment
 (PRN:100000000003)
+of 12/17
 on 28/04/18",NC,NC,PAYE,K0.00,K0.00,K0.00,K0.00,
 TOT,,,,,,,,,TOT,,,,,
 WHT,,,,,,,,,WHT,,,,,
