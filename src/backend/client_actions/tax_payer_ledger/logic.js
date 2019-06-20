@@ -754,6 +754,8 @@ function getRecordPrn(record, recordsByPeriod) {
  * @property {string|string[]} [prn]
  * @property {string|string[]} [assessmentNumber]
  * @property {number} [quarter]
+ * @property {NarrationType} [paymentOf]
+ * The narration type of the record that this payment is for.
  */
 
 /**
@@ -789,6 +791,8 @@ function generateChangeReasonDetails({
     details.prn = getRecordPrn(record, recordsByPeriod);
   }
 
+  let paymentOfRecord = null;
+
   // TODO: Remove this first block since the outcome is a duplicate of the second one
   if (record.narration.group === narrationGroups.ASSESSMENTS) {
     details.assessmentNumber = record.narration.meta.assessmentNumber;
@@ -806,7 +810,7 @@ function generateChangeReasonDetails({
   } else if (record.narration.type === narrationTypes.PAYMENT) {
     // If the record is a payment of a record that has an assessment number, use that record's
     // assessment number.
-    const paymentOfRecord = recordsBySrNo.get(record.paymentOf);
+    paymentOfRecord = recordsBySrNo.get(record.paymentOf);
     if (paymentOfRecord && paymentOfRecord.narration.meta.assessmentNumber) {
       details.assessmentNumber = paymentOfRecord.narration.meta.assessmentNumber;
     }
@@ -814,6 +818,17 @@ function generateChangeReasonDetails({
 
   if ('quarter' in record.narration.meta) {
     details.quarter = record.narration.meta.quarter;
+  }
+
+  if (record.narration.type === narrationTypes.PAYMENT) {
+    if (record.paymentOf) {
+      if (!paymentOfRecord) {
+        paymentOfRecord = recordsBySrNo.get(record.paymentOf);
+      }
+      if (paymentOfRecord) {
+        details.paymentOf = paymentOfRecord.narration.type;
+      }
+    }
   }
 
   return details;
