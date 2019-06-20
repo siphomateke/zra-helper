@@ -20,6 +20,8 @@ import { unparseCsv, writeJson } from '@/backend/file_utils';
  * @property {import('@/backend/constants').Date} [fromDate]
  * @property {import('@/backend/constants').Date} [toDate]
  * @property {import('@/backend/constants').TaxTypeNumericalCode[]} [taxTypeIds]
+ * @property {Object.<string, number[]>} [pages]
+ * Pages, stored by tax type ID, to get ledger records from.
  */
 
 function outputFormatter({ output, format }) {
@@ -122,7 +124,7 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
     }
 
     // Get data for each tax account
-    const recordsResponses = await parallelTaskMap({
+    const taxTypeResponses = await parallelTaskMap({
       task: parentTask,
       list: taxAccounts,
       /**
@@ -156,10 +158,16 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
               indeterminate: true,
             });
 
+            let pages = [];
+            if (inInput(input, 'pages') && taxTypeId in input.pages) {
+              pages = input.pages[taxTypeId];
+            }
+
             taxAccountTask.status = 'Get data from all pages';
             const allResponses = await getPagedData({
               task,
               getPageSubTask,
+              pages,
               getDataFunction: async (page) => {
                 const reportPage = await getTaxPayerLedgerPage({
                   accountCode,
@@ -175,26 +183,57 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
               },
             });
 
-            /** @type {import('@/backend/reports').TaxPayerLedgerRecord[]} */
-            const records = [];
-            for (const response of Object.values(allResponses)) {
-              if (!('error' in response)) {
-                for (const record of response.value.records) {
-                  records.push(record);
-                }
-              }
-            }
-
-            return records;
+            return allResponses;
           },
         });
       },
     });
 
     const output = {};
-    for (const recordsResponse of recordsResponses) {
-      output[recordsResponse.item.taxTypeId] = recordsResponse.value;
+    const failures = {
+      /** @type {import('@/backend/constants').TaxTypeNumericalCode[]} */
+      taxTypeIds: [],
+      /** @type { Object.<string, number[]>} Failed pages by tax type ID */
+      pages: {},
+    };
+    for (const taxTypeResponse of taxTypeResponses) {
+      const { taxTypeId } = taxTypeResponse.item;
+      if (!('error' in taxTypeResponse)) {
+        /** @type {import('@/backend/reports').TaxPayerLedgerRecord[]} */
+        const records = [];
+        for (const response of Object.values(taxTypeResponse.value)) {
+          if (!('error' in response)) {
+            records.push(...response.value.records);
+          } else {
+            if (!(taxTypeId in failures.pages)) {
+              failures.pages[taxTypeId] = [];
+            }
+            failures.pages[taxTypeId].push(response.page);
+          }
+        }
+        if (taxTypeId in failures.pages) {
+          failures.taxTypeIds.push(taxTypeId);
+        }
+        output[taxTypeId] = records;
+      } else {
+        failures.taxTypeIds.push(taxTypeId);
+      }
     }
+    const somePagesFailed = Object.keys(failures.pages).length > 0;
+    if (failures.taxTypeIds.length > 0 || somePagesFailed) {
+      /** @type {RunnerInput} */
+      const retryInput = {};
+      if (failures.taxTypeIds.length > 0) {
+        retryInput.taxTypeIds = failures.taxTypeIds;
+      }
+      if (somePagesFailed) {
+        retryInput.pages = failures.pages;
+      }
+      const failedTaxTypes = failures.taxTypeIds.map(id => taxTypes[id]);
+      this.setRetryReason(`Failed to get some ledger records from the following tax accounts: [ ${failedTaxTypes.join(', ')} ].`);
+      this.storeProxy.retryInput = retryInput;
+    }
+    // FIXME: Merge records from retry with previous try
     this.storeProxy.output = output;
   }
 };
