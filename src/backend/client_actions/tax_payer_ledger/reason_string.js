@@ -1,6 +1,11 @@
 import moment from 'moment';
 import { taxTypeNumericalCodes } from '@/backend/constants';
-import { narrationTypes, narrationGroups } from './narration';
+import {
+  narrationTypes,
+  narrationGroups,
+  narrationNames,
+  getNarrationTypeGroup,
+} from './narration';
 import { ledgerSystemErrors } from './logic';
 
 const t = narrationTypes;
@@ -85,6 +90,27 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
       paymentLines.push(`(PRN:${details.prn})`);
     }
     paymentLines.push(`of ${periodString}`);
+    if (type === t.PAYMENT && details.paymentOf) {
+      const paymentOfNarrationGroup = getNarrationTypeGroup(details.paymentOf);
+      // Since payments are usually for returns, don't bother mentioning it.
+      if (paymentOfNarrationGroup !== narrationGroups.RETURNS) {
+        let name = narrationNames[details.paymentOf];
+
+        // Don't include 'interest' or 'penalty' in name since that can be deduced from which output
+        // column the reason string is added to.
+        if (
+          details.paymentOf === t.LATE_PAYMENT_INTEREST
+          || details.paymentOf === t.LATE_PAYMENT_PENALTY
+        ) {
+          name = 'Late payment';
+        }
+        if (details.paymentOf === t.LATE_RETURN_PENALTY) {
+          name = 'Late return';
+        }
+
+        paymentLines.push(name);
+      }
+    }
     if (type === t.ADVANCE_PAYMENT) {
       paymentLines[0] = 'Advance payment';
     }
@@ -102,10 +128,7 @@ export default function generateChangeReasonString(taxTypeId, detailsObj) {
       || type === t.LATE_PAYMENT_PENALTY
     ) {
       if (details.assessmentNumber) {
-        paymentLines.push(...[
-          'Assessment',
-          `(${details.assessmentNumber})`,
-        ]);
+        paymentLines.push(`(Assmt No: ${details.assessmentNumber})`);
       }
     }
     lines.unshift(...paymentLines);

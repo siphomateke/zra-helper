@@ -102,6 +102,34 @@ export const narrationTypes = {
   BEING_REVERSAL_REPLICATED_TRANSACTION: 'BEING_REVERSAL_REPLICATED_TRANSACTION',
 };
 
+export const narrationNames = {
+  TARPS_BALANCE: 'TARPS balance',
+  ADVANCE_PAYMENT: 'Advance payment',
+  PAYMENT: 'Payment',
+  CLOSING_BALANCE: 'Closing balance',
+  LATE_PAYMENT_PENALTY: 'Late payment penalty',
+  LATE_PAYMENT_INTEREST: 'Late payment interest',
+  LATE_RETURN_PENALTY: 'Late return penalty',
+  PROVISIONAL_RETURN: 'Provisional return',
+  REVISED_PROVISIONAL_RETURN: 'Revised provisional return',
+  ORIGINAL_RETURN: 'Original return',
+  SUPPLEMENTARY_RETURN: 'Supplementary return',
+  AMENDED_RETURN: 'Amended return',
+  AUDIT_ASSESSMENT: 'Audit assessment',
+  ADDITIONAL_ASSESSMENT: 'Additional assessment',
+  ESTIMATED_ASSESSMENT: 'Estimated assessment',
+  AUDIT_ASSESSMENT_PENALTY: 'Audit assessment penalty',
+  ADDITIONAL_ASSESSMENT_PENALTY: 'Additional assessment penalty',
+  BEING_PENALTY_UNDER_ESTIMATION_PROVISIONAL_TAX: 'Penalty imposed for under estimation of provisional tax',
+  AMENDED_ASSESSMENT: 'Amended assessment',
+  PENALTY_FOR_AMENDED_ASSESSMENT: 'Penalty for amended assessment',
+  REFUND_OFFSET: 'Refund offset',
+  REFUND_PAID: 'Refund paid',
+  BEING_POSTING_OPENING_BALANCE_MIGRATED: 'Being posting opening balance migrated',
+  BEING_REVERSAL_DUPLICATE_PAYMENT: 'Being reversal of a duplicate payment',
+  BEING_REVERSAL_REPLICATED_TRANSACTION: 'Being reversal a replicated transaction',
+};
+
 export const paymentAgainstTypes = [
   'principal liability',
   'interest',
@@ -412,7 +440,7 @@ for (const group of Object.keys(narrationTypesByGroup)) {
  * @param {NarrationType} narrationType
  * @returns {NarrationGroup}
  */
-export function getNarrationType(narrationType) {
+export function getNarrationTypeGroup(narrationType) {
   return narrationTypesGroupsMap[narrationType];
 }
 
@@ -452,6 +480,6 @@ export default function parseNarration(originalNarration) {
       break;
     }
   }
-  result.group = getNarrationType(result.type);
+  result.group = getNarrationTypeGroup(result.type);
   return result;
 }

@@ -17,7 +17,7 @@ import taxPayerLedgerLogic, {
   removeZeroRecords,
 } from '../logic';
 import {
-  getNarrationType,
+  getNarrationTypeGroup,
   narrationGroups,
   narrationTypes,
   narrationTypesByGroup,
@@ -151,7 +151,7 @@ describe('recordMatchesPayment', () => {
   function createRecordFromQuarter(data, quarter = null) {
     const record = deepAssign({ narration: { meta: {} } }, data);
     // FIXME: Generate from narration string
-    record.narration.group = getNarrationType(record.narration.type);
+    record.narration.group = getNarrationTypeGroup(record.narration.type);
     if (quarter !== null) {
       const { fromMonth, toMonth } = getPeriodMonthsFromQuarter(quarter);
       record.fromDate = parseDate(`01/${fromMonth}/13`);
