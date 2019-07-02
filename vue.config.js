@@ -1,5 +1,7 @@
 const path = require('path');
 const fs = require('fs');
+// eslint-disable-next-line import/no-extraneous-dependencies
+const webpack = require('webpack');
 const packageJson = require('./package.json');
 
 const contentScriptEntries = {};
@@ -33,6 +35,17 @@ const copy = [
 
 const browser = process.env.BROWSER ? process.env.BROWSER : 'chrome';
 
+const hotReloadEnabled = process.env.HOT_RELOAD === 'enabled';
+
+const webpackPlugins = [];
+
+if (hotReloadEnabled) {
+  webpackPlugins.push(new webpack.ProvidePlugin({
+    browser: 'sinon-chrome/webextensions',
+    chrome: 'sinon-chrome/extensions',
+  }));
+}
+
 module.exports = {
   lintOnSave: false,
   productionSourceMap: false,
@@ -41,6 +54,7 @@ module.exports = {
       // OCRAD.js expects global to be defined.
       global: true,
     },
+    plugins: webpackPlugins,
   },
   chainWebpack: (config) => {
     config
@@ -56,6 +70,7 @@ module.exports = {
       .plugin('define')
       .tap((args) => {
         args[0]['process.env'].BROWSER = `"${browser}"`;
+        args[0]['process.env'].HOT_RELOAD = `"${process.env.HOT_RELOAD}"`;
         return args;
       });
 
@@ -64,16 +79,18 @@ module.exports = {
       .use('vue-loader')
       .loader('vue-loader')
       .tap((options) => {
-        // Disable hot-reloading since it doesn't work
-        options.hotReload = false;
+        if (!hotReloadEnabled) {
+          options.hotReload = false;
+        }
         // Disable prettier to decrease compile time
         // See https://github.com/vuejs/vue-loader/issues/1426
         options.prettify = false;
         return options;
       });
-    // Disable hot-reloading since it doesn't work
-    if (config.plugins.has('hmr')) {
-      config.plugins.delete('hmr');
+    if (!hotReloadEnabled) {
+      if (config.plugins.has('hmr')) {
+        config.plugins.delete('hmr');
+      }
     }
 
     // Hide 'bufferutil' and 'utf-8-validate' module not found errors.
@@ -100,8 +117,8 @@ module.exports = {
         options: true,
       },
       api: 'browser',
-      usePolyfill: true,
-      autoImportPolyfill: true,
+      usePolyfill: !hotReloadEnabled,
+      autoImportPolyfill: !hotReloadEnabled,
       componentOptions: {
         background: {
           entry: 'src/backend/background.js',

@@ -1,49 +1,54 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
-    "version": "2.0.0",
-    "tasks": [
-      {
-        "type": "npm",
-        "script": "build",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "serve",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "devtools",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "lint",
-        "problemMatcher": [
-          "$eslint-stylish"
-        ]
-      },
-      {
-        "type": "npm",
-        "script": "serve:firefox",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "build:firefox",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "build:all",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "test:unit",
-        "problemMatcher": []
-      }
-    ]
-  }
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "serve",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "devtools",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": [
+        "$eslint-stylish"
+      ]
+    },
+    {
+      "type": "npm",
+      "script": "serve:firefox",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "build:firefox",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "build:all",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "test:unit",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "hot:firefox",
+      "problemMatcher": []
+    }
+  ]
+}
