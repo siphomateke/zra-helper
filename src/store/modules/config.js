@@ -142,6 +142,8 @@ const defaultConfig = {
   },
 };
 
+const hotReloadEnabled = process.env.HOT_RELOAD === 'enabled';
+
 /** @type {import('vuex').Module<State>} */
 const vuexModule = {
   namespaced: true,
@@ -164,10 +166,21 @@ const vuexModule = {
     async load({ commit, dispatch }) {
       commit('setConfigLoadingState', true, { root: true });
       try {
-        const items = await browser.storage.sync.get('config');
-        if ('config' in items) {
+        let loadedConfig = null;
+        if (hotReloadEnabled) {
+          const configJsonString = sessionStorage.getItem('config');
+          if (configJsonString !== null) {
+            loadedConfig = JSON.parse(configJsonString);
+          }
+        } else {
+          const items = await browser.storage.sync.get('config');
+          if ('config' in items) {
+            loadedConfig = items.config;
+          }
+        }
+        if (loadedConfig !== null) {
           /** @type {State} */
-          const config = deepAssign(defaultConfig, items.config);
+          const config = deepAssign(defaultConfig, loadedConfig);
           await dispatch('set', config);
           await dispatch('updateConfig');
         } else {
@@ -179,7 +192,11 @@ const vuexModule = {
       }
     },
     async save({ state, dispatch }) {
-      await browser.storage.sync.set({ config: state });
+      if (hotReloadEnabled) {
+        sessionStorage.setItem('config', JSON.stringify(state));
+      } else {
+        await browser.storage.sync.set({ config: state });
+      }
       await dispatch('updateConfig');
     },
     async updateConfig({ dispatch }) {
