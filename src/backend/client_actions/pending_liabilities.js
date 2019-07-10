@@ -1,7 +1,7 @@
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import { exportFormatCodes, taxTypes } from '../constants';
-import { writeJson, unparseCsv } from '../file_utils';
+import { writeJson, unparseCsv, objectToCsvTable } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import { createClientAction, ClientActionRunner, inInput } from './base';
 import { getPendingLiabilityPage } from '../reports';
@@ -14,6 +14,14 @@ const totalsColumns = [
   'penalty',
   'total',
 ];
+
+// TODO: Type keys as totalsColumn when using TypeScript
+const totalsColumnsNames = {
+  principal: 'Principal',
+  interest: 'Interest',
+  penalty: 'Penalty',
+  total: 'Total',
+};
 
 /**
  * @typedef {Object.<string, string>} Totals
@@ -109,11 +117,6 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
     anonymizeClients,
   }) {
     if (format === exportFormatCodes.CSV) {
-      const rows = [];
-      const columnOrder = totalsColumns;
-      // Columns are: client identifier, ...totals, error
-      const numberOfColumns = 2 + totalsColumns.length + 1;
-
       const allClientsById = new Map();
       for (const client of allClients) {
         allClientsById.set(String(client.id), client);
@@ -125,43 +128,36 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
         clientOutputsByUsername[client.username] = clientOutputs[clientId];
       }
 
+      const csvOutput = {};
       for (const client of allClients) {
         let value = null;
         if (client.username in clientOutputsByUsername) {
           ({ value } = clientOutputsByUsername[client.username]);
         }
         const totalsObjects = value ? value.totals : null;
-        let i = 0;
+        const clientOutput = {};
         for (const taxType of Object.values(taxTypes)) {
-          let firstCol = '';
-          if (i === 0) {
-            firstCol = getClientIdentifier(client, anonymizeClients);
-          }
-          const row = [firstCol, taxType];
+          const row = {};
           if (value && (taxType in totalsObjects)) {
-            const totalsObject = totalsObjects[taxType];
-            const totals = [];
-            for (const column of columnOrder) {
-              totals.push(totalsObject[column]);
-            }
-            row.push(...totals);
-          } else {
-            for (let j = 0; j < columnOrder.length; j++) {
-              row.push('');
-            }
+            Object.assign(row, totalsObjects[taxType]);
+          } else if (value && (taxType in value.retrievalErrors)) {
             // Indicate that this tax type had an error
-            if (value && (taxType in value.retrievalErrors)) {
-              row.push('!');
-            }
+            row.error = '!';
           }
-          // Fill empty columns
-          while (row.length < numberOfColumns) {
-            row.push('');
-          }
-          rows.push(row);
-          i++;
+          clientOutput[taxType] = [row];
         }
+        const clientIdentifier = getClientIdentifier(client, anonymizeClients);
+        csvOutput[clientIdentifier] = clientOutput;
       }
+      const columns = new Map([
+        ['client', 'Client'],
+        ['taxType', 'Tax type'],
+      ]);
+      totalsColumns.forEach((c) => {
+        columns.set(c, totalsColumnsNames[c]);
+      });
+      columns.set('error', 'Error');
+      const rows = objectToCsvTable(csvOutput, columns);
       // TODO: Make output options configurable by user
       return unparseCsv(rows);
     }
