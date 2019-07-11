@@ -290,8 +290,8 @@ const GetPaymentReceiptsClientAction = createClientAction({
  */
 
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
-  constructor(data) {
-    super(data, GetPaymentReceiptsClientAction);
+  constructor() {
+    super(GetPaymentReceiptsClientAction);
   }
 
   async runInternal() {

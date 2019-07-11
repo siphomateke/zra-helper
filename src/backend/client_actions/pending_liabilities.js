@@ -201,8 +201,8 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
  */
 
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
-  constructor(data) {
-    super(data, GetAllPendingLiabilitiesClientAction);
+  constructor() {
+    super(GetAllPendingLiabilitiesClientAction);
   }
 
   async runInternal() {

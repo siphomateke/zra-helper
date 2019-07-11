@@ -1,6 +1,7 @@
 <template>
   <form @submit.prevent="submit">
     <component
+      v-if="typeof actionInputComponent !== 'undefined'"
       :is="actionInputComponent"
       :disabled="disabled"
       :bus="bus"
@@ -20,6 +21,7 @@ import PendingLiabilitiesInput from '@/components/ClientActionInputs/PendingLiab
 import ReturnsInput from '@/components/ClientActionInputs/ReturnsInput.vue';
 import AckReturnsInput from '@/components/ClientActionInputs/AckReturnsInput.vue';
 import PaymentReceiptsInput from '@/components/ClientActionInputs/PaymentReceiptsInput.vue';
+import AccountApprovalStatusInput from '@/components/ClientActionInputs/AccountApprovalStatusInput.vue';
 import { generateValueSyncMixin } from '@/mixins/sync_prop';
 
 export const actionInputComponents = {
@@ -27,6 +29,7 @@ export const actionInputComponents = {
   getReturns: ReturnsInput,
   getAcknowledgementsOfReturns: AckReturnsInput,
   getPaymentReceipts: PaymentReceiptsInput,
+  checkAccountApprovalStatus: AccountApprovalStatusInput,
 };
 
 export default {
