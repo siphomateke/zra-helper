@@ -80,9 +80,16 @@ import { taskStates } from '@/store/modules/tasks';
  */
 export class ClientActionRunner {
   /**
+   * @param {ClientActionObject} action
+   */
+  constructor(action) {
+    this.action = action;
+  }
+
+  /**
    * @param {string} id ID of runner instance in Vuex store.
    */
-  constructor(id, action) {
+  create(id) {
     this.id = id;
 
     /**
@@ -105,8 +112,8 @@ export class ClientActionRunner {
     });
 
     this.storeProxy.id = this.id;
-    this.storeProxy.actionId = action.id;
-    this.storeProxy.input = action.defaultInput();
+    this.storeProxy.actionId = this.action.id;
+    this.storeProxy.input = this.action.defaultInput();
     this.storeProxy.retryInput = {};
   }
 

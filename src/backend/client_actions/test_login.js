@@ -6,8 +6,8 @@ const TestLoginClientAction = createClientAction({
 });
 
 TestLoginClientAction.Runner = class extends ClientActionRunner {
-  constructor(data) {
-    super(data, TestLoginClientAction);
+  constructor() {
+    super(TestLoginClientAction);
   }
 };
 

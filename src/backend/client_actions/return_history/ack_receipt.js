@@ -1,5 +1,5 @@
 import { createClientAction } from '../base';
-import { ReturnHistoryRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
+import { ReturnHistoryDownloadRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
 import { downloadPage } from '../utils';
 
 /** @type {import('./base').ReturnHistoryDownloadFn} */
@@ -36,13 +36,13 @@ const GetAcknowledgementsOfReturnsClientAction = createClientAction({
   id: 'getAcknowledgementsOfReturns',
   name: 'Get acknowledgements of returns',
 });
-GetAcknowledgementsOfReturnsClientAction.Runner = class extends ReturnHistoryRunner {
-  constructor(data) {
-    super(data, GetAcknowledgementsOfReturnsClientAction);
-
-    this.downloadItemsTaskTitle = count => `Download ${count} acknowledgement receipt(s)`;
-    this.downloadTaxTypeTaskTitle = taxType => `Download ${taxType} acknowledgement receipts`;
-    this.downloadFunc = downloadAckReceipt;
+GetAcknowledgementsOfReturnsClientAction.Runner = class extends ReturnHistoryDownloadRunner {
+  constructor() {
+    super(GetAcknowledgementsOfReturnsClientAction, {
+      downloadItemsTaskTitle: count => `Download ${count} acknowledgement receipt(s)`,
+      downloadTaxTypeTaskTitle: taxType => `Download ${taxType} acknowledgement receipts`,
+      downloadFunc: downloadAckReceipt,
+    });
   }
 };
 export default GetAcknowledgementsOfReturnsClientAction;

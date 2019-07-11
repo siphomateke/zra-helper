@@ -367,7 +367,7 @@ const vuexModule = {
      * @param {Object} payload
      * @param {string} payload.instanceId
      * TODO: Find a better way to keep this constructor in sync with the actual runner constructor.
-     * @param {new (id) => ActionInstanceClass} payload.Runner
+     * @param {new () => ActionInstanceClass} payload.Runner
      * @param {Client} payload.client
      * @param {Object} payload.config
      */
@@ -381,7 +381,8 @@ const vuexModule = {
       Vue.set(state.instances, instanceId, {});
 
       // Actually create the instance and store the class whose methods will be called.
-      const instanceClass = new Runner(instanceId);
+      const instanceClass = new Runner();
+      instanceClass.create(instanceId);
       Vue.set(state.instanceClasses, instanceId, instanceClass);
 
       // Initialize the instance's data.
@@ -439,7 +440,7 @@ const vuexModule = {
      * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {string} payload.instanceId
-     * @param {Object} payload.input Action input object.
+     * @param {Object|null} payload.input Action input object.
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction
@@ -487,7 +488,7 @@ const vuexModule = {
                   newInput = Object.assign(newInput, retryInstance.retryInput);
                   commit('setInstanceInput', { id: instanceId, input: newInput });
                 }
-              } else {
+              } else if (input !== null) {
                 commit('setInstanceInput', { id: instanceId, input });
               }
 
@@ -651,9 +652,13 @@ const vuexModule = {
                 for (const instanceId of instanceIds) {
                   /** @type {ActionInstanceData} */
                   const instance = getters.getInstanceById(instanceId);
+                  let input = null;
+                  if (instance.actionId in actionInputs) {
+                    input = actionInputs[instance.actionId];
+                  }
                   promises.push(dispatch('runActionOnClient', {
                     instanceId,
-                    input: instance.actionId in actionInputs ? actionInputs[instance.actionId] : {},
+                    input,
                     client,
                     mainTask,
                     isSingleAction,

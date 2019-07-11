@@ -1,5 +1,5 @@
 import { createClientAction } from '../base';
-import { ReturnHistoryRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
+import { ReturnHistoryDownloadRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
 import { downloadPage } from '../utils';
 
 /** @type {import('./base').ReturnHistoryDownloadFn} */
@@ -43,13 +43,13 @@ const GetReturnsClientAction = createClientAction({
   id: 'getReturns',
   name: 'Get returns',
 });
-GetReturnsClientAction.Runner = class extends ReturnHistoryRunner {
-  constructor(data) {
-    super(data, GetReturnsClientAction);
-
-    this.downloadItemsTaskTitle = count => `Download ${count} return(s)`;
-    this.downloadTaxTypeTaskTitle = taxType => `Download ${taxType} returns`;
-    this.downloadFunc = downloadReturn;
+GetReturnsClientAction.Runner = class extends ReturnHistoryDownloadRunner {
+  constructor() {
+    super(GetReturnsClientAction, {
+      downloadItemsTaskTitle: count => `Download ${count} return(s)`,
+      downloadTaxTypeTaskTitle: taxType => `Download ${taxType} returns`,
+      downloadFunc: downloadReturn,
+    });
   }
 };
 export default GetReturnsClientAction;
