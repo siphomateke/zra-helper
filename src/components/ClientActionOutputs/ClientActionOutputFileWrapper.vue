@@ -1,65 +1,44 @@
 <template>
-  <div class="card">
-    <div
-      class="card-header"
-      @click="clickCardHeader"
+  <CardCollapse :title="outputFile.label">
+    <button
+      v-if="outputFile.children.length > 0"
+      slot="header-buttons"
+      class="button"
+      title="Download all descendent outputs"
+      @click="downloadAll"
     >
-      <a class="card-header-icon">
-        <b-icon
-          :icon="collapseIsOpen ? 'caret-down' : 'caret-right'"
-          size="is-small"
-        />
-      </a>
-      <span class="card-header-title">{{ outputFile.label }}</span>
-      <div
-        ref="cardHeaderButtons"
-        class="card-header-buttons"
-      >
-        <button
-          v-if="outputFile.children.length > 0"
-          class="button"
-          title="Download all descendent outputs"
-          @click="downloadAll"
-        >
-          <b-icon
-            icon="download"
-            size="is-small"
-          />
-        </button>
-      </div>
-    </div>
-    <b-collapse
-      :open.sync="collapseIsOpen"
-      :animation="null"
-    >
-      <div class="card-content">
-        <LoadingMessage
-          v-if="loading"
-          message="Getting output"
-        />
+      <b-icon
+        icon="download"
+        size="is-small"
+      />
+    </button>
 
-        <ClientActionOutputFile
-          v-if="!outputFile.wrapper"
-          :clients="clients"
-          :action-id="actionId"
-          :output-file="outputFile"
-        />
+    <LoadingMessage
+      v-if="loading"
+      message="Getting output"
+    />
 
-        <template v-else-if="outputFile.children.length > 0">
-          <ClientActionOutputFileWrapper
-            v-for="(childOutputFile, idx) in outputFile.children"
-            :key="idx"
-            :clients="clients"
-            :action-id="actionId"
-            :output-file="childOutputFile"
-          />
-        </template>
-      </div>
-    </b-collapse>
-  </div>
+    <ClientActionOutputFile
+      v-if="!outputFile.wrapper"
+      :clients="clients"
+      :action-id="actionId"
+      :output-file="outputFile"
+    />
+
+    <template v-else-if="outputFile.children.length > 0">
+      <ClientActionOutputFileWrapper
+        v-for="(childOutputFile, idx) in outputFile.children"
+        :key="idx"
+        :clients="clients"
+        :action-id="actionId"
+        :output-file="childOutputFile"
+      />
+    </template>
+  </CardCollapse>
 </template>
 
 <script>
+import CardCollapse from '@/components/CardCollapse.vue';
 import ClientActionOutputFile from './ClientActionOutputFile.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
 import { validateActionOutputFile } from '../../backend/client_actions/base';
@@ -67,6 +46,7 @@ import { validateActionOutputFile } from '../../backend/client_actions/base';
 export default {
   name: 'ClientActionOutputFileWrapper',
   components: {
+    CardCollapse,
     ClientActionOutputFile,
     LoadingMessage,
   },
@@ -96,18 +76,7 @@ export default {
       default: false,
     },
   },
-  data() {
-    return {
-      collapseIsOpen: true,
-    };
-  },
   methods: {
-    clickCardHeader({ target }) {
-      // Don't do anything if this was triggered by clicking a button within the card header
-      if (this.$refs.cardHeaderButtons.contains(target)) return;
-
-      this.collapseIsOpen = !this.collapseIsOpen;
-    },
     /**
      * @param {import('@/backend/client_actions/base').ClientActionOutputFile[]} outputFiles
      * @param {Object} options
@@ -142,9 +111,3 @@ export default {
   },
 };
 </script>
-
-<style lang="scss" scoped>
-.card-header {
-  cursor: pointer;
-}
-</style>
