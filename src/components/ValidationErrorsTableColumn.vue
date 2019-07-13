@@ -4,13 +4,13 @@
 
 <script>
 export default {
-  name: 'ParsedClientsViewerColumn',
+  name: 'ValidationErrorsTableColumn',
   props: {
     row: {
       type: Object,
       default: null,
     },
-    prop: {
+    field: {
       type: String,
       default: '',
     },
@@ -20,11 +20,11 @@ export default {
       return this.row.valid;
     },
     value() {
-      return this.row[this.prop];
+      return this.row[this.field];
     },
     errors() {
-      if (!this.valid) {
-        return this.row.propErrors[this.prop];
+      if (!this.valid && this.field in this.row.fieldErrors) {
+        return this.row.fieldErrors[this.field];
       }
       return [];
     },
