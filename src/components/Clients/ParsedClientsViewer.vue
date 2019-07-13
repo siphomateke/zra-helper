@@ -1,52 +1,20 @@
 <template>
-  <b-table
-    :data="clients"
-    :mobile-cards="false"
-    bordered
-    narrowed
-  >
-    <template slot-scope="props">
-      <b-table-column
-        :sortable="true"
-        field="valid"
-        label="Valid"
-        width="40"
-      >
-        <b-icon
-          v-if="!props.row.valid"
-          icon="exclamation-circle"
-          size="is-small"
-          type="is-danger"
-          title="This client is invalid."
-        />
-      </b-table-column>
-      <b-table-column
-        v-for="(column, index) in columns"
-        :class="getCellClass(props.row, column)"
-        :data-tooltip="getCellTooltip(props.row, column)"
-        :key="index"
-        :label="column.label"
-        :field="column.field"
-        :sortable="true"
-      >
-        <ParsedClientsViewerColumn
-          :row="props.row"
-          :prop="column.field"
-        />
-      </b-table-column>
-    </template>
-  </b-table>
+  <ValidationErrorsTable
+    :data="clientValidations"
+    :columns="columns"
+    invalid-string="This client is invalid."
+  />
 </template>
 
 <script>
 import { clientPropValidationErrorMessages } from '@/backend/constants';
-import ParsedClientsViewerColumn from './ParsedClientsViewerColumn.vue';
 import clientIdMixin from '@/mixins/client_ids';
+import ValidationErrorsTable from '@/components/ValidationErrorsTable.vue';
 
 export default {
   name: 'ParsedClientsViewer',
   components: {
-    ParsedClientsViewerColumn,
+    ValidationErrorsTable,
   },
   mixins: [clientIdMixin],
   props: {
@@ -65,52 +33,28 @@ export default {
       ],
     };
   },
-  methods: {
-    cellHasErrors(row, column) {
-      if (row.propErrors && column.field in row.propErrors) {
-        const errors = row.propErrors[column.field];
-        if (errors.length > 0) {
-          return true;
+  computed: {
+    clientValidations() {
+      return this.clients.map((client) => {
+        const { propErrors, ...client2 } = client;
+        const fieldErrors = {};
+        for (const prop of Object.keys(propErrors)) {
+          fieldErrors[prop] = propErrors[prop].map(code => this.getErrorMessageFromCode(code));
         }
-      }
-      return false;
+        return {
+          ...client2,
+          fieldErrors,
+        };
+      });
     },
-    getCellClass(row, column) {
-      if (this.cellHasErrors(row, column)) {
-        return ['has-error', 'tooltip', 'is-tooltip-danger'];
-      }
-      return [];
-    },
+  },
+  methods: {
     getErrorMessageFromCode(code) {
       if (code in clientPropValidationErrorMessages) {
         return clientPropValidationErrorMessages[code];
       }
       return 'Unknown error';
     },
-    getCellErrorMessages(errors) {
-      return errors.map(code => this.getErrorMessageFromCode(code)).join(',');
-    },
-    getCellTooltip(row, column) {
-      if (this.cellHasErrors(row, column)) {
-        const errors = row.propErrors[column.field];
-        return this.getCellErrorMessages(errors);
-      }
-      return '';
-    },
   },
 };
 </script>
-
-<style lang="scss" scoped>
-/* TODO: Make error cell background color a variable */
-@import 'styles/variables.scss';
-
-.table td.has-error {
-  background-color: lighten($danger, 35%);
-
-  &:hover {
-    cursor: help;
-    background-color: lighten($danger, 30%);
-  }
-}
-</style>
