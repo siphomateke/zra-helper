@@ -167,6 +167,23 @@ export const taxPayerSearchTaxTypeNames = {
   'medical levy tax': taxTypeNumericalCodes.TLEVY,
 };
 
+/**
+ * Human readable names of tax types.
+ * @type {Object.<string, string>}
+ * TODO: TypeScript: key is TaxTypeNumericalCode
+ */
+export const taxTypeLabels = {
+  [taxTypeNumericalCodes.ITX]: 'Income tax',
+  [taxTypeNumericalCodes.VAT]: 'Value added tax',
+  [taxTypeNumericalCodes.PAYE]: 'Pay as you earn',
+  [taxTypeNumericalCodes.TOT]: 'Turnover tax',
+  [taxTypeNumericalCodes.WHT]: 'Withholding tax',
+  [taxTypeNumericalCodes.PTT]: 'Property transfer tax',
+  [taxTypeNumericalCodes.MINROY]: 'Mineral royalty',
+  [taxTypeNumericalCodes.MINROY]: 'Mineral royalty tax',
+  [taxTypeNumericalCodes.TLEVY]: 'Medical levy tax',
+};
+
 // #endregion
 
 // #region Export
