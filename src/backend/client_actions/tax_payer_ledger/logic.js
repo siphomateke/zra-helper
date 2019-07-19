@@ -16,7 +16,7 @@ import {
   ExactAckReceiptNotFound,
   NoChangeRecordsFoundError,
 } from '@/backend/errors';
-import validateParsedNarration from './narration_validation';
+import { validateParsedLedgerRecords } from './record_validation';
 
 /**
  * @typedef {import('@/backend/constants').Date} Date
@@ -93,18 +93,6 @@ export function parseLedgerRecords(records) {
     }));
   }
   return parsedRecords;
-}
-
-/**
- * Validates parsed ledger records narrations.
- * @param {ParsedTaxPayerLedgerRecord[]} records
- */
-function validateParsedLedgerRecords(records) {
-  const promises = [];
-  for (const { srNo, narration } of records) {
-    promises.push(validateParsedNarration(narration).then(validation => ({ srNo, validation })));
-  }
-  return Promise.all(promises);
 }
 
 /**
@@ -1208,16 +1196,12 @@ function getAllPairedRecords(parsedLedgerRecords) {
  */
 
 /**
- * @typedef {Object} ParsedRecordValidation
- * @property {string} srNo
- * @property {string[]} errors
- */
-
-/**
  * @typedef {Object} TaxPayerLedgerLogicFnResponse
  * @property {ChangeReasonsByLiability} changeReasonsByLiability
  * @property {ProcessingErrors} processingErrors
- * @property {ParsedRecordValidation[]} invalidRecords
+ * @property {import('./record_validation').ParsedRecordValidation[]} invalidRecords
+ * @property {TaxPayerLedgerRecord[]} taxPayerLedgerRecords
+ * @property {boolean} anyErrors Whether anything went wrong when looking for change reasons
  */
 
 /**
@@ -1254,12 +1238,7 @@ export default async function taxPayerLedgerLogic({
   const processingErrors = [];
   let parsedLedgerRecords = await parseLedgerRecords(taxPayerLedgerRecords);
   const validatedRecords = await validateParsedLedgerRecords(parsedLedgerRecords);
-  const invalidRecords = [];
-  for (const { srNo, validation } of validatedRecords) {
-    if (!validation.valid) {
-      invalidRecords.push({ srNo, errors: validation.errors });
-    }
-  }
+  const invalidRecords = validatedRecords.filter(r => !r.valid);
 
   // Extract closing balances
   const closingBalances = getClosingBalances(parsedLedgerRecords);
@@ -1412,5 +1391,7 @@ export default async function taxPayerLedgerLogic({
     changeReasonsByLiability,
     processingErrors,
     invalidRecords,
+    taxPayerLedgerRecords,
+    anyErrors: processingErrors.length > 0 || invalidRecords.length > 0,
   };
 }

@@ -66,7 +66,7 @@
 
 <script>
 import parseAndValidateLoginDetails from '@/validation/rules/loginDetails';
-import { objectHasProperties } from '../../utils';
+import { objectHasProperties } from '@/utils';
 
 export default {
   name: 'SingleClientInput',
@@ -83,7 +83,7 @@ export default {
       }),
       validator(value) {
         const keys = ['name', 'username', 'password'];
-        const missingKeys = objectHasProperties(value, keys);
+        const { missing: missingKeys } = objectHasProperties(value, keys);
         if (missingKeys.length > 0) return false;
         for (const key of keys) {
           if (typeof value[key] !== 'string') {

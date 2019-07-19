@@ -1,14 +1,21 @@
 <template>
   <div class="client-action-output">
     <div class="field">
-      <label class="label">{{ action.name }} output</label>
-      <ClientActionOutputFileWrapper
-        :clients="clients"
-        :action-id="actionId"
-        :output-file="rootOutputFile"
-        :loading="loading"
-        :is-only-output="isOnlyOutput"
-      />
+      <div class="bordered-section">
+        <label class="label">{{ action.name }} output</label>
+        <ClientActionOutputFileWrapper
+          :clients="clients"
+          :action-id="actionId"
+          :output-file="rootOutputFile"
+          :loading="loading"
+          :is-only-output="isOnlyOutput"
+        />
+        <ClientActionOutputComponent
+          :clients="allClients"
+          :outputs="clientOutputs"
+          :action-id="actionId"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -16,11 +23,13 @@
 <script>
 import { mapGetters } from 'vuex';
 import ClientActionOutputFileWrapper from './ClientActionOutputFileWrapper.vue';
+import ClientActionOutputComponent from './ClientActionOutputComponent.vue';
 
 export default {
   name: 'ClientActionOutput',
   components: {
     ClientActionOutputFileWrapper,
+    ClientActionOutputComponent,
   },
   props: {
     runId: {

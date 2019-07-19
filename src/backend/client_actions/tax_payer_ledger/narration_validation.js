@@ -136,7 +136,9 @@ export const narrationTypeValidators = {
  */
 export default async function validateParsedNarration({ type, meta }) {
   const validationErrors = [];
-  if (type in narrationTypeValidators) {
+  if (type === null) {
+    validationErrors.push('Narration type could not be determined');
+  } else if (type in narrationTypeValidators) {
     const validators = narrationTypeValidators[type];
     const properties = Object.keys(validators);
 

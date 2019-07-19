@@ -169,6 +169,16 @@ export const ledgerColumns = [
   'cumulativeBalance',
 ];
 
+export const ledgerTableColumns = [
+  { field: 'srNo', label: 'Serial No.' },
+  { field: 'transactionDate', label: 'Transaction date' },
+  { field: 'fromDate', label: 'From date' },
+  { field: 'toDate', label: 'To date' },
+  { field: 'narration', label: 'Narration' },
+  { field: 'debit', label: 'Debit' },
+  { field: 'credit', label: 'Credit' },
+];
+
 /**
  * Gets a single page from the tax payer ledger.
  * @param {Object} options
