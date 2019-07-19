@@ -10,7 +10,6 @@
           :loading="loading"
           :is-only-output="isOnlyOutput"
         />
-        <br>
         <ClientActionOutputComponent
           :clients="allClients"
           :outputs="clientOutputs"
