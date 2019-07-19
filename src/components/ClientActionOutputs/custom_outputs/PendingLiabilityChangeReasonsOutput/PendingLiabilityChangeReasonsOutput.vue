@@ -1,5 +1,8 @@
 <template>
-  <div>
+  <CardCollapse
+    v-if="clientsWithReasonsResponses.length > 0"
+    title="Processing errors"
+  >
     <CardCollapse
       v-for="client in clientsWithReasonsResponses"
       :key="client.id"
@@ -13,7 +16,7 @@
         <LedgerLogicResponse :response="reasonsResponses[client.id][taxTypeId]" />
       </CardCollapse>
     </CardCollapse>
-  </div>
+  </CardCollapse>
 </template>
 
 
@@ -45,11 +48,25 @@ export default {
   computed: {
     reasonsResponses() {
       const reasonsResponses = {};
-      for (const { id } of this.clients) {
-        if (id in this.outputs) {
-          const output = this.outputs[id].value;
+      for (const { id: clientId } of this.clients) {
+        if (clientId in this.outputs) {
+          const output = this.outputs[clientId].value;
+          // Only add outputs that had errors checking for change reasons
           if (output && Object.keys(output.taxTypes).length > 0) {
-            reasonsResponses[id] = output.taxTypes;
+            let anyErrors = false;
+            const taxTypes = {};
+            for (const taxTypeId of Object.keys(output.taxTypes)) {
+              // eslint-disable-next-line max-len
+              /** @type {import('@/backend/client_actions/tax_payer_ledger/logic').TaxPayerLedgerLogicFnResponse} */
+              const response = output.taxTypes[taxTypeId];
+              if (response.anyErrors) {
+                taxTypes[taxTypeId] = response;
+                anyErrors = true;
+              }
+            }
+            if (anyErrors) {
+              reasonsResponses[clientId] = taxTypes;
+            }
           }
         }
       }

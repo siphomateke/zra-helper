@@ -1201,6 +1201,7 @@ function getAllPairedRecords(parsedLedgerRecords) {
  * @property {ProcessingErrors} processingErrors
  * @property {import('./record_validation').ParsedRecordValidation[]} invalidRecords
  * @property {TaxPayerLedgerRecord[]} taxPayerLedgerRecords
+ * @property {boolean} anyErrors Whether anything went wrong when looking for change reasons
  */
 
 /**
@@ -1391,5 +1392,6 @@ export default async function taxPayerLedgerLogic({
     processingErrors,
     invalidRecords,
     taxPayerLedgerRecords,
+    anyErrors: processingErrors.length > 0 || invalidRecords.length > 0,
   };
 }
