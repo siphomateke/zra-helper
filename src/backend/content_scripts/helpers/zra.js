@@ -212,6 +212,22 @@ export function scaleZraAmount(amount) {
 }
 
 /**
+ * Divides an integer to get the original value of an amount that was sclaed using `scaleZraAmount`.
+ * @param {number} amount
+ */
+export function unscaleZraAmount(amount) {
+  return amount / (10 ** ZRA_DECIMAL_PLACES);
+}
+
+/**
+ * Formats a scaled monetary amount for display to the user.
+ * @param {number} amount
+ */
+export function formatZraAmount(amount) {
+  return `K${unscaleZraAmount(amount)}`;
+}
+
+/**
  * Parses numbers from the ZRA website. The numbers contain commas and decimal places that must be
  * properly parsed.
  *
