@@ -1,6 +1,8 @@
 import moment from 'moment';
 import parseNarration, { narrationGroups, narrationTypes } from './narration';
-import { parseAmountString, scaleZraAmount } from '@/backend/content_scripts/helpers/zra';
+import {
+  parseAmountString, scaleZraAmount, unscaleZraAmount, formatZraAmount,
+} from '@/backend/content_scripts/helpers/zra';
 import { pendingLiabilityTypes } from '../pending_liabilities';
 import { objectsEqual, deepClone } from '@/utils';
 import getDataFromReceipt from '@/backend/content_scripts/helpers/receipt_data';
@@ -1192,6 +1194,7 @@ function getAllPairedRecords(parsedLedgerRecords) {
 }
 
 /**
+ * TODO: Restrict keys to liability types after TypeScript conversion
  * @typedef {Object.<string, string>} ChangeReasonsByLiability
  */
 
@@ -1326,15 +1329,15 @@ export default async function taxPayerLedgerLogic({
           errorMessage,
           null,
           {
-            changeRecordsSum,
-            pendingLiabilityDifference: difference,
+            changeRecordsSum: unscaleZraAmount(changeRecordsSum),
+            pendingLiabilityDifference: unscaleZraAmount(difference),
             recordsExactlyInDateRange: exactlyInDateRangeSrNos,
           },
         ));
       }
 
       if (changeRecords.length === 0) {
-        processingErrors.push(new NoChangeRecordsFoundError(`Failed to find any records that caused a change of ${difference} in '${liabilityType}'`));
+        processingErrors.push(new NoChangeRecordsFoundError(`Failed to find any records that caused a change of ${formatZraAmount(difference)} in '${liabilityType}'`));
       } else {
         // Get all the records each change record is linked to, even if the record they are linked
         // to is not from within the date range. This is needed to generate system errors from,
@@ -1378,6 +1381,7 @@ export default async function taxPayerLedgerLogic({
 
     changeReasonDetails = removeDuplicateChangeReasonDetails(changeReasonDetails);
 
+    // TODO: Return change details as well as change strings
     const changeReasons = changeReasonDetails.map(
       details => generateChangeReasonString(taxTypeId, details),
     );
