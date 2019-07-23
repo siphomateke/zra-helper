@@ -1,5 +1,5 @@
 import { Validator } from 'vee-validate';
-import { taxTypeNumericalCodes } from '@/backend/constants';
+import { taxTypeNumericalCodesArray } from '@/backend/constants';
 
 /**
  * Validates a two-digit numerical tax type ID.
@@ -7,7 +7,7 @@ import { taxTypeNumericalCodes } from '@/backend/constants';
  * @returns {boolean}
  */
 export default function validate(value) {
-  return Object.values(taxTypeNumericalCodes).includes(value);
+  return taxTypeNumericalCodesArray.includes(value);
 }
 
 Validator.extend('taxTypeId', {

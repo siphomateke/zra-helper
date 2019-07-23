@@ -1,6 +1,6 @@
 import path from 'path';
 import { csvOutputParser } from '@/backend/client_actions/pending_liabilities';
-import { taxTypes } from '@/backend/constants';
+import { taxTypeCodes } from '@/backend/constants';
 import loadFileFromRootPath from '$tests/utils';
 
 function loadFile(filePath) {
@@ -27,7 +27,7 @@ function generateZeroGrandTotal() {
 
 function generateGrandTotals() {
   const grandTotals = {};
-  for (const taxTypeCode of Object.values(taxTypes)) {
+  for (const taxTypeCode of taxTypeCodes) {
     grandTotals[taxTypeCode] = generateEmptyGrandTotal();
   }
   return grandTotals;

@@ -35,6 +35,7 @@ import DateInput from '@/components/fields/DateInput.vue';
 import ClientActionInputMixin from './mixin';
 import { loadFile } from '@/backend/file_utils';
 import { csvOutputParser } from '@/backend/client_actions/pending_liabilities';
+import ClientAction from '@/backend/client_actions/tax_payer_ledger/reasons_action';
 
 // FIXME: Decide how to display long error messages from pending liabilities validation
 // TODO: Indicate that pending liabilities are in input despite the uploaded file no longer
@@ -54,14 +55,8 @@ export default {
   },
   computed: {
     previousDateValidation() {
-      return {
-        required: true,
-        date_format: 'dd/MM/yyyy',
-        before: [
-          this.input.currentDate,
-          true, // include current date
-        ],
-      };
+      const validation = ClientAction.inputValidation.previousDate;
+      return validation.replace(/before:(.+),/, `before:${this.input.currentDate},`);
     },
   },
   methods: {
