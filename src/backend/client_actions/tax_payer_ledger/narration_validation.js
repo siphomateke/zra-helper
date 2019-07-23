@@ -1,6 +1,7 @@
 import { Validator } from 'vee-validate';
 import { arrayHasItems } from '@/utils';
 import { narrationTypes, paymentAgainstTypes } from './narration';
+import { validateObject } from '@/validation/utils';
 
 /**
  * @typedef {import('./narration').NarrationType} NarrationType
@@ -149,16 +150,8 @@ export default async function validateParsedNarration({ type, meta }) {
       validationErrors.push(`Invalid metadata properties: [ ${extraProperties.join(',')} ]`);
     }
 
-    await Promise.all(properties.map(
-      prop => v.verify(meta[prop], validators[prop], {
-        name: prop,
-        values: meta,
-      }).then(({ valid, errors }) => {
-        if (!valid) {
-          validationErrors.push(...errors);
-        }
-      }),
-    ));
+    const metadataValidationErrors = await validateObject(v, meta, validators, true);
+    validationErrors.push(...metadataValidationErrors);
   } else {
     validationErrors.push(`No validator for narration type ${type} found`);
   }

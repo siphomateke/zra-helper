@@ -260,6 +260,10 @@ const GetPaymentReceiptsClientAction = createClientAction({
     fromDate: '01/10/2013',
     toDate: moment().format('DD/MM/YYYY'),
   }),
+  inputValidation: {
+    fromDate: 'required|date_format:dd/MM/yyyy|before:toDate,true',
+    toDate: 'required|date_format:dd/MM/yyyy|after:fromDate,true',
+  },
 });
 
 /**

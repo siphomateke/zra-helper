@@ -1,7 +1,7 @@
 import {
   getPagedData, parallelTaskMap, taskFunction, getClientIdentifier,
 } from '@/backend/client_actions/utils';
-import { taxTypes, exportFormatCodes } from '@/backend/constants';
+import { taxTypes, exportFormatCodes, taxTypeNumericalCodesArray } from '@/backend/constants';
 import { getTaxPayerLedgerPage, ledgerColumns } from '@/backend/reports';
 import getAccountCodeTask from '@/backend/tax_account_code';
 import store from '@/store';
@@ -71,8 +71,13 @@ const TaxPayerLedgerClientAction = createClientAction({
   defaultInput: () => ({
     fromDate: '01/01/2013',
     toDate: moment().format('DD/MM/YYYY'),
-    taxTypeIds: Object.keys(taxTypes),
+    taxTypeIds: taxTypeNumericalCodesArray,
   }),
+  inputValidation: {
+    taxTypeIds: 'required|taxTypeIds',
+    fromDate: 'required|date_format:dd/MM/yyyy|before:toDate,true',
+    toDate: 'required|date_format:dd/MM/yyyy|after:fromDate,true',
+  },
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {
     const outputFiles = [];

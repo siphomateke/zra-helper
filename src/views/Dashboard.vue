@@ -49,11 +49,37 @@
           :action-ids="selectedClientActions"
           :disabled="selectActionsDisabled"
           :inputs.sync="actionInputs"
+          :input-validation-errors="inputValidationErrors"
         />
+        <template v-if="anyActionsWithInvalidInputs">
+          <b-message
+            :closable="false"
+            type="is-danger"
+            has-icon
+            icon-size="small"
+            title="Invalid action inputs"
+          >
+            <ul class="bulleted-list">
+              <li
+                v-for="action of actionsWithInvalidInputs"
+                :key="action.id"
+              >
+                <b>{{ action.name }}</b>
+                <ul class="bulleted-list">
+                  <li
+                    v-for="(error, index) of inputValidationErrors[action.id]"
+                    :key="index"
+                  >{{ error }}</li>
+                </ul>
+              </li>
+            </ul>
+          </b-message>
+        </template>
         <button
           :disabled="runActionsButtonDisabled"
           :title="runActionsButtonDisabledReason"
-          class="button is-primary"
+          :class="[runActionsFormInvalid ? 'is-danger' : 'is-primary']"
+          class="button"
           type="submit"
         >Run selected action(s)</button>
       </form>
@@ -215,6 +241,10 @@ import configMixin from '@/mixins/config';
 import { validateClient } from '../backend/client_file_reader';
 import { getUniqueClients } from '@/store/modules/clients';
 import ClientListDialog from '@/components/dialogs/ClientListDialog.vue';
+import { Validator } from 'vee-validate';
+import { validateObject } from '@/validation/utils';
+
+const inputValidator = new Validator();
 
 export default {
   name: 'DashboardView',
@@ -249,6 +279,14 @@ export default {
       failuresModalVisible: false,
       actionInputs: {},
       useCsvForClientList: true,
+      /**
+       * Action input validation errors of actions with invalid inputs stored by action ID.
+       * @type {Object.<string, string[]>}
+       */
+      inputValidationErrors: {},
+      anyActionsWithInvalidInputs: false,
+      /** Set to true after a failed submit and then false after a successful one. */
+      submittedActionsFormWasInvalid: false,
     };
   },
   computed: {
@@ -264,10 +302,13 @@ export default {
       currentRunId: 'currentRunId',
     }),
     ...mapGetters('clients', ['getClientById']),
+    ...mapGetters('clientActions', [
+      'getAnyRetryableFailures',
+      'runsWithFailures',
+      'getActionById',
+    ]),
     ...mapGetters('clientActions', {
       clientActionsRunning: 'running',
-      getAnyRetryableFailures: 'getAnyRetryableFailures',
-      runsWithFailures: 'runsWithFailures',
     }),
     currentRunFailed() {
       return this.runsWithFailures.includes(this.currentRunId);
@@ -318,6 +359,13 @@ export default {
       }
       return false;
     },
+    /** @type {import('@/backend/client_actions/base').ClientActionObject[]} */
+    actionsWithInvalidInputs() {
+      return Object.keys(this.inputValidationErrors).map(actionId => this.getActionById(actionId));
+    },
+    runActionsFormInvalid() {
+      return this.anyActionsWithInvalidInputs;
+    },
   },
   watch: {
     clientIds() {
@@ -353,20 +401,58 @@ export default {
         this.$store.dispatch('tasks/logErrorsOfTaskList', { list: 'clientActions' });
       }
     },
+    actionInputs: {
+      async handler() {
+        if (this.submittedActionsFormWasInvalid) {
+          await this.validateActionInputs();
+        }
+      },
+      deep: true,
+    },
   },
   created() {
     this.loadConfig();
   },
   methods: {
+    async validateActionInputs() {
+      let valid = true;
+      this.inputValidationErrors = {};
+      await Promise.all(Object.keys(this.actionInputs).map(async (actionId) => {
+        /** @type {import('@/backend/client_actions/base').ClientActionObject} */
+        const action = this.getActionById(actionId);
+        if ('inputValidation' in action) {
+          const actionInput = this.actionInputs[actionId];
+          const validationErrors = await validateObject(
+            inputValidator,
+            actionInput,
+            action.inputValidation,
+            true,
+          );
+          if (validationErrors.length > 0) {
+            valid = false;
+            this.inputValidationErrors[actionId] = validationErrors;
+          }
+        }
+      }));
+      this.anyActionsWithInvalidInputs = !valid;
+      return valid;
+    },
     async submit() {
-      if (!this.runActionsButtonDisabled) {
-        await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
-          actionIds: this.selectedClientActions,
-          clientIds: this.selectedClientIds,
-          allClientIds: this.clientIds,
-          actionInputs: this.actionInputs,
-        });
+      if (this.runActionsButtonDisabled) return;
+
+      this.submittedActionsFormWasInvalid = true;
+      const valid = await this.validateActionInputs();
+      if (!valid) {
+        return;
       }
+      this.submittedActionsFormWasInvalid = false;
+
+      await this.$store.dispatch('clientActions/runSelectedActionsOnAllClients', {
+        actionIds: this.selectedClientActions,
+        clientIds: this.selectedClientIds,
+        allClientIds: this.clientIds,
+        actionInputs: this.actionInputs,
+      });
     },
     /**
      * Removes clients that are no longer valid from a list.

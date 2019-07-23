@@ -10,6 +10,11 @@
         <span>{{ item.name }}</span>
         <OpenModalButton
           v-if="item.id in actionInputComponents"
+          :class="{
+            'is-danger': actionsInputIsInvalid(item.id),
+            'tooltip is-tooltip-danger': actionsInputIsInvalid(item.id),
+          }"
+          :data-tooltip="getEditInputButtonTooltip(item.id)"
           label="Edit input"
           class="is-small"
           style="margin-left: auto;"
@@ -65,6 +70,11 @@ export default {
       default: false,
     },
     inputs: {
+      type: Object,
+      default: () => ({}),
+    },
+    /** Action input validation errors by action ID. */
+    inputValidationErrors: {
       type: Object,
       default: () => ({}),
     },
@@ -135,6 +145,18 @@ export default {
         const input = this.inputs[actionId];
         this.$set(this.actionInputs, actionId, deepAssign(defaultInput, input));
       }
+    },
+    actionsInputIsInvalid(actionId) {
+      return actionId in this.inputValidationErrors;
+    },
+    getActionInputValidationErrors(actionId) {
+      return this.inputValidationErrors[actionId].join(', ');
+    },
+    getEditInputButtonTooltip(actionId) {
+      if (this.actionsInputIsInvalid(actionId)) {
+        return this.getActionInputValidationErrors(actionId);
+      }
+      return '';
     },
   },
 };

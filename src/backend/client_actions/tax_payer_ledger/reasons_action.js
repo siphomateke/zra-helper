@@ -3,7 +3,7 @@ import taxPayerLedgerLogic from './logic';
 import { ClientActionRunner, createClientAction, createOutputFile } from '../base';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from '../utils';
 import createTask from '@/transitional/tasks';
-import { taxTypes, exportFormatCodes } from '@/backend/constants';
+import { taxTypes, exportFormatCodes, taxTypeNumericalCodesArray } from '@/backend/constants';
 import store from '@/store';
 import { unparseCsv, writeJson } from '@/backend/file_utils';
 import { pendingLiabilityColumnNamesMap, pendingLiabilityTypes, pendingLiabilityColumns } from '../pending_liabilities';
@@ -76,7 +76,7 @@ function outputFormatter({
         /** @type {ChangeReasonsActionOutput} */
         outputValue = output.value;
       }
-      for (const taxTypeId of Object.keys(taxTypes)) {
+      for (const taxTypeId of taxTypeNumericalCodesArray) {
         const taxTypeCode = taxTypes[taxTypeId];
         let firstCol = '';
         if (i === 0) {
@@ -159,6 +159,11 @@ const PendingLiabilityChangeReasonsClientAction = createClientAction({
       previousDate: weekAgo.format('DD/MM/YYYY'),
       currentDate: today.format('DD/MM/YYYY'),
     };
+  },
+  inputValidation: {
+    currentDate: 'required|date_format:dd/MM/yyyy|after:previousDate,true',
+    previousDate: 'required|date_format:dd/MM/yyyy|before:currentDate,true',
+    previousPendingLiabilities: 'required|parsedPendingLiabilitiesOutput',
   },
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {

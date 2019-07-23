@@ -1,7 +1,9 @@
 import store from '@/store';
 import createTask from '@/transitional/tasks';
 import Papa from 'papaparse';
-import { exportFormatCodes, taxTypes } from '../constants';
+import {
+  exportFormatCodes, taxTypes, taxTypeCodes, taxTypeNumericalCodesArray,
+} from '../constants';
 import { writeJson, unparseCsv } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
 import {
@@ -159,7 +161,7 @@ function outputFormatter({
       }
       const totalsObjects = value ? value.totals : null;
       let i = 0;
-      for (const taxType of Object.values(taxTypes)) {
+      for (const taxType of taxTypeCodes) {
         let firstCol = '';
         if (i === 0) {
           firstCol = getClientIdentifier(client, anonymizeClients);
@@ -230,8 +232,11 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
   defaultInput: () => ({
-    taxTypeIds: Object.keys(taxTypes),
+    taxTypeIds: taxTypeNumericalCodesArray,
   }),
+  inputValidation: {
+    taxTypeIds: 'required|taxTypeIds',
+  },
   hasOutput: true,
   generateOutputFiles({ clients, allClients, outputs }) {
     return createOutputFile({
@@ -253,7 +258,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
 
 /**
  * @typedef {Object} ParsedPendingLiabilitiesOutput
- * @property {string} client
+ * @property {string} client Human readable name of client. Not a username or ID.
  * @property {TotalsByTaxTypeCode} totals
  */
 
@@ -266,7 +271,7 @@ function validateParsedCsvOutput(parsedOutput) {
   const errors = [];
   if (Array.isArray(parsedOutput)) {
     for (const item of parsedOutput) {
-      const expectedTaxTypeCodes = Object.values(taxTypes);
+      const expectedTaxTypeCodes = taxTypeCodes;
       const missingTaxTypeCodes = [];
       for (const taxTypeCode of expectedTaxTypeCodes) {
         if (!(taxTypeCode in item.totals)) {
@@ -305,6 +310,7 @@ function validateParsedCsvOutput(parsedOutput) {
 export function csvOutputParser(csvString) {
   const parsed = Papa.parse(csvString, {
     header: false,
+    skipEmptyLines: true,
   });
 
   /** @type {ParsedPendingLiabilitiesOutput[]} */

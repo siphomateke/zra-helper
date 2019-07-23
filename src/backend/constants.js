@@ -113,6 +113,10 @@ export const taxTypes = {
   '09': 'TLEVY',
 };
 
+// FIXME: Make sure this is used
+/** @type {TaxTypeCode[]} */
+export const taxTypeCodes = Object.values(taxTypes);
+
 /**
  * Enum for numerical tax type codes.
  * @type {Object.<TaxTypeCode, TaxTypeNumericalCode>}
@@ -127,6 +131,10 @@ export const taxTypeNumericalCodes = {
   MINROY: '08',
   TLEVY: '09',
 };
+
+// FIXME: Make sure this is used
+/** @type {TaxTypeNumericalCode[]} */
+export const taxTypeNumericalCodesArray = Object.values(taxTypeNumericalCodes);
 
 /**
  * @typedef {string} TaxTypeName

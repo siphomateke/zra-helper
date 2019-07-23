@@ -65,6 +65,8 @@ import { taskStates } from '@/store/modules/tasks';
  * @property {string} name The human-readable name of this client action.
  * @property {new () => ClientActionRunner} [Runner]
  * @property {() => Object} [defaultInput]
+ * @property {Object.<string, string|import('vee-validate').Rules>} [inputValidation]
+ * Vee-validate validator for each input property.
  * @property {import('@/backend/constants').BrowserFeature[]} [requiredFeatures]
  * Features this action requires that are only available in certain browsers.
  * @property {boolean} [usesLoggedInTab]

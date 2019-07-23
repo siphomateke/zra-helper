@@ -73,7 +73,7 @@ export function getCurrentBrowser() {
  * Checks if the provided properties are missing from or exist in an object
  * @param {Object} obj
  * @param {string[]} properties
- * @return {{missing: string[], existing: string[]}} The missing and existing properties.
+ * @returns {{missing: string[], existing: string[]}} The missing and existing properties.
  */
 export function objectHasProperties(obj, properties) {
   const missing = [];
@@ -86,6 +86,34 @@ export function objectHasProperties(obj, properties) {
     }
   }
   return { missing, existing };
+}
+
+/**
+ * Makes sure the provided object's keys all exist in an array.
+ * @param {Object} obj
+ * @param {string[]} array
+ */
+export function validateObjectKeys(obj, array) {
+  let valid = true;
+  /** Any unknown extra keys the object has. */
+  const unknown = [];
+  /** Valid keys the object has. */
+  const existing = [];
+  if (typeof obj === 'object' && !Array.isArray(obj)) {
+    for (const key of Object.keys(obj)) {
+      if (!array.includes(key)) {
+        unknown.push(key);
+      } else {
+        existing.push(key);
+      }
+    }
+  } else {
+    valid = false;
+  }
+  if (unknown.length > 0) {
+    valid = false;
+  }
+  return { valid, unknown, existing };
 }
 
 /**
