@@ -21,7 +21,8 @@
     "lint": "vue-cli-service lint --format stylish --mode production",
     "devtools": "vue-devtools",
     "postversion": "concurrently \"git push --tags\" \"yarn run build:all\"",
-    "test:unit": "vue-cli-service test:unit"
+    "test:unit": "vue-cli-service test:unit",
+    "test:unit:debug": "node --inspect-brk ./node_modules/.bin/vue-cli-service test:unit"
   },
   "contributors": [
     "rahensonzam",
