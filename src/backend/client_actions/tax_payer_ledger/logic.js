@@ -160,6 +160,7 @@ export function getClosingBalances(records) {
   const balancesByPeriod = {};
   for (const record of records) {
     if (record.narration.type === narrationTypes.CLOSING_BALANCE) {
+      // FIXME: Don't use `fromDate` use `getRecordPeriod()`
       balancesByPeriod[record.fromDate] = record;
     }
   }
