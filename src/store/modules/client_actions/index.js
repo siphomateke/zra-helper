@@ -98,6 +98,49 @@ function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
   return instanceId;
 }
 
+/**
+ * Sets action instances' inputs to the ones provided by the user. If the run is a retry,
+ * the  inputs are retrieved from each instances corresponding retry instance.
+ * @param {import('vuex').ActionContext} context
+ * @param {Object} options
+ * @param {ActionInstanceData[]} options.instances
+ * @param {Object.<string, Object>} options.actionInputs Inputs by action ID
+ * @param {boolean} options.retry If this run is just a retry of a previous one.
+ * @param {number} options.retryRunId ID of the run that is being retried
+ */
+function setInstanceInputs({ commit, getters }, {
+  instances,
+  actionInputs,
+  retry,
+  retryRunId,
+}) {
+  for (const instance of instances) {
+    let input = null;
+    if (instance.actionId in actionInputs) {
+      input = actionInputs[instance.actionId];
+    }
+
+    if (retry) {
+      /** @type {ActionInstanceData} */
+      const retryInstance = getters.getInstance(
+        retryRunId, instance.actionId, instance.client.id,
+      );
+      // Make sure `retryInput` exists even if as an empty object
+      if (retryInstance.retryInput) {
+        // Make sure the last instance's original input is used as well as the input to
+        // retry the specific parts of the action that failed. For example, if a date
+        // range was specified the last time the action was run, make sure we use the same
+        // one when retrying.
+        let newInput = Object.assign({}, retryInstance.input);
+        newInput = Object.assign(newInput, retryInstance.retryInput);
+        commit('setInstanceInput', { id: instance.id, input: newInput });
+      }
+    } else if (input !== null) {
+      commit('setInstanceInput', { id: instance.id, input });
+    }
+  }
+}
+
 /** @type {import('vuex').Module<State>} */
 const vuexModule = {
   namespaced: true,
@@ -440,24 +483,18 @@ const vuexModule = {
      * @param {VuexActionContext} context
      * @param {Object} payload
      * @param {string} payload.instanceId
-     * @param {Object|null} payload.input Action input object.
      * @param {Client} payload.client
      * @param {import('@/transitional/tasks').TaskObject} payload.mainTask
      * @param {boolean} payload.isSingleAction
      * Whether this is the only action running on this client
      * @param {number} payload.loggedInTabId ID of the logged in tab.
-     * @param {boolean} payload.retry If this run is just a retry of a previous one.
-     * @param {number} [payload.retryRunId] ID of the run that is being retried
      */
     async runActionOnClient({ commit, getters }, {
       instanceId,
-      input,
       client,
       mainTask,
       isSingleAction,
       loggedInTabId,
-      retry,
-      retryRunId = null,
     }) {
       /** @type {ActionInstanceData} */
       const instance = getters.getInstanceById(instanceId);
@@ -473,24 +510,6 @@ const vuexModule = {
           async func() {
             if (!(clientAction.requiresTaxTypes && client.taxTypes === null)) {
               log.setCategory(clientAction.logCategory);
-
-              if (retry) {
-                /** @type {ActionInstanceData} */
-                const retryInstance = getters.getInstance(
-                  retryRunId, instance.actionId, instance.client.id,
-                );
-                if (retryInstance.retryInput) {
-                  // Make sure the last instance's original input is used as well as the input to
-                  // retry the specific parts of the action that failed. For example, if a date
-                  // range was specified the last time the action was run, make sure we use the same
-                  // one when retrying.
-                  let newInput = Object.assign({}, retryInstance.input);
-                  newInput = Object.assign(newInput, retryInstance.retryInput);
-                  commit('setInstanceInput', { id: instanceId, input: newInput });
-                }
-              } else if (input !== null) {
-                commit('setInstanceInput', { id: instanceId, input });
-              }
 
               /** @type {ActionInstanceClass} */
               const instanceClass = getters.getInstanceClassById(instanceId);
@@ -537,11 +556,8 @@ const vuexModule = {
      * @param {Object} payload
      * @param {Client} payload.client
      * @param {string[]} payload.actionIds
-     * @param {Object.<string, Object>} [payload.actionInputs] Inputs by action ID
      * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
-     * @param {boolean} payload.retry If this run is just a retry of a previous one.
-     * @param {number} [payload.retryRunId] ID of the run that is being retried
      */
     async runActionsOnClient({
       state,
@@ -552,11 +568,8 @@ const vuexModule = {
     }, {
       client,
       actionIds,
-      actionInputs = {},
       instanceIds,
       parentTaskId,
-      retry,
-      retryRunId = null,
     }) {
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
@@ -650,21 +663,12 @@ const vuexModule = {
                 }
                 const promises = [];
                 for (const instanceId of instanceIds) {
-                  /** @type {ActionInstanceData} */
-                  const instance = getters.getInstanceById(instanceId);
-                  let input = null;
-                  if (instance.actionId in actionInputs) {
-                    input = actionInputs[instance.actionId];
-                  }
                   promises.push(dispatch('runActionOnClient', {
                     instanceId,
-                    input,
                     client,
                     mainTask,
                     isSingleAction,
                     loggedInTabId,
-                    retry,
-                    retryRunId,
                   }));
                 }
                 await Promise.all(promises);
@@ -732,6 +736,7 @@ const vuexModule = {
     }) {
       const {
         state,
+        getters,
         rootState,
         commit,
         dispatch,
@@ -781,6 +786,16 @@ const vuexModule = {
               for (let i = 0; i < validClients.length; i++) {
                 const client = validClients[i];
                 const instanceIds = allInstanceIds[i];
+
+                /** @type {ActionInstanceData[]} */
+                const instances = instanceIds.map(id => getters.getInstanceById(id));
+                setInstanceInputs(context, {
+                  instances,
+                  actionInputs,
+                  retry,
+                  retryRunId,
+                });
+
                 rootTask.status = client.name;
                 // TODO: Consider checking if a tab has been closed prematurely all the time.
                 // Currently, only tabLoaded checks for this.
@@ -791,8 +806,6 @@ const vuexModule = {
                   actionInputs,
                   instanceIds,
                   parentTaskId: rootTask.id,
-                  retry,
-                  retryRunId,
                 });
               }
               /* eslint-enable no-await-in-loop */
