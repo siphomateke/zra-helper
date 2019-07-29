@@ -74,10 +74,10 @@ export function checkLogin(root, client) {
         // This is mainly used to show the number of attempts left.
         const loginErrorDetailsEl = root.querySelector('#loginForm #layer1>table>tbody>tr.whitepapartdBig');
         if (loginErrorDetailsEl) {
-          const loginErrorDetails = loginErrorDetailsEl.innerText.toLowerCase();
+          const loginErrorDetails = loginErrorDetailsEl.innerText;
           if (loginErrorDetails) {
             // extract number of attempts
-            const numAttemptsMatch = loginErrorDetails.match(/you have (\d+) attempt\(s\) left/);
+            const numAttemptsMatch = loginErrorDetails.toLowerCase().match(/you have (\d+) attempt\(s\) left/);
             if (numAttemptsMatch) {
               const numAttempts = numAttemptsMatch[1];
               errorData.attemptsRemaining = numAttempts;
