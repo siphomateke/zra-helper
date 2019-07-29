@@ -10,6 +10,7 @@ import moment from 'moment';
 import store from './store';
 import initClientActions from './store/modules/client_actions/init';
 import initClientsModule from './store/modules/clients/init';
+import './store/modules/tasks_watch';
 
 if (process.env.NODE_ENV === 'development' && store.state.config.debug.devtools) {
   devtools.connect();

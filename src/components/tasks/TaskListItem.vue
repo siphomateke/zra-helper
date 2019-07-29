@@ -92,7 +92,7 @@
       />
     </div>
     <TaskList
-      v-if="hasChildren"
+      v-if="hasChildren && open"
       :tasks="children"
       :open-tasks.sync="internalOpenTasks"
     />
@@ -182,15 +182,6 @@ export default {
     },
     calculateTaskDuration() {
       return this.$store.state.config.debug.calculateTaskDuration;
-    },
-  },
-  watch: {
-    complete(value) {
-      // FIXME: Move this to Vuex. Just not sure how to put it there since it should only be
-      // run when a getter (complete) changes to a certain value.
-      if (this.calculateTaskDuration && value) {
-        this.$store.dispatch('tasks/setTaskCompletionTime', { id: this.id, time: Date.now() });
-      }
     },
   },
   created() {
@@ -324,7 +315,7 @@ export default {
   }
 
   & > .sub-tasks {
-    display: none;
+    display: block;
     background: #eee;
     padding: 1em;
     border: 1px solid #bdbdbd;
@@ -335,10 +326,6 @@ export default {
       border-bottom-width: 0;
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
-    }
-
-    & > .sub-tasks {
-      display: block;
     }
   }
 }

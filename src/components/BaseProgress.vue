@@ -113,17 +113,23 @@ export default {
     },
   },
   created() {
-    this.completeStateChanged(this.complete);
+    this.completeStateChanged(this.complete, true);
   },
   methods: {
-    completeStateChanged(value) {
+    completeStateChanged(value, justCreated = false) {
       if (value) {
         if (this.hideOnComplete && !this.debug) {
-          setTimeout(() => {
-            if (this.complete) {
-              this.visible = false;
-            }
-          }, 1000);
+          // If the progress element was just created and is already complete, hide it immediately.
+          // We only have a delay so the user can see the progress bar move to the end.
+          if (justCreated) {
+            this.visible = false;
+          } else {
+            setTimeout(() => {
+              if (this.complete) {
+                this.visible = false;
+              }
+            }, 1000);
+          }
         }
       } else {
         this.visible = true;

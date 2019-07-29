@@ -133,6 +133,11 @@ const vuexModule = {
   },
   getters: {
     getTaskById: state => id => state.tasks[id],
+    /** Array of task IDs of completed tasks used in watcher that updates task completion time. */
+    completedTasks: (state, getters) => {
+      const taskIds = Object.keys(state.tasks);
+      return taskIds.filter(taskId => getters.complete(taskId));
+    },
     ...listStoreHelper.itemGetters({
       hasParent: ({ task }) => task.parent !== null,
       parent: ({ getters, task }) => getters.getTaskById(task.parent),
