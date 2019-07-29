@@ -21,8 +21,8 @@
             @input="addSingleClient"
           />
           <div
-            class="buttons"
             v-if="clients.length > 0"
+            class="buttons"
           >
             <OpenModalButton
               label="View parsed clients"
@@ -404,8 +404,8 @@ export default {
       selectedClients = selectedClients.filter(client => client.valid);
       this.selectedValidClientIds = selectedClients.map(client => client.id);
     },
-    async updateClients(clientIds) {
-      await this.$store.dispatch('clients/update', clientIds);
+    async updateClients(clients) {
+      await this.$store.dispatch('clients/update', clients);
 
       // Select all non-duplicated clients by default
       this.autoSelectValidClients();
