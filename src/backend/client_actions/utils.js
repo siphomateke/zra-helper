@@ -570,15 +570,16 @@ export async function downloadPage({
           generatedFilename = await filename(doc);
         }
         task.addStep('Bundling page into single HTML file');
+        /** @type {string|null} */
         let htmlPageTitle = null;
-        // FIXME: Generate multiple blobs when filename is an array.
-        if (
-          config.export.useFilenameAsHtmlPageTitle
-          && Array.isArray(generatedFilename)
-          && generatedFilename.length === 1
-        ) {
-          [htmlPageTitle] = generatedFilename;
+        if (config.export.useFilenameAsHtmlPageTitle) {
+          if (Array.isArray(generatedFilename) && generatedFilename.length === 1) {
+            [htmlPageTitle] = generatedFilename;
+          } else if (typeof generatedFilename === 'string') {
+            htmlPageTitle = generatedFilename;
+          }
         }
+        // FIXME: Generate multiple blobs when filename is an array.
         blob = await downloadSingleHtmlFile(doc, createTabPostOptions.url, htmlPageTitle);
       }
       if (blob !== null) {
