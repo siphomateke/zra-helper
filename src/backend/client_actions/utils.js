@@ -583,52 +583,53 @@ export async function downloadPage({
       }
       if (blob !== null) {
         const url = URL.createObjectURL(blob);
-        let fileTypeName = 'file';
-        if (config.export.pageDownloadFileType === 'mhtml') {
-          fileTypeName = 'MHTML file';
-        } else if (config.export.pageDownloadFileType === 'html') {
-          fileTypeName = 'HTML file';
-        }
-        task.addStep(`Downloading generated ${fileTypeName}`);
-
-        let generatedFilenames;
-        if (typeof generatedFilename === 'string') {
-          generatedFilenames = [generatedFilename];
-        } else {
-          generatedFilenames = generatedFilename;
-        }
-        const taskProgressBeforeDownload = task.progress;
-        if (Array.isArray(generatedFilenames)) {
-          const promises = [];
-          for (const generatedFilename of generatedFilenames) {
-            promises.push(new Promise(async (resolve) => {
-              let downloadFilename = generatedFilename;
-              if (
-                config.export.pageDownloadFileType === 'mhtml'
-                && !config.export.removeMhtmlExtension
-              ) {
-                downloadFilename += '.mhtml';
-              } else if (config.export.pageDownloadFileType === 'html') {
-                downloadFilename += '.html';
-              }
-              const downloadId = await startDownload({
-                url,
-                filename: downloadFilename,
-              });
-              task.addDownload(downloadId);
-              // FIXME: Catch and handle download errors
-              await monitorDownloadProgress(downloadId, (downloadProgress) => {
-                if (downloadProgress !== -1) {
-                  task.progress = taskProgressBeforeDownload + downloadProgress;
-                }
-              });
-              URL.revokeObjectURL(url);
-              resolve();
-            }));
+        try {
+          let fileTypeName = 'file';
+          if (config.export.pageDownloadFileType === 'mhtml') {
+            fileTypeName = 'MHTML file';
+          } else if (config.export.pageDownloadFileType === 'html') {
+            fileTypeName = 'HTML file';
           }
-          await Promise.all(promises);
-        } else {
-          throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+          task.addStep(`Downloading generated ${fileTypeName}`);
+
+          let generatedFilenames;
+          if (typeof generatedFilename === 'string') {
+            generatedFilenames = [generatedFilename];
+          } else {
+            generatedFilenames = generatedFilename;
+          }
+          const taskProgressBeforeDownload = task.progress;
+          if (Array.isArray(generatedFilenames)) {
+            const promises = [];
+            for (const generatedFilename of generatedFilenames) {
+              promises.push((async () => {
+                let downloadFilename = generatedFilename;
+                if (
+                  config.export.pageDownloadFileType === 'mhtml'
+                  && !config.export.removeMhtmlExtension
+                ) {
+                  downloadFilename += '.mhtml';
+                } else if (config.export.pageDownloadFileType === 'html') {
+                  downloadFilename += '.html';
+                }
+                const downloadId = await startDownload({
+                  url,
+                  filename: downloadFilename,
+                });
+                task.addDownload(downloadId);
+                await monitorDownloadProgress(downloadId, (downloadProgress) => {
+                  if (downloadProgress !== -1) {
+                    task.progress = taskProgressBeforeDownload + downloadProgress;
+                  }
+                });
+              })());
+            }
+            await Promise.all(promises);
+          } else {
+            throw new Error('Invalid filename attribute; filename must be a string, array or function.');
+          }
+        } finally {
+          URL.revokeObjectURL(url);
         }
       }
     },
