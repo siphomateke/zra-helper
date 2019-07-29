@@ -192,6 +192,8 @@ export const financialAccountStatus = {
   SBJTAPRV: 'SBJTAPRV',
   /** Pending for Document upload */
   PNDC: 'PNDC',
+  /** Rejected */
+  REJD: 'REJD',
 };
 
 const f = financialAccountStatus;
@@ -212,6 +214,7 @@ export const financialAccountStatusDescriptionsMap = {
   [f.RJCTAMND]: 'Return Rejected by approving authority from Acceptance of Amended return',
   [f.SBJTAPRV]: 'Acceptance of amended return task subject to approval from approving authority',
   [f.PNDC]: 'Pending for Document upload',
+  [f.REJD]: 'Rejected',
 };
 
 /**
@@ -241,7 +244,12 @@ export const financialAccountStatusTypeNames = {
  */
 export const financialAccountStatusTypesMap = {
   [financialAccountStatusTypes.APPROVED]: [f.APRV],
-  [financialAccountStatusTypes.REJECTED]: [f.RJCTACKN, f.RJCTAMND, f.RJCTDDED],
+  [financialAccountStatusTypes.REJECTED]: [
+    f.RJCTACKN,
+    f.RJCTAMND,
+    f.RJCTDDED,
+    f.REJD,
+  ],
   [financialAccountStatusTypes.IN_PROGRESS]: [
     f.RECD,
     f.DDED,
