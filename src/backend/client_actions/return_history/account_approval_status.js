@@ -80,6 +80,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
                   status: taxReturn.status,
                   statusType: taxReturn.statusType,
                   statusDescription: taxReturn.statusDescription,
+                  applicationType: taxReturn.applicationType,
                 });
               }
               clientOutput[taxTypes[taxTypeId]] = rows;
@@ -96,6 +97,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
         ['status', 'Status'],
         ['statusType', 'Status type'],
         ['statusDescription', 'Status description'],
+        ['applicationType', 'Application Type'],
       ]);
       const rows = objectToCsvTable(csvOutput, columns);
       return unparseCsv(rows);
