@@ -8,9 +8,10 @@ import {
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
+import { deepAssign } from '@/utils';
 
 /** Columns to get from the pending liabilities table */
-const totalsColumns = [
+export const totalsColumns = [
   'principal',
   'interest',
   'penalty',
@@ -36,7 +37,7 @@ const totalsColumnsNames = {
  * @param {string} value
  * @returns {Totals}
  */
-function generateTotals(columns, value) {
+export function generateTotals(columns, value) {
   const totals = {};
   for (const column of columns) {
     totals[column] = value;
@@ -202,9 +203,54 @@ const GetAllPendingLiabilitiesClientAction = createClientAction({
  * @property {import('../constants').TaxTypeNumericalCode[]} [taxTypeIds]
  */
 
+/**
+ * @typedef {Object} RunnerOutput
+ * @property {Object.<string, Totals>} totals
+ * Tax type totals stored by tax type ID.
+ * @property {Object.<string, any>} retrievalErrors
+ * Errors retrieving particular tax types stored by tax type ID.
+ */
+
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
   constructor() {
     super(GetAllPendingLiabilitiesClientAction);
+  }
+
+  /**
+   * A custom merger is required to make sure retrievalErrors for tax types that have since been
+   * successfully retrieved aren't carried over.
+   * @param {RunnerOutput} prevOutput
+   * @param {RunnerOutput} output
+   * @returns {RunnerOutput}
+   */
+  // eslint-disable-next-line class-methods-use-this
+  mergeRunOutputs(prevOutput, output) {
+    const { totals } = deepAssign({ totals: prevOutput.totals }, { totals: output.totals }, {
+      clone: true,
+      concatArrays: true,
+    });
+
+    // Only include retrieval errors for tax types that have yet to be retrieved successfully.
+    // For example, if getting ITX failed in the first run but succeeded in the last run, the
+    // retrieval error should be discarded.
+    const retrievalErrors = {};
+    if ('retrievalErrors' in prevOutput) {
+      for (const taxTypeId of Object.keys(prevOutput.retrievalErrors)) {
+        if (!(taxTypeId in totals)) {
+          retrievalErrors[taxTypeId] = prevOutput.retrievalErrors[taxTypeId];
+        }
+      }
+    }
+    if ('retrievalErrors' in output) {
+      for (const taxTypeId of Object.keys(output.retrievalErrors)) {
+        retrievalErrors[taxTypeId] = output.retrievalErrors[taxTypeId];
+      }
+    }
+
+    return {
+      totals,
+      retrievalErrors,
+    };
   }
 
   async runInternal() {
@@ -242,7 +288,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
         failedTaxTypeIds.push(taxTypeId);
       }
     }
-    this.storeProxy.output = output;
+    this.setOutput(output);
     const failedTaxTypes = Object.keys(output.retrievalErrors);
     if (failedTaxTypes.length > 0) {
       this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);

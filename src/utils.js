@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import assignDeep from 'assign-deep';
+import deepMerge from 'deepmerge';
 
 /**
  * Array.map for Objects
@@ -51,13 +52,39 @@ export function deepReactiveClone(toCopy, copyTo) {
 }
 
 /**
+ * @callback MergeFunction
+ * @param {*} target
+ * @param {*} source
+ * @returns {*}
+ */
+
+/** @type {MergeFunction} */
+const overwriteMerge = (_destinationArray, sourceArray) => sourceArray;
+
+/**
+ * @typedef {Object} DeepAssignFnOptions
+ * @property {boolean} [concatArrays]
+ * Whether arrays should be concatenated when combining the source and target objects. Note, this
+ * also clones the original object in the same way as if `clone` was set to true.
+ * @property {boolean} [clone]
+ * Whether values should be deeply cloned. Set this to false when using `deepAssign` on a Vue.js
+ * component's property that is watched otherwise an infinite watch loop will be created.
+ */
+
+/**
  * Deeply assign the values of all enumerable properties from a source objects to a target object.
  * @template T, S
  * @param {T} target
  * @param {S} source
+ * @param {DeepAssignFnOptions} options
  * @returns {T & S} The target object
  */
-export function deepAssign(target, source) {
+export function deepAssign(target, source, options = {}) {
+  const { clone = false, concatArrays = false } = options;
+  if (concatArrays || clone) {
+    const arrayMerge = concatArrays ? undefined : overwriteMerge;
+    return deepMerge(target, source, { arrayMerge });
+  }
   return assignDeep(target, source);
 }
 

@@ -264,7 +264,7 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
       }
       output[taxTypeId] = taxTypeOutput;
     }
-    this.storeProxy.output = output;
+    this.setOutput(output);
   }
 
   getRetryReasons() {

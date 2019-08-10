@@ -1,5 +1,7 @@
 import { exportFormatCodes } from '@/backend/constants';
-import { objectHasProperties, joinSpecialLast } from '@/utils';
+import {
+  objectHasProperties, joinSpecialLast, deepAssign,
+} from '@/utils';
 import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
@@ -54,6 +56,7 @@ import { has, get } from 'dot-prop';
  */
 
 /**
+ * @template {any} Output
  * @typedef {Object} ClientActionRunnerProxy
  * A wrapper around an instance's data in the store that makes it easier to get state and commit
  * mutations.
@@ -69,7 +72,10 @@ import { has, get } from 'dot-prop';
  * @property {string} retryReason The reason why this instance should be retried.
  * @property {boolean} shouldRetry Whether this instance should be retried.
  * @property {any} error
- * @property {any} output
+ * @property {Output} output
+ * @property {Output[]} allRunOutputs
+ * Output of this run/retry and its previous run.
+ * TODO: Actually store all run outputs.
  * @property {boolean} running
  */
 
@@ -100,7 +106,7 @@ export class ClientActionRunner {
      */
     this.storeProxy = new Proxy({}, {
       get: (_obj, prop) => {
-        const state = store.state.clientActions.instances[this.id];
+        const state = store.getters['clientActions/getInstanceById'](this.id);
         if (typeof prop === 'string' && prop in state) {
           return state[prop];
         }
@@ -132,10 +138,15 @@ export class ClientActionRunner {
 
     // Run status data
     this.storeProxy.error = null;
+    this.storeProxy.allRunOutputs = [];
     this.storeProxy.output = null;
     this.storeProxy.running = false;
     this.storeProxy.shouldRetry = null;
     this.storeProxy.retryReason = null;
+  }
+
+  setOutput(output) {
+    this.storeProxy.allRunOutputs.push(output);
   }
 
   /**
@@ -148,6 +159,41 @@ export class ClientActionRunner {
    */
   runInternal() {
     this.storeProxy.task.state = taskStates.SUCCESS;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  mergeRunOutputs(prevOutput, output) {
+    return deepAssign(prevOutput, output, {
+      clone: true,
+      concatArrays: true,
+    });
+  }
+
+  /**
+   * Merges all the outputs of the retries of this action into a single output.
+   *
+   * Called in client_actions/index.js even if logging in failed.
+   */
+  mergeAllRunOutputs() {
+    const outputs = this.storeProxy.allRunOutputs;
+    let initialValue = {};
+    if (outputs.length > 0 && Array.isArray(outputs[0])) {
+      initialValue = [];
+    }
+    const merged = outputs.reduce((prevOutput, output) => {
+      if (prevOutput !== null && output !== null) {
+        return this.mergeRunOutputs(prevOutput, output);
+      }
+      // If any of the outputs are null, use the non-null output. Null outputs are failures
+      // and can thus be ignored.
+      if (output !== null) {
+        return output;
+      } if (prevOutput !== null) {
+        return prevOutput;
+      }
+      return null;
+    }, initialValue);
+    this.storeProxy.output = merged;
   }
 
   /**

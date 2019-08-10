@@ -99,8 +99,10 @@ function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
 }
 
 /**
- * Sets action instances' inputs to the ones provided by the user. If the run is a retry,
- * the  inputs are retrieved from each instances corresponding retry instance.
+ * Sets action instances' inputs to the ones provided by the user.
+ *
+ * If the run is a retry, the inputs are retrieved from each instances corresponding retry
+ * instance. Additionally, the outputs of the previous runs instances are added to the current ones.
  * @param {import('vuex').ActionContext} context
  * @param {Object} options
  * @param {ActionInstanceData[]} options.instances
@@ -108,7 +110,7 @@ function addNewInstance({ commit, getters, rootState }, { actionId, client }) {
  * @param {boolean} options.retry If this run is just a retry of a previous one.
  * @param {number} options.retryRunId ID of the run that is being retried
  */
-function setInstanceInputs({ commit, getters }, {
+function initializeInstances({ commit, getters }, {
   instances,
   actionInputs,
   retry,
@@ -134,6 +136,7 @@ function setInstanceInputs({ commit, getters }, {
         let newInput = Object.assign({}, retryInstance.input);
         newInput = Object.assign(newInput, retryInstance.retryInput);
         commit('setInstanceInput', { id: instance.id, input: newInput });
+        commit('setInstancePreviousOutput', { id: instance.id, output: retryInstance.output });
       }
     } else if (input !== null) {
       commit('setInstanceInput', { id: instance.id, input });
@@ -468,6 +471,9 @@ const vuexModule = {
     setInstanceInput(state, { id, input }) {
       Vue.set(state.instances[id], 'input', input);
     },
+    setInstancePreviousOutput(state, { id, output }) {
+      state.instances[id].allRunOutputs.unshift(output);
+    },
   },
   actions: {
     /**
@@ -560,7 +566,6 @@ const vuexModule = {
      * @param {number} payload.parentTaskId
      */
     async runActionsOnClient({
-      state,
       rootState,
       commit,
       getters,
@@ -679,7 +684,11 @@ const vuexModule = {
                 throw error;
               } finally {
                 for (const instanceId of instanceIds) {
-                  state.instanceClasses[instanceId].checkIfShouldRetry();
+                  /** @type {ActionInstanceClass} */
+                  const instanceClass = getters.getInstanceClassById(instanceId);
+                  instanceClass.checkIfShouldRetry();
+                  // Outputs must be merged here so it happens even if logging in failed
+                  instanceClass.mergeAllRunOutputs();
                 }
               }
 
@@ -789,7 +798,7 @@ const vuexModule = {
 
                 /** @type {ActionInstanceData[]} */
                 const instances = instanceIds.map(id => getters.getInstanceById(id));
-                setInstanceInputs(context, {
+                initializeInstances(context, {
                   instances,
                   actionInputs,
                   retry,
