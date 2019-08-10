@@ -1,6 +1,7 @@
-import { Validator } from 'vee-validate';
-import { ext } from 'vee-validate/dist/rules.esm';
+import { Validator, Rules } from 'vee-validate';
 import { joinSpecialLast } from '@/utils';
+
+const { ext } = Rules;
 
 Validator.extend('ext', {
   getMessage: (field, _params, { validExtensions }) => {
