@@ -9,6 +9,7 @@
         v-model="client"
       />
       <button
+        :disabled="running"
         class="button is-primary"
         type="submit"
       >Login</button>
@@ -41,6 +42,7 @@ export default {
         password: '',
       },
       tasks: [],
+      running: false,
     };
   },
   activated() {
@@ -48,27 +50,34 @@ export default {
   },
   methods: {
     async login() {
-      const task = await createTask(this.$store, {
-        title: `Login client ${this.client.name}`,
-        list: 'login',
-      });
-      this.tasks.push(task.id);
-      await taskFunction({
-        task,
-        func: () => robustLogin({
-          client: this.client,
-          parentTaskId: task.id,
-          keepTabOpen: true,
-          closeOnErrors: false,
-          maxAttempts: this.$store.state.config.maxLoginAttempts,
-        }),
-      });
+      this.running = true;
+      try {
+        const task = await createTask(this.$store, {
+          title: `Login client ${this.client.name}`,
+          list: 'login',
+        });
+        this.tasks.push(task.id);
+        await taskFunction({
+          task,
+          func: () => robustLogin({
+            client: this.client,
+            parentTaskId: task.id,
+            keepTabOpen: true,
+            closeOnErrors: false,
+            maxAttempts: this.$store.state.config.maxLoginAttempts,
+          }),
+        });
+      } finally {
+        this.running = false;
+      }
     },
     async submit() {
-      const validator = this.$refs.singleClient.$validator;
-      const valid = await validator.validateAll();
-      if (valid) {
-        await this.login();
+      if (!this.running) {
+        const validator = this.$refs.singleClient.$validator;
+        const valid = await validator.validateAll();
+        if (valid) {
+          await this.login();
+        }
       }
     },
   },
