@@ -1,31 +1,30 @@
 import { toPascalCase } from '@/utils';
-
-/** @typedef {import('vuex').Store} VuexStore */
+import { RootState } from '@/store/types';
+import { Store } from 'vuex';
 
 /**
  * Gets a nested object property using a Vuex namespace.
- * @param {Object} obj
- * @param {string} namespace Vuex namespace
+ * @param namespace Vuex namespace
  */
-function getByNamespace(obj, namespace) {
+function getByNamespace(obj: RootState, namespace: string) {
   const namespaces = namespace.split('/');
   return namespaces.reduce((accumulator, name) => accumulator[name], obj);
 }
 
 /**
  * Gets the state of a given namespace.
- * @param {Object} rootState
- * @param {string} namespace
+ * @param rootState
+ * @param namespace
  */
-function getStateByNamespace(rootState, namespace) {
+function getStateByNamespace(rootState: RootState, namespace: string) {
   return getByNamespace(rootState, namespace);
 }
 
 /**
  * Converts a namespace to the format that `store._modulesNamespaceMap` expects
- * @param {string} namespace The namespace to convert
+ * @param namespace The namespace to convert
  */
-function normalizeNamespace(namespace) {
+function normalizeNamespace(namespace: string): string {
   if (typeof namespace === 'string' && namespace.charAt(namespace.length - 1) !== '/') {
     namespace += '/';
   }
@@ -34,31 +33,31 @@ function normalizeNamespace(namespace) {
 
 /**
  * Gets a store module by namespace.
- * @param {VuexStore} store
- * @param {string} namespace
  */
-function getModuleByNamespace(store, namespace) {
+function getModuleByNamespace<S>(store: Store<S>, namespace: string) {
   // eslint-disable-next-line no-underscore-dangle
   return store._modulesNamespaceMap[normalizeNamespace(namespace)]._rawModule;
 }
 
-/**
- * @typedef ListItemStoreOptions
- * @property {string} namespace The namespace in which the list resides
- * @property {string} list The name of the list
- * @property {number} id The ID of the list item
- */
+interface ListItemStoreOptions {
+  /** The namespace in which the list resides */
+  namespace: string;
+  /** The name of the list */
+  list: string;
+  /** The ID of the list item */
+  id: number;
+}
 
 /**
  * A reference to the store that is scoped by a list item.
  */
-export class ListItemStore {
-  /**
-   * @param {VuexStore} store
-   * @param {ListItemStoreOptions} options
-   */
-  constructor(store, { namespace, list, id }) {
-    this.store = store;
+export class ListItemStore<S> {
+  // TODO: Don't duplicate this in `ListItemStoreOptions`
+  namespace: string;
+  list: string;
+  id: number;
+  module: any; // FIXME: Find out what type this should be
+  constructor(public store: Store<S>, { namespace, list, id }: ListItemStoreOptions) {
     this.namespace = namespace;
     this.list = list;
     this.id = id;
@@ -69,70 +68,60 @@ export class ListItemStore {
     return getStateByNamespace(this.store.state, this.namespace)[this.list][this.id];
   }
 
-  propInState(prop) {
+  propInState(prop: string) {
     return prop in this.getState();
   }
 
-  propInGetters(prop) {
+  propInGetters(prop: string) {
     return `${this.namespace}/${prop}` in this.store.getters;
   }
 
-  propInActions(prop) {
+  propInActions(prop: string) {
     return prop in this.module.actions;
   }
 
-  getStateByProp(prop) {
+  getStateByProp(prop: string) {
     return this.getState()[prop];
   }
 
   /**
    * Calls a getter using this list item's ID.
-   * @param {string} prop
    */
-  getters(prop) {
+  getters(prop: string) {
     return this.store.getters[`${this.namespace}/${prop}`](this.id);
   }
 
   /**
    * Commits a mutation with this list item's ID.
-   * @param {string} prop
-   * @param {*} value
    */
-  commit(prop, value) {
+  commit(prop: string, value: any) {
     this.store.commit(`${this.namespace}/set${toPascalCase(prop)}`, { id: this.id, value });
   }
 
   /**
    * Dispatches an action with this list item's ID.
-   * @param {string} prop
-   * @param {Object} payload
    */
-  dispatch(prop, payload) {
-    return this.store.dispatch(`${this.namespace}/${prop}`, Object.assign({ id: this.id }, payload));
+  dispatch(prop: string, payload: object) {
+    return this.store.dispatch(
+      `${this.namespace}/${prop}`,
+      Object.assign({ id: this.id }, payload),
+    );
   }
 
   /**
    * Generates a dispatch function with a preset property.
    * Used in `listItemHandler` to re-assign a setter to an action.
-   * @param {string} prop
    */
-  getDispatchFunction(prop) {
-    return payload => this.dispatch(prop, payload);
+  getDispatchFunction(prop: string) {
+    return (payload: any) => this.dispatch(prop, payload);
   }
 }
 
-/**
- * @param {VuexStore} store
- * @param {ListItemStoreOptions} options
- */
-export function getListItemStore(store, options) {
+// FIXME: Type this properly
+export function getListItemStore<S>(store: Store<S>, options: ListItemStoreOptions) {
   const scopedStore = new ListItemStore(store, options);
   return new Proxy(scopedStore, {
-    /**
-     * @param {ListItemStore} obj
-     * @param {string} prop
-     */
-    get(obj, prop) {
+    get(obj: ListItemStore, prop: string) {
       if (typeof prop === 'string') {
         if (obj.propInGetters(prop)) {
           return obj.getters(prop);
@@ -146,12 +135,7 @@ export function getListItemStore(store, options) {
       }
       return Reflect.get(...arguments); // eslint-disable-line prefer-rest-params
     },
-    /**
-     * @param {ListItemStore} obj
-     * @param {string} prop
-     * @param {*} value
-     */
-    set(obj, prop, value) {
+    set(obj: ListItemStore, prop: string, value: any) {
       obj.commit(prop, value);
       return true;
     },

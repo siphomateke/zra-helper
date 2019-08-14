@@ -60,9 +60,9 @@ export interface ClientState {
   /** List of numerical tax type codes that this client has registered. */
   taxTypes: TaxTypeNumericalCode[] | null;
   /** All the tax accounts this client has. */
-  taxAccounts: TaxAccount[];
+  taxAccounts: TaxAccount[] | null;
   /** Tax accounts whose status is 'registered'. */
-  registeredTaxAccounts: TaxAccount[];
+  registeredTaxAccounts: TaxAccount[] | null;
 }
 
 export type Client = ParsedClient & ClientState;

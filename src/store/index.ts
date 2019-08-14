@@ -1,24 +1,16 @@
 import Vue from 'vue';
-import Vuex from 'vuex';
+import Vuex, { StoreOptions } from 'vuex';
 import { Dialog } from 'buefy/dist/components/dialog';
 import config from './modules/config';
 import tasks from './modules/tasks';
 import log from './modules/log';
 import { getPlatformEol } from '@/backend/file_utils';
 import { errorToString } from '@/backend/errors';
+import { RootState } from './types';
 
 Vue.use(Vuex);
 
-/**
- * @typedef {Object} RootState
- * @property {boolean} zraLiteModeEnabled
- * @property {import('@/backend/file_utils').EolCharacter} eol
- * End of line character to use in exports.
- * @property {boolean} configIsLoading
- */
-
-/** @type {import('vuex').StoreOptions<RootState>} */
-export const storeOptions = {
+export const storeOptions: StoreOptions<RootState> = {
   modules: {
     config,
     tasks,
