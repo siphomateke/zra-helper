@@ -289,7 +289,8 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
 
   async runInternal() {
     const { task: actionTask, client, input } = this.storeProxy;
-    let { taxTypes: taxTypeIds } = client;
+
+    let taxTypeIds = client.taxTypes !== null ? client.taxTypes : [];
 
     const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
     if (taxTypeIdsInput.exists) {

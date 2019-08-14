@@ -2,52 +2,63 @@ import Vue from 'vue';
 import ListStoreHelper from '@/store/helpers/list_store/module_helpers';
 import { errorToString } from '@/backend/errors';
 import moment from 'moment';
+import { Module } from 'vuex';
+import { RootState } from '../types';
 
 let lastTaskId = 0;
 
-/** @typedef {string} TaskState */
+export enum TaskState {
+  ERROR = 'error',
+  SUCCESS = 'success',
+  WARNING = 'warning',
+}
 
-/** @enum {TaskState} */
-export const taskStates = {
-  ERROR: 'error',
-  SUCCESS: 'success',
-  WARNING: 'warning',
-};
+export type TaskId = number;
 
-/**
- * @typedef {Object} TaskVuexState
- * @property {string} [title='']
- * @property {string} [anonymousTitle='']
- * @property {number} [id=lastTaskId]
- * @property {string} [status='']
- * @property {TaskState} [state=null]
- * @property {number} [progress=0]
- * @property {number} [progressMax=1]
- * @property {Boolean} [indeterminate=false]
- * @property {number[]} [children=[]] Child IDs
- * @property {boolean} [complete=false]
- * @property {Error} [error=null]
- * @property {string} [errorString='']
- * @property {number} [parent=null] Parent ID
- * @property {boolean} [unknownMaxProgress=true]
- * Whether the maximum progress of this task can be determined.
- *
- * This is used to determine this task's progress from it's children
- * and is thus only used if it has children.
- *
- * Only set this to false if the total number of children that this
- * task can ever have and their maximum progress' are known.
- * If set to false then `progressMax` must also be set.
- *
- * @property {boolean} [sequential=true] Whether only one child task will be running at a time.
- * @property {boolean} [autoUpdateParent=true]
- * Whether this task will automatically update it's parent progress and status.
- * @property {boolean} [isRoot=false]
- * Whether this task is at the highest level and has no parents. Root tasks are generally
- * associated with a single client action run.
- * @property {number} [startedAt] The Unix time at which this task was created.
- * @property {number} [completedAt] The Unix time at which this task completed.
- */
+// TODO: Indicate default values?
+export interface TaskVuexState {
+  title: string;
+  anonymousTitle: string;
+  id: TaskId;
+  status: string;
+  state: TaskState;
+  progress: number;
+  progressMax: number;
+  indeterminate: Boolean;
+  /** Child IDs */
+  children: number[];
+  complete: boolean;
+  error: Error;
+  errorString: string;
+  /** Parent ID */
+  parent: number;
+  /**
+   * Whether the maximum progress of this task can be determined.
+   *
+   * This is used to determine this task's progress from it's children
+   * and is thus only used if it has children.
+   *
+   * Only set this to false if the total number of children that this
+   * task can ever have and their maximum progress' are known.
+   * If set to false then `progressMax` must also be set.
+   */
+  unknownMaxProgress: boolean;
+  /** Whether only one child task will be running at a time. */
+  sequential: boolean;
+  /** Whether this task will automatically update it's parent progress and status. */
+  autoUpdateParent: boolean;
+  /**
+   * Whether this task is at the highest level and has no parents. Root tasks are generally
+   * associated with a single client action run.
+   */
+  isRoot: boolean;
+  /** The Unix time at which this task was created. */
+  startedAt?: number;
+  /** The Unix time at which this task completed. */
+  completedAt?: number;
+}
+
+export type TaskVuexStateOptional = Partial<TaskVuexState>;
 
 /**
  * @typedef {Object} TaskCreateOptions_Temp
@@ -60,13 +71,17 @@ export const taskStates = {
 
 /**
  * Calculates a task's progress or maximum progress based on its children.
- * @param {'progress'|'progressMax'} type The type of progress to get.
- * @param {Object} param
- * @param {any} param.getters
- * @param {TaskVuexState} param.task The the task whose progress we would like to determine.
- * @param {number} param.id The ID of the task whose progress we would like to determine.
+ * @param type The type of progress to get.
+ * @param param.getters
+ * @param param.task The the task whose progress we would like to determine.
+ * @param param.id The ID of the task whose progress we would like to determine.
  */
-function getChildProgress(type, { getters, task, id }) {
+// FIXME: Fix TSDoc descriptions not matching properties in object
+// FIXME: Type getters correctly.
+function getChildProgress(
+  type: 'progress' | 'progressMax',
+  { getters, task, id }: { getters: any; task: TaskVuexState; id: number },
+) {
   let result = 0;
   let hasAutoUpdateChildren = false;
   if (!getters.complete(id) && (type === 'progress' || task.unknownMaxProgress)) {
@@ -98,37 +113,29 @@ function getChildProgress(type, { getters, task, id }) {
   return null;
 }
 
+interface TasksState {
+  /** Default task list. */
+  all: number[];
+  /** Client action related task IDs. */
+  clientActions: number[],
+  /** Tasks related to logging into a single client. */
+  login: number[],
+  /** Tasks used in the task viewer. */
+  taskViewer: number[],
+  /** Object containing tasks as values and their corresponding IDs as keys. */
+  tasks: { [key: string]: TaskVuexState },
+}
+
 const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');
 
-/** @type {import('vuex').Module} */
-const vuexModule = {
+const vuexModule: Module<TasksState, RootState> = {
   namespaced: true,
   // TODO: Group lists under one property
   state: {
-    /**
-     * Default task list.
-     * @type {number[]}
-     */
     all: [],
-    /**
-     * Client action related task IDs.
-     * @type {number[]}
-     */
     clientActions: [],
-    /**
-     * Tasks related to logging into a single client.
-     * @type {number[]}
-     */
     login: [],
-    /**
-     * Tasks used in the task viewer.
-     * @type {number[]}
-     */
     taskViewer: [],
-    /**
-     * Object containing tasks as values and their corresponding IDs as keys.
-     * @type {Object.<string, TaskVuexState>}
-     */
     tasks: {},
   },
   getters: {
@@ -261,12 +268,14 @@ const vuexModule = {
      * @param {TaskState} payload.value The task state
      */
     setState(state, { id, value }) {
-      if (Object.values(taskStates).includes(value)) {
+      if (Object.values(TaskState).includes(value)) {
         Vue.set(state.tasks[id], 'state', value);
       } else {
-        const validStates = `['${Object.values(taskStates).join("', '")}']`;
+        const validStates = `['${Object.values(TaskState).join("', '")}']`;
         // eslint-disable-next-line max-len
-        throw new Error(`Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`);
+        throw new Error(
+          `Cannot set task state to invalid value, '${value}'. Task state must be one of the following: ${validStates}`,
+        );
       }
     },
     /**
@@ -304,11 +313,9 @@ const vuexModule = {
   actions: {
     /**
      * Creates a new task and returns its ID.
-     * @param {import('vuex').ActionContext} store
-     * @param {TaskCreateOptions} data
-     * @returns {number} The newly-created task's ID.
+     * @returns The newly-created task's ID.
      */
-    create({ commit, rootState }, data = { list: 'all' }) {
+    create({ commit, rootState }: ActionContext, data: TaskVuexStateOptional = { list: 'all' }): number {
       const task = Object.assign({
         id: lastTaskId,
         title: '',
@@ -380,7 +387,7 @@ const vuexModule = {
       commit, rootState, dispatch,
     }, { id, error }) {
       commit('setError', { id, value: error });
-      commit('setState', { id, value: taskStates.ERROR });
+      commit('setState', { id, value: TaskState.ERROR });
       if (rootState.config.debug.showTaskErrorsInConsole) {
         dispatch('logError', { id });
       }
@@ -393,7 +400,7 @@ const vuexModule = {
     logError({ rootState, getters }, { id }) {
       if (rootState.config.debug.showTaskErrorsInConsole) {
         const task = getters.getTaskById(id);
-        if (task.state === taskStates.ERROR) {
+        if (task.state === TaskState.ERROR) {
           /* eslint-disable no-console */
           console.groupCollapsed(`${task.id} = ${task.title}`);
           console.dir(task.error);
@@ -449,15 +456,12 @@ const vuexModule = {
       const childStateCounts = getters.childStateCounts(id);
       const children = getters.children(id);
       let state;
-      if (childStateCounts[taskStates.ERROR] === children.length) {
-        state = taskStates.ERROR;
-      } else if (
-        childStateCounts[taskStates.ERROR] > 0
-        || childStateCounts[taskStates.WARNING] > 0
-      ) {
-        state = taskStates.WARNING;
+      if (childStateCounts[TaskState.ERROR] === children.length) {
+        state = TaskState.ERROR;
+      } else if (childStateCounts[TaskState.ERROR] > 0 || childStateCounts[TaskState.WARNING] > 0) {
+        state = TaskState.WARNING;
       } else {
-        state = taskStates.SUCCESS;
+        state = TaskState.SUCCESS;
       }
       commit('setState', { id, value: state });
     },

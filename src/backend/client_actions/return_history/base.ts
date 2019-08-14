@@ -369,7 +369,7 @@ export class ReturnHistoryRunner extends ClientActionRunner<
     // We get the input here once to reduce the overhead from querying Vuex.
     const { client, task, input } = this.storeProxy;
 
-    let taxTypeIds = client.taxTypes;
+    let taxTypeIds = client.taxTypes !== null ? client.taxTypes : [];
 
     // Filter tax type IDs using input
     const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
