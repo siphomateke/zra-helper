@@ -16,12 +16,12 @@
 
 <script>
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
-import { exportFormatCodes } from '@/backend/constants';
+import { ExportFormatCode } from '@/backend/constants';
 import { writeJson, renderTable, unparseCsv } from '@/backend/file_utils';
 import { objectHasProperties } from '@/utils';
 
 /** @type {import('@/backend/constants').ExportFormatCode[]} */
-const exportFormats = [exportFormatCodes.TXT, exportFormatCodes.CSV, exportFormatCodes.JSON];
+const exportFormats = [ExportFormatCode.TXT, ExportFormatCode.CSV, ExportFormatCode.JSON];
 
 const tableColumns = [
   {
@@ -85,18 +85,18 @@ export default {
   },
   methods: {
     getExport(format) {
-      if (format === exportFormatCodes.CSV || format === exportFormatCodes.TXT) {
+      if (format === ExportFormatCode.CSV || format === ExportFormatCode.TXT) {
         const table = this.clients.map(client => clientProperties.map(p => client[p]));
         table.unshift(tableColumns.map(column => column.label));
 
-        if (format === exportFormatCodes.CSV) {
+        if (format === ExportFormatCode.CSV) {
           return unparseCsv(table);
         }
-        if (format === exportFormatCodes.TXT) {
+        if (format === ExportFormatCode.TXT) {
           return renderTable(table);
         }
       }
-      if (format === exportFormatCodes.JSON) {
+      if (format === ExportFormatCode.JSON) {
         const jsonExport = this.clients.map((client) => {
           const jsonClient = {};
           clientProperties.forEach((p) => {

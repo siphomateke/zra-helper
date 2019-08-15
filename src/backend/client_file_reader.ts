@@ -30,7 +30,7 @@ export function validateClientUsername(tpin) {
   };
   if (!(/\d{10}/.test(tpin) && tpin.length === 10)) {
     response.valid = false;
-    response.errors.push(clientPropValidationErrors.TPIN_SHORT);
+    response.errors.push(ClientPropValidationError.TPIN_SHORT);
   }
   return response;
 }
@@ -42,7 +42,7 @@ export function validateClientPassword(password) {
   };
   if (password.length < 8) {
     response.valid = false;
-    response.errors.push(clientPropValidationErrors.PASSWORD_SHORT);
+    response.errors.push(ClientPropValidationError.PASSWORD_SHORT);
   }
   return response;
 }
@@ -55,7 +55,7 @@ export function validateClientPassword(password) {
  * - username is a 10 digit number
  * - password is at least 8 characters long
  *
- * @param  client The client to validate
+ * @param client The client to validate
  */
 export function validateClient(client: LoadedClient): ClientValidationResult {
   /** Properties that must exist on each client */

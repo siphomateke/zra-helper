@@ -2,12 +2,12 @@ import { get } from 'dot-prop';
 import { createClientAction, getInput, createOutputFile } from '../base';
 import { GetReturnHistoryClientActionOptions, ReturnHistoryReturnDependentRunner } from './base';
 import {
-  taxTypeNumericalCodes,
+  TaxTypeNumericalCode,
   taxTypes,
   financialAccountStatusTypesMap,
   financialAccountStatusDescriptionsMap,
   financialAccountStatusTypeNames,
-  exportFormatCodes,
+  ExportFormatCode,
 } from '@/backend/constants';
 import { getClientIdentifier, parallelTaskMap, taskFunction } from '../utils';
 import { unparseCsv, objectToCsvTable, writeJson } from '@/backend/file_utils';
@@ -74,15 +74,15 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
     return createOutputFile({
       label: 'All clients account approval statuses',
       value: outputs,
-      defaultFormat: exportFormatCodes.CSV,
-      formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+      defaultFormat: ExportFormatCode.CSV,
+      formats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
       formatter({
         output: clientOutputs,
         format,
         anonymizeClients,
       }) {
         // TODO: Only include provisional column if `getAckReceipts` is true
-        if (format === exportFormatCodes.CSV) {
+        if (format === ExportFormatCodes.CSV) {
           const csvOutput = {};
           for (const client of clients) {
             if (client.id in clientOutputs) {

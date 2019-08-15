@@ -15,7 +15,7 @@
         :raw="showRawExport"
       />
       <b-checkbox
-        v-if="format !== exportFormatCodes.TXT"
+        v-if="format !== ExportFormatCode.TXT"
         slot="foot"
         v-model="showRawExport"
       >Show raw export</b-checkbox>
@@ -28,7 +28,7 @@ import ExportButtonMixin from './export_button_mixin';
 import BaseExportButton from './BaseExportButton.vue';
 import CardModal from '@/components/CardModal.vue';
 import ExportViewer from '@/components/ExportData/ExportViewer.vue';
-import { exportFormatCodes } from '../../backend/constants';
+import { ExportFormatCode } from '../../backend/constants';
 
 // TODO: Move modal into portal in button so that the button is styled correctly.
 export default {
@@ -48,7 +48,7 @@ export default {
       previewModalVisible: false,
       output: null,
       showRawExport: false,
-      exportFormatCodes,
+      ExportFormatCode,
     };
   },
   methods: {
