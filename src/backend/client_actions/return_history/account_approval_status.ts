@@ -2,12 +2,12 @@ import { get } from 'dot-prop';
 import { createClientAction, getInput } from '../base';
 import { GetReturnHistoryClientActionOptions, ReturnHistoryReturnDependentRunner } from './base';
 import {
-  taxTypeNumericalCodes,
+  TaxTypeNumericalCode,
   taxTypes,
   financialAccountStatusTypesMap,
   financialAccountStatusDescriptionsMap,
   financialAccountStatusTypeNames,
-  exportFormatCodes,
+  ExportFormatCode,
 } from '@/backend/constants';
 import { getClientIdentifier, parallelTaskMap, taskFunction } from '../utils';
 import { unparseCsv, objectToCsvTable, writeJson } from '@/backend/file_utils';
@@ -66,8 +66,8 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
     getAckReceipts: false,
   }),
   hasOutput: true,
-  defaultOutputFormat: exportFormatCodes.CSV,
-  outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+  defaultOutputFormat: ExportFormatCode.CSV,
+  outputFormats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
   outputFormatter({
     clients,
     outputs: clientOutputs,
