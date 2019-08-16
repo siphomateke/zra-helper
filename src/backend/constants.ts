@@ -73,8 +73,6 @@ export type DateString = string;
 export type ReferenceNumber = string;
 
 // #region Tax Types
-/** Abbreviated tax type name. For example, 'ITX' (income tax) and 'WHT' (withholding tax). */
-export type TaxTypeCode = string;
 /** Two-digit tax type code. For example, '01' (income tax) and '02' (value added tax). */
 export enum TaxTypeNumericalCode {
   ITX = '01',
@@ -87,7 +85,7 @@ export enum TaxTypeNumericalCode {
   TLEVY = '09',
 }
 
-interface TaxTypeNumericalCode2 {
+interface ITaxTypeNumericalCode {
   ITX: '01';
   VAT: '02';
   PAYE: '03';
@@ -98,8 +96,11 @@ interface TaxTypeNumericalCode2 {
   TLEVY: '09';
 }
 
+/** Abbreviated tax type name. For example, 'ITX' (income tax) and 'WHT' (withholding tax). */
+export type TaxTypeCode = keyof ITaxTypeNumericalCode;
+
 // FIXME: Decide between enum, interface or just something else that works.
-export type TaxTypeCodeMap<T> = { [key in keyof TaxTypeNumericalCode2]?: T };
+export type TaxTypeCodeMap<T> = { [key in keyof ITaxTypeNumericalCode]?: T };
 export type TaxTypeIdMap<T> = { [key in TaxTypeNumericalCode]?: T };
 
 export const taxTypes = objectFlip(TaxTypeNumericalCode);
@@ -112,7 +113,9 @@ export type TaxTypeName = string;
  * Maps tax type names to their corresponding numerical codes.
  * This is primarily used when parsing payment history receipts.
  */
-export const taxTypeNames: { [taxTypeName: string]: TaxTypeNumericalCode } = {
+export const taxTypeNames: {
+  readonly [taxTypeName: string]: TaxTypeNumericalCode
+} = {
   'income tax': TaxTypeNumericalCode.ITX,
   'value added tax': TaxTypeNumericalCode.VAT,
   'employment tax (pay as you earn)': TaxTypeNumericalCode.PAYE,
@@ -128,7 +131,9 @@ export const taxTypeNames: { [taxTypeName: string]: TaxTypeNumericalCode } = {
  * Tax type names found in the results of tax payer searches mapped to their corresponding
  * numerical codes.
  */
-export const taxPayerSearchTaxTypeNames: { [taxTypeName: string]: TaxTypeNumericalCode } = {
+export const taxPayerSearchTaxTypeNames: {
+  readonly [taxTypeName: string]: TaxTypeNumericalCode
+} = {
   'income tax': TaxTypeNumericalCode.ITX,
   vat: TaxTypeNumericalCode.VAT,
   paye: TaxTypeNumericalCode.PAYE,
