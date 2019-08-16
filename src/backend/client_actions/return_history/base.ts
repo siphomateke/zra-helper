@@ -271,7 +271,7 @@ export class ReturnHistoryRunner extends ClientActionRunner<
   anyFailures: boolean = false;
 
   /** Returns per tax type ID. Includes returns that are being retried. */
-  taxTypeReturns: { [key: string]: TaxReturn[] } = {};
+  taxTypeReturns: { [taxTypeId: string]: TaxReturn[] } = {};
 
   // TODO: Make sure the reason is always known.
   getUnknownRetryReasonMessage = () => 'Failed for unknown reason.';

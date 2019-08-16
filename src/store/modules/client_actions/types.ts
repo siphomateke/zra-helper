@@ -14,7 +14,7 @@ export interface ActionRun {
    * IDs of instances from this run grouped by action ID. Instances are stored by action ID to make
    * it easier to combine all outputs from all clients of a single action into a single output.
    */
-  instancesByActionId: { [key: string]: string[] };
+  instancesByActionId: { [actionId: string]: string[] };
   /** The ID of the task associated with this run. */
   taskId: TaskId;
   /** Whether the run is still in progress or has completed. */
@@ -32,7 +32,7 @@ export interface ClientActionFailure {
 }
 
 /** Failures grouped by Client ID. */
-export type ClientActionFailuresByClient = { [key: number]: ClientActionFailure[] };
+export type ClientActionFailuresByClient = { [clientId: number]: ClientActionFailure[] };
 
 /**
  * Data for a single instance of a client action runner. New instances are created each run allowing
@@ -63,9 +63,10 @@ export type ClientActionOutputs = { [key: number]: ClientActionOutput<AllClientA
 export namespace ClientActions {
   export interface State {
     /** Client actions stored by IDs. */
-    actions: { [key: string]: ClientActionObject };
+    // FIXME: Type this properly
+    actions: { [actionId: string]: ClientActionObject };
     /** Client action runner instances' data stored by instance ID. */
-    instances: { [key: string]: ClientActionInstanceData };
+    instances: { [instanceId: string]: ClientActionInstanceData };
     /** Action runs stored by run IDs. */
     runs: ActionRun[];
     /** Which run the program is currently on. */

@@ -21,7 +21,7 @@ export function getHtmlFromNode(node: Node): string | null {
 type Selector = string;
 
 interface Selectors {
-  [key: string]: Selector;
+  [selectorId: string]: Selector;
 }
 
 export type RootElement = HTMLDocument | HTMLElement;

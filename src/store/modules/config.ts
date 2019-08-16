@@ -78,7 +78,7 @@ export interface ConfigState {
   zraLiteMode: boolean;
   /** Action options stored by action ID. */
   // FIXME: Document and type action options properly.
-  actions: { [key: string]: object };
+  actions: { [actionId: string]: object };
   log: {
     showDateInTimestamp: boolean;
   };

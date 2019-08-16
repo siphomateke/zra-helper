@@ -159,7 +159,7 @@ class TabCreator {
   loadingQueueIds: QueueId[] = [];
 
   /** Maps queue IDs to tab IDs/ */
-  queueIdsByTabId: { [key: QueueId]: TabId } = {};
+  queueIdsByTabId: { [queueId: number]: TabId } = {};
 
   constructor() {
     browser.tabs.onRemoved.addListener((tabId) => {

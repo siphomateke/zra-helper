@@ -123,7 +123,7 @@ interface TasksState {
   /** Tasks used in the task viewer. */
   taskViewer: number[],
   /** Object containing tasks as values and their corresponding IDs as keys. */
-  tasks: { [key: string]: TaskVuexState },
+  tasks: { [taskId: number]: TaskVuexState },
 }
 
 const listStoreHelper = new ListStoreHelper('tasks', 'task', 'getTaskById');

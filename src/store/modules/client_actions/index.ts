@@ -258,7 +258,7 @@ function convertActionsToInstances(context, actionIds, client) {
 }
 
 /** Client action runner instances stored by instance ID. */
-const instanceClasses: { [key: string]: ClientActionInstanceClass } = {};
+const instanceClasses: { [instanceId: string]: ClientActionInstanceClass } = {};
 
 /**
  * @param {string|number} instanceId

@@ -53,7 +53,7 @@ export interface ParsedClient {
   /** An array of errors that will be set when the client is invalid */
   errors?: string[];
   /** List of validation errors per property */
-  propErrors?: { [key: string]: ClientPropValidationError[] };
+  propErrors?: { [prop: string]: ClientPropValidationError[] };
 }
 
 export interface ClientState {
@@ -118,8 +118,7 @@ export type TaxTypeName = string;
  * Maps tax type names to their corresponding numerical codes.
  * This is primarily used when parsing payment history receipts.
  */
-// FIXME: Fix this typing
-export const taxTypeNames: { [key in TaxTypeName]: TaxTypeNumericalCode } = {
+export const taxTypeNames: { [taxTypeName: string]: TaxTypeNumericalCode } = {
   'income tax': TaxTypeNumericalCode.ITX,
   'value added tax': TaxTypeNumericalCode.VAT,
   'employment tax (pay as you earn)': TaxTypeNumericalCode.PAYE,
@@ -135,7 +134,7 @@ export const taxTypeNames: { [key in TaxTypeName]: TaxTypeNumericalCode } = {
  * Tax type names found in the results of tax payer searches mapped to their corresponding
  * numerical codes.
  */
-export const taxPayerSearchTaxTypeNames: { [key: string]: TaxTypeNumericalCode } = {
+export const taxPayerSearchTaxTypeNames: { [taxTypeName: string]: TaxTypeNumericalCode } = {
   'income tax': TaxTypeNumericalCode.ITX,
   vat: TaxTypeNumericalCode.VAT,
   paye: TaxTypeNumericalCode.PAYE,
