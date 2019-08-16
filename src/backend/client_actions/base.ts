@@ -10,18 +10,18 @@ import { Rules } from 'vee-validate';
 
 type ClientActionOutputFileValue = any;
 
-interface ClientActionOutputFormatterOptions {
+export interface ClientActionOutputFormatterOptions<Output> {
   clients: Client[];
   allClients: Client[]
-  output: ClientActionOutputFileValue;
+  output: Output;
   format: ExportFormatCode;
   /** Whether client data in the output should be anonymized. */
   anonymizeClients: boolean;
 }
 
-type ClientActionOutputFormatter = (options: ClientActionOutputFormatterOptions) => string;
+export type ClientActionOutputFormatter<O> = (options: ClientActionOutputFormatterOptions<O>) => string;
 
-interface ClientActionOutputFile {
+interface ClientActionOutputFile<Output extends ClientActionOutputFileValue> {
   label: string;
   /** 
    * Whether this output file is not an actual output file but just a wrapper for others. If this is
@@ -30,7 +30,7 @@ interface ClientActionOutputFile {
   wrapper: boolean;
   filename?: string;
   /** The actual value of this output file that will be passed to the formatter. */
-  value?: ClientActionOutputFileValue;
+  value?: Output;
   /** The export formats this client action can output. Must be set if `wrapper` is false. */
   formats?: ExportFormatCode[];
   /**
@@ -39,22 +39,22 @@ interface ClientActionOutputFile {
    */
   defaultFormat?: ExportFormatCode;
   /** Function that formats the output into different formats such as CSV and JSON. */
-  formatter?: ClientActionOutputFormatter;
+  formatter?: ClientActionOutputFormatter<Output>;
   /** Whether this output should be shown to the user without having to use one of the export buttons. */
   preview?: boolean;
-  children: ClientActionOutputFile[];
+  children: ClientActionOutputFile<any>[];
 }
 
-interface ClientActionOutputFilesGeneratorFnOptions {
+interface ClientActionOutputFilesGeneratorFnOptions<Output> {
   clients: Client[];
   allClients: Client[];
-  outputs: ClientActionOutputs;
+  outputs: Output;
 }
 
-type ClientActionOutputFilesGenerator = (options: ClientActionOutputFilesGeneratorFnOptions) => ClientActionOutputFile;
+type ClientActionOutputFilesGenerator<O> = (options: ClientActionOutputFilesGeneratorFnOptions<O>) => ClientActionOutputFile<O>;
 
 // FIXME: Express in type that output settings are required if hasOutput = true.
-interface ClientActionOptions<Input extends object> {
+export interface ClientActionOptions<Input extends object, Output = BasicRunnerOutput> {
   /** A unique camelCase ID to identify this client action. */
   id: string;
   /** The human-readable name of this client action. */
@@ -76,13 +76,17 @@ interface ClientActionOptions<Input extends object> {
   /** Whether this client action returns an output. */
   hasOutput?: boolean;
   /** Function that generates output(s) of the action based on the raw output data of each client. */
-  generateOutputFiles?: ClientActionOutputFilesGenerator;
+  generateOutputFiles?: ClientActionOutputFilesGenerator<ClientActionOutputs<Output>>;
 }
 
-export interface ClientActionObject<Input extends object> extends ClientActionOptions<Input> {
+export interface ClientActionObject<
+  Input extends object,
+  Output = BasicRunnerOutput,
+  Runner extends ClientActionRunner<Input, Output> = ClientActionRunner<Input, Output>
+  > extends ClientActionOptions<Input, Output> {
   /** The log category to use when logging anything in this action. */
   logCategory: string;
-  Runner: typeof ClientActionRunner;
+  Runner: { new(): Runner };
 }
 
 // FIXME: Actually use this strongly typed version elsewhere
@@ -92,16 +96,16 @@ export interface TypedClientActionRunnerProxy<Input, Output, Config> {
   actionId: string;
   client: Client;
   config: Config;
-  loggedInTabId: number;
-  task: TaskObject;
+  loggedInTabId: number | null;
+  task: TaskObject | null;
   input: Input;
   retryInput: Input;
   /** The reason why this instance should be retried. */
   retryReason: string;
   /** Whether this instance should be retried. */
   shouldRetry: boolean;
-  error: any;
-  output: Output;
+  error: any | null;
+  output: Output | null;
   /**
    * Output of this run/retry and its previous run.
    * TODO: Actually store all run outputs.
@@ -115,10 +119,10 @@ export interface TypedClientActionRunnerProxy<Input, Output, Config> {
 export type ClientActionRunnerProxy = TypedClientActionRunnerProxy<any, any, any>;
 
 /** Options for {@link ClientActionRunner.init} */
-interface RunnerInitOptions {
+interface RunnerInitOptions<Config> {
   client: Client;
   /** This client action's config. */
-  config: object;
+  config: Config;
 }
 
 interface RunnerRunOptions {
@@ -137,12 +141,16 @@ export interface BasicRunnerConfig { }
  * output.
  */
 // FIXME: Detect circular references of required actions.
-export abstract class ClientActionRunner<Input extends object, Output, Config> {
+export abstract class ClientActionRunner<
+  Input extends object = BasicRunnerInput,
+  Output = BasicRunnerOutput,
+  Config = BasicRunnerConfig
+  > {
   id: string | null = null;
 
   storeProxy: TypedClientActionRunnerProxy<Input, Output, Config>;
 
-  constructor(public action: ClientActionObject<Input>) { }
+  constructor(public action: ClientActionObject<Input, Output>) { }
 
   /**
    * @param id ID of runner instance in Vuex store.
@@ -180,7 +188,7 @@ export abstract class ClientActionRunner<Input extends object, Output, Config> {
   /**
    * Initializes the runner. Must be called before `run()` is called.
    */
-  init(data: RunnerInitOptions) {
+  init(data: RunnerInitOptions<Config>) {
     this.storeProxy.client = data.client;
     this.storeProxy.config = data.config;
     this.storeProxy.loggedInTabId = null;
@@ -308,10 +316,13 @@ export abstract class ClientActionRunner<Input extends object, Output, Config> {
  * Validates a client action output file.
  * @returns Validation errors
  */
-export function validateActionOutputFile(options: Partial<ClientActionOutputFile>): string[] {
+export function validateActionOutputFile<
+  Output,
+  ActionOptions extends Partial<ClientActionOutputFile<Output>>
+>(options: ActionOptions): string[] {
   const errors = [];
 
-  const nonWrapperProperties: Array<keyof ClientActionOutputFile> = [
+  const nonWrapperProperties: Array<keyof ClientActionOutputFile<Output>> = [
     'value',
     'filename',
     'formats',
@@ -377,13 +388,12 @@ export function validateActionOutputFile(options: Partial<ClientActionOutputFile
 
 /**
  * Validates a client action's options.
- * @param {ClientActionObject} options
- * @returns {string[]} Validation errors
+ * @returns Validation errors
  */
-function validateActionOptions(options) {
+function validateActionOptions<I extends object, O>(options: Partial<ClientActionObject<I, O>>): string[] {
   const errors = [];
   if (options.hasOutput) {
-    const requiredProperties = [
+    const requiredProperties: Array<keyof ClientActionObject<I, O>> = [
       'generateOutputFiles',
     ];
     const { missing } = objectHasProperties(options, requiredProperties);
@@ -404,11 +414,11 @@ function validateActionOptions(options) {
 
 /**
  * Creates a client action output file and validates it.
- * @param {Partial<ClientActionOutputFile>} options
- * @returns {ClientActionOutputFile}
  * @throws {Error}
  */
-export function createOutputFile(options) {
+export function createOutputFile<Output>(
+  options: Partial<ClientActionOutputFile<Output>>
+): ClientActionOutputFile<Output> {
   if (typeof options !== 'object') {
     throw new Error(`Client action output files must be objects, not ${typeof options}`);
   }
@@ -447,8 +457,9 @@ export function createOutputFile(options) {
  * Default options are assigned and then the action is validated.
  */
 export function createClientAction<
-  Input extends object
->(options: ClientActionOptions<Input>): ClientActionObject<Input> {
+  Input extends object,
+  Output = BasicRunnerOutput
+>(options: ClientActionOptions<Input, Output>): ClientActionObject<Input, Output> {
   const clientAction = Object.assign(
     {
       defaultInput: () => ({}),

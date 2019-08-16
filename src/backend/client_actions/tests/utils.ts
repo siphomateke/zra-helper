@@ -1,4 +1,4 @@
-import { createClientAction, ClientActionRunner, ClientActionObject, BasicRunnerInput, BasicRunnerOutput, BasicRunnerConfig } from '../base';
+import { createClientAction, ClientActionRunner, ClientActionObject } from '../base';
 import '@/vue_init';
 import store from '@/store';
 import { getInstanceClassById } from '@/store/modules/client_actions';
@@ -6,17 +6,13 @@ import { getInstanceClassById } from '@/store/modules/client_actions';
 /**
  * Creates a dummy client action for testing purposes.
  */
-export function createTestClientAction(): ClientActionObject<BasicRunnerInput> {
-  const testAction = createClientAction<BasicRunnerInput>({
+export function createTestClientAction() {
+  const testAction = createClientAction({
     id: 'testAction',
     name: 'Test action',
     requiredFeatures: [],
   });
-  testAction.Runner = class extends ClientActionRunner<
-    BasicRunnerInput,
-    BasicRunnerOutput,
-    BasicRunnerConfig
-    > {
+  testAction.Runner = class extends ClientActionRunner {
     constructor() {
       super(testAction);
     }
@@ -27,10 +23,9 @@ export function createTestClientAction(): ClientActionObject<BasicRunnerInput> {
 /**
  * Generates a dummy client action instance from a fake run.
  */
-// TODO: Improve so that runner output and config are typed.
-export function getFakeRunInstanceClassFromAction<I extends object>(
-  action: ClientActionObject<I>
-): ClientActionRunner<I, any, any> {
+export function getFakeRunInstanceClassFromAction<I extends object, O>(
+  action: ClientActionObject<I, O>,
+): ClientActionRunner<I, O, any> {
   store.commit('clientActions/startNewRun', {
     taskId: 0,
     clients: [],

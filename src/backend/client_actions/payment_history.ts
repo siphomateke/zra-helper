@@ -28,8 +28,6 @@ import {
   createClientAction,
   ClientActionRunner,
   getInput,
-  BasicRunnerOutput,
-  BasicRunnerConfig,
 } from './base';
 import { InvalidReceiptError } from '../errors';
 import getDataFromReceipt from '../content_scripts/helpers/receipt_data';
@@ -237,7 +235,16 @@ function downloadPaymentReceipt({
   });
 }
 
-const GetPaymentReceiptsClientAction = createClientAction({
+export namespace GetPaymentReceiptsAction {
+  export interface Input {
+    fromDate?: DateString;
+    toDate?: DateString;
+    receipts?: PaymentReceipt[];
+    receiptDataPages?: number[];
+  }
+}
+
+const GetPaymentReceiptsClientAction = createClientAction<GetPaymentReceiptsAction.Input>({
   id: 'getPaymentReceipts',
   name: 'Get payment receipts',
   defaultInput: () => ({
@@ -250,17 +257,9 @@ const GetPaymentReceiptsClientAction = createClientAction({
   },
 });
 
-interface RunnerInput {
-  fromDate?: DateString;
-  toDate?: DateString;
-  receipts?: PaymentReceipt[];
-  receiptDataPages?: number[];
-}
 
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
-  RunnerInput,
-  BasicRunnerOutput,
-  BasicRunnerConfig
+  GetPaymentReceiptsAction.Input
   > {
   constructor() {
     super(GetPaymentReceiptsClientAction);
