@@ -1,24 +1,27 @@
 export default class PromiseQueue {
+  activePromises: number = 0;
+
+  lastPromiseStartTime: number | null = null;
+
+  queue: Array<(value?: unknown) => void> = [];
+
+  drainingQueue: boolean = false;
+
   /**
-   * @param {() => number} getMaxConcurrent
+   * @param getMaxConcurrent
    * Function that returns the maximum number of promises that can be run at the same time.
-   * @param {() => number} getQueueDelay
+   * @param getQueueDelay
    * Function that returns the delay between each promise running.
    */
-  constructor(getMaxConcurrent = () => 0, getQueueDelay = () => 0) {
-    this.getMaxConcurrent = getMaxConcurrent;
-    this.getQueueDelay = getQueueDelay;
-    this.activePromises = 0;
-    this.lastPromiseStartTime = null;
-    this.queue = [];
-    this.drainingQueue = false;
-  }
+  constructor(
+    public getMaxConcurrent: () => number = () => 0,
+    public getQueueDelay: () => number = () => 0,
+  ) { }
 
   /**
    * Checks if a promise can be run.
-   * @returns {boolean}
    */
-  slotFree() {
+  slotFree(): boolean {
     const notMaxConcurrent = (
       this.getMaxConcurrent() === 0
       || this.activePromises < this.getMaxConcurrent()
@@ -77,11 +80,8 @@ export default class PromiseQueue {
 
   /**
    * Adds a new promise to the queue and returns it's response when it completes.
-   * @template R
-   * @param {() => Promise<R>} func
-   * @returns {Promise<R>}
    */
-  async add(func) {
+  async add<R>(func: () => Promise<R>): Promise<R> {
     await this.waitForFreeSlot();
     try {
       const response = await func();

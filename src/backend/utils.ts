@@ -241,7 +241,7 @@ class TabCreator {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
       while (this.queue.length > 0 && this.slotFree()) {
-        const callback = <Function>this.queue.shift();
+        const callback = <Function> this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
 
@@ -489,7 +489,7 @@ const downloadQueue = new PromiseQueue(
 
 /**
  * Wrapper around `browser.downloads.download()` that supports queuing using the `PromiseQueue`.
- * @returns {Promise<number>} The download ID.
+ * @returns The download ID.
  */
 export function startDownload(downloadOptions) {
   return downloadQueue.add(() => browser.downloads.download(downloadOptions));
