@@ -134,7 +134,7 @@ function getClientsFromCsv(csvString: string, config: Papa.ParseConfig = {}): Lo
    * An object whose keys are row numbers and the errors associated with
    * the row numbers are values
    */
-  const rowErrors: { [key: string]: Papa.ParseError[] } = {};
+  const rowErrors: { [rowNumber: string]: Papa.ParseError[] } = {};
   for (const error of parsed.errors) {
     if (!Array.isArray(rowErrors[error.row])) {
       rowErrors[error.row] = [];
