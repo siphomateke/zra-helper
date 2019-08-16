@@ -14,12 +14,14 @@ import {
   ClientActionRunner,
   getInput,
   createOutputFile,
-  BasicRunnerConfig,
+  ClientActionOutputFormatterOptions,
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
 import { deepAssign } from '@/utils';
 import { TaskId } from '@/store/modules/tasks';
+import { ClientActionOutputs } from '@/store/modules/client_actions/types';
+import { Omit } from '@/utils';
 
 // FIXME: Infer this from totalsColumns
 type TotalsColumn = 'principal' | 'interest' | 'penalty' | 'total';
@@ -113,21 +115,28 @@ async function getPendingLiabilities(
 }
 
 export namespace PendingLiabilitiesAction {
+  export interface Input {
+    taxTypeIds?: TaxTypeNumericalCode[];
+  }
+
   export interface Output {
     /** Tax type totals stored by tax type ID. */
     totals: TaxTypeCodeMap<Totals>;
     /** Errors retrieving particular tax types stored by tax type ID. */
     retrievalErrors: TaxTypeCodeMap<any>;
   }
-
-  export interface Input {
-    taxTypeIds?: TaxTypeNumericalCode[];
-  }
-
-  export type Config = BasicRunnerConfig;
 }
 
-function outputFormatter({
+interface OutputFormatterOptions extends Omit<
+  ClientActionOutputFormatterOptions<PendingLiabilitiesAction.Output>, 
+  'output'
+> {
+  clientOutputs: ClientActionOutputs<PendingLiabilitiesAction.Output>;
+}
+
+type OutputFormatter = (options: OutputFormatterOptions) => string;
+
+const outputFormatter: OutputFormatter = function outputFormatter({
   clients,
   allClients,
   clientOutputs,
@@ -212,7 +221,10 @@ function outputFormatter({
   return writeJson(json);
 }
 
-const GetAllPendingLiabilitiesClientAction = createClientAction<PendingLiabilitiesAction.Input>({
+const GetAllPendingLiabilitiesClientAction = createClientAction<
+  PendingLiabilitiesAction.Input,
+  PendingLiabilitiesAction.Output
+>({
   id: 'getAllPendingLiabilities',
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
@@ -243,8 +255,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<PendingLiabiliti
 
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
   PendingLiabilitiesAction.Input,
-  PendingLiabilitiesAction.Output,
-  PendingLiabilitiesAction.Config,
+  PendingLiabilitiesAction.Output
   > {
   constructor() {
     super(GetAllPendingLiabilitiesClientAction);

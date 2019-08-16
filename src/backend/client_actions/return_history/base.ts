@@ -30,8 +30,8 @@ import {
   ClientActionRunner,
   inputExists,
   getInput,
+  ClientActionOptions,
   BasicRunnerOutput,
-  BasicRunnerConfig,
 } from '../base';
 import { TaskId } from '@/store/modules/tasks';
 
@@ -145,7 +145,21 @@ export function generateDownloadFilename({
   return `${type}-${client.username}-${taxTypes[taxType]}-${dateString}-${taxReturn.referenceNo}`;
 }
 
-export const GetReturnHistoryClientActionOptions = {
+export namespace ReturnHistoryClientAction {
+  export interface Input {
+    fromDate?: DateString;
+    toDate?: DateString;
+    taxTypeIds?: TaxTypeNumericalCode[];
+    /** Returns by tax type ID. */
+    returns?: TaxTypeIdMap<TaxReturn[]>;
+    /** Return history pages by tax type ID. */
+    returnHistoryPages?: TaxTypeIdMap<number[]>;
+  }
+}
+
+type RunnerInput = ReturnHistoryClientAction.Input;
+
+export const GetReturnHistoryClientActionOptions: Partial<ClientActionOptions<RunnerInput>> = {
   requiresTaxTypes: true,
   defaultInput: () => ({
     taxTypeIds: Object.keys(taxTypes),
@@ -158,16 +172,6 @@ export const GetReturnHistoryClientActionOptions = {
     toDate: 'required|date_format:dd/MM/yyyy|after:fromDate,true',
   },
 };
-
-interface RunnerInput {
-  fromDate?: DateString;
-  toDate?: DateString;
-  taxTypeIds?: TaxTypeNumericalCode[];
-  /** Returns by tax type ID. */
-  returns?: TaxTypeIdMap<TaxReturn[]>;
-  /** Return history pages by tax type ID. */
-  returnHistoryPages?: TaxTypeIdMap<number[]>;
-}
 
 interface TaxTypeFailure {
   returns?: TaxReturn[];
@@ -221,11 +225,10 @@ interface RunTaxTypeTaskAbstractFnOptions {
   input: RunnerInput;
 }
 
-export class ReturnHistoryRunner extends ClientActionRunner<
-  RunnerInput,
-  BasicRunnerOutput,
-  BasicRunnerConfig
-  > {
+export class ReturnHistoryRunner<
+  Input extends RunnerInput = RunnerInput,
+  Output = BasicRunnerOutput
+  > extends ClientActionRunner<Input, Output> {
   taxTypeTaskTitle: TaxTypeTaskTitleFn = () => '';
 
   failures: TaxTypeFailures = {};

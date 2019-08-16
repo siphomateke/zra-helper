@@ -6,7 +6,6 @@ import {
 import { Client } from '@/backend/constants';
 import { TaskId } from '../tasks';
 import { ExtendedError } from '@/backend/errors';
-import { PendingLiabilitiesAction } from '@/backend/client_actions/pending_liabilities';
 
 /** Contains all the client action instances from a single run of the extension. */
 export interface ActionRun {
@@ -50,20 +49,18 @@ export type ClientActionInstanceClass = ClientActionRunner<any, any, any>;
 export interface ClientActionOutput<O> {
   actionId: string;
   clientId: number;
-  value?: O;
+  value?: O | null;
   error?: Error | null;
 }
 
-type AllClientActionOutputs = PendingLiabilitiesAction.Output;
-
 /** Client action runner outputs grouped by client ID. */
-export type ClientActionOutputs = { [key: number]: ClientActionOutput<AllClientActionOutputs> };
+export type ClientActionOutputs<Output> = { [clientId: string]: ClientActionOutput<Output> };
 
 export namespace ClientActions {
   export interface State {
     /** Client actions stored by IDs. */
     // FIXME: Type this properly
-    actions: { [actionId: string]: ClientActionObject };
+    actions: { [actionId: string]: ClientActionObject<any, any> };
     /** Client action runner instances' data stored by instance ID. */
     instances: { [instanceId: string]: ClientActionInstanceData };
     /** Action runs stored by run IDs. */
