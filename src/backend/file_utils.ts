@@ -106,20 +106,24 @@ export function writeJson(json: object): string {
   return correctEolChars(str);
 }
 
-// TODO: Convert to TypeScript
 class ObjectToCsvConverter {
+  rows: any[][] = [];
+
+  /** The current row. */
+  row: any[] = [];
+
+  /** The current nesting level. */
+  level: number = 0;
+
+  columnKeys: string[];
+
+  columnLabels: string[];
+
   /**
    *
    * @param columns Column IDs and labels.
    */
-  constructor(columns: Map.<string, string>) {
-    /** @type {any[][]} */
-    this.rows = [];
-    /** @type {any[]} The current row. */
-    this.row = [];
-    /** @type {number} The current nesting level. */
-    this.level = 0;
-    this.columns = columns;
+  constructor(public columns: Map<string, string>) {
     this.columnKeys = Array.from(this.columns.keys());
     this.columnLabels = Array.from(this.columns.values());
   }
@@ -211,15 +215,13 @@ class ObjectToCsvConverter {
  *   [ 'Bob', 'ITX', 'Approved' ],
  *   [ '', '', 'In progress' ]
  * ]
- * @param {*} obj
- * @param {Map.<string, string>} columns
+ * @param columns
  * Map of column labels and their keys. The column keys should match the keys of objects in
  * arrays in `obj`.
- * @returns {any[][]}
  */
-// TODO: Convert to TypeScript
-// TODO: Attempt to strictly type `obj` once we are using TypeScript
-export function objectToCsvTable(obj, columns) {
+// TODO: TS: Improve so that `T` generic is a key of the columns Map
+type RecursiveObj<T> = { [key: string]: RecursiveObj<T> | Array<T> };
+export function objectToCsvTable<T>(obj: RecursiveObj<T>, columns: Map<string, string>): any[][] {
   const converter = new ObjectToCsvConverter(columns);
   return converter.convert(obj);
 }

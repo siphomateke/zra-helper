@@ -3,20 +3,15 @@ import { makeRequest } from './utils';
 
 /**
  * Resolves a relative URL given a base URL.
- * @param {string} url
- * @param {string} baseUrl
- * @returns {string}
  */
-function resolveUrl(url, baseUrl) {
+function resolveUrl(url: string, baseUrl: string): string {
   return new URL(url, baseUrl).href;
 }
 
 /**
  * Converts a Blob to a data URL.
- * @param {Blob} blob
- * @returns {Promise<string>}
  */
-function blobToDataUrl(blob) {
+function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target.result);
@@ -30,10 +25,9 @@ const EMPTY_DATA_URL = 'data:base64,';
 
 /**
  * Gets data URL from resolved resource URL.
- * @param {string} resolvedUrl
- * @returns {Promise.<string>} Base64 data URL
+ * @returns Base64 data URL
  */
-async function getDataUrlFromResourceUrlNoCache(resolvedUrl) {
+async function getDataUrlFromResourceUrlNoCache(resolvedUrl: string): Promise<string> {
   let dataUrl;
   try {
     const response = await makeRequest({
@@ -72,11 +66,9 @@ const getDataUrlFromResourceUrl = mem(getDataUrlFromResourceUrlNoCache, {
 
 /**
  * Converts the URLs of all URL functions in a stylesheet to data URLs.
- * @param {HTMLStyleElement} style
- * @param {string} baseUrl
  */
 // TODO: Improve performance
-async function resolveStylesheetUrlFunctions(style, baseUrl) {
+async function resolveStylesheetUrlFunctions(style: HTMLStyleElement, baseUrl: string) {
   let stylesheet = style.innerHTML;
   const urlFunctions = stylesheet.match(/url\s*\(.+?\)/g);
   if (Array.isArray(urlFunctions)) {
@@ -92,13 +84,13 @@ async function resolveStylesheetUrlFunctions(style, baseUrl) {
 
 /**
  * Replaces the provided URL attribute of the provided elements with data URLs
- * @param {NodeListOf<HTMLElement>} elements
+ * @param elements
  * Elements that have a URL attribute that should be converted to a data URL.
- * @param {string} attribute Name of attribute to convert to data URL.
- * @param {string} baseUrl
- * @returns {Promise}
+ * @param attribute Name of attribute to convert to data URL.
  */
-async function processHtmlResources(elements, attribute, baseUrl) {
+async function processHtmlResources(
+  elements: NodeListOf<HTMLElement>, attribute: string, baseUrl: string,
+): Promise<any> {
   await Promise.all(Array.from(elements).map(async (element) => {
     const resourceUrl = element.getAttribute(attribute);
     const resolvedUrl = resolveUrl(resourceUrl, baseUrl);
@@ -109,15 +101,15 @@ async function processHtmlResources(elements, attribute, baseUrl) {
 
 // TODO: Handle `@import` rules in stylesheets
 class SingleHtmlFileGenerator {
+  baseUrl: string;
+
   /**
-   * @param {HTMLDocument} doc HTMLDocument to convert to a single HTML file.
-   * @param {string} url Original url of the HTMLDocument.
-   * @param {string} [title] Optional string that will replace the page's title.
+   * @param doc HTMLDocument to convert to a single HTML file.
+   * @param url Original url of the HTMLDocument.
+   * @param title Optional string that will replace the page's title.
    */
-  constructor(doc, url, title = null) {
-    this.doc = doc;
+  constructor(public doc: HTMLDocument, url: string, public title: string = null) {
     this.baseUrl = url;
-    this.title = title;
   }
 
   removeScripts() {
@@ -125,8 +117,7 @@ class SingleHtmlFileGenerator {
   }
 
   async processStylesheets() {
-    /** @type {NodeListOf<HTMLStyleElement|HTMLLinkElement>} */
-    const styleRelatedElements = this.doc.querySelectorAll('style, link[rel*=stylesheet]');
+    const styleRelatedElements: NodeListOf<HTMLStyleElement | HTMLLinkElement> = this.doc.querySelectorAll('style, link[rel*=stylesheet]');
     await Promise.all(Array.from(styleRelatedElements).map(async (element) => {
       if (element.tagName.toLowerCase() === 'link') {
         const stylesheetUrl = resolveUrl(element.getAttribute('href'), this.baseUrl);
@@ -189,11 +180,13 @@ class SingleHtmlFileGenerator {
 }
 
 /**
- * @param {HTMLDocument} doc HTMLDocument to convert to a single HTML file.
- * @param {string} url Original url of the HTMLDocument.
- * @param {string} [title] Optional string that will replace the page's title.
+ * @param doc HTMLDocument to convert to a single HTML file.
+ * @param url Original url of the HTMLDocument.
+ * @param title Optional string that will replace the page's title.
  */
-export default async function getSingleFileHtmlBlob(doc, url, title = null) {
+export default async function getSingleFileHtmlBlob(
+  doc: HTMLDocument, url: string, title: string | null = null,
+) {
   const generator = new SingleHtmlFileGenerator(doc, url, title);
   return generator.run();
 }
