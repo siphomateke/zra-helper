@@ -5,9 +5,9 @@ import {
   taxTypes,
   Client,
   taxTypeCodes,
-  taxTypeNumericalCodesArray,
   TaxTypeNumericalCode,
   TaxTypeCodeMap,
+  taxTypeNumericalCodes,
 } from '../constants';
 import { writeJson, unparseCsv, objectToCsvTable } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
@@ -255,7 +255,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
   name: 'Get all pending liabilities',
   requiresTaxTypes: true,
   defaultInput: () => ({
-    taxTypeIds: taxTypeNumericalCodesArray,
+    taxTypeIds: taxTypeNumericalCodes,
   }),
   inputValidation: {
     taxTypeIds: 'required|taxTypeIds',

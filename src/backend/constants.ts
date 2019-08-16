@@ -88,9 +88,6 @@ export enum TaxTypeNumericalCode {
   TLEVY = '09',
 }
 
-// FIXME: Make sure this is used
-export const taxTypeNumericalCodesArray = Object.values(TaxTypeNumericalCode);
-
 interface TaxTypeNumericalCode2 {
   ITX: '01';
   VAT: '02';
@@ -107,6 +104,7 @@ export type TaxTypeCodeMap<T> = { [key in keyof TaxTypeNumericalCode2]?: T };
 export type TaxTypeIdMap<T> = { [key in TaxTypeNumericalCode]?: T };
 
 export const taxTypes = objectFlip(TaxTypeNumericalCode);
+export const taxTypeNumericalCodes: TaxTypeNumericalCode[] = Object.values(TaxTypeNumericalCode);
 
 // FIXME: Make sure this is used
 export const taxTypeCodes = Object.values(taxTypes);

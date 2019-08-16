@@ -3,7 +3,7 @@ import taxPayerLedgerLogic from './logic';
 import { ClientActionRunner, createClientAction, createOutputFile } from '../base';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from '../utils';
 import createTask from '@/transitional/tasks';
-import { taxTypes, exportFormatCodes, taxTypeNumericalCodesArray } from '@/backend/constants';
+import { taxTypes, exportFormatCodes, taxTypeNumericalCodes } from '@/backend/constants';
 import store from '@/store';
 import { unparseCsv, writeJson } from '@/backend/file_utils';
 import { pendingLiabilityColumnNamesMap, pendingLiabilityTypes, pendingLiabilityColumns } from '../pending_liabilities';
@@ -76,7 +76,7 @@ function outputFormatter({
         /** @type {ChangeReasonsActionOutput} */
         outputValue = output.value;
       }
-      for (const taxTypeId of taxTypeNumericalCodesArray) {
+      for (const taxTypeId of taxTypeNumericalCodes) {
         const taxTypeCode = taxTypes[taxTypeId];
         let firstCol = '';
         if (i === 0) {

@@ -5,13 +5,13 @@ import createTask, { TaskObject } from '@/transitional/tasks';
 import {
   taxTypes,
   TaxTypeNumericalCode,
-  taxTypeNumericalCodesArray,
   ReferenceNumber,
   TPIN,
   Client,
   TaxTypeIdMap,
   TaxTypeCode,
   DateString,
+  taxTypeNumericalCodes,
 } from '../../constants';
 import { getDocumentByAjax } from '../../utils';
 import { parseTableAdvanced } from '../../content_scripts/helpers/zra';
@@ -201,7 +201,7 @@ type RunnerInput = ReturnHistoryClientAction.Input;
 export const GetReturnHistoryClientActionOptions: Partial<ClientActionOptions<RunnerInput>> = {
   requiresTaxTypes: true,
   defaultInput: () => ({
-    taxTypeIds: taxTypeNumericalCodesArray,
+    taxTypeIds: taxTypeNumericalCodes,
     fromDate: '01/01/2013',
     toDate: moment().format('31/12/YYYY'),
   }),
