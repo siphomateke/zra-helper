@@ -1,7 +1,7 @@
 import { parseReportTable, ParsedReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
 import {
-  TPIN, TaxTypeNumericalCode, Date, TaxAccountCode,
+  TPIN, TaxTypeNumericalCode, DateString, TaxAccountCode,
 } from './constants';
 
 export enum ReportCode {
@@ -162,8 +162,8 @@ export function getPendingLiabilityPage({
 interface GetTaxPayerLedgerPageFnOptions {
   tpin: TPIN;
   accountCode: TaxAccountCode;
-  fromDate: Date;
-  toDate: Date;
+  fromDate: DateString;
+  toDate: DateString;
   /** The page to get. */
   page: number;
 }

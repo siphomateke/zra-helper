@@ -18,7 +18,7 @@ import {
   taxTypeNames,
   TaxTypeNumericalCode,
   taxTypes,
-  Date,
+  DateString,
   ReferenceNumber,
   TaxTypeName,
   Client,
@@ -56,15 +56,15 @@ interface PaymentReceipt {
   amount: string;
   /** E.g. 'Payment received' */
   status: string;
-  prnDate: Date;
-  paymentDate: Date;
+  prnDate: DateString;
+  paymentDate: DateString;
   /** Payment type. E.g. 'Electronic' */
   type: string;
 }
 
 interface GetPaymentReceiptsOptions {
-  fromDate: Date;
-  toDate: Date;
+  fromDate: DateString;
+  toDate: DateString;
   receiptNumber?: string;
   referenceNumber?: ReferenceNumber;
 }
@@ -267,8 +267,8 @@ const GetPaymentReceiptsClientAction = createClientAction({
 });
 
 interface RunnerInput {
-  fromDate?: Date;
-  toDate?: Date;
+  fromDate?: DateString;
+  toDate?: DateString;
   receipts?: PaymentReceipt[];
   receiptDataPages?: number[];
 }
