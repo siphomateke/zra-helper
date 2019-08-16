@@ -15,7 +15,7 @@ interface PaymentReceiptData2 extends ReceiptData {
   payments: PaymentReceiptData[];
 }
 
-interface AcknowledgementReceiptData {
+export interface AcknowledgementReceiptData {
   provisional: boolean;
   /**  E.g. '4,200.00' */
   liabilityAmount: string;
@@ -25,7 +25,7 @@ interface AcknowledgementReceiptData {
 // date and reference number doesn't always need to be retrieved.
 export default function getDataFromReceipt(
   root: HTMLDocument | HTMLElement,
-  type: ReceiptType
+  type: ReceiptType,
 ): PaymentReceiptData2 | AcknowledgementReceiptData {
   const data = {};
 

@@ -1,6 +1,12 @@
 import { get } from 'dot-prop';
 import { createClientAction, getInput, createOutputFile } from '../base';
-import { GetReturnHistoryClientActionOptions, ReturnHistoryReturnDependentRunner } from './base';
+import {
+  GetReturnHistoryClientActionOptions,
+  ReturnHistoryReturnDependentRunner,
+  TaxReturn,
+  ReturnHistoryClientAction,
+  ReturnDependentFnOptions,
+} from './base';
 import {
   TaxTypeNumericalCode,
   taxTypes,
@@ -8,61 +14,57 @@ import {
   financialAccountStatusDescriptionsMap,
   financialAccountStatusTypeNames,
   ExportFormatCode,
+  FinancialAccountStatus,
+  FinancialAccountStatusType,
+  TaxTypeIdMap,
 } from '@/backend/constants';
 import { getClientIdentifier, parallelTaskMap, taskFunction } from '../utils';
 import { unparseCsv, objectToCsvTable, writeJson } from '@/backend/file_utils';
 import { getDocumentByAjax } from '@/backend/utils';
 import { generateAckReceiptRequest } from './ack_receipt';
-import getDataFromReceipt from '@/backend/content_scripts/helpers/receipt_data';
+import getDataFromReceipt, { AcknowledgementReceiptData } from '@/backend/content_scripts/helpers/receipt_data';
 import createTask from '@/transitional/tasks';
 import store from '@/store';
 
-/* eslint-disable max-len */
-/**
- * @typedef {import('./base').TaxReturn} TaxReturn
- * @typedef {import('@/backend/constants').FinancialAccountStatus} FinancialAccountStatus
- * @typedef {import('@/backend/content_scripts/helpers/receipt_data').AcknowledgementReceiptData} AcknowledgementReceiptData
- * @typedef {import('@/backend/constants').TaxTypeNumericalCode} TaxTypeNumericalCode
- */
-/* eslint-enable max-len */
-
-/**
- *
- * @param {FinancialAccountStatus} status
- */
-function getFinancialAccountStatusType(status) {
+function getFinancialAccountStatusType(
+  status: FinancialAccountStatus,
+): FinancialAccountStatusType | null {
   for (const type of Object.keys(financialAccountStatusTypesMap)) {
     if (financialAccountStatusTypesMap[type].includes(status)) {
-      return type;
+      return <FinancialAccountStatusType>type;
     }
   }
   return null;
 }
 
-/**
- * @typedef {Object} TaxReturnExtended_Temp
- * @property {FinancialAccountStatus} status Financial account status code
- * @property {import('@/backend/constants').FinancialAccountStatusType} statusType
- * @property {string} statusDescription
- * @property {boolean} [provisional] Provisional or annual
- *
- * @typedef {TaxReturn & TaxReturnExtended_Temp} TaxReturnExtended
- * Tax return with extra information such as financial account status code.
- */
+/** Tax return with extra information such as financial account status code. */
+interface TaxReturnExtended extends TaxReturn {
+  /** Financial account status code */
+  status: FinancialAccountStatus;
+  statusType: FinancialAccountStatusType;
+  statusDescription: string;
+  /** Provisional or annual */
+  provisional?: boolean;
+}
 
-/**
- * @typedef {Object.<string, TaxReturnExtended[]>} RunnerOutput
- * By tax type ID.
- * TODO: Set key as tax type ID when using TypeScript.
- */
+export namespace AccountApprovalStatusClientAction {
+  export interface Input extends ReturnHistoryClientAction.Input {
+    taxTypeIds: TaxTypeNumericalCode[];
+    getAckReceipts: boolean;
+  }
+  export type Output = TaxTypeIdMap<TaxReturnExtended[]>;
+}
 
-const CheckAccountApprovalStatusClientAction = createClientAction({
+const CheckAccountApprovalStatusClientAction = createClientAction<
+  AccountApprovalStatusClientAction.Input,
+  AccountApprovalStatusClientAction.Output
+>({
   ...GetReturnHistoryClientActionOptions,
   id: 'checkAccountApprovalStatus',
   name: 'Check account approval status',
   defaultInput: () => ({
     ...GetReturnHistoryClientActionOptions.defaultInput(),
-    taxTypeIds: [taxTypeNumericalCodes.ITX],
+    taxTypeIds: [TaxTypeNumericalCode.ITX],
     getAckReceipts: false,
   }),
   inputValidation: {
@@ -82,11 +84,10 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
         anonymizeClients,
       }) {
         // TODO: Only include provisional column if `getAckReceipts` is true
-        if (format === ExportFormatCodes.CSV) {
+        if (format === ExportFormatCode.CSV) {
           const csvOutput = {};
           for (const client of clients) {
             if (client.id in clientOutputs) {
-              /** @type {{value: RunnerOutput}} */
               const { value } = clientOutputs[client.id];
               if (value) {
                 const clientIdentifier = getClientIdentifier(client, anonymizeClients);
@@ -164,12 +165,10 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
   },
 });
 
-/**
- * @param {import('@/backend/constants').TaxTypeNumericalCode} taxTypeId
- * @param {TaxReturn} taxReturn
- * @returns {Promise.<AcknowledgementReceiptData>}
- */
-async function getAckReceiptData(taxTypeId, taxReturn) {
+async function getAckReceiptData(
+  taxTypeId: TaxTypeNumericalCode,
+  taxReturn: TaxReturn,
+): Promise<AcknowledgementReceiptData> {
   const doc = await getDocumentByAjax({
     ...generateAckReceiptRequest(taxTypeId, taxReturn.referenceNo),
     method: 'post',
@@ -178,27 +177,26 @@ async function getAckReceiptData(taxTypeId, taxReturn) {
   return receiptData;
 }
 
-/**
- * @typedef {Object.<string, AcknowledgementReceiptData>} AckReceiptsDataByReferenceNumber
- */
+type AckReceiptsDataByReferenceNumber = { [referenceNumber: string]: AcknowledgementReceiptData };
 
-CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryReturnDependentRunner {
+CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryReturnDependentRunner<
+  AccountApprovalStatusClientAction.Input,
+  AccountApprovalStatusClientAction.Output
+  > {
+  /** Data extracted from acknowledgement receipts stored by tax type ID. */
+  allAckReceiptsData: {
+    [taxTypeId in TaxTypeNumericalCode]?: AckReceiptsDataByReferenceNumber
+  } = {};
+
   constructor() {
     super(CheckAccountApprovalStatusClientAction);
     this.taxTypeTaskTitle = taxType => `Check approval status for ${taxType} accounts`;
     this.returnDependentFunc = this.getAckReceiptDataForReturns;
 
-    /**
-     * Data extracted from acknowledgement receipts stored by tax type ID.
-     * TODO: TypeScript: keys are TaxTypeNumericalCodes
-     * @type {Object.<string, AckReceiptsDataByReferenceNumber>}
-     */
-    this.allAckReceiptsData = {};
-
     this.shouldRunReturnDependentFuncOnTaxType = ({ input, taxTypeId }) => {
       // TODO: Cache checking input
       const { value: getAckReceipts } = getInput(input, 'getAckReceipts');
-      return getAckReceipts && taxTypeId === taxTypeNumericalCodes.ITX;
+      return getAckReceipts && taxTypeId === TaxTypeNumericalCode.ITX;
     };
   }
 
@@ -206,7 +204,7 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
     taxTypeId,
     returns,
     task,
-  }) {
+  }: ReturnDependentFnOptions) {
     const failedReturns = [];
     task.status = `Extract information from ${returns.length} acknowledgement of returns receipt(s)`;
     const taxTypeTask = await createTask(store, {
@@ -229,8 +227,7 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
         });
       },
     });
-    /** @type {AckReceiptsDataByReferenceNumber} */
-    const dataFromReceipts = {};
+    const dataFromReceipts: AckReceiptsDataByReferenceNumber = {};
     for (const response of responses) {
       if (response.value) {
         dataFromReceipts[response.item.referenceNo] = response.value;
@@ -245,26 +242,23 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
   async runInternal() {
     await super.runInternal();
 
-    /** @type {RunnerOutput} */
-    const output = {};
+    const output: AccountApprovalStatusClientAction.Output = {};
     for (const taxTypeId of Object.keys(this.taxTypeReturns)) {
       const taxReturns = this.taxTypeReturns[taxTypeId];
       const taxTypeOutput = [];
       for (const taxReturn of taxReturns) {
         // All status' have '*' at the end. Remove it.
-        const status = taxReturn.status.replace('*', '');
+        const status = <FinancialAccountStatus>taxReturn.status.replace('*', '');
         const statusType = getFinancialAccountStatusType(status);
 
-        /** @type {TaxReturnExtended} */
-        const item = {
+        const item: TaxReturnExtended = {
           ...taxReturn,
           status,
           statusType: financialAccountStatusTypeNames[statusType],
           statusDescription: financialAccountStatusDescriptionsMap[status],
         };
 
-        /** @type {AcknowledgementReceiptData|undefined} */
-        const ackReceiptsData = get(
+        const ackReceiptsData: AcknowledgementReceiptData | undefined = get(
           this.allAckReceiptsData,
           [taxTypeId, taxReturn.referenceNo].join('.'),
         );
