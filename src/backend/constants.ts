@@ -103,6 +103,7 @@ export type TaxTypeCodeMap<T> = { [key in keyof TaxTypeNumericalCode2]?: T };
 export type TaxTypeIdMap<T> = { [key in TaxTypeNumericalCode]?: T };
 
 export const taxTypes = objectFlip(TaxTypeNumericalCode);
+export const taxTypeNumericalCodes: TaxTypeNumericalCode[] = Object.values(TaxTypeNumericalCode);
 
 /** Human readable tax type name. For example, 'withholding tax' and 'medical levy tax'. */
 export type TaxTypeName = string;
