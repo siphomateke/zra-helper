@@ -15,13 +15,13 @@ interface PaymentReceiptData2 extends ReceiptData {
   payments: PaymentReceiptData[];
 }
 
-interface AcknowledgementReceiptData {
+export interface AcknowledgementReceiptData {
   provisional: boolean;
 }
 
 export default function getDataFromReceipt(
   root: HTMLDocument | HTMLElement,
-  type: ReceiptType
+  type: ReceiptType,
 ): PaymentReceiptData2 | AcknowledgementReceiptData {
   const data = {};
 

@@ -45,7 +45,7 @@ enum ExciseType {
   SpiritsAndWine = '20025009',
 }
 
-interface TaxReturn {
+export interface TaxReturn {
   srNo: string;
   referenceNo: ReferenceNumber;
   searchCode: string;
@@ -463,7 +463,7 @@ type ShouldRunReturnDependentFuncOnTaxTypeFn = (options: TaxTypeRunInfo) => bool
 
 type TaxTypeTaskProgressMaxFn = (options: TaxTypeRunInfo) => number;
 
-interface ReturnDependentFnOptions {
+export interface ReturnDependentFnOptions {
   input: RunnerInput;
   returns: TaxReturn[];
   task: TaskObject;
@@ -498,7 +498,11 @@ interface GetReturnsSmartFnOptions {
  * When extending this class, make sure to give a message for returns failing by extending
  * `getRetryReasons`.
  */
-export abstract class ReturnHistoryReturnDependentRunner extends ReturnHistoryRunner {
+// FIXME: Use different input and output types
+export abstract class ReturnHistoryReturnDependentRunner<
+  Input extends RunnerInput = RunnerInput,
+  Output = BasicRunnerOutput
+  > extends ReturnHistoryRunner<Input, Output> {
   /**
    * Function that decides whether the function that depends on returns should be run on a
    * particular tax type.

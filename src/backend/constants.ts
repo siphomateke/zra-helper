@@ -145,42 +145,36 @@ export type TaxAccountName = string;
 // #endregion
 
 // #region Financial accounts
-/** @typedef {string} FinancialAccountStatus */
-/** @enum {FinancialAccountStatus} */
-export const financialAccountStatus = {
+export enum FinancialAccountStatus {
   /** Fact of Filling Completed */
-  RECD: 'RECD',
+  RECD = 'RECD',
   /** Detail Data Entry Completed */
-  DDED: 'DDED',
+  DDED = 'DDED',
   /** Data Entry Verification Completed/Bypassed Sampling. */
-  PRCD: 'PRCD',
+  PRCD = 'PRCD',
   /** Assessment Initiated */
-  ASMT: 'ASMT',
+  ASMT = 'ASMT',
   /** Approval Completed */
-  APRV: 'APRV',
+  APRV = 'APRV',
   /** Incomplete return Notice issued at FOF, task pending for clarification */
-  ACKNPEND: 'ACKNPEND',
+  ACKNPEND = 'ACKNPEND',
   /** Return rejected by Acknowledgement Authority from pending clarification - ackn */
-  RJCTACKN: 'RJCTACKN',
+  RJCTACKN = 'RJCTACKN',
   /** Return Rejected by dde authority from pending clarification - dde */
-  RJCTDDED: 'RJCTDDED',
+  RJCTDDED = 'RJCTDDED',
   /** Return Rejected by approving authority from Acceptance of Amended return */
-  RJCTAMND: 'RJCTAMND',
+  RJCTAMND = 'RJCTAMND',
   /** Acceptance of amended return task subject to approval from approving authority */
-  SBJTAPRV: 'SBJTAPRV',
+  SBJTAPRV = 'SBJTAPRV',
   /** Pending for Document upload */
-  PNDC: 'PNDC',
+  PNDC = 'PNDC',
   /** Rejected */
-  REJD: 'REJD',
-};
+  REJD = 'REJD',
+}
 
-const f = financialAccountStatus;
+const f = FinancialAccountStatus;
 
-/**
- * @type {Object.<string, string>}
- * TODO: Key should be `FinancialAccountStatus` when using TypeScript
- */
-export const financialAccountStatusDescriptionsMap = {
+export const financialAccountStatusDescriptionsMap: { [key in FinancialAccountStatus]: string } = {
   [f.RECD]: 'Fact of Filling Completed',
   [f.DDED]: 'Detail Data Entry Completed',
   [f.PRCD]: 'Data Entry Verification Completed/Bypassed Sampling.',
@@ -195,40 +189,29 @@ export const financialAccountStatusDescriptionsMap = {
   [f.REJD]: 'Rejected',
 };
 
-/**
- * @typedef {string} FinancialAccountStatusType
- * @enum {FinancialAccountStatusType}
- * TODO: Key should be `FinancialAccountStatusType` when using TypeScript
- */
-export const financialAccountStatusTypes = {
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
-  IN_PROGRESS: 'IN_PROGRESS',
+export enum FinancialAccountStatusType {
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  IN_PROGRESS = 'IN_PROGRESS',
+}
+
+export const financialAccountStatusTypeNames: { [key in FinancialAccountStatusType]: string } = {
+  [FinancialAccountStatusType.APPROVED]: 'Approved',
+  [FinancialAccountStatusType.REJECTED]: 'Rejected',
+  [FinancialAccountStatusType.IN_PROGRESS]: 'In progress',
 };
 
-/**
- * @type {Object.<string, string>}
- * TODO: Key should be `FinancialAccountStatusType` when using TypeScript
- */
-export const financialAccountStatusTypeNames = {
-  [financialAccountStatusTypes.APPROVED]: 'Approved',
-  [financialAccountStatusTypes.REJECTED]: 'Rejected',
-  [financialAccountStatusTypes.IN_PROGRESS]: 'In progress',
-};
-
-/**
- * @type {Object.<string, FinancialAccountStatus[]>}
- * TODO: Key should be `FinancialAccountStatusType` when using TypeScript
- */
-export const financialAccountStatusTypesMap = {
-  [financialAccountStatusTypes.APPROVED]: [f.APRV],
-  [financialAccountStatusTypes.REJECTED]: [
+export const financialAccountStatusTypesMap: {
+  [key in FinancialAccountStatusType]: FinancialAccountStatus[]
+} = {
+  [FinancialAccountStatusType.APPROVED]: [f.APRV],
+  [FinancialAccountStatusType.REJECTED]: [
     f.RJCTACKN,
     f.RJCTAMND,
     f.RJCTDDED,
     f.REJD,
   ],
-  [financialAccountStatusTypes.IN_PROGRESS]: [
+  [FinancialAccountStatusType.IN_PROGRESS]: [
     f.RECD,
     f.DDED,
     f.PRCD,
