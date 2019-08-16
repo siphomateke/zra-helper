@@ -69,7 +69,7 @@ export type Client = ParsedClient & ClientState;
 // #endregion
 
 /** Date in the format 'DD/MM/YYYY' */
-export type Date = string;
+export type DateString = string;
 export type UnixDate = number;
 export type ReferenceNumber = string;
 

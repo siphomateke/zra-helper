@@ -11,6 +11,7 @@ import {
   Client,
   TaxTypeIdMap,
   TaxTypeCode,
+  DateString,
 } from '../../constants';
 import { getDocumentByAjax } from '../../utils';
 import { parseTableAdvanced } from '../../content_scripts/helpers/zra';
@@ -64,8 +65,8 @@ interface TaxReturn {
 interface GetReturnHistoryRecordsFnOptions {
   tpin: TPIN;
   taxType: TaxTypeNumericalCode;
-  fromDate: Date;
-  toDate: Date;
+  fromDate: DateString;
+  toDate: DateString;
   exciseType: ExciseType;
 }
 
@@ -127,8 +128,8 @@ async function getReturnHistoryRecords(
  * @property {number} parentTaskId
  * @property {TPIN} tpin
  * @property {TaxTypeNumericalCode} taxTypeId
- * @property {Date} fromDate
- * @property {Date} toDate
+ * @property {DateString} fromDate
+ * @property {DateString} toDate
  * @property {number[]} [pages]
  */
 
@@ -198,8 +199,8 @@ export const GetReturnHistoryClientActionOptions = {
 };
 
 interface RunnerInput {
-  fromDate?: Date;
-  toDate?: Date;
+  fromDate?: DateString;
+  toDate?: DateString;
   taxTypeIds?: TaxTypeNumericalCode[];
   /** Returns by tax type ID. */
   returns?: TaxTypeIdMap<TaxReturn[]>;

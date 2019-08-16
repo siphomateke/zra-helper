@@ -1,7 +1,7 @@
 import { parseReportTable, ParsedReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
 import {
-  TPIN, TaxTypeNumericalCode, Date, TaxAccountCode,
+  TPIN, TaxTypeNumericalCode, DateString, TaxAccountCode,
 } from './constants';
 
 export enum ReportCode {
@@ -167,9 +167,9 @@ interface GetTaxPayerLedgerPageFnOptions {
   /** E.g. 119608 or 405534 */
   accountCode: TaxAccountCode;
   /** Format must be DD/MM/YYYY */
-  fromDate: Date;
+  fromDate: DateString;
   /** Format must be DD/MM/YYYY */
-  toDate: Date;
+  toDate: DateString;
   /** The page to get. */
   page: number;
 }

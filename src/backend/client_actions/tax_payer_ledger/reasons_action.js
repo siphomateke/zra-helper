@@ -17,8 +17,8 @@ import { pendingLiabilityColumnNamesMap, pendingLiabilityTypes, pendingLiability
 /**
  * @typedef {Object} RunnerInput
  * @property {import('@/backend/client_actions/pending_liabilities').ParsedPendingLiabilitiesOutput[]} previousPendingLiabilities
- * @property {Date} previousDate
- * @property {Date} currentDate
+ * @property {DateString} previousDate
+ * @property {DateString} currentDate
  */
 /* eslint-enable max-len */
 
@@ -179,8 +179,8 @@ const PendingLiabilityChangeReasonsClientAction = createClientAction({
 
 /**
  * @typedef {Object} ChangeReasonsActionOutput
- * @property {Date} previousDate
- * @property {Date} currentDate
+ * @property {DateString} previousDate
+ * @property {DateString} currentDate
  * @property {TotalsByTaxTypeCode} previousTotals
  * @property {TotalsByTaxTypeCode} currentTotals
  * @property {Object.<string, import('./logic').TaxPayerLedgerLogicFnResponse>} taxTypes

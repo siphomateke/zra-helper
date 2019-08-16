@@ -51,11 +51,11 @@ export const ledgerSystemErrors = {
  * @property {number} debit
  * @property {number} credit
  * @property {UnixDate} transactionDate
- * @property {Date} transactionDateString
+ * @property {DateString} transactionDateString
  * @property {UnixDate} fromDate
- * @property {Date} fromDateString
+ * @property {DateString} fromDateString
  * @property {UnixDate} toDate
- * @property {Date} toDateString
+ * @property {DateString} toDateString
 */
 
 /**
