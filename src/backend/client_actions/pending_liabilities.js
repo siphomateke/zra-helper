@@ -3,7 +3,9 @@ import createTask from '@/transitional/tasks';
 import { exportFormatCodes, taxTypes } from '../constants';
 import { writeJson, unparseCsv, objectToCsvTable } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
-import { createClientAction, ClientActionRunner, inInput } from './base';
+import {
+  createClientAction, ClientActionRunner, getInput,
+} from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
 
@@ -211,8 +213,9 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner {
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
     let { taxTypes: taxTypeIds } = client;
 
-    if (inInput(input, 'taxTypeIds')) {
-      taxTypeIds = taxTypeIds.filter(id => input.taxTypeIds.includes(id));
+    const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
+    if (taxTypeIdsInput.exists) {
+      taxTypeIds = taxTypeIds.filter(id => taxTypeIdsInput.value.includes(id));
     }
 
     const responses = await parallelTaskMap({

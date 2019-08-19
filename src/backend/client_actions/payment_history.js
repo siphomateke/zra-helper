@@ -16,7 +16,9 @@ import {
   taxTypeNumericalCodes,
   taxTypes,
 } from '../constants';
-import { createClientAction, ClientActionRunner, inInput } from './base';
+import {
+  createClientAction, ClientActionRunner, getInput,
+} from './base';
 import { InvalidReceiptError } from '../errors';
 import getDataFromReceipt from '../content_scripts/helpers/receipt_data';
 
@@ -310,23 +312,12 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner {
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        let receipts = [];
         // If specific receipts have been requested to be downloaded, use those.
-        if (inInput(input, 'receipts')) {
-          const inputReceipts = input.receipts;
-          if (Array.isArray(inputReceipts) && inputReceipts.length > 0) {
-            receipts = inputReceipts;
-          }
-        }
+        const { value: receipts } = getInput(input, 'receipts', { defaultValue: [] });
 
-        let pages = [];
         // If getting certain receipt data pages failed last time, only get those pages.
-        if (inInput(input, 'receiptDataPages')) {
-          const inputReceiptDataPages = input.receiptDataPages;
-          if (Array.isArray(inputReceiptDataPages) && inputReceiptDataPages.length > 0) {
-            pages = inputReceiptDataPages;
-          }
-        }
+        const { value: pages } = getInput(input, 'receiptDataPages', { defaultValue: [] });
+
         if (pages.length > 0 || receipts.length === 0) {
           actionTask.status = 'Getting payment receipt numbers';
           const { data, failedPages } = await getReceiptData({

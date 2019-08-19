@@ -3,6 +3,7 @@ import { objectHasProperties, joinSpecialLast } from '@/utils';
 import { ExtendedError, errorToString } from '../errors';
 import store from '@/store';
 import { taskStates } from '@/store/modules/tasks';
+import { has, get } from 'dot-prop';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
@@ -279,14 +280,38 @@ export function createClientAction(options) {
 }
 
 /**
- * Checks if a key is set in a runner's input
+ * Checks if a runner has an input that matches the specified dot notation path.
  * @param {Object} input
- * @param {string} key
+ * @param {string} path The dot notation path.
  * @returns {boolean}
  */
-export function inInput(input, key) {
-  if (input && (key in input)) {
-    return true;
+export function inputExists(input, path) {
+  return has(input, path);
+}
+
+/**
+ * Gets a runner's input using a dot notation path. Also, returns if the input existed.
+ * @param {Object} input
+ * @param {string} path The dot notation path.
+ * @param {Object} options
+ * @param {boolean} [options.checkArrayLength]
+ * Set to false to disable checking if array type inputs have at least one item.
+ * @param {any} [options.defaultValue]
+ * Default value to return if the input doesn't exist or is invalid.
+ */
+export function getInput(input, path, options = {}) {
+  const { checkArrayLength = true } = options;
+
+  let value = get(input, path);
+  let exists = typeof value !== 'undefined';
+  if (exists && checkArrayLength && Array.isArray(value) && value.length === 0) {
+    exists = false;
   }
-  return false;
+  if (!exists && 'defaultValue' in options) {
+    value = options.defaultValue;
+  }
+  return {
+    exists,
+    value,
+  };
 }

@@ -32,6 +32,7 @@
     "buefy": "^0.7.2",
     "bulma": "^0.7.1",
     "bulma-tooltip": "^2.0.2",
+    "dot-prop": "^5.1.0",
     "highlight.js": "^9.15.6",
     "lodash.set": "^4.3.2",
     "md5": "^2.2.1",

@@ -16,7 +16,7 @@ import {
   getFailedResponseItems,
   getReceiptData,
 } from '../receipts';
-import { ClientActionRunner, inInput } from '../base';
+import { ClientActionRunner, inputExists, getInput } from '../base';
 
 /**
  * @typedef {import('@/backend/constants').Client} Client
@@ -187,20 +187,6 @@ export const GetReturnHistoryClientActionOptions = {
  */
 
 /**
- * Gets input that is only used under a particular tax type.
- * @param {Object} input
- * @param {TaxTypeNumericalCode} taxTypeId
- * @param {string} key
- * @returns {Array}
- */
-function getTaxTypeInput(input, taxTypeId, key) {
-  if (inInput(input, key)) {
-    return input[key][taxTypeId];
-  }
-  return null;
-}
-
-/**
  * @typedef {Object} TaxTypeFailure
  * @property {TaxReturn[]} [returns]
  * @property {number[]} [returnHistoryPages]
@@ -273,10 +259,7 @@ export class ReturnHistoryRunner extends ClientActionRunner {
   }) {
     let pages = [];
     // If getting certain return history pages failed last time, only get those pages.
-    const inputPages = getTaxTypeInput(input, taxTypeId, 'returnHistoryPages');
-    if (Array.isArray(inputPages) && inputPages.length > 0) {
-      pages = inputPages;
-    }
+    const { value: pages } = getInput(input, `returnHistoryPages.${taxTypeId}`, { defaultValue: [] });
 
     task.status = 'Getting returns';
     const returns = [];
@@ -393,8 +376,9 @@ export class ReturnHistoryRunner extends ClientActionRunner {
     let taxTypeIds = client.taxTypes;
 
     // Filter tax type IDs using input
-    if (inInput(input, 'taxTypeIds')) {
-      taxTypeIds = taxTypeIds.filter(id => input.taxTypeIds.includes(id));
+    const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
+    if (taxTypeIdsInput.exists) {
+      taxTypeIds = taxTypeIds.filter(id => taxTypeIdsInput.value.includes(id));
     }
 
     await parallelTaskMap({
@@ -519,12 +503,13 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryRunner {
 
         let returns = [];
         // If only certain returns failed in the last run, use those.
-        const inputReturns = getTaxTypeInput(input, taxTypeId, 'returns');
-        if (Array.isArray(inputReturns) && inputReturns.length > 0) {
-          returns = inputReturns;
+        const returnsInput = getInput(input, `returns.${taxTypeId}`);
+        if (returnsInput.exists) {
+          returns = returnsInput.value;
         }
-        const inputPages = getTaxTypeInput(input, taxTypeId, 'returnHistoryPages');
-        if (Array.isArray(inputPages) || !Array.isArray(inputReturns)) {
+
+        const pagesInputExists = inputExists(input, `returnHistoryPages.${taxTypeId}`);
+        if (pagesInputExists || !returnsInput.exists) {
           await this.getReturnsUsingInput({
             input, task, taxTypeId, failures,
           });
