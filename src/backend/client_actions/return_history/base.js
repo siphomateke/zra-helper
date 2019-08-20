@@ -24,6 +24,7 @@ import { ClientActionRunner, inputExists, getInput } from '../base';
  * @typedef {import('@/backend/constants').TaxTypeNumericalCode} TaxTypeNumericalCode
  * @typedef {import('@/backend/constants').Date} Date
  * @typedef {import('@/backend/constants').ReferenceNumber} ReferenceNumber
+ * @typedef {import('@/transitional/tasks').TaskObject} TaskObject
  */
 
 /**
@@ -190,6 +191,7 @@ export const GetReturnHistoryClientActionOptions = {
  * @typedef {Object} TaxTypeFailure
  * @property {TaxReturn[]} [returns]
  * @property {number[]} [returnHistoryPages]
+ * @property {boolean} errorThrown
  * @property {boolean} failed
  */
 
@@ -199,6 +201,14 @@ export const GetReturnHistoryClientActionOptions = {
 
 /**
  * @typedef {(taxType: import('../../constants').TaxTypeCode) => string} TaxTypeTaskTitleFn
+ */
+
+/**
+ * @typedef {Object} RunTaxTypeTaskFnOptions
+ * @property {TaxTypeNumericalCode} taxTypeId
+ * @property {number} parentTaskId
+ * @property {RunnerInput} input
+ * @property {TaxTypeFunc} taxTypeFunc Function to run on the tax type.
  */
 
 export class ReturnHistoryRunner extends ClientActionRunner {
@@ -212,17 +222,35 @@ export class ReturnHistoryRunner extends ClientActionRunner {
     this.failures = {};
     this.anyFailures = false;
 
-    /** @type {Object.<string, TaxReturn[]>} Returns per tax type ID */
+    /**
+     * @type {Object.<string, TaxReturn[]>}
+     * Returns per tax type ID. Includes returns that are being retried.
+     */
     this.taxTypeReturns = {};
+
+    // TODO: Make sure the reason is always known.
+    this.getUnknownRetryReasonMessage = () => 'Failed for unknown reason.';
+  }
+
+  /**
+   * Stores the tax returns for a particular tax type.
+   * @param {TaxTypeNumericalCode} taxTypeId
+   * @param {TaxReturn[]} returns
+   */
+  addTaxTypesReturns(taxTypeId, returns) {
+    if (!(taxTypeId in this.taxTypeReturns)) {
+      this.taxTypeReturns[taxTypeId] = [];
+    }
+    this.taxTypeReturns[taxTypeId].push(...returns);
   }
 
   /**
    * @param {Object} options
-   * @param {import('@/transitional/tasks').TaskObject} options.task
+   * @param {TaskObject} options.task
    * @param {TaxTypeNumericalCode} options.taxTypeId
    * @param {number[]} options.pages
    */
-  async getReturns({ task, taxTypeId, pages }) {
+  async getReturnsInternal({ task, taxTypeId, pages }) {
     const { client } = this.storeProxy;
     // eslint-disable-next-line prefer-destructuring
     const input = /** @type {RunnerInput} */(this.storeProxy.input);
@@ -249,22 +277,21 @@ export class ReturnHistoryRunner extends ClientActionRunner {
   /**
    * Gets tax returns using the action's input and stores any failed pages.
    * @param {Object} options
-   * @param {import('@/transitional/tasks').TaskObject} options.task
+   * @param {TaskObject} options.task
    * @param {RunnerInput} options.input
    * @param {TaxTypeNumericalCode} options.taxTypeId
    * @param {TaxTypeFailure} options.failures
    */
-  async getReturnsUsingInput({
+  async getReturns({
     task, input, taxTypeId, failures,
   }) {
-    let pages = [];
     // If getting certain return history pages failed last time, only get those pages.
     const { value: pages } = getInput(input, `returnHistoryPages.${taxTypeId}`, { defaultValue: [] });
 
     task.status = 'Getting returns';
     const returns = [];
     try {
-      const data = await this.getReturns({ task, taxTypeId, pages });
+      const data = await this.getReturnsInternal({ task, taxTypeId, pages });
       failures.returnHistoryPages = data.failedPages;
       returns.push(...data.returns);
     } catch (error) {
@@ -275,14 +302,24 @@ export class ReturnHistoryRunner extends ClientActionRunner {
       }
       throw error;
     }
-    this.taxTypeReturns[taxTypeId] = returns;
+    this.addTaxTypesReturns(taxTypeId, returns);
+  }
+
+  /**
+   * Returns whether a tax type failed based on the provided `TaxTypeFailure`.
+   * @param {TaxTypeFailure} failures
+   * @return {boolean}
+   */
+  // eslint-disable-next-line class-methods-use-this
+  checkIfTaxTypeFailed(failures) {
+    return failures.errorThrown || failures.returnHistoryPages.length > 0;
   }
 
   /**
    * @typedef {Object} TaxTypeFuncFnOptions
    * @property {TaxTypeFailure} failures
    * @property {RunnerInput} input
-   * @property {import('@/transitional/tasks').TaskObject} task
+   * @property {TaskObject} task
    *
    * @callback TaxTypeFunc
    * @param {TaxTypeFuncFnOptions} options
@@ -291,11 +328,7 @@ export class ReturnHistoryRunner extends ClientActionRunner {
 
   /**
    * Creates a task and runs the passed `taxTypeFunc` on a single tax type.
-   * @param {Object} options
-   * @param {TaxTypeNumericalCode} options.taxTypeId
-   * @param {number} options.parentTaskId
-   * @param {RunnerInput} options.input
-   * @param {TaxTypeFunc} options.taxTypeFunc Function to run on the tax type.
+   * @param {RunTaxTypeTaskFnOptions} options
    * @returns {Promise.<TaxTypeFailure>} Any failures encountered.
    */
   async runTaxTypeTask({
@@ -306,6 +339,7 @@ export class ReturnHistoryRunner extends ClientActionRunner {
     /** @type {TaxTypeFailure} */
     const failures = {
       returnHistoryPages: [],
+      errorThrown: false,
       failed: false,
     };
 
@@ -323,14 +357,12 @@ export class ReturnHistoryRunner extends ClientActionRunner {
         try {
           await taxTypeFunc({ failures, input, task });
         } catch (error) {
-          failures.failed = true;
+          failures.errorThrown = true;
           throw error;
         }
       },
     });
-    if (failures.returnHistoryPages.length > 0) {
-      failures.failed = true;
-    }
+    failures.failed = this.checkIfTaxTypeFailed(failures);
     return failures;
   }
 
@@ -345,7 +377,7 @@ export class ReturnHistoryRunner extends ClientActionRunner {
       input,
       taxTypeId,
       parentTaskId,
-      taxTypeFunc: ({ task, input, failures }) => this.getReturnsUsingInput({
+      taxTypeFunc: ({ task, input, failures }) => this.getReturns({
         task, input, taxTypeId, failures,
       }),
     });
@@ -411,13 +443,22 @@ export class ReturnHistoryRunner extends ClientActionRunner {
   }
 
   /**
-   * @returns {string}
+   * @returns {string[]}
    */
-  getRetryReason() {
+  getRetryReasons() {
+    const reasons = [];
     if (this.anyPagesFailed()) {
-      return 'Some return history pages could not be retrieved.';
+      reasons.push('Some return history pages could not be retrieved.');
     }
-    return 'Failed to retrieve return history for unknown reason.';
+    return reasons;
+  }
+
+  getRetryReason() {
+    const reasons = this.getRetryReasons();
+    if (reasons.length > 0) {
+      return reasons.join(', ');
+    }
+    return this.getUnknownRetryReasonMessage();
   }
 
   getRetryInput() {
@@ -448,7 +489,173 @@ export class ReturnHistoryRunner extends ClientActionRunner {
   }
 }
 
-export class ReturnHistoryDownloadRunner extends ReturnHistoryRunner {
+/**
+ * @typedef ReturnDependentFnOptions
+ * @property {RunnerInput} input
+ * @property {TaxReturn[]} returns
+ * @property {TaskObject} task
+ * @property {TaxTypeNumericalCode} taxTypeId
+ *
+ * @callback ReturnDependentFn
+ * @param {ReturnDependentFnOptions} options
+ * @returns {Promise.<TaxReturn[]>}
+ * Any tax returns that the dependent function failed to run on and should be retried.
+ */
+
+/**
+ * @typedef AbstractTaxTypeFuncOptions
+ * @property {TaskObject} task
+ * @property {RunnerInput} input
+ * @property {TaxTypeNumericalCode} taxTypeId
+ * @property {TaxTypeFailure} failures
+ *
+ * @callback AbstractTaxTypeFunc
+ * @param {AbstractTaxTypeFuncOptions} options
+ * @returns {Promise.<any>}
+ */
+
+/**
+ * Runs an extra step on each collected tax return.
+ *
+ * When extending this class, make sure to give a message for returns failing by extending
+ * `getRetryReasons`.
+ * @abstract
+ */
+export class ReturnHistoryReturnDependentRunner extends ReturnHistoryRunner {
+  /**
+   * @param {import('../base').ClientActionObject} action
+   */
+  constructor(action) {
+    super(action);
+
+    /** Maximum progress for the task run on each tax type. */
+    this.taxTypeTaskProgressMax = 2;
+    /**
+     * Function that will be run on and depends on the returns of each tax type.
+     *
+     * If the function fails to run on any returns, they must be returned as an array.
+     *
+     * Note: Make sure to set task status in this function.
+     * @type {ReturnDependentFn}
+     */
+    this.returnDependentFunc = null;
+    /**
+     * Function to be run on each tax type.
+     * @type {AbstractTaxTypeFunc}
+     */
+    this.taxTypeFunc = null;
+  }
+
+  /**
+   * Gets all tax returns, or those that failed or were from pages that failed in the previous run.
+   *
+   * Calls `addTaxTypesReturns` to add the retrieved tax returns.
+   * @param {Object} options
+   * @param {TaskObject} options.task
+   * @param {RunnerInput} options.input
+   * @param {TaxTypeNumericalCode} options.taxTypeId
+   * @param {TaxTypeFailure} options.failures
+   */
+  async getReturnsSmart({
+    task, input, taxTypeId, failures,
+  }) {
+    // If only certain returns failed in the last run, use those.
+    const returnsInput = getInput(input, `returns.${taxTypeId}`, { defaultValue: [] });
+    this.addTaxTypesReturns(taxTypeId, returnsInput.value);
+
+    const pagesInputExists = inputExists(input, `returnHistoryPages.${taxTypeId}`);
+    if (pagesInputExists || !returnsInput.exists) {
+      try {
+        await this.getReturns({
+          task, input, taxTypeId, failures,
+        });
+      } catch (error) {
+        /*
+        If there was an error getting return history pages but some returns were already
+        specified in the input, ignore the error and just get the returns.
+
+        This isn't strictly necessary since pretty much the only time `getReturns` throws an
+        error is when getting the first page fails. If the first page was being retrieved that
+        means no previous run successfully got returns as the first page is required to know
+        how many pages there are and thus get the other pages. This would mean no returns would
+        be in the input unless the user explicitly added some.
+        */
+        if (!returnsInput.exists) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  /**
+   * @param {TaxTypeFailure} failures
+   * @return {boolean}
+   */
+  checkIfTaxTypeFailed(failures) {
+    return super.checkIfTaxTypeFailed(failures)
+      || failures.returns.length > 0;
+  }
+
+  async runTaxTypeTaskAbstract({ input, taxTypeId, parentTaskId }) {
+    return this.runTaxTypeTask({
+      input,
+      taxTypeId,
+      parentTaskId,
+      taxTypeFunc: async ({ input, task, failures }) => {
+        task.progressMax = this.taxTypeTaskProgressMax;
+        // This must be set here so a default value exists even if errors are later thrown.
+        failures.returns = [];
+
+        await this.getReturnsSmart({
+          task, input, taxTypeId, failures,
+        });
+
+        const returns = this.taxTypeReturns[taxTypeId];
+        if (returns.length > 0) {
+          failures.returns = await this.returnDependentFunc({
+            input,
+            returns,
+            task,
+            taxTypeId,
+          });
+        }
+
+        // This is to allow sub-classes to add more things to run on each tax type
+        if (this.taxTypeFunc !== null) {
+          await this.taxTypeFunc({
+            task, input, taxTypeId, failures,
+          });
+        }
+      },
+    });
+  }
+
+  /**
+   * Whether running anything on returns failed.
+   */
+  anyReturnsFailed() {
+    for (const taxTypeId of Object.keys(this.failures)) {
+      const failure = this.failures[taxTypeId];
+      if (failure.returns.length > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getRetryInput() {
+    const retryInput = super.getRetryInput();
+    for (const taxTypeId of Object.keys(this.failures)) {
+      const failure = this.failures[taxTypeId];
+      if (failure.returns.length > 0) {
+        set(retryInput, ['returns', taxTypeId], failure.returns);
+      }
+    }
+    return retryInput;
+  }
+}
+
+export class ReturnHistoryDownloadRunner extends ReturnHistoryReturnDependentRunner {
   /**
    * @param {import('../base').ClientActionObject} action
    * @param {Object} options
@@ -468,20 +675,24 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryRunner {
       this.taxTypeTaskTitle = downloadTaxTypeTaskTitle;
     }
     this.downloadFunc = downloadFunc;
+
+    this.returnDependentFunc = this.downloadItems;
   }
 
   /**
    * @param {Object} options
    * @param {TaxReturn[]} options.returns
-   * @param {import('@/transitional/tasks').TaskObject} options.task
+   * @param {TaskObject} options.task
    * @param {TaxTypeNumericalCode} options.taxTypeId
    * @returns {Promise.<TaxReturn[]>}
    * Returns whose ack receipts or return forms could not be downloaded.
    */
   async downloadItems({ returns, task, taxTypeId }) {
+    const taskTitle = this.downloadItemsTaskTitle(returns.length);
+    task.status = taskTitle;
     const { client } = this.storeProxy;
     const downloadResponses = await downloadPages({
-      taskTitle: this.downloadItemsTaskTitle(returns.length),
+      taskTitle,
       list: returns,
       parentTaskId: task.id,
       downloadPageFn: (taxReturn, parentTaskId) => this.downloadFunc({
@@ -492,47 +703,6 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryRunner {
     return failedReturns;
   }
 
-  async runTaxTypeTaskAbstract({ input, taxTypeId, parentTaskId }) {
-    const failures = await this.runTaxTypeTask({
-      input,
-      taxTypeId,
-      parentTaskId,
-      taxTypeFunc: async ({ input, task, failures }) => {
-        task.progressMax = 2;
-        failures.returns = [];
-
-        let returns = [];
-        // If only certain returns failed in the last run, use those.
-        const returnsInput = getInput(input, `returns.${taxTypeId}`);
-        if (returnsInput.exists) {
-          returns = returnsInput.value;
-        }
-
-        const pagesInputExists = inputExists(input, `returnHistoryPages.${taxTypeId}`);
-        if (pagesInputExists || !returnsInput.exists) {
-          await this.getReturnsUsingInput({
-            input, task, taxTypeId, failures,
-          });
-          returns = this.taxTypeReturns[taxTypeId];
-        }
-
-        // TODO: Indicate why items weren't downloaded
-        if (returns.length > 0) {
-          task.status = this.downloadItemsTaskTitle(returns.length);
-          failures.returns = await this.downloadItems({
-            returns,
-            task,
-            taxTypeId,
-          });
-        }
-      },
-    });
-    if (failures.returns.length > 0) {
-      failures.failed = true;
-    }
-    return failures;
-  }
-
   async runAllTaxTypes() {
     // TODO: Rename this to be generic
     await startDownloadingReceipts();
@@ -540,32 +710,11 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryRunner {
     await finishDownloadingReceipts();
   }
 
-  getRetryReason() {
-    let failedToDownloadAnyReturns = false;
-    for (const taxTypeId of Object.keys(this.failures)) {
-      const failure = this.failures[taxTypeId];
-      if (failure.returns.length > 0) {
-        failedToDownloadAnyReturns = true;
-      }
-    }
-    const reasons = [];
-    if (this.anyPagesFailed()) {
-      reasons.push('Some return history pages could not be retrieved');
-    }
-    if (failedToDownloadAnyReturns) {
+  getRetryReasons() {
+    const reasons = super.getRetryReasons();
+    if (this.anyReturnsFailed()) {
       reasons.push('Some receipts failed to download');
     }
-    return reasons.join(', ');
-  }
-
-  getRetryInput() {
-    const retryInput = super.getRetryInput();
-    for (const taxTypeId of Object.keys(this.failures)) {
-      const failure = this.failures[taxTypeId];
-      if (failure.returns.length > 0) {
-        set(retryInput, ['returns', taxTypeId], failure.returns);
-      }
-    }
-    return retryInput;
+    return reasons;
   }
 }
