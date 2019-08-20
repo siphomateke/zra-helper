@@ -2,56 +2,54 @@ import { getElementFromDocument } from './elements';
 import { parseTable } from './zra';
 
 /**
- * @typedef {'payment'} ReceiptType
+ * @typedef {'payment'|'ack_receipt'} ReceiptType
  */
 
 /**
- * @typedef {Object} ReceiptData
+ * @typedef {Object} PaymentReceiptData
  * @property {string} registrationDate
  * @property {string} referenceNumber
- */
+ * @property {import('@/backend/client_actions/payment_history').PaymentReceiptData[]} payments
+*/
 
 /**
-* @typedef {Object} PaymentReceiptData_Temp
-* @property {import('@/backend/client_actions/payment_history').PaymentReceiptData[]} payments
-* @typedef {ReceiptData & PaymentReceiptData_Temp} PaymentReceiptData
-*/
+ * @typedef {Object} AcknowledgementReceiptData
+ * @property {boolean} provisional
+ */
+
 /**
  * @param {HTMLDocument|HTMLElement} root
  * @param {ReceiptType} type
- * @returns {ReceiptData | PaymentReceiptData}
+ * @returns {PaymentReceiptData | AcknowledgementReceiptData}
  */
 export default function getDataFromReceipt(root, type) {
-  let column = '';
-  if (type === 'payment') {
-    column = '4';
-  }
+  const data = {};
+
   const mainTable = getElementFromDocument(
     root,
     'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
     'main table',
   );
-  const infoTable = getElementFromDocument(
-    mainTable,
-    `tr:nth-child(5)>td:nth-child(${column})>table>tbody`,
-    'info table',
-  );
-  const registrationDate = getElementFromDocument(
-    infoTable,
-    'tr:nth-child(2)>td:nth-child(3)',
-    'registration date',
-  ).innerText;
-  const referenceNumber = getElementFromDocument(
-    infoTable,
-    'tr:nth-child(3)>td:nth-child(3)',
-    'reference number',
-  ).innerText;
-
-  const data = {
-    registrationDate,
-    referenceNumber,
-  };
   if (type === 'payment') {
+    const column = '4';
+    const infoTable = getElementFromDocument(
+      mainTable,
+      `tr:nth-child(5)>td:nth-child(${column})>table>tbody`,
+      'info table',
+    );
+    const registrationDate = getElementFromDocument(
+      infoTable,
+      'tr:nth-child(2)>td:nth-child(3)',
+      'registration date',
+    ).innerText;
+    const referenceNumber = getElementFromDocument(
+      infoTable,
+      'tr:nth-child(3)>td:nth-child(3)',
+      'reference number',
+    ).innerText;
+
+    data.registrationDate = registrationDate;
+    data.referenceNumber = referenceNumber;
     const rows = {
       prn: 4,
       paymentDate: 5,
@@ -87,6 +85,20 @@ export default function getDataFromReceipt(root, type) {
       payments.pop();
     }
     data.payments = payments;
+  } else if (type === 'ack_receipt') {
+    const taxType = getElementFromDocument(
+      mainTable,
+      'tbody>tr:nth-child(10)>td:nth-child(2)',
+      'tax type',
+    ).innerText;
+    /*
+    Possible tax types include:
+    - IT-Provisional
+    - IT-Individual
+    - IT-Non Individual
+    - IT-Partnership
+    */
+    data.provisional = taxType === 'IT-Provisional';
   }
 
   return data;

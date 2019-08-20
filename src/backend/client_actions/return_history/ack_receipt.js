@@ -2,6 +2,22 @@ import { createClientAction } from '../base';
 import { ReturnHistoryDownloadRunner, generateDownloadFilename, GetReturnHistoryClientActionOptions } from './base';
 import { downloadPage } from '../utils';
 
+/**
+ * @returns {import('@/backend/utils').CreateTabPostOptions}
+ */
+// TODO: Use TypeScript
+export function generateAckReceiptRequest(taxType, referenceNumber) {
+  return {
+    url: 'https://www.zra.org.zm/retHist.htm',
+    data: {
+      actionCode: 'printReceipt',
+      flag: 'rtnHistRcpt',
+      ackNo: referenceNumber,
+      rtnType: taxType,
+    },
+  };
+}
+
 /** @type {import('./base').ReturnHistoryDownloadFn} */
 function downloadAckReceipt({
   taxReturn, client, taxType, parentTaskId,
@@ -16,15 +32,7 @@ function downloadAckReceipt({
     }),
     taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
-    createTabPostOptions: {
-      url: 'https://www.zra.org.zm/retHist.htm',
-      data: {
-        actionCode: 'printReceipt',
-        flag: 'rtnHistRcpt',
-        ackNo: referenceNumber,
-        rtnType: taxType,
-      },
-    },
+    createTabPostOptions: generateAckReceiptRequest(taxType, referenceNumber),
   });
 }
 

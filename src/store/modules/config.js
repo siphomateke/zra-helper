@@ -91,6 +91,9 @@ import { deepClone, deepReactiveClone, deepAssign } from '@/utils';
  * @property {boolean} dismissed.taskViewerWarning
  * Whether the warning about the task viewer interfering with tasks in the dashboard has been
  * dismissed.
+ * @property {Object} dismissed.checkApprovalStatusAction
+ * @property {boolean} dismissed.checkApprovalStatusAction.ackReceiptsPerformanceWarning
+ * Warning about checking acknowledgement of returns receipts being slow.
  */
 
 /** @type {State} */
@@ -133,6 +136,9 @@ const defaultConfig = {
   },
   dismissed: {
     taskViewerWarning: false,
+    checkApprovalStatusAction: {
+      ackReceiptsPerformanceWarning: false,
+    },
   },
 };
 
