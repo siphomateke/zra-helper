@@ -47,7 +47,7 @@ export async function sendMessage(tabId, message) {
     const errorString = error.message ? error.message : error.toString();
     throw new SendMessageError(`Failed to send message to tab with ID ${tabId}: "${errorString}"`);
   }
-  if (response.error) {
+  if (typeof response !== 'undefined' && response.error) {
     throw errorFromJson(response.error);
   }
   return response;

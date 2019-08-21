@@ -25,8 +25,9 @@ export default function addContentScriptListener(command, handler, getConfig = f
         handler(message).then((response) => {
           if (typeof response !== 'object') {
             resolve({});
+          } else {
+            resolve(response);
           }
-          resolve(response);
         }).catch((error) => {
           resolve({ error: errorToJson(error) });
         });
