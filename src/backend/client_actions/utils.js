@@ -10,12 +10,14 @@ import {
   closeTab,
   monitorDownloadProgress,
   startDownload,
+  runContentScript,
 } from '../utils';
 import { taxPayerSearchTaxTypeNames, browserCodes } from '../constants';
 import { getCurrentBrowser } from '@/utils';
 import { parseTableAdvanced } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
 import downloadSingleHtmlFile from '../html_bundler';
+import { ImagesInTabFailedToLoad } from '../errors';
 
 /**
  * @typedef {import('@/transitional/tasks').TaskObject} Task
@@ -487,6 +489,14 @@ export function anonymizeClientsInOutput(output, clients) {
 }
 
 /**
+ * Checks if all the images in a tab have loaded.
+ * @returns {Promise.<import('@/backend/content_scripts/helpers/images').LoadedImagesResponse>}
+ */
+async function imagesInTabHaveLoaded(tabId) {
+  return runContentScript(tabId, 'find_unloaded_images');
+}
+
+/**
  * @callback FilenameGenerator
  * @param {browser.tabs.Tab | HTMLDocument} dataSource
  * @returns {Promise.<string|string[]>}
@@ -528,8 +538,8 @@ export async function downloadPage({
   });
   // Extra step waiting for filename to generate from page.
   if (filenameUsesPage) task.progressMax += 1;
-  // Extra step waiting for tab to open.
-  if (config.export.pageDownloadFileType === 'mhtml') task.progressMax += 1;
+  // Extra steps waiting for tab to open and for all images in the tab to load.
+  if (config.export.pageDownloadFileType === 'mhtml') task.progressMax += 2;
 
   let generatedFilename;
   if (!filenameUsesPage) {
@@ -549,6 +559,15 @@ export async function downloadPage({
         try {
           task.addStep('Waiting for page to load');
           await tabLoaded(tab.id);
+          task.addStep('Checking if all images have loaded');
+          const loadInfo = await imagesInTabHaveLoaded(tab.id);
+          if (!loadInfo.allLoaded) {
+            throw new ImagesInTabFailedToLoad(
+              `${loadInfo.unloadedImages.length} image(s) in the page failed to load`,
+              null,
+              { unloadedImages: loadInfo.unloadedImages },
+            );
+          }
           if (filenameUsesPage) {
             task.addStep('Generating filename');
             generatedFilename = await filename(tab);

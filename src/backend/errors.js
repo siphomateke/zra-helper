@@ -196,6 +196,16 @@ export class DownloadError extends ExtendedError {
     this.setType('DownloadError');
   }
 }
+export class ImagesInTabFailedToLoad extends ExtendedError {
+  /**
+   * @param {Object} props
+   * @param {string[]} props.unloadedImages URLs of the images that failed to load.
+   */
+  constructor(message, code = null, props = { unloadedImages: null }) {
+    super(message, code, props);
+    this.setType('ImagesInTabFailedToLoad');
+  }
+}
 
 export class InvalidTaxType extends ExtendedError {
   constructor(...args) {
