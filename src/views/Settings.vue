@@ -370,6 +370,9 @@ export default {
     this.pullConfigFromStore();
     this.load();
   },
+  activated() {
+    this.load();
+  },
   methods: {
     async load() {
       await this.loadConfig();
