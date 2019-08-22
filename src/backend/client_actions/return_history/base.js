@@ -490,6 +490,22 @@ export class ReturnHistoryRunner extends ClientActionRunner {
 }
 
 /**
+ * @typedef TaxTypeRunInfo
+ * @property {RunnerInput} input
+ * @property {TaxTypeNumericalCode} taxTypeId
+ *
+ * @callback ShouldRunReturnDependentFuncOnTaxTypeFn
+ * @param {TaxTypeRunInfo} options
+ * @returns {boolean}
+ */
+
+/**
+ * @callback TaxTypeTaskProgressMaxFn
+ * @param {TaxTypeRunInfo} options
+ * @returns {number}
+ */
+
+/**
  * @typedef ReturnDependentFnOptions
  * @property {RunnerInput} input
  * @property {TaxReturn[]} returns
@@ -528,8 +544,23 @@ export class ReturnHistoryReturnDependentRunner extends ReturnHistoryRunner {
   constructor(action) {
     super(action);
 
-    /** Maximum progress for the task run on each tax type. */
-    this.taxTypeTaskProgressMax = 2;
+    /**
+     * @type {ShouldRunReturnDependentFuncOnTaxTypeFn}
+     * Function that decides whether the function that depends on returns should be run on a
+     * particular tax type.
+     */
+    this.shouldRunReturnDependentFuncOnTaxType = () => true;
+    /**
+     * @type {TaxTypeTaskProgressMaxFn}
+     * Maximum progress for the task run on each tax type.
+     */
+    this.taxTypeTaskProgressMax = ({ input, taxTypeId }) => {
+      let progressMax = 2;
+      if (!this.shouldRunReturnDependentFuncOnTaxType({ input, taxTypeId })) {
+        progressMax--;
+      }
+      return progressMax;
+    };
     /**
      * Function that will be run on and depends on the returns of each tax type.
      *
@@ -602,7 +633,7 @@ export class ReturnHistoryReturnDependentRunner extends ReturnHistoryRunner {
       taxTypeId,
       parentTaskId,
       taxTypeFunc: async ({ input, task, failures }) => {
-        task.progressMax = this.taxTypeTaskProgressMax;
+        task.progressMax = this.taxTypeTaskProgressMax({ input, taxTypeId });
         // This must be set here so a default value exists even if errors are later thrown.
         failures.returns = [];
 
@@ -610,14 +641,16 @@ export class ReturnHistoryReturnDependentRunner extends ReturnHistoryRunner {
           task, input, taxTypeId, failures,
         });
 
-        const returns = this.taxTypeReturns[taxTypeId];
-        if (returns.length > 0) {
-          failures.returns = await this.returnDependentFunc({
-            input,
-            returns,
-            task,
-            taxTypeId,
-          });
+        if (this.shouldRunReturnDependentFuncOnTaxType({ input, taxTypeId })) {
+          const returns = this.taxTypeReturns[taxTypeId];
+          if (returns.length > 0) {
+            failures.returns = await this.returnDependentFunc({
+              input,
+              returns,
+              task,
+              taxTypeId,
+            });
+          }
         }
 
         // This is to allow sub-classes to add more things to run on each tax type

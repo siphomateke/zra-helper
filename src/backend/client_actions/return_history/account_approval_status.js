@@ -183,50 +183,51 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
      * @type {Object.<string, AckReceiptsDataByReferenceNumber>}
      */
     this.allAckReceiptsData = {};
+
+    this.shouldRunReturnDependentFuncOnTaxType = ({ input, taxTypeId }) => {
+      // TODO: Cache checking input
+      const { value: getAckReceipts } = getInput(input, 'getAckReceipts');
+      return getAckReceipts && taxTypeId === taxTypeNumericalCodes.ITX;
+    };
   }
 
   async getAckReceiptDataForReturns({
-    input,
     taxTypeId,
     returns,
     task,
   }) {
-    const { value: getAckReceipts } = getInput(input, 'getAckReceipts');
-
     const failedReturns = [];
-    if (getAckReceipts) {
-      task.status = `Extract information from ${returns.length} acknowledgement of returns receipt(s)`;
-      const taxTypeTask = await createTask(store, {
-        title: 'Extract extra information from acknowledgement of returns receipts',
-        parent: task.id,
-      });
-      const responses = await parallelTaskMap({
-        list: returns,
-        task: taxTypeTask,
-        func: async (taxReturn, parentTaskId) => {
-          const receiptDataTask = await createTask(store, {
-            title: `Extract info from receipt ${taxReturn.referenceNo}`,
-            parent: parentTaskId,
-            unknownMaxProgress: false,
-            progressMax: 1,
-          });
-          return taskFunction({
-            task: receiptDataTask,
-            func: () => getAckReceiptData(taxTypeId, taxReturn),
-          });
-        },
-      });
-      /** @type {AckReceiptsDataByReferenceNumber} */
-      const dataFromReceipts = {};
-      for (const response of responses) {
-        if (response.value) {
-          dataFromReceipts[response.item.referenceNo] = response.value;
-        } else {
-          failedReturns.push(response.item);
-        }
+    task.status = `Extract information from ${returns.length} acknowledgement of returns receipt(s)`;
+    const taxTypeTask = await createTask(store, {
+      title: 'Extract extra information from acknowledgement of returns receipts',
+      parent: task.id,
+    });
+    const responses = await parallelTaskMap({
+      list: returns,
+      task: taxTypeTask,
+      func: async (taxReturn, parentTaskId) => {
+        const receiptDataTask = await createTask(store, {
+          title: `Extract info from receipt ${taxReturn.referenceNo}`,
+          parent: parentTaskId,
+          unknownMaxProgress: false,
+          progressMax: 1,
+        });
+        return taskFunction({
+          task: receiptDataTask,
+          func: () => getAckReceiptData(taxTypeId, taxReturn),
+        });
+      },
+    });
+    /** @type {AckReceiptsDataByReferenceNumber} */
+    const dataFromReceipts = {};
+    for (const response of responses) {
+      if (response.value) {
+        dataFromReceipts[response.item.referenceNo] = response.value;
+      } else {
+        failedReturns.push(response.item);
       }
-      this.allAckReceiptsData[taxTypeId] = dataFromReceipts;
     }
+    this.allAckReceiptsData[taxTypeId] = dataFromReceipts;
     return failedReturns;
   }
 
