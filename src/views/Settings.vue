@@ -104,7 +104,7 @@
             <b-field v-if="config.export.pageDownloadFileType === 'html'">
               <b-checkbox
                 v-model="config.export.useFilenameAsHtmlPageTitle"
-                title="Makes the page title of downloaded HTML files the same as their filenames. This is useful when re-downloading HTML files as PDFs in Chrome since it uses page titles as filenames."
+                title="Makes the page title of downloaded HTML files the same as their filenames. This is useful when re-saving HTML files as PDFs in Chrome since it uses page titles as filenames."
               >Use HTML filename as title</b-checkbox>
             </b-field>
             <b-field label="End of line character">
