@@ -20,7 +20,7 @@
       />
     </b-field>
     <b-loading
-      :active="importing || configIsLoading"
+      :active="importing"
       is-full-page
     />
     <TaskList
@@ -147,9 +147,6 @@ export default {
     showWarning() {
       return !this.configIsLoading && !this.$store.state.config.dismissed.taskViewerWarning;
     },
-  },
-  async created() {
-    await this.loadConfig();
   },
   methods: {
     async createTasksFromJson(json) {

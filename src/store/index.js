@@ -12,6 +12,7 @@ Vue.use(Vuex);
  * @property {boolean} zraLiteModeEnabled
  * @property {import('@/backend/file_utils').EolCharacter} eol
  * End of line character to use in exports.
+ * @property {boolean} configIsLoading
  */
 
 /** @type {import('vuex').StoreOptions<RootState>} */
@@ -24,6 +25,7 @@ export const storeOptions = {
   state: {
     zraLiteModeEnabled: false,
     eol: null,
+    configIsLoading: false,
   },
   mutations: {
     setZraLiteMode(state, value) {
@@ -31,6 +33,9 @@ export const storeOptions = {
     },
     setEol(state, value) {
       state.eol = value;
+    },
+    setConfigLoadingState(state, value) {
+      state.configIsLoading = value;
     },
   },
   actions: {

@@ -1,12 +1,11 @@
+import { mapState } from 'vuex';
+
 export default {
-  data() {
-    return {
-      configIsLoading: false,
-    };
+  computed: {
+    ...mapState(['configIsLoading']),
   },
   methods: {
     async loadConfig() {
-      this.configIsLoading = true;
       try {
         await this.$store.dispatch('config/load');
       } catch (e) {
@@ -14,8 +13,6 @@ export default {
           title: 'Error loading settings',
           error: e,
         });
-      } finally {
-        this.configIsLoading = false;
       }
     },
   },

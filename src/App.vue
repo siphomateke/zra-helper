@@ -9,23 +9,32 @@
       @change="tabChanged"
     />
     <keep-alive>
-      <router-view class="page-content"/>
+      <router-view class="page-content" />
     </keep-alive>
+    <b-loading
+      :active="configIsLoading"
+      :is-full-page="true"
+    />
   </div>
 </template>
 
 <script>
 import TabNav from '@/components/TabNav.vue';
+import configMixin from '@/mixins/config';
 
 export default {
   components: {
     TabNav,
   },
+  mixins: [configMixin],
   data() {
     return {
       activeTab: 0,
       tabs: [],
     };
+  },
+  async created() {
+    await this.loadConfig();
   },
   mounted() {
     const { routes } = this.$router.options;

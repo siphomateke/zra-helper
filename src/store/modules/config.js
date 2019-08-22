@@ -161,16 +161,21 @@ const vuexModule = {
     async resetToDefaults({ dispatch }) {
       await dispatch('set', defaultConfig);
     },
-    async load({ dispatch }) {
-      const items = await browser.storage.sync.get('config');
-      if ('config' in items) {
-        /** @type {State} */
-        const config = deepAssign(defaultConfig, items.config);
-        await dispatch('set', config);
-        await dispatch('updateConfig');
-      } else {
-        // If no config exists, save the default one.
-        await dispatch('save');
+    async load({ commit, dispatch }) {
+      commit('setConfigLoadingState', true, { root: true });
+      try {
+        const items = await browser.storage.sync.get('config');
+        if ('config' in items) {
+          /** @type {State} */
+          const config = deepAssign(defaultConfig, items.config);
+          await dispatch('set', config);
+          await dispatch('updateConfig');
+        } else {
+          // If no config exists, save the default one.
+          await dispatch('save');
+        }
+      } finally {
+        commit('setConfigLoadingState', false, { root: true });
       }
     },
     async save({ state, dispatch }) {

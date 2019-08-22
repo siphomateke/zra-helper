@@ -211,7 +211,6 @@ import ClientActionList from '@/components/ClientActionList.vue';
 import CardModal from '@/components/CardModal.vue';
 import ClientActionFailures from '@/components/ClientActionFailures.vue';
 import { mapState, mapGetters } from 'vuex';
-import configMixin from '@/mixins/config';
 import { validateClient } from '../backend/client_file_reader';
 import { getUniqueClients } from '@/store/modules/clients';
 import ClientListDialog from '@/components/dialogs/ClientListDialog.vue';
@@ -236,7 +235,6 @@ export default {
     CardModal,
     ClientActionFailures,
   },
-  mixins: [configMixin],
   data() {
     return {
       selectedClientIds: [],
@@ -353,9 +351,6 @@ export default {
         this.$store.dispatch('tasks/logErrorsOfTaskList', { list: 'clientActions' });
       }
     },
-  },
-  created() {
-    this.loadConfig();
   },
   methods: {
     async submit() {
