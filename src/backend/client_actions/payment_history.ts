@@ -29,7 +29,7 @@ import {
   getInput,
 } from './base';
 import { InvalidReceiptError } from '../errors';
-import getDataFromReceipt from '../content_scripts/helpers/receipt_data';
+import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
 import { TaskId } from '@/store/modules/tasks';
 
 interface PrnNo {
@@ -146,28 +146,6 @@ function getQuarterFromPeriod(from: string, to: string): number | null {
   return quarter;
 }
 
-interface PaymentReceiptPayment {
-  taxType: string;
-  accountName: string;
-  liabilityType: string;
-  periodFrom: string;
-  periodTo: string;
-  chargeYear: string;
-  chargeQuater: string;
-  alternativeNumber: string;
-  amount: string;
-}
-
-interface PaymentReceiptData {
-  registrationDate: string;
-  referenceNumber: string;
-  prn: string;
-  paymentDate: string;
-  searchCode: string;
-  paymentType: string;
-  payments: PaymentReceiptPayment[];
-}
-
 function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptData): string[] {
   const uniquePayments = [];
   for (const payment of receiptData.payments) {
@@ -225,7 +203,7 @@ function downloadPaymentReceipt({
 
   return downloadPage({
     async filename(dataSource) {
-      let receiptData;
+      let receiptData: PaymentReceiptData;
       if (dataSource instanceof HTMLDocument) {
         receiptData = await getDataFromReceipt(dataSource, 'payment');
       } else {

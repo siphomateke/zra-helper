@@ -2,6 +2,8 @@ import { Client } from '@/backend/constants';
 import { ConfigState } from '@/store/modules/config';
 import { IgnoreZraError } from '@/backend/utils';
 import { ReceiptType } from '@/backend/client_actions/receipts';
+import { GetDataFromReceiptResponses } from '../helpers/receipt_data';
+import { LoadedImagesResponse } from '../helpers/images';
 
 export interface ContentScriptListenerMessage {
   command: ContentScriptCommand;
@@ -59,3 +61,23 @@ export type ContentScriptCommand = keyof ContentScriptMessages;
 export type ContentScriptMessageFromCommand<
   Command extends ContentScriptCommand
   > = ContentScriptMessages[Command];
+
+export type FindUnloadedImagesResponse = LoadedImagesResponse;
+
+export interface ContentScriptResponses<
+  Command extends ContentScriptCommand,
+  Message extends ContentScriptMessageFromCommand<Command>
+  > {
+  check_login: void;
+  click_element: void;
+  // FIXME: Choose response from `GetDataFromReceiptResponses` based on `Message.type`
+  get_receipt_data: GetDataFromReceiptResponses[ReceiptType];
+  inject_form: void;
+  receive_config: void;
+  find_unloaded_images: FindUnloadedImagesResponse;
+}
+
+export type ContentScriptResponseFromCommand<
+  Command extends ContentScriptCommand,
+  M extends ContentScriptMessageFromCommand<Command>
+  > = ContentScriptResponses<Command, M>[Command];
