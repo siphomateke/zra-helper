@@ -1,5 +1,6 @@
-/** @type {import('vue').ComponentOptions} */
-const mixin = {
+import Vue, { ComponentOptions } from 'vue';
+
+const ExportButtonMixin: ComponentOptions<Vue> = {
   props: {
     /**
      * Asynchronous function that generates the data to export.
@@ -62,4 +63,4 @@ const mixin = {
     },
   },
 };
-export default mixin;
+export default ExportButtonMixin;

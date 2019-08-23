@@ -1,19 +1,34 @@
 import moment from 'moment';
 import { ExtendedError, errorToString } from '@/backend/errors';
+import { Module } from 'vuex';
+import { RootState } from '../types';
 
-/** @typedef {string} LogType */
+export enum LogType {
+  SUCCESS = 'success',
+  ERROR = 'error',
+  WARNING = 'warning',
+  INFO = 'info',
+}
 
-/** @enum {LogType} */
-export const logTypes = {
-  SUCCESS: 'success',
-  ERROR: 'error',
-  WARNING: 'warning',
-  INFO: 'info',
-};
+export interface LogLine {
+  content: string;
+  type: LogType;
+  category: string,
+  /** Full timestamp */
+  timestamp: string,
+  /** Timestamp excluding the date. */
+  timestampNoDate: string,
+}
+
+export namespace Log {
+  export interface State {
+    lines: LogLine[];
+    currentCategory: string | null;
+  }
+}
 
 // TODO: Add more documentation
-/** @type {import('vuex').Module} */
-const vuexModule = {
+const vuexModule: Module<Log.State, RootState> = {
   namespaced: true,
   state: {
     lines: [],
@@ -61,13 +76,13 @@ const vuexModule = {
       if (rootState.config.debug.logToConsole) {
         const text = `${payload.category || state.currentCategory}: ${payload.content}`;
         switch (payload.type) {
-          case 'error':
+          case LogType.ERROR:
             console.error(text);
             break;
-          case 'warning':
+          case LogType.WARNING:
             console.warn(text);
             break;
-          case 'info':
+          case LogType.INFO:
             console.info(text);
             break;
           default:
@@ -82,7 +97,7 @@ const vuexModule = {
 
       dispatch('addLine', {
         content: errorString,
-        type: warning ? 'warning' : 'error',
+        type: warning ? LogType.WARNING : LogType.ERROR,
       });
 
       /* eslint-disable no-console */

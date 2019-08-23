@@ -3,6 +3,7 @@
     <TaskListItem
       v-for="id in tasks"
       :id="id"
+      :key="id"
       :open-tasks.sync="internalOpenTasks"
     />
     <div
@@ -43,8 +44,11 @@ function objectWithoutKey(obj, key) {
   return otherKeys;
 }
 
-/** @type {import('@/backend/constants').ExportFormatCode[]} */
-const exportFormats = [ExportFormatCode.TXT, ExportFormatCode.CSV, ExportFormatCode.JSON];
+const exportFormats: ExportFormatCode[] = [
+  ExportFormatCode.TXT,
+  ExportFormatCode.CSV,
+  ExportFormatCode.JSON,
+];
 
 const taskGettersToExport = [
   'hasParent',

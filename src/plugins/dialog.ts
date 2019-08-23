@@ -1,13 +1,12 @@
+interface ShowErrorFnOptions {
+  title: string;
+  error?: string;
+  message?: string;
+}
+
 export default {
   install(Vue) {
-    /**
-     *
-     * @param {Object} options
-     * @param {string} options.title
-     * @param {string} [options.error]
-     * @param {string} [options.message]
-     */
-    Vue.prototype.$showError = function $showError(options) {
+    Vue.prototype.$showError = function $showError(options: ShowErrorFnOptions) {
       return this.$store.dispatch('showError', options);
     };
   },

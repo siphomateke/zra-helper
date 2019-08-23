@@ -14,14 +14,17 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import { ExportFormatCode } from '@/backend/constants';
 import { writeJson, renderTable, unparseCsv } from '@/backend/file_utils';
 import { objectHasProperties } from '@/utils';
 
-/** @type {import('@/backend/constants').ExportFormatCode[]} */
-const exportFormats = [ExportFormatCode.TXT, ExportFormatCode.CSV, ExportFormatCode.JSON];
+const exportFormats: ExportFormatCode[] = [
+  ExportFormatCode.TXT,
+  ExportFormatCode.CSV,
+  ExportFormatCode.JSON,
+];
 
 const tableColumns = [
   {

@@ -34,11 +34,13 @@ interface ParsedTableLinkCell {
  * Object representing a single row whose keys are column headers and whose values are the
  * corresponding cell values.
  */
-export type ParsedTableRecord<C extends string> = { [key in C]: string | ParsedTableLinkCell };
+export type ParsedTableRecord<H extends string> = {
+  [key in H]: string | ParsedTableLinkCell;
+};
 
-export interface ParsedTable<C extends string> {
+export interface ParsedTable<H extends string> {
   /** Array of records */
-  records: ParsedTableRecord<C>[];
+  records: ParsedTableRecord<H>[];
   /** The current page */
   currentPage: number;
   /** The total number of pages */
@@ -52,8 +54,8 @@ interface ParseTableOptions<H extends string> {
   /** Selector of a single table data row. This shouldn't match any header rows. */
   recordSelector: string;
   /**
-   * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with links
-   * will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
+   * Whether the `onclick` attribute of links should also be parsed. If set to true, cells with
+   * links will be of type [ParsedTableLinkCell]{@link ParsedTableLinkCell}.
    */
   parseLinks?: boolean;
 }
@@ -71,19 +73,19 @@ export function parseTable<H extends string>({
   const records: ParsedTableRecord<H>[] = [];
   const recordElements = root.querySelectorAll(recordSelector);
   for (const recordElement of recordElements) {
-    // FIXME: TypeScript blank_object
-    const row: ParsedTableRecord<H> = {};
+    const row: ParsedTableRecord<H> = {} as ParsedTableRecord<H>;
     const columns = recordElement.querySelectorAll('td');
     for (let index = 0; index < columns.length; index++) {
       const column = columns[index];
-      let value: string | ParsedTableLinkCell = column.innerText.trim();
+      const innerText = column.innerText.trim();
+      let value: string | ParsedTableLinkCell = innerText;
       if (parseLinks) {
         const link = column.querySelector('a');
         if (link) {
           const onclick = link.getAttribute('onclick');
           if (onclick) {
             value = {
-              innerText: value,
+              innerText,
               onclick,
             };
           }

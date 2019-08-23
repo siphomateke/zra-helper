@@ -1,7 +1,7 @@
 import { mapGetters } from 'vuex';
+import Vue, { ComponentOptions } from 'vue';
 
-/** @type {import('vue').ComponentOptions} */
-const mixin = {
+const ClientIdsMixin: ComponentOptions<Vue> = {
   computed: {
     ...mapGetters('clients', ['getClientById']),
     clients() {
@@ -14,4 +14,4 @@ const mixin = {
     },
   },
 };
-export default mixin;
+export default ClientIdsMixin;

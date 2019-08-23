@@ -495,6 +495,7 @@ const downloadQueue = new PromiseQueue(
  * Wrapper around `browser.downloads.download()` that supports queuing using the `PromiseQueue`.
  * @returns The download ID.
  */
+// FIXME: Extract download options from firefox-webext-browser
 export function startDownload(downloadOptions) {
   return downloadQueue.add(() => browser.downloads.download(downloadOptions));
 }
@@ -634,7 +635,7 @@ const xmlParser = new xml2js.Parser({ explicitArray: false });
  */
 async function parseXml<R extends object>(str: string): Promise<R> {
   return new Promise((resolve, reject) => {
-    xmlParser.parseString(str, (err, result: R) => {
+    xmlParser.parseString(str, (err: any, result: R) => {
       if (err) {
         reject(err);
       }

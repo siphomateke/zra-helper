@@ -1,8 +1,7 @@
-import Vue from 'vue';
+import Vue, { ComponentOptions } from 'vue';
 import { deepClone } from '@/utils';
 
-/** @type {import('vue').ComponentOptions} */
-export default {
+const ClientActionInputsMixin: ComponentOptions<Vue> = {
   $_veeValidate: {
     validator: 'new',
   },
@@ -45,3 +44,4 @@ export default {
     },
   },
 };
+export default ClientActionInputsMixin;

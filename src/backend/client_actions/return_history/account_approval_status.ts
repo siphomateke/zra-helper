@@ -1,5 +1,5 @@
 import { get } from 'dot-prop';
-import { createClientAction, getInput, createOutputFile } from '../base';
+import { createClientAction, getInput, createOutputFile, BaseFormattedOutput } from '../base';
 import {
   GetReturnHistoryClientActionOptions,
   ReturnHistoryReturnDependentRunner,
@@ -25,12 +25,13 @@ import { generateAckReceiptRequest } from './ack_receipt';
 import getDataFromReceipt, { AcknowledgementReceiptData } from '@/backend/content_scripts/helpers/receipt_data';
 import createTask from '@/transitional/tasks';
 import store from '@/store';
+import { ClientActionOutput } from '@/store/modules/client_actions/types';
 
 function getFinancialAccountStatusType(
   status: FinancialAccountStatus,
 ): FinancialAccountStatusType | null {
   for (const type of Object.keys(financialAccountStatusTypesMap)) {
-    if (financialAccountStatusTypesMap[type].includes(status)) {
+    if (financialAccountStatusTypesMap[(<FinancialAccountStatusType>type)].includes(status)) {
       return <FinancialAccountStatusType>type;
     }
   }
@@ -53,6 +54,33 @@ export namespace AccountApprovalStatusClientAction {
     getAckReceipts: boolean;
   }
   export type Output = TaxTypeIdMap<TaxReturnExtended[]>;
+}
+
+namespace FormattedOutput {
+  export namespace CSV {
+    export interface Row {
+      fromDate: TaxReturnExtended['returnPeriodFrom'],
+      toDate: TaxReturnExtended['returnPeriodTo'],
+      status: TaxReturnExtended['status'],
+      statusType: TaxReturnExtended['statusType'],
+      statusDescription: TaxReturnExtended['statusDescription'],
+      applicationType: TaxReturnExtended['applicationType'],
+      returnAppliedDate: TaxReturnExtended['returnAppliedDate'],
+      provisional: string | null,
+    }
+    export type ClientOutput = BaseFormattedOutput.CSV.ClientOutput<Row>;
+    export type Output = BaseFormattedOutput.CSV.Output<Row>;
+  }
+
+  export namespace JSON {
+    export interface ClientOutput {
+      client: BaseFormattedOutput.JSON.Client;
+      actionId: string;
+      taxReturns: AccountApprovalStatusClientAction.Output,
+      error: ClientActionOutput<AccountApprovalStatusClientAction.Output>['error'];
+    }
+    export type Output = BaseFormattedOutput.JSON.Output<ClientOutput>;
+  }
 }
 
 const CheckAccountApprovalStatusClientAction = createClientAction<
@@ -85,16 +113,16 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
       }) {
         // TODO: Only include provisional column if `getAckReceipts` is true
         if (format === ExportFormatCode.CSV) {
-          const csvOutput = {};
+          const csvOutput: FormattedOutput.CSV.Output = {};
           for (const client of clients) {
             if (client.id in clientOutputs) {
               const { value } = clientOutputs[client.id];
               if (value) {
                 const clientIdentifier = getClientIdentifier(client, anonymizeClients);
-                const clientOutput = {};
+                const clientOutput: FormattedOutput.CSV.ClientOutput = {};
                 for (const taxTypeId of Object.keys(value)) {
-                  const taxReturns = value[taxTypeId];
-                  const rows = [];
+                  const taxReturns = value[(<TaxTypeNumericalCode>taxTypeId)]!;
+                  const rows: FormattedOutput.CSV.Row[] = [];
                   for (const taxReturn of taxReturns) {
                     let provisionalCol = null;
                     if ('provisional' in taxReturn) {
@@ -115,7 +143,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
                       provisional: provisionalCol,
                     });
                   }
-                  clientOutput[taxTypes[taxTypeId]] = rows;
+                  clientOutput[taxTypes[(<TaxTypeNumericalCode>taxTypeId)]] = rows;
                 }
                 csvOutput[clientIdentifier] = clientOutput;
               }
@@ -136,11 +164,11 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
           const rows = objectToCsvTable(csvOutput, columns);
           return unparseCsv(rows);
         }
-        const json = {};
+        const json: FormattedOutput.JSON.Output = {};
         for (const client of clients) {
           if (client.id in clientOutputs) {
             const output = clientOutputs[client.id];
-            let jsonClient = { id: client.id };
+            let jsonClient: BaseFormattedOutput.JSON.Client = { id: client.id };
             if (!anonymizeClients) {
               jsonClient = Object.assign(jsonClient, {
                 name: client.name,

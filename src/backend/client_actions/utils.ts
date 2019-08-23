@@ -76,11 +76,12 @@ export async function taskFunction<R>({
 }
 
 /**
- * @template R The type of the return value.
- * @param item This can either be an item from the list if one is provided, or an index if count is provided.
+ * @param item This can either be an item from the list if one is provided, or an index if count
+ * is provided.
  * FIXME: Document parameters somehow.
  */
-type ParallelTaskMapFunction<R, ListItem> = (item: ListItem, parentTaskId: number) => Promise<R>;
+type ParallelTaskMapFunction<R, ListItem> =
+  (item: number | ListItem, parentTaskId: number) => Promise<R>;
 
 interface MultipleResponsesError {
   /** The error that occurred getting this item if there was one. */
@@ -275,7 +276,6 @@ export async function getPagedData<R>({
     getDataFunction,
   };
 
-  // FIXME: Type this
   const parallelTaskMapOptions: ParallelTaskMapFnOptions<
     GetDataFromPageFunctionReturn<R>,
     number
@@ -574,6 +574,7 @@ export async function downloadPage({
   createTabPostOptions,
 }: DownloadPageOptions) {
   /** Whether the filename of the downloaded page will be based on data within the page. */
+  // TODO: TS: Make this a type guard somehow
   const filenameUsesPage = typeof filename === 'function';
 
   const task = await createTask(store, {
@@ -587,9 +588,9 @@ export async function downloadPage({
   // Extra steps waiting for tab to open and for all images in the tab to load.
   if (config.export.pageDownloadFileType === 'mhtml') task.progressMax += 2;
 
-  let generatedFilename;
+  let generatedFilename: string | string[];
   if (!filenameUsesPage) {
-    generatedFilename = filename;
+    generatedFilename = <string | string>filename;
   }
   return taskFunction({
     task,
@@ -616,7 +617,7 @@ export async function downloadPage({
           }
           if (filenameUsesPage) {
             task.addStep('Generating filename');
-            generatedFilename = await filename(tab);
+            generatedFilename = await (<Function>filename)(tab);
           }
           task.addStep('Converting page to MHTML');
           blob = await saveAsMHTML({ tabId: tab.id });
@@ -632,11 +633,10 @@ export async function downloadPage({
         });
         if (filenameUsesPage) {
           task.addStep('Generating filename');
-          generatedFilename = await filename(doc);
+          generatedFilename = await (<Function>filename)(doc);
         }
         task.addStep('Bundling page into single HTML file');
-        /** @type {string|null} */
-        let htmlPageTitle = null;
+        let htmlPageTitle: string | null = null;
         if (config.export.useFilenameAsHtmlPageTitle) {
           if (Array.isArray(generatedFilename) && generatedFilename.length === 1) {
             [htmlPageTitle] = generatedFilename;

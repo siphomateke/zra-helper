@@ -14,8 +14,7 @@ import { CaptchaLoadError, LogoutError } from '@/backend/errors';
 import OCRAD from 'ocrad.js';
 import md5 from 'md5';
 import { checkLogin } from '../content_scripts/helpers/check_login';
-import { TaskState } from '@/store/modules/tasks';
-import { TaskId } from '@/store/modules/tasks';
+import { TaskState, TaskId } from '@/store/modules/tasks';
 import { Client } from '../constants';
 
 /**
@@ -127,7 +126,7 @@ interface LoginFnOptions {
   keepTabOpen?: boolean;
   /**
    * Whether to close the tab if any errors occurred when checking if the client was successfully
-   * logged in. Only used when `keepTabOpen` is true. 
+   * logged in. Only used when `keepTabOpen` is true.
    */
   closeOnErrors?: boolean;
 }
@@ -169,7 +168,7 @@ export async function login({
         url: 'https://www.zra.org.zm/login.htm?actionCode=newLogin',
         data: { flag: 'TAXPAYER' },
       });
-      const pwd = getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input').value;
+      const pwd = (<HTMLInputElement>getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input')).value;
 
       let tabId: number | null = null;
       task.addStep('Initiating login');
@@ -282,13 +281,9 @@ export async function logout({ parentTaskId }: LogoutFnOptions): Promise<void> {
   });
 }
 
-interface RobustLoginFnOptions {
-  client: Client;
-  parentTaskId: TaskId;
+interface RobustLoginFnOptions extends LoginFnOptions {
   /** The maximum number of times an attempt should be made to login to a client. */
   maxAttempts: number;
-  /** Whether the logged in tab should be kept open. */
-  keepTabOpen?: boolean;
   /**
    * Whether to close the tab if any errors occur when checking if the client was successfully logged
    * in. Only used when `keepTabOpen` is true. If more than one login attempt is made, only the tab

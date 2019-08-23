@@ -8,6 +8,7 @@ import {
   TaxTypeNumericalCode,
   TaxTypeCodeMap,
   taxTypeNumericalCodes,
+  TaxTypeCode,
 } from '../constants';
 import { writeJson, unparseCsv, objectToCsvTable } from '../file_utils';
 import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
@@ -17,32 +18,31 @@ import {
   getInput,
   createOutputFile,
   ClientActionOutputFormatterOptions,
+  BaseFormattedOutput,
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
 import { deepAssign, joinSpecialLast } from '@/utils';
 import { parseAmountString } from '../content_scripts/helpers/zra';
 import { TaskId } from '@/store/modules/tasks';
-import { ClientActionOutputs } from '@/store/modules/client_actions/types';
+import { ClientActionOutputs, ClientActionOutput } from '@/store/modules/client_actions/types';
 import { Omit } from '@/utils';
 
-// FIXME: Infer this from totalsColumns
-type TotalsColumn = 'principal' | 'interest' | 'penalty' | 'total';
-
-export const pendingLiabilityTypes: TotalsColumn[] = [
+export const pendingLiabilityTypes = [
   'principal',
   'interest',
   'penalty',
-];
+] as const;
 
 /** Columns to get from the pending liabilities table */
-export const pendingLiabilityColumns: TotalsColumn[] = [
+export const pendingLiabilityColumn = [
   ...pendingLiabilityTypes,
   'total',
-];
+] as const;
 
-// TODO: Type keys as totalsColumn when using TypeScript
-export const pendingLiabilityColumnNamesMap = {
+type TotalsColumn = typeof pendingLiabilityColumn[number];
+
+export const pendingLiabilityColumnNamesMap: { [columnId in TotalsColumn]: string } = {
   principal: 'Principal',
   interest: 'Interest',
   penalty: 'Penalty',
@@ -52,18 +52,18 @@ export const pendingLiabilityColumnNamesMap = {
 /**
  * Totals with two decimal places. The possible totals are all the items in `totalsColumns`.
  */
-export type Totals = { [K in TotalsColumn]: string };
+export type Totals = { [columnId in TotalsColumn]: string };
 
 export type TotalsByTaxTypeCode = TaxTypeCodeMap<Totals>
 
 /**
  * Generates an object with totals that are all one value.
  */
-// TODO: Figure out a way to properly type this functions return value based on the passed columns
 export function generateTotals<
+  C extends TotalsColumn[],
   V,
-  R extends { [key in TotalsColumn]: V }
->(columns: TotalsColumn[], value: V): R {
+  R extends { [key in C[number]]: V }
+>(columns: C, value: V): R {
   const totals: R = {} as R;
   for (const column of columns) {
     totals[column] = value;
@@ -162,6 +162,29 @@ interface OutputFormatterOptions extends Omit<
 
 type OutputFormatter = (options: OutputFormatterOptions) => string;
 
+namespace FormattedOutput {
+  export namespace CSV {
+    export interface Row extends Partial<Totals> {
+      /** The error that the tax type encountered. */
+      error?: string;
+    }
+    export type ClientOutput = BaseFormattedOutput.CSV.ClientOutput<Row>;
+    export type Output = BaseFormattedOutput.CSV.Output<Row>;
+  }
+
+  export namespace JSON {
+    export type TaxTypeErrors = { [taxTypeCode in TaxTypeCode]?: string };
+    export interface ClientOutput {
+      client: BaseFormattedOutput.JSON.Client;
+      actionId: string;
+      totals: PendingLiabilitiesAction.Output['totals'];
+      taxTypeErrors: TaxTypeErrors;
+      error: ClientActionOutput<PendingLiabilitiesAction.Output>['error'];
+    }
+    export type Output = BaseFormattedOutput.JSON.Output<ClientOutput>;
+  }
+}
+
 const outputFormatter: OutputFormatter = function outputFormatter({
   clients,
   allClients,
@@ -170,27 +193,29 @@ const outputFormatter: OutputFormatter = function outputFormatter({
   anonymizeClients,
 }) {
   if (format === ExportFormatCode.CSV) {
-    const allClientsById = new Map();
+    const allClientsById: Map<string, Client> = new Map();
     for (const client of allClients) {
       allClientsById.set(String(client.id), client);
     }
 
-    const clientOutputsByUsername = {};
+    const clientOutputsByUsername: {
+      [username: string]: ClientActionOutput<PendingLiabilitiesAction.Output>
+    } = {};
     for (const clientId of Object.keys(clientOutputs)) {
-      const client = allClientsById.get(clientId);
+      const client = allClientsById.get(clientId)!;
       clientOutputsByUsername[client.username] = clientOutputs[clientId];
     }
 
-    const csvOutput = {};
+    const csvOutput: FormattedOutput.CSV.Output = {};
     for (const client of allClients) {
       let value: PendingLiabilitiesAction.Output | null = null;
       if (client.username in clientOutputsByUsername) {
         ({ value } = clientOutputsByUsername[client.username]);
       }
       const totalsObjects = value ? value.totals : null;
-      const clientOutput = {};
+      const clientOutput: FormattedOutput.CSV.ClientOutput = {};
       for (const taxType of taxTypeCodes) {
-        const row = {};
+        const row: FormattedOutput.CSV.Row = {};
         if (value && (taxType in totalsObjects)) {
           Object.assign(row, totalsObjects[taxType]);
         } else if (value && (taxType in value.retrievalErrors)) {
@@ -214,11 +239,11 @@ const outputFormatter: OutputFormatter = function outputFormatter({
     // TODO: Make output options configurable by user
     return unparseCsv(rows);
   }
-  const json = {};
+  const json: FormattedOutput.JSON.Output = {};
   for (const client of clients) {
     if (client.id in clientOutputs) {
       const output = clientOutputs[client.id];
-      let jsonClient = { id: client.id };
+      let jsonClient: BaseFormattedOutput.JSON.Client = { id: client.id };
       if (!anonymizeClients) {
         jsonClient = Object.assign(jsonClient, {
           name: client.name,
@@ -227,10 +252,10 @@ const outputFormatter: OutputFormatter = function outputFormatter({
       }
       const outputValue = output.value;
       if (outputValue !== null) {
-        const taxTypeErrors = {};
+        const taxTypeErrors: FormattedOutput.JSON.TaxTypeErrors = {};
         for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
-          const error = outputValue.retrievalErrors[taxTypeCode];
-          taxTypeErrors[taxTypeCode] = errorToString(error);
+          const error = outputValue.retrievalErrors[<TaxTypeCode>taxTypeCode];
+          taxTypeErrors[<TaxTypeCode>taxTypeCode] = errorToString(error);
         }
         json[client.id] = {
           client: jsonClient,
@@ -427,7 +452,8 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
       task: actionTask,
       list: taxTypeIds,
       async func(taxTypeId, parentTaskId) {
-        return getPendingLiabilities(client, taxTypeId, parentTaskId);
+        // FIXME: Remove this once parallelTaskMap ambiguous list or count is fixed.
+        return getPendingLiabilities(client, <TaxTypeNumericalCode>taxTypeId, parentTaskId);
       },
     });
 
@@ -437,7 +463,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
     };
     const failedTaxTypeIds = [];
     for (const response of responses) {
-      // FIXME: Remove this once task map ambiguous list or count is fixed.
+      // FIXME: Remove this once parallelTaskMap ambiguous list or count is fixed.
       const taxTypeId = <TaxTypeNumericalCode>response.item;
       const taxType = taxTypes[taxTypeId];
       if ('value' in response) {

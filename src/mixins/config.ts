@@ -1,6 +1,7 @@
+import Vue, { ComponentOptions } from 'vue';
 import { mapState } from 'vuex';
 
-export default {
+const ConfigMixin: ComponentOptions<Vue> = {
   computed: {
     ...mapState(['configIsLoading']),
   },
@@ -17,3 +18,4 @@ export default {
     },
   },
 };
+export default ConfigMixin;

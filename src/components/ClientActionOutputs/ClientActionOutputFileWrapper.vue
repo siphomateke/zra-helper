@@ -37,11 +37,12 @@
   </CardCollapse>
 </template>
 
-<script>
+<script lang="ts">
 import CardCollapse from '@/components/CardCollapse.vue';
 import ClientActionOutputFile from './ClientActionOutputFile.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
 import { validateActionOutputFile } from '../../backend/client_actions/base';
+import { ClientActionOutputFile } from '@/backend/client_actions/base';
 
 export default {
   name: 'ClientActionOutputFileWrapper',
@@ -77,12 +78,16 @@ export default {
     },
   },
   methods: {
-    /**
-     * @param {import('@/backend/client_actions/base').ClientActionOutputFile[]} outputFiles
-     * @param {Object} options
-     * @param {boolean} options.anonymizeClients
-     */
-    downloadOutputFiles(outputFiles, options) {
+    clickCardHeader({ target }) {
+      // Don't do anything if this was triggered by clicking a button within the card header
+      if (this.$refs.cardHeaderButtons.contains(target)) return;
+
+      this.collapseIsOpen = !this.collapseIsOpen;
+    },
+    downloadOutputFiles(
+      outputFiles: ClientActionOutputFile[],
+      options: { anonymizeClients: boolean }
+    ) {
       for (const outputFile of outputFiles) {
         if (!outputFile.wrapper && outputFile.formatter) {
           const format = outputFile.defaultFormat;
