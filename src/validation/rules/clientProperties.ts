@@ -1,27 +1,22 @@
-import { Validator } from 'vee-validate';
-import { validateClientUsername, validateClientPassword } from '@/backend/client_file_reader';
-import { clientPropValidationErrorMessages } from '@/backend/constants';
+import { Validator, Rule } from 'vee-validate';
+import { validateClientUsername, validateClientPassword, ClientPropValidationResult } from '@/backend/client_file_reader';
+import { clientPropValidationErrorMessages, ClientPropValidationError } from '@/backend/constants';
 
-function getErrorMessageFromCode(code) {
+function getErrorMessageFromCode(code: ClientPropValidationError): string {
   if (code in clientPropValidationErrorMessages) {
     return clientPropValidationErrorMessages[code];
   }
   return 'Unknown error';
 }
 
-/**
- *
- * @param {'username'|'password'} prop
- * @returns {import('vee-validate').Rule}
- */
-function clientPropertyValidator(prop) {
+function clientPropertyValidator(prop: 'username' | 'password'): Rule {
   return {
-    getMessage: (_field, _params, validationErrorCodes) => {
+    getMessage: (_field, _params, validationErrorCodes: ClientPropValidationError[]) => {
       const errors = validationErrorCodes.map(code => getErrorMessageFromCode(code));
       return errors.join(',');
     },
     validate: (value) => {
-      let validation;
+      let validation: ClientPropValidationResult;
       if (prop === 'username') {
         validation = validateClientUsername(value);
       } else {

@@ -13,9 +13,10 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { mapGetters } from 'vuex';
 import ClientActionOutputFileWrapper from './ClientActionOutputFileWrapper.vue';
+import { ActionRun } from '@/store/modules/client_actions/types';
 
 export default {
   name: 'ClientActionOutput',
@@ -38,8 +39,7 @@ export default {
       'getOutputsOfAction',
       'actionHasOutput',
     ]),
-    /** @returns {import('@/store/modules/client_actions').ActionRun} */
-    run() {
+    run(): ActionRun {
       return this.$store.state.clientActions.runs[this.runId];
     },
     loading() {

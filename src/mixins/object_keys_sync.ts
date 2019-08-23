@@ -1,11 +1,16 @@
+import Vue, { ComponentOptions } from 'vue';
+
 /**
  * Generates a mixin that syncs an object's keys with a provided property.
- * @param {string} keyList Name of the array that contains all the keys.
- * @param {string} objectList Name of the object whose keys need to be synced with the `keyList`.
- * @param {any} defaultValue The default value to assign to items in the `objectList`.
- * @returns {import('vue').ComponentOptions}
+ * @param keyList Name of the array that contains all the keys.
+ * @param objectList Name of the object whose keys need to be synced with the `keyList`.
+ * @param defaultValue The default value to assign to items in the `objectList`.
  */
-export default function generateObjectKeysSync(keyList, objectList, defaultValue) {
+export default function generateObjectKeysSync(
+  keyList: string,
+  objectList: string,
+  defaultValue: any,
+): ComponentOptions<Vue> {
   return {
     watch: {
       [keyList](keys) {

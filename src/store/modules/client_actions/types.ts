@@ -49,8 +49,8 @@ export type ClientActionInstanceClass = ClientActionRunner<any, any, any>;
 export interface ClientActionOutput<O> {
   actionId: string;
   clientId: number;
-  value?: O | null;
-  error?: Error | null;
+  value: O | null;
+  error: Error | null;
 }
 
 /** Client action runner outputs grouped by client ID. */

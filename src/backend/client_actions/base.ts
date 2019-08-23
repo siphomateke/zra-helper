@@ -53,6 +53,26 @@ interface ClientActionOutputFilesGeneratorFnOptions<Output> {
 
 type ClientActionOutputFilesGenerator<O> = (options: ClientActionOutputFilesGeneratorFnOptions<O>) => ClientActionOutputFile<O>;
 
+export namespace BaseFormattedOutput {
+  export namespace CSV {
+    export type ClientOutput<Row> = { [taxTypeCode in TaxTypeCode]?: Row[] };
+    export type Output<Row> = {
+      [clientIdentifier: string]: ClientOutput<Row>;
+    }
+  }
+
+  export namespace JSON {
+    export interface Client {
+      id: number;
+      name?: string;
+      username?: string;
+    }
+    export type Output<ClientOutput> = {
+      [clientId: number]: ClientOutput | null;
+    }
+  }
+}
+
 // FIXME: Express in type that output settings are required if hasOutput = true.
 export interface ClientActionOptions<Input extends object, Output = BasicRunnerOutput> {
   /** A unique camelCase ID to identify this client action. */

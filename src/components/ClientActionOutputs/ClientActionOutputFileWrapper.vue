@@ -59,10 +59,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import ClientActionOutputFile from './ClientActionOutputFile.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
 import { validateActionOutputFile } from '../../backend/client_actions/base';
+import { ClientActionOutputFile } from '@/backend/client_actions/base';
 
 export default {
   name: 'ClientActionOutputFileWrapper',
@@ -108,12 +109,10 @@ export default {
 
       this.collapseIsOpen = !this.collapseIsOpen;
     },
-    /**
-     * @param {import('@/backend/client_actions/base').ClientActionOutputFile[]} outputFiles
-     * @param {Object} options
-     * @param {boolean} options.anonymizeClients
-     */
-    downloadOutputFiles(outputFiles, options) {
+    downloadOutputFiles(
+      outputFiles: ClientActionOutputFile[],
+      options: { anonymizeClients: boolean },
+    ) {
       for (const outputFile of outputFiles) {
         if (!outputFile.wrapper && outputFile.formatter) {
           const format = outputFile.defaultFormat;

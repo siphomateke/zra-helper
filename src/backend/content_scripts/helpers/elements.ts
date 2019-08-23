@@ -1,4 +1,4 @@
-import { ElementNotFoundError, ElementsNotFoundError } from '../../errors';
+import { ElementNotFoundError, ElementsNotFoundError } from '@/backend/errors';
 import getConfig from './config';
 
 /**
@@ -40,21 +40,19 @@ type ElementsFromSelectors<T extends Selectors> = { [key in keyof T]: HTMLElemen
  * @returns An object containing HTML elements with names as keys.
  * @throws {ElementsNotFoundError}
  */
-// FIXME: Fix typings for return value keys being the same as selector keys
 export function getElementsFromDocument<T extends Selectors>(
   document: RootElement,
   selectors: T,
   customErrorMessage: string = 'Failed to find the following elements: $2.',
 ): ElementsFromSelectors<T> {
-  /** @type {string[]} Names of missing elements. */
-  const missingElements = [];
-  /** @type {string[]} Selectors of missing elements. */
-  const missingSelectors = [];
-  // FIXME: TypeScript blank_object
-  const els: ElementsFromSelectors<T> = {};
+  /** Names of missing elements. */
+  const missingElements: string[] = [];
+  /** Selectors of missing elements. */
+  const missingSelectors: string[] = [];
+  const els: ElementsFromSelectors<T> = {} as ElementsFromSelectors<T>;
   for (const name of Object.keys(selectors)) {
     const selector = selectors[name];
-    els[name] = document.querySelector(selector);
+    els[(<keyof T>name)] = document.querySelector<HTMLElement>(selector);
     if (!els[name]) {
       missingElements.push(name);
       missingSelectors.push(selector);
@@ -84,7 +82,7 @@ export function getElementFromDocument(
   selector: Selector,
   name?: string,
 ): HTMLElement {
-  const element = <HTMLElement | null>document.querySelector(selector);
+  const element = document.querySelector<HTMLElement>(selector);
   if (!element) {
     if (!name) name = selector;
     throw new ElementNotFoundError(`Element "${name}" not found.`, null, {

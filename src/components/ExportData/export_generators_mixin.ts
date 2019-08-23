@@ -1,7 +1,7 @@
 import { exportFormats, ExportFormatCode } from '@/backend/constants';
+import Vue, { ComponentOptions } from 'vue';
 
-/** @type {import('vue').ComponentOptions} */
-const ExportGeneratorsMixin = {
+const ExportGeneratorsMixin: ComponentOptions<Vue> = {
   props: {
     generators: {
       type: Object,

@@ -9,8 +9,7 @@ interface LoadedClient {
   password?: string;
 }
 
-// FIXME: Get these from LoadedClient or `requiredProps` in `validateClient()`
-type ClientProps = 'name' | 'username' | 'password';
+type ClientProps = keyof LoadedClient;
 
 type PropErrors = { [key in ClientProps]?: ClientPropValidationError[] };
 
@@ -23,8 +22,13 @@ interface ClientValidationResult {
   propErrors: PropErrors;
 }
 
-export function validateClientUsername(tpin) {
-  const response = {
+export interface ClientPropValidationResult {
+  valid: boolean;
+  errors: ClientPropValidationError[];
+}
+
+export function validateClientUsername(tpin: string): ClientPropValidationResult {
+  const response: ClientPropValidationResult = {
     valid: true,
     errors: [],
   };
@@ -35,8 +39,8 @@ export function validateClientUsername(tpin) {
   return response;
 }
 
-export function validateClientPassword(password) {
-  const response = {
+export function validateClientPassword(password: string): ClientPropValidationResult {
+  const response: ClientPropValidationResult = {
     valid: true,
     errors: [],
   };
@@ -60,7 +64,7 @@ export function validateClientPassword(password) {
 export function validateClient(client: LoadedClient): ClientValidationResult {
   /** Properties that must exist on each client */
   // FIXME: Remove this since it's handled by Typescript now.
-  const requiredProps: Array<keyof LoadedClient> = ['name', 'username', 'password'];
+  const requiredProps: Array<ClientProps> = ['name', 'username', 'password'];
   const propErrors: PropErrors = {};
   const missingProps = [];
   for (const prop of requiredProps) {
@@ -79,14 +83,14 @@ export function validateClient(client: LoadedClient): ClientValidationResult {
     const validationResult = validateClientUsername(client.username);
     if (!validationResult.valid) {
       validationErrors.push(...validationResult.errors);
-      propErrors.username.push(...validationResult.errors);
+      propErrors.username!.push(...validationResult.errors);
     }
   }
   if (!missingProps.includes('password')) {
     const validationResult = validateClientPassword(client.password);
     if (!validationResult.valid) {
       validationErrors.push(...validationResult.errors);
-      propErrors.password.push(...validationResult.errors);
+      propErrors.password!.push(...validationResult.errors);
     }
   }
   return {

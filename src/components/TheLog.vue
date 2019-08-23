@@ -47,17 +47,14 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import { writeCsv, writeJson, renderTable } from '@/backend/file_utils';
 import { mapState, mapGetters } from 'vuex';
 import { ExportFormatCode } from '@/backend/constants';
 import { anonymizeClientsInOutput } from '@/backend/client_actions/utils';
-
-/**
- * @typedef {import('@/store/modules/log').LogType} LogType
- */
+import { LogType, LogLine } from '@/store/modules/log';
 
 // TODO: Consider merging this with `TaskListItem`'s `stateIcons`
 export const typeIcons = {
@@ -68,14 +65,31 @@ export const typeIcons = {
 };
 
 export const typeTooltips = {
-  success: 'Success',
-  error: 'Error',
-  warning: 'Warning',
-  info: 'Information',
+  [LogType.SUCCESS]: 'Success',
+  [LogType.ERROR]: 'Error',
+  [LogType.WARNING]: 'Warning',
+  [LogType.INFO]: 'Information',
 };
 
-/** @type {import('@/backend/constants').ExportFormatCode[]} */
-const exportTypes = [ExportFormatCode.TXT, ExportFormatCode.CSV, ExportFormatCode.JSON];
+const exportTypes: ExportFormatCode[] = [
+  ExportFormatCode.TXT,
+  ExportFormatCode.CSV,
+  ExportFormatCode.JSON,
+];
+
+interface ComponentData {
+  lines: LogLine[];
+  /**
+   * TODO: Document me better
+   * Object map containing whether the log has changed since the corresponding export type
+   * was queried.
+   */
+  logChanged: { [exportType: string]: boolean };
+  /**
+   * Cached log strings stored by export type.
+   */
+  cachedLog: { [exportType: string]: string };
+}
 
 export default {
   name: 'TheLog',
@@ -83,20 +97,10 @@ export default {
     ExportButtons,
     EmptyMessage,
   },
-  data() {
+  data(): ComponentData {
     return {
       lines: [],
-      /**
-       * TODO: Document me better
-       * Object map containing whether the log has changed since the corresponding export type
-       * was queried.
-       * @type {Object.<ExportType, Boolean>}
-       */
       logChanged: {},
-      /**
-       * Cached log strings stored by export type.
-       * @type {Object.<ExportType, String>}
-       */
       cachedLog: {},
     };
   },
@@ -141,17 +145,15 @@ export default {
   },
   methods: {
     /**
-     * @param {LogType} type
-     * @returns {string} Icon name
+     * @returns Icon name
      */
-    getTypeIcon(type) {
+    getTypeIcon(type: LogType): string {
       return typeIcons[type];
     },
     /**
-     * @param {LogType} type
-     * @returns {string} Tooltip
+     * @returns Tooltip
      */
-    getTypeTooltip(type) {
+    getTypeTooltip(type: LogType): string {
       return typeTooltips[type];
     },
     updateLines(value) {
@@ -189,12 +191,14 @@ export default {
         });
         output = renderTable(table);
       } else if (type === ExportFormatCode.CSV) {
-        output = writeCsv(this.lines.map(line => ({
-          timestamp: line.timestamp,
-          type: line.type,
-          category: line.category,
-          content: line.content,
-        })));
+        output = writeCsv(
+          this.lines.map(line => ({
+            timestamp: line.timestamp,
+            type: line.type,
+            category: line.category,
+            content: line.content,
+          })),
+        );
       } else if (type === ExportFormatCode.JSON) {
         output = writeJson(this.lines);
       }

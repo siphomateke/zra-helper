@@ -1,10 +1,10 @@
+import Vue, { ComponentOptions } from 'vue';
+
 /**
  * Generates a mixin that syncs a particular component property with the components `value`
  * property. It also fires the `input` event whenever the property changes.
- * @param {string} name
- * @returns {import('vue').ComponentOptions}
  */
-export function generateValueSyncMixin(name) {
+export function generateValueSyncMixin(name: string): ComponentOptions<Vue> {
   return {
     data() {
       return {
@@ -24,11 +24,11 @@ export function generateValueSyncMixin(name) {
 
 /**
  * Generates a mixin that syncs a components data property with a prop.
- * @param {string} internalProp
- * @param {string} syncProp
- * @returns {import('vue').ComponentOptions}
  */
-export function generatePropSyncMixin(internalProp, syncProp) {
+export function generatePropSyncMixin(
+  internalProp: string,
+  syncProp: string,
+): ComponentOptions<Vue> {
   return {
     data() {
       return {

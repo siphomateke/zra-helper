@@ -33,6 +33,7 @@ import {
   getInput,
   ClientActionOptions,
   BasicRunnerOutput,
+  ClientActionObject,
 } from '../base';
 import { TaskId } from '@/store/modules/tasks';
 
@@ -181,7 +182,7 @@ interface TaxTypeFailure {
   failed: boolean;
 }
 
-type TaxTypeFailures = { [key: string]: TaxTypeFailure };
+type TaxTypeFailures = TaxTypeIdMap<TaxTypeFailure>;
 
 type TaxTypeTaskTitleFn = (taxType: TaxTypeCode) => string;
 
@@ -642,8 +643,7 @@ interface ReturnHistoryDownloadFnOptions {
   parentTaskId: TaskId;
 }
 
-// FIXME: Add correct return type
-export type ReturnHistoryDownloadFn = (options: ReturnHistoryDownloadFnOptions) => any;
+export type ReturnHistoryDownloadFn = (options: ReturnHistoryDownloadFnOptions) => Promise<void>;
 
 interface ReturnHistoryDownloadRunnerConstructorOptions {
   downloadItemsTaskTitle: DownloadItemsTaskTitleFn;
@@ -662,11 +662,11 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryReturnDependentRun
 
   downloadFunc: ReturnHistoryDownloadFn;
 
-  // FIXME: TypeScript: Add action type
-  constructor(action, {
+  // TODO: Decide if this action parameter is typed properly
+  constructor(action: ClientActionObject<any, any>, {
     downloadItemsTaskTitle = () => '',
     downloadTaxTypeTaskTitle = null,
-    downloadFunc = () => { },
+    downloadFunc = async () => { },
   }: ReturnHistoryDownloadRunnerConstructorOptions) {
     super(action);
 

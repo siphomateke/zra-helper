@@ -10,9 +10,9 @@
       >
         <!-- eslint-enable max-len -->
         <b-input
-          v-validate="'loginDetails'"
           ref="loginDetailsInput"
           v-model="loginDetails"
+          v-validate="'loginDetails'"
           name="login_details"
           @input="updateLoginDetails"
         />
@@ -40,8 +40,8 @@
         label="Username"
       >
         <b-input
-          v-validate="'required|clientUsername'"
           v-model="client.username"
+          v-validate="'required|clientUsername'"
           name="client_username"
         />
       </b-field>
@@ -53,8 +53,8 @@
         label="Password"
       >
         <b-input
-          v-validate="'required|clientPassword'"
           v-model="client.password"
+          v-validate="'required|clientPassword'"
           name="client_password"
           type="password"
           password-reveal
@@ -64,7 +64,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import parseAndValidateLoginDetails from '@/validation/rules/loginDetails';
 import { objectHasProperties } from '../../utils';
 
@@ -135,8 +135,7 @@ export default {
     focus() {
       this.$refs.loginDetailsInput.focus();
       this.$nextTick(() => {
-        /** @type {{input: HTMLInputElement}} */
-        const { input } = this.$refs.loginDetailsInput.$refs;
+        const { input }: {input: HTMLInputElement} = this.$refs.loginDetailsInput.$refs;
         input.setSelectionRange(0, input.value.length);
       });
     },

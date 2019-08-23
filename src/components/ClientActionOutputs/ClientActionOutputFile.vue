@@ -14,10 +14,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import ClientActionOutputPreview from './ClientActionOutputPreview.vue';
 import ExportButtons from '@/components/ExportData/ExportButtons.vue';
 import { validateActionOutputFile } from '../../backend/client_actions/base';
+import { ExportFormatCode } from '@/backend/constants';
 
 export default {
   name: 'ClientActionOutputFile',
@@ -66,10 +67,7 @@ export default {
     },
   },
   methods: {
-    /**
-     * @param {import('@/backend/constants').ExportFormatCode} format
-     */
-    async formatOutput(format, anonymizeClients = false) {
+    async formatOutput(format: ExportFormatCode, anonymizeClients = false) {
       return this.outputFile.formatter({
         output: this.outputFile.value,
         format,
