@@ -1,18 +1,30 @@
 import { getElementFromDocument } from './elements';
 import { parseTable } from './zra';
 import { ReceiptType } from '@/backend/client_actions/receipts';
-import { PaymentReceiptData } from '@/backend/client_actions/payment_history';
-
-// FIXME: Use TypeScript
 
 interface ReceiptData {
   registrationDate: string;
   referenceNumber: string;
 }
 
-// TODO: Rename
-interface PaymentReceiptData2 extends ReceiptData {
-  payments: PaymentReceiptData[];
+interface PaymentReceiptPayment {
+  taxType: string;
+  accountName: string;
+  liabilityType: string;
+  periodFrom: string;
+  periodTo: string;
+  chargeYear: string;
+  chargeQuater: string;
+  alternativeNumber: string;
+  amount: string;
+}
+
+export interface PaymentReceiptData extends ReceiptData {
+  prn: string;
+  paymentDate: string;
+  searchCode: string;
+  paymentType: string;
+  payments: PaymentReceiptPayment[];
 }
 
 export interface AcknowledgementReceiptData {
@@ -21,14 +33,21 @@ export interface AcknowledgementReceiptData {
   liabilityAmount: string;
 }
 
+// FIXME: Force keys to be `ReceiptType`
+export interface GetDataFromReceiptResponses {
+  payment: PaymentReceiptData;
+  ack_receipt: AcknowledgementReceiptData;
+}
+
 // TODO: Improve performance by only getting the data that is required. For instance, registration
 // date and reference number doesn't always need to be retrieved.
-export default function getDataFromReceipt(
+export default function getDataFromReceipt<T extends ReceiptType>(
   root: HTMLDocument | HTMLElement,
-  type: ReceiptType,
-): PaymentReceiptData2 | AcknowledgementReceiptData {
-  const data = {};
-
+  type: T,
+): GetDataFromReceiptResponses[T] {
+  // TODO: Consider not forcing TS to think this has all the expected properties. It might be
+  // risky assuming the correct receipt type is always passed.
+  const data: GetDataFromReceiptResponses[T] = {} as GetDataFromReceiptResponses[T];
   const mainTable = getElementFromDocument(
     root,
     'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
@@ -54,7 +73,7 @@ export default function getDataFromReceipt(
 
     data.registrationDate = registrationDate;
     data.referenceNumber = referenceNumber;
-    const rows = {
+    const rows: { [key in keyof PaymentReceiptData]?: number } = {
       prn: 4,
       paymentDate: 5,
       searchCode: 6,
@@ -111,6 +130,5 @@ export default function getDataFromReceipt(
     [, data.liabilityAmount] = matches;
   }
 
-  // FIXME: Document return value
   return data;
 }

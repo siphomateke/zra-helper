@@ -30,7 +30,7 @@ import {
   getInput,
 } from './base';
 import { InvalidReceiptError } from '../errors';
-import getDataFromReceipt from '../content_scripts/helpers/receipt_data';
+import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
 import { TaskId } from '@/store/modules/tasks';
 
 interface PrnNo {
@@ -209,7 +209,7 @@ function downloadPaymentReceipt({
 
   return downloadPage({
     async filename(dataSource) {
-      let receiptData;
+      let receiptData: PaymentReceiptData;
       if (dataSource instanceof HTMLDocument) {
         receiptData = await getDataFromReceipt(dataSource, 'payment');
       } else {

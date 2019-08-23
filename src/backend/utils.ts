@@ -16,6 +16,7 @@ import PromiseQueue from './promise_queue';
 import {
   ContentScriptCommand,
   ContentScriptMessageFromCommand,
+  ContentScriptResponseFromCommand,
 } from './content_scripts/commands/types';
 
 /**
@@ -117,14 +118,17 @@ export async function executeScript(tabId: number, filename: string, vendor: boo
  * the script.
  * @param message Message that will be sent to the script.
  */
-export async function runContentScript<C extends ContentScriptCommand>(
+export async function runContentScript<
+  C extends ContentScriptCommand,
+  M extends ContentScriptMessageFromCommand<C>,
+  R extends ContentScriptResponseFromCommand<C, M>
+>(
   tabId: number,
   id: C,
   // FIXME: Make message type not include command
-  message: ContentScriptMessageFromCommand<C> | object = {},
-) {
+  message: M | object = {},
+): Promise<R | object> {
   await executeScript(tabId, id);
-  // FIXME: Type response
   const response = await sendMessage(tabId, {
     command: id,
     ...message,
