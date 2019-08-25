@@ -5,7 +5,7 @@
   "bugs": {
     "url": "https://github.com/siphomateke/zra-helper/issues"
   },
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "A browser extension that automates various aspects of the ZRA website.",
   "scripts": {
     "serve": "vue-cli-service build --mode development --watch",
