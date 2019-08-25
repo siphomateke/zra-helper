@@ -86,6 +86,7 @@ export default function getDataFromReceipt(root, type) {
     }
     data.payments = payments;
   } else if (type === 'ack_receipt') {
+    // Tax type in the format: 'Tax Type :  IT Partnership'
     const taxType = getElementFromDocument(
       mainTable,
       'tbody>tr:nth-child(10)>td:nth-child(2)',
@@ -93,12 +94,12 @@ export default function getDataFromReceipt(root, type) {
     ).innerText;
     /*
     Possible tax types include:
-    - IT-Provisional
-    - IT-Individual
-    - IT-Non Individual
-    - IT-Partnership
+    - IT Provisional
+    - IT Individual
+    - IT Non Individual
+    - IT Partnership
     */
-    data.provisional = taxType === 'IT-Provisional';
+    data.provisional = taxType.includes('IT Provisional');
   }
 
   return data;
