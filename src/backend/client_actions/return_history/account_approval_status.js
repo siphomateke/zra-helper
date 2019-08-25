@@ -103,6 +103,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
                   statusType: taxReturn.statusType,
                   statusDescription: taxReturn.statusDescription,
                   applicationType: taxReturn.applicationType,
+                  returnAppliedDate: taxReturn.returnAppliedDate,
                   provisional: provisionalCol,
                 });
               }
@@ -121,6 +122,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
         ['statusType', 'Status type'],
         ['statusDescription', 'Status description'],
         ['applicationType', 'Application Type'],
+        ['returnAppliedDate', 'Return applied date'],
         ['provisional', 'Provisional/Annual'],
       ]);
       const rows = objectToCsvTable(csvOutput, columns);
