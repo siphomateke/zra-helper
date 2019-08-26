@@ -346,13 +346,14 @@ export function tabLoaded(
       );
     }, timeout);
 
-    const tab = await browser.tabs.get(desiredTabId);
-    // Make sure the tab is currently loading
-    if (tab.status !== 'loading') {
-      clearTimeout(timeoutId);
-      removeListeners();
-      resolve();
-    }
+    browser.tabs.get(desiredTabId).then((tab) => {
+      // Make sure the tab is currently loading
+      if (tab.status !== 'loading') {
+        clearTimeout(timeoutId);
+        removeListeners();
+        resolve();
+      }
+    }).catch(reject);
   });
 }
 
