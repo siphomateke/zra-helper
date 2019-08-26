@@ -11,7 +11,62 @@
     {
       "type": "npm",
       "script": "serve",
-      "problemMatcher": []
+      "problemMatcher": {
+        "owner": "ts",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^ERROR\\sin\\s(.+)$",
+            "file": 1
+          },
+          {
+            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
+        ]
+      },
+    },
+    {
+      "type": "npm",
+      "script": "serve:chrome",
+      "problemMatcher": {
+        "owner": "ts",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^ERROR\\sin\\s(.+)$",
+            "file": 1
+          },
+          {
+            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
+        ]
+      },
+    },
+    {
+      "type": "npm",
+      "script": "serve:firefox",
+      "problemMatcher": {
+        "owner": "ts",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^ERROR\\sin\\s(.+)$",
+            "file": 1
+          },
+          {
+            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
+        ]
+      },
     },
     {
       "type": "npm",
@@ -29,6 +84,15 @@
       "type": "npm",
       "script": "serve:firefox",
       "problemMatcher": []
+    },
+    {
+      "label": "tsc",
+      "type": "shell",
+      "command": "./node_modules/.bin/tsc",
+      "args": [
+        "--noEmit"
+      ],
+      "problemMatcher": "$tsc"
     },
     {
       "type": "npm",
