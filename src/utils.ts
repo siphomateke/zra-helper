@@ -7,26 +7,31 @@ export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 // TODO: Consider renaming this
 export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 
-// FIXME: Fix typing
-export function objectFlip<O extends object, K extends keyof O, V extends O[K]>(
+export const objKeysExact = Object.keys as <T>(o: T) => (Extract<keyof T, string>)[];
+
+export function objectFlip<O extends { [key: string]: any }, K extends keyof O, V extends O[K]>(
   obj: O,
 ): { [key in V]: K } {
-  const ret = {};
+  const ret: { [key in V]: K } = {} as { [key in V]: K };
   Object.keys(obj).forEach((key) => {
-    ret[obj[key]] = key;
+    const val: V = obj[key];
+    // FIXME: Find out if `key` will always be assignable to `K`
+    ret[val] = <K>key;
   });
   return ret;
 }
+
 /**
  * Array.map for Objects
  */
-// FIXME: Fix typing
-export function mapObject<O, K extends keyof O, R>(
+// TODO: Make sure this returns the correct type for every possible passed object type.
+export function mapObject<O extends object, R>(
   obj: O,
-  callback: (value: O[K], key: K, obj: O) => R,
+  callback: (value: O[Extract<keyof O, string>], key: Extract<keyof O, string>, obj: O) => R,
 ) {
-  const result: { [key in K]: R } = {};
-  for (const key of Object.keys(obj)) {
+  type K = Extract<keyof O, string>;
+  const result: { [key in K]: R } = {} as { [key in K]: R };
+  for (const key of objKeysExact(obj)) {
     result[key] = callback.call(obj, obj[key], key, obj);
   }
   return result;

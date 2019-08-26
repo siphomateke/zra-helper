@@ -1,5 +1,6 @@
 import { ElementNotFoundError, ElementsNotFoundError } from '@/backend/errors';
 import getConfig from './config';
+import { objKeysExact } from '@/utils';
 
 /**
  * Used when debugging to generate an HTML string from a Node (document or element).
@@ -50,9 +51,9 @@ export function getElementsFromDocument<T extends Selectors>(
   /** Selectors of missing elements. */
   const missingSelectors: string[] = [];
   const els: ElementsFromSelectors<T> = {} as ElementsFromSelectors<T>;
-  for (const name of Object.keys(selectors)) {
+  for (const name of objKeysExact(selectors)) {
     const selector = selectors[name];
-    els[(<keyof T>name)] = document.querySelector<HTMLElement>(selector);
+    els[name] = document.querySelector<HTMLElement>(selector);
     if (!els[name]) {
       missingElements.push(name);
       missingSelectors.push(selector);

@@ -26,13 +26,14 @@ import getDataFromReceipt, { AcknowledgementReceiptData } from '@/backend/conten
 import createTask from '@/transitional/tasks';
 import store from '@/store';
 import { ClientActionOutput } from '@/store/modules/client_actions/types';
+import { objKeysExact } from '@/utils';
 
 function getFinancialAccountStatusType(
   status: FinancialAccountStatus,
 ): FinancialAccountStatusType | null {
-  for (const type of Object.keys(financialAccountStatusTypesMap)) {
-    if (financialAccountStatusTypesMap[(<FinancialAccountStatusType>type)].includes(status)) {
-      return <FinancialAccountStatusType>type;
+  for (const type of objKeysExact(financialAccountStatusTypesMap)) {
+    if (financialAccountStatusTypesMap[type].includes(status)) {
+      return type;
     }
   }
   return null;
@@ -120,8 +121,8 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
               if (value) {
                 const clientIdentifier = getClientIdentifier(client, anonymizeClients);
                 const clientOutput: FormattedOutput.CSV.ClientOutput = {};
-                for (const taxTypeId of Object.keys(value)) {
-                  const taxReturns = value[(<TaxTypeNumericalCode>taxTypeId)]!;
+                for (const taxTypeId of objKeysExact(value)) {
+                  const taxReturns = value[taxTypeId]!;
                   const rows: FormattedOutput.CSV.Row[] = [];
                   for (const taxReturn of taxReturns) {
                     let provisionalCol = null;
@@ -271,8 +272,8 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
     await super.runInternal();
 
     const output: AccountApprovalStatusClientAction.Output = {};
-    for (const taxTypeId of Object.keys(this.taxTypeReturns)) {
-      const taxReturns = this.taxTypeReturns[taxTypeId];
+    for (const taxTypeId of objKeysExact(this.taxTypeReturns)) {
+      const taxReturns = this.taxTypeReturns[taxTypeId]!;
       const taxTypeOutput = [];
       for (const taxReturn of taxReturns) {
         // All status' have '*' at the end. Remove it.

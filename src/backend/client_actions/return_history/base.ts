@@ -36,6 +36,7 @@ import {
   ClientActionObject,
 } from '../base';
 import { TaskId } from '@/store/modules/tasks';
+import { objKeysExact } from '@/utils';
 
 /** Excise type numerical code. For example, '20025012' (Airtime) and '20025007' (ElectricalEnergy). */
 enum ExciseType {
@@ -276,7 +277,7 @@ export class ReturnHistoryRunner<
   anyFailures: boolean = false;
 
   /** Returns per tax type ID. Includes returns that are being retried. */
-  taxTypeReturns: { [taxTypeId: string]: TaxReturn[] } = {};
+  taxTypeReturns: TaxTypeIdMap<TaxReturn[]> = {};
 
   // TODO: Make sure the reason is always known.
   getUnknownRetryReasonMessage = () => 'Failed for unknown reason.';
@@ -436,8 +437,8 @@ export class ReturnHistoryRunner<
    */
   anyPagesFailed() {
     let anyPagesFailed = false;
-    for (const taxTypeId of Object.keys(this.failures)) {
-      const failure = this.failures[taxTypeId];
+    for (const taxTypeId of objKeysExact(this.failures)) {
+      const failure = this.failures[taxTypeId]!;
       if (failure.returnHistoryPages.length > 0) {
         anyPagesFailed = true;
       }
@@ -465,8 +466,8 @@ export class ReturnHistoryRunner<
     const retryInput: RunnerInput = {
       taxTypeIds: [],
     };
-    for (const taxTypeId of Object.keys(this.failures)) {
-      const failure = this.failures[taxTypeId];
+    for (const taxTypeId of objKeysExact(this.failures)) {
+      const failure = this.failures[taxTypeId]!;
       if (failure.returnHistoryPages.length > 0) {
         set(retryInput, ['returnHistoryPages', taxTypeId], failure.returnHistoryPages);
       }
@@ -646,8 +647,8 @@ export abstract class ReturnHistoryReturnDependentRunner<
    * Whether running anything on returns failed.
    */
   anyReturnsFailed() {
-    for (const taxTypeId of Object.keys(this.failures)) {
-      const failure = this.failures[taxTypeId];
+    for (const taxTypeId of objKeysExact(this.failures)) {
+      const failure = this.failures[taxTypeId]!;
       if (failure.returns.length > 0) {
         return true;
       }
@@ -657,8 +658,8 @@ export abstract class ReturnHistoryReturnDependentRunner<
 
   getRetryInput() {
     const retryInput = super.getRetryInput();
-    for (const taxTypeId of Object.keys(this.failures)) {
-      const failure = this.failures[taxTypeId];
+    for (const taxTypeId of objKeysExact(this.failures)) {
+      const failure = this.failures[taxTypeId]!;
       if (failure.returns.length > 0) {
         set(retryInput, ['returns', taxTypeId], failure.returns);
       }

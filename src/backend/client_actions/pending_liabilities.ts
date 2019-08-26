@@ -22,7 +22,7 @@ import {
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
-import { deepAssign, joinSpecialLast } from '@/utils';
+import { deepAssign, joinSpecialLast, objKeysExact } from '@/utils';
 import { parseAmountString } from '../content_scripts/helpers/zra';
 import { TaskId } from '@/store/modules/tasks';
 import { ClientActionOutputs, ClientActionOutput } from '@/store/modules/client_actions/types';
@@ -253,9 +253,9 @@ const outputFormatter: OutputFormatter = function outputFormatter({
       const outputValue = output.value;
       if (outputValue !== null) {
         const taxTypeErrors: FormattedOutput.JSON.TaxTypeErrors = {};
-        for (const taxTypeCode of Object.keys(outputValue.retrievalErrors)) {
-          const error = outputValue.retrievalErrors[<TaxTypeCode>taxTypeCode];
-          taxTypeErrors[<TaxTypeCode>taxTypeCode] = errorToString(error);
+        for (const taxTypeCode of objKeysExact(outputValue.retrievalErrors)) {
+          const error = outputValue.retrievalErrors[taxTypeCode];
+          taxTypeErrors[taxTypeCode] = errorToString(error);
         }
         json[client.id] = {
           client: jsonClient,
@@ -418,16 +418,16 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
     // Only include retrieval errors for tax types that have yet to be retrieved successfully.
     // For example, if getting ITX failed in the first run but succeeded in the last run, the
     // retrieval error should be discarded.
-    const retrievalErrors = {};
+    const retrievalErrors: { [taxTypeId in TaxTypeCode]?: any } = {};
     if ('retrievalErrors' in prevOutput) {
-      for (const taxTypeId of Object.keys(prevOutput.retrievalErrors)) {
+      for (const taxTypeId of objKeysExact(prevOutput.retrievalErrors)) {
         if (!(taxTypeId in totals)) {
           retrievalErrors[taxTypeId] = prevOutput.retrievalErrors[taxTypeId];
         }
       }
     }
     if ('retrievalErrors' in output) {
-      for (const taxTypeId of Object.keys(output.retrievalErrors)) {
+      for (const taxTypeId of objKeysExact(output.retrievalErrors)) {
         retrievalErrors[taxTypeId] = output.retrievalErrors[taxTypeId];
       }
     }
@@ -472,7 +472,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
       }
     }
     this.setOutput(output);
-    const failedTaxTypes = Object.keys(output.retrievalErrors);
+    const failedTaxTypes = objKeysExact(output.retrievalErrors);
     if (failedTaxTypes.length > 0) {
       this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);
       this.storeProxy.retryInput = { taxTypeIds: failedTaxTypeIds };

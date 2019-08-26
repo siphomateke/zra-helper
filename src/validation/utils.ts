@@ -1,4 +1,5 @@
 import { Validator, Rules, VerifyResult } from 'vee-validate';
+import { objKeysExact } from '@/utils';
 
 type ValidationResults<T> = { [key in keyof T]?: VerifyResult };
 
@@ -29,7 +30,8 @@ export async function validateObject<R extends ValidationRules>(
   validationRules: R,
   errorsOnly: boolean = false
 ): Promise<ValidationResults<R> | string[]> {
-  const properties = Object.keys(validationRules);
+  // FIXME: Make sure using `objKeysExact` isn't a mistake here.
+  const properties = objKeysExact(validationRules);
   const validationResults: ValidationResults<R> = {};
   await Promise.all(properties.map(
     prop => validator.verify(obj[prop], validationRules[prop], {
