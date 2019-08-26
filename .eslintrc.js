@@ -20,6 +20,9 @@ module.exports = {
     'no-plusplus': 'off',
     'no-shadow': 'off',
     'vue/prop-name-casing': 'error',
+    // Don't check for duplicate exports because TypeScript allows duplicate exports when
+    // overloading functions
+    'import/export': 'off',
   },
   overrides: [
     {

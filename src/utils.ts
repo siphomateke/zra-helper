@@ -4,6 +4,8 @@ import deepMerge from 'deepmerge';
 import { BrowserCode } from './backend/constants';
 
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+// TODO: Consider renaming this
+export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 
 // FIXME: Fix typing
 export function objectFlip<O extends object, K extends keyof O, V extends O[K]>(

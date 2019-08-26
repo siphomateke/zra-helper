@@ -16,6 +16,7 @@ import md5 from 'md5';
 import { checkLogin } from '../content_scripts/helpers/check_login';
 import { TaskState, TaskId } from '@/store/modules/tasks';
 import { Client } from '../constants';
+import { RequiredBy } from '@/utils';
 
 /**
  * Creates a canvas from a HTML image element
@@ -119,11 +120,11 @@ async function getCaptchaText(maxCaptchaRefreshes: number): Promise<number | nul
   return answer;
 }
 
-interface LoginFnOptions {
+interface LoginFnOptions<KeepTabOpen extends boolean> {
   client: Client;
   parentTaskId: TaskId;
   /** Whether the logged in tab should be kept open after logging in. */
-  keepTabOpen?: boolean;
+  keepTabOpen?: KeepTabOpen;
   /**
    * Whether to close the tab if any errors occurred when checking if the client was successfully
    * logged in. Only used when `keepTabOpen` is true.
@@ -131,24 +132,25 @@ interface LoginFnOptions {
   closeOnErrors?: boolean;
 }
 
-interface LoginResponse {
+interface LoginResponse<TabId extends number | null> {
   /** The ID of the logged in tab. */
-  tabId: number;
+  tabId: TabId;
   /** Any error that occurred checking if the client was successfully logged in. */
   checkLoginError?: any;
 }
 
+export async function login<T extends boolean>(options: RequiredBy<LoginFnOptions<T>, 'keepTabOpen'>): Promise<LoginResponse<T extends true ? number : null>>;
+export async function login(options: LoginFnOptions<any>): Promise<LoginResponse<null>>;
 /**
  * Creates a new tab, logs in and then closes the tab
  * @throws {import('@/backend/errors').ExtendedError}
  */
-// FIXME: Fix type so return is tab ID only if keepTabOpen=true.
 export async function login({
   client,
   parentTaskId,
   keepTabOpen = false,
   closeOnErrors = true,
-}: LoginFnOptions): Promise<LoginResponse> {
+}: LoginFnOptions<boolean>): Promise<LoginResponse<number | null>> {
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
@@ -281,7 +283,7 @@ export async function logout({ parentTaskId }: LogoutFnOptions): Promise<void> {
   });
 }
 
-interface RobustLoginFnOptions extends LoginFnOptions {
+interface RobustLoginFnOptions<KeepTabOpen extends boolean> extends LoginFnOptions<KeepTabOpen> {
   /** The maximum number of times an attempt should be made to login to a client. */
   maxAttempts: number;
   /**
@@ -292,6 +294,8 @@ interface RobustLoginFnOptions extends LoginFnOptions {
   closeOnErrors?: boolean;
 }
 
+export async function robustLogin<T extends boolean>(options: RequiredBy<RobustLoginFnOptions<T>, 'keepTabOpen'>): Promise<T extends true ? number : null>;
+export async function robustLogin(options: RobustLoginFnOptions<any>): Promise<null>;
 /**
  * Logs in a client and retries if already logged in as another client
  * @returns The ID of the logged in tab.
@@ -302,7 +306,7 @@ export async function robustLogin({
   maxAttempts,
   keepTabOpen = false,
   closeOnErrors = true,
-}: RobustLoginFnOptions): Promise<number | null> {
+}: RobustLoginFnOptions<boolean>): Promise<number | null> {
   const task = await createTask(store, {
     title: 'Robust login',
     parent: parentTaskId,
