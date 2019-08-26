@@ -1,6 +1,6 @@
 import moment from 'moment';
 import { getDocumentByAjax } from '../utils';
-import { parseTableAdvanced } from '../content_scripts/helpers/zra';
+import { parseTableAdvanced, ParsedTableLinkCell } from '../content_scripts/helpers/zra';
 import {
   taskFunction,
   downloadPages,
@@ -32,7 +32,7 @@ import { InvalidReceiptError } from '../errors';
 import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
 import { TaskId } from '@/store/modules/tasks';
 
-interface PrnNo {
+interface PrnNo extends ParsedTableLinkCell {
   /** E.g. '118019903987' */
   innerText: string;
   /**
@@ -99,12 +99,34 @@ async function getPaymentReceipts(
   if (records.length > 0) {
     // Remove header row
     records.shift();
+  }
+  // Since `parseLinks` is true when parsing the table, if any of the cells contain links, they
+  // will be parsed. To make sure no fields that currently aren't links aren't parsed as links in
+  // the future, make sure to convert each cell to the correct type.
+  // TODO: Consider moving this logic into `parseTableAdvanced`.
+  let convertedRecords: PaymentReceipt[] = records.map((record) => {
+    const convertedRecord: PaymentReceipt = {} as PaymentReceipt;
+    for (const key of Object.keys(record) as (keyof typeof record)[]) {
+      const value = record[key];
+      if (key !== 'prnNo') {
+        if (typeof value === 'string') {
+          convertedRecord[key] = value;
+        } else {
+          convertedRecord[key] = value.innerText;
+        }
+      } else {
+        convertedRecord[key] = <ParsedTableLinkCell>value;
+      }
+    }
+    return convertedRecord;
+  });
+  if (convertedRecords.length > 0) {
     // Ignore all the payment registrations
-    records = records.filter(record => record.status.toLowerCase() !== 'prn generated');
+    convertedRecords = convertedRecords.filter(record => record.status.toLowerCase() !== 'prn generated');
   }
   return {
     numPages: table.numPages,
-    value: records,
+    value: convertedRecords,
   };
 }
 

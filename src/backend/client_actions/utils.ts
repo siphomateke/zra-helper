@@ -21,7 +21,7 @@ import {
   Client,
   TaxAccountName,
 } from '../constants';
-import { getCurrentBrowser } from '@/utils';
+import { getCurrentBrowser, RequiredBy, Omit } from '@/utils';
 import { parseTableAdvanced, ParsedTableRecord } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
 import { Store } from 'vuex';
@@ -29,15 +29,20 @@ import downloadSingleHtmlFile from '../html_bundler';
 import { ImagesInTabFailedToLoad } from '../errors';
 import { LoadedImagesResponse } from '@/backend/content_scripts/helpers/images';
 
-interface TaskFunctionOptions<R> {
+/**
+ * @template C catchErrors value
+ */
+interface TaskFunctionOptions<R, C extends boolean> {
   task: TaskObject;
   func: () => Promise<R>;
   /** Whether the task's state should be set after completing without errors. */
   setState?: boolean;
   setStateBasedOnChildren?: boolean;
-  catchErrors?: boolean;
+  catchErrors?: C;
 }
 
+export async function taskFunction<R, T extends boolean>(options: RequiredBy<TaskFunctionOptions<R, T>, 'catchErrors'>): Promise<T extends true ? R | null : R>;
+export async function taskFunction<R>(options: TaskFunctionOptions<R, any>): Promise<R>;
 /**
  * Sets a task's state, error and completion status based on an async function.
  *
@@ -51,7 +56,7 @@ export async function taskFunction<R>({
   setState = true,
   setStateBasedOnChildren = false,
   catchErrors = false,
-}: TaskFunctionOptions<R>): Promise<R> {
+}: TaskFunctionOptions<R, boolean>): Promise<R | null> {
   try {
     const response = await func();
     if (setState) {
@@ -65,7 +70,6 @@ export async function taskFunction<R>({
   } catch (error) {
     task.setError(error);
     if (catchErrors) {
-      // FIXME: Conditionally allow null return type if `catchErrors` is true.
       return null;
     }
     throw error;
@@ -75,42 +79,45 @@ export async function taskFunction<R>({
 }
 
 /**
+ * @template I Current item in the loop.
+ * @template R Parallel task map function response
+ * 
  * @param item This can either be an item from the list if one is provided, or an index if count
  * is provided.
  * FIXME: Document parameters somehow.
  */
-type ParallelTaskMapFunction<R, ListItem> =
-  (item: number | ListItem, parentTaskId: number) => Promise<R>;
+type ParallelTaskMapFunction<I, R> = (item: I, parentTaskId: number) => Promise<R>;
 
 interface MultipleResponsesError {
   /** The error that occurred getting this item if there was one. */
   error: any;
+  value?: never;
 }
 
 interface MultipleResponsesValue<R> {
   /** The actual response for this item. */
   value: R;
+  error?: never;
 }
 
+// FIXME: Make sure these responses don't have values when they have errors and vice-versa.
+// Currently, if you check if `value` is defined, `error` is still present when it should
+// be undefined.
 export type MultipleResponses<R> = MultipleResponsesError | MultipleResponsesValue<R>;
 
-export type ParallelTaskMapResponse<R, ListItem> = MultipleResponses<R> & {
-  /** The corresponding item from the list or index that this response came from. */
-  // FIXME: Only set to number when count is defined in `ParallelTaskMapFnOptions`.
-  item: ListItem | number;
-};
+export type ParallelTaskMapResponse<R, I> =
+  MultipleResponses<R> & {
+    /** The corresponding item from the list or index that this response came from. */
+    item: I;
+  };
 
-interface ParallelTaskMapFnOptions<R, ListItem> {
-  /** The list to loop through */
-  list?: Array<ListItem>;
+interface ParallelTaskMapFnOptionsBase<I, R> {
   /** Optional index to start looping from */
   startIndex?: number;
-  /** The number of times to run. This is can be provided instead of a list. */
-  count?: number;
   /** The parent task */
   task: TaskObject;
   /** The function to run on each list item */
-  func: ParallelTaskMapFunction<R, ListItem>;
+  func: ParallelTaskMapFunction<I, R>;
   /**
    * Set this to false to disable the parent task's state from being automatically
    * set when all the async functions have completed.
@@ -124,6 +131,17 @@ interface ParallelTaskMapFnOptions<R, ListItem> {
   neverReject?: boolean;
 }
 
+type ParallelTaskMapFnOptions<Response, ListItem, Count extends number | undefined> =
+  ParallelTaskMapFnOptionsBase<Count extends undefined ? ListItem : number, Response> & ({
+    /** The list to loop through */
+    list: Array<ListItem>;
+    count?: never;
+  } | {
+    /** The number of times to run. This is can be provided instead of a list. */
+    count: Count;
+    list?: never;
+  });
+
 /**
  * Loops through a list or `count` number of times and runs a provided function asynchronously
  * on each item in the list or index.
@@ -133,7 +151,12 @@ interface ParallelTaskMapFnOptions<R, ListItem> {
  * An array containing responses from `func`. The responses contain the actual values returned
  * or the the errors encountered trying to get the responses.
  */
-export function parallelTaskMap<R, ListItem>({
+export function parallelTaskMap<
+  Response,
+  ListItem,
+  Item extends Count extends undefined ? ListItem : number,
+  Count extends number | undefined = undefined
+>({
   list,
   startIndex = 0,
   count,
@@ -141,7 +164,8 @@ export function parallelTaskMap<R, ListItem>({
   func,
   autoCalculateTaskState = true,
   neverReject = false,
-}: ParallelTaskMapFnOptions<R, ListItem>): Promise<Array<ParallelTaskMapResponse<R, ListItem>>> {
+}: ParallelTaskMapFnOptions<Response, ListItem, Count>):
+  Promise<Array<ParallelTaskMapResponse<Response, Item>>> {
   return new Promise((resolve, reject) => {
     task.sequential = false;
     task.unknownMaxProgress = false;
@@ -151,7 +175,7 @@ export function parallelTaskMap<R, ListItem>({
     if (typeof list !== 'undefined') {
       loopCount = list.length;
     } else if (typeof count !== 'undefined') {
-      loopCount = count;
+      loopCount = <number>count;
       listMode = false;
     } else {
       // eslint-disable-next-line max-len
@@ -161,10 +185,10 @@ export function parallelTaskMap<R, ListItem>({
     }
 
     task.progressMax = loopCount;
-    const promises: Promise<ParallelTaskMapResponse<R, ListItem>>[] = [];
+    const promises: Promise<ParallelTaskMapResponse<Response, Item>>[] = [];
     for (let i = startIndex; i < loopCount; i++) {
       // if not in list mode, item is the index
-      const item = listMode ? list![i] : i;
+      const item: Item = <Item>(listMode ? list![i] : i);
       promises.push(
         new Promise((resolve) => {
           func(item, task.id)
@@ -214,8 +238,8 @@ interface GetDataFromPageTaskFnOptions<R> {
   /** Function that generates a task's options given a page number and a parent task ID. */
   getTaskData: GetTaskData;
   /**
-   * A function that when given a page number will return the data from that page including the total
-   * number of pages.
+   * A function that when given a page number will return the data from that page including the
+   * total number of pages.
    */
   getDataFunction: GetDataFromPageFunction<R>;
   parentTaskId: TaskId;
@@ -250,8 +274,8 @@ interface GetPagedDataFnOptions<R> {
   task: TaskObject;
   getPageSubTask: GetTaskData;
   /**
-   *  A function that when given a page number will return the data from that page including the total
-   * number of pages.
+   * A function that when given a page number will return the data from that page including the
+   * total number of pages.
    */
   getDataFunction: GetDataFromPageFunction<R>;
   /** The index of the first page. */
@@ -275,10 +299,11 @@ export async function getPagedData<R>({
     getDataFunction,
   };
 
-  const parallelTaskMapOptions: ParallelTaskMapFnOptions<
+  const parallelTaskMapOptions: Omit<ParallelTaskMapFnOptions<
     GetDataFromPageFunctionReturn<R>,
-    number
-  > = {
+    number,
+    any
+  >, 'count' | 'list'> = {
     task,
     func: (page, parentTaskId) => getDataFromPageTask(
       Object.assign(
@@ -334,8 +359,7 @@ export async function getPagedData<R>({
       }
 
       for (const result of results) {
-        // FIXME: Define this properly to allow missing keys.
-        const response: PagedDataResponse<R> = { page: Number(result.item) };
+        const response: PagedDataResponse<R> = { page: Number(result.item) } as PagedDataResponse<R>;
         if (!('error' in result)) {
           response.value = result.value.value;
         } else {
@@ -546,7 +570,8 @@ async function imagesInTabHaveLoaded(tabId: number): LoadedImagesResponse {
   return runContentScript(tabId, 'find_unloaded_images');
 }
 
-type FilenameGenerator = (dataSource: browser.tabs.Tab | HTMLDocument) => Promise<string | string[]>;
+type FilenameGenerator =
+  (dataSource: browser.tabs.Tab | HTMLDocument) => Promise<string | string[]>;
 
 interface DownloadPageOptions {
   /**

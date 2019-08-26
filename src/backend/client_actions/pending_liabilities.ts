@@ -337,8 +337,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
       task: actionTask,
       list: taxTypeIds,
       async func(taxTypeId, parentTaskId) {
-        // FIXME: Remove this once parallelTaskMap ambiguous list or count is fixed.
-        return getPendingLiabilities(client, <TaxTypeNumericalCode>taxTypeId, parentTaskId);
+        return getPendingLiabilities(client, taxTypeId, parentTaskId);
       },
     });
 
@@ -348,8 +347,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
     };
     const failedTaxTypeIds = [];
     for (const response of responses) {
-      // FIXME: Remove this once parallelTaskMap ambiguous list or count is fixed.
-      const taxTypeId = <TaxTypeNumericalCode>response.item;
+      const taxTypeId = response.item;
       const taxType = taxTypes[taxTypeId];
       if ('value' in response) {
         output.totals[taxType] = Object.assign({}, response.value);
