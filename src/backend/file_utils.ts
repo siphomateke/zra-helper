@@ -128,7 +128,7 @@ class ObjectToCsvConverter {
     this.columnLabels = Array.from(this.columns.values());
   }
 
-  convertRecursive(data, root = false) {
+  convertRecursive(data: any, root = false) {
     if (
       data !== null
       && typeof data === 'object'
@@ -183,7 +183,7 @@ class ObjectToCsvConverter {
     }
   }
 
-  convert(obj) {
+  convert(obj: any) {
     this.convertRecursive(obj, true);
     return [this.columnLabels, ...this.rows];
   }

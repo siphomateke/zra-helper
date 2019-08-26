@@ -1,6 +1,7 @@
 import { getElementFromDocument } from './elements';
 import { parseTable } from './zra';
 import { ReceiptType } from '@/backend/client_actions/receipts';
+import { objKeysExact } from '@/utils';
 
 interface ReceiptData {
   registrationDate: string;
@@ -69,13 +70,14 @@ export default function getDataFromReceipt<T extends ReceiptType>(
 
     data.registrationDate = registrationDate;
     data.referenceNumber = referenceNumber;
-    const rows: { [key in keyof PaymentReceiptData]?: number } = {
+    // FIXME: Restrict keys to keys of `PaymentReceiptData` without allowing undefined non-defined keys.
+    const rows = {
       prn: 4,
       paymentDate: 5,
       searchCode: 6,
       paymentType: 7,
     };
-    for (const name of Object.keys(rows)) {
+    for (const name of objKeysExact(rows)) {
       data[name] = getElementFromDocument(
         infoTable,
         `tr:nth-child(${rows[name]})>td:nth-child(3)`,

@@ -245,7 +245,7 @@ class TabCreator {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
       while (this.queue.length > 0 && this.slotFree()) {
-        const callback = <Function> this.queue.shift();
+        const callback = <Function>this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
 
@@ -376,7 +376,7 @@ export interface CreateTabPostOptions {
   /** The URL to send a POST request to */
   url: string;
   /** The POST parameters */
-  data: object;
+  data: { [key: string]: any };
   /** Whether the tab should become the active tab in the window */
   active?: boolean;
 }
@@ -591,7 +591,7 @@ interface RequestOptions {
   /** Type of request */
   method?: 'get' | 'post';
   /** POST request data */
-  data?: object;
+  data?: { [key: string]: any };
   responseType?: string;
 }
 

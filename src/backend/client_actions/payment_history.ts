@@ -31,6 +31,7 @@ import {
 import { InvalidReceiptError } from '../errors';
 import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
 import { TaskId } from '@/store/modules/tasks';
+import { objKeysExact } from '@/utils';
 
 interface PrnNo extends ParsedTableLinkCell {
   /** E.g. '118019903987' */
@@ -106,7 +107,7 @@ async function getPaymentReceipts(
   // TODO: Consider moving this logic into `parseTableAdvanced`.
   let convertedRecords: PaymentReceipt[] = records.map((record) => {
     const convertedRecord: PaymentReceipt = {} as PaymentReceipt;
-    for (const key of Object.keys(record) as (keyof typeof record)[]) {
+    for (const key of objKeysExact(record)) {
       const value = record[key];
       if (key !== 'prnNo') {
         if (typeof value === 'string') {
