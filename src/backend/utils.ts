@@ -657,7 +657,7 @@ export async function xmlRequest<R extends object>(options: RequestOptions): Pro
  * Parses a string of HTML from the ZRA website into a HTML Document.
  * @throws {import('@/errors').ZraError}
  */
-export function parseDocument(documentString: string): Document {
+export function parseDocument(documentString: string): HTMLDocument {
   const parser = new DOMParser();
   const doc = parser.parseFromString(documentString, 'text/html');
   const zraError = getZraError(doc);
@@ -672,7 +672,7 @@ export function parseDocument(documentString: string): Document {
  * Gets a document from the response of an AJAX request.
  * @throws {import('@/backend/errors').ZraError}
  */
-export async function getDocumentByAjax(options: RequestOptions): Promise<Document> {
+export async function getDocumentByAjax(options: RequestOptions): Promise<HTMLDocument> {
   const data: string = await makeRequest(options);
   return parseDocument(data);
 }
