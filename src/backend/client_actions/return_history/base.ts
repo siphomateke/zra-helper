@@ -457,6 +457,12 @@ export class ReturnHistoryRunner<
   }
 }
 
+interface TaxTypeInfo {
+  input: RunnerInput;
+  task: TaskObject;
+  taxTypeId: TaxTypeNumericalCode;
+}
+
 interface TaxTypeRunInfo {
   input: RunnerInput;
   taxTypeId: TaxTypeNumericalCode
@@ -466,11 +472,8 @@ type ShouldRunReturnDependentFuncOnTaxTypeFn = (options: TaxTypeRunInfo) => bool
 
 type TaxTypeTaskProgressMaxFn = (options: TaxTypeRunInfo) => number;
 
-export interface ReturnDependentFnOptions {
-  input: RunnerInput;
+export interface ReturnDependentFnOptions extends TaxTypeInfo {
   returns: TaxReturn[];
-  task: TaskObject;
-  taxTypeId: TaxTypeNumericalCode;
 }
 
 /**
@@ -478,22 +481,13 @@ export interface ReturnDependentFnOptions {
  */
 type ReturnDependentFn = (options: ReturnDependentFnOptions) => Promise<TaxReturn[]>
 
-interface AbstractTaxTypeFuncOptions {
-  task: TaskObject;
-  input: RunnerInput;
-  taxTypeId: TaxTypeNumericalCode;
+interface AbstractTaxTypeFuncOptions extends TaxTypeInfo {
   failures: TaxTypeFailure;
 }
 
 type AbstractTaxTypeFunc = (options: AbstractTaxTypeFuncOptions) => Promise<any>;
 
-// TODO: Don't duplicate AbstractTaxTypeFuncOptions
-interface GetReturnsSmartFnOptions {
-  task: TaskObject;
-  input: RunnerInput;
-  taxTypeId: TaxTypeNumericalCode;
-  failures: TaxTypeFailure;
-}
+interface GetReturnsSmartFnOptions extends AbstractTaxTypeFuncOptions { }
 
 /**
  * Runs an extra step on each collected tax return.
