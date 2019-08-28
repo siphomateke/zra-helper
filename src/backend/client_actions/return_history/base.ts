@@ -191,8 +191,6 @@ export namespace ReturnHistoryClientAction {
     fromDate?: DateString;
     toDate?: DateString;
     taxTypeIds?: TaxTypeNumericalCode[];
-    /** Returns by tax type ID. */
-    returns?: TaxTypeIdMap<TaxReturn[]>;
     /** Return history pages by tax type ID. */
     returnHistoryPages?: TaxTypeIdMap<number[]>;
   }
@@ -214,14 +212,13 @@ export const GetReturnHistoryClientActionOptions: Partial<ClientActionOptions<Ru
   },
 };
 
-interface TaxTypeFailure {
-  returns?: TaxReturn[];
+interface BaseTaxTypeFailure {
   returnHistoryPages?: number[];
   errorThrown: boolean;
   failed: boolean;
 }
 
-type TaxTypeFailures = TaxTypeIdMap<TaxTypeFailure>;
+type TaxTypeFailures<T extends BaseTaxTypeFailure> = TaxTypeIdMap<T>;
 
 type TaxTypeTaskTitleFn = (taxType: TaxTypeCode) => string;
 
@@ -231,48 +228,46 @@ interface GetReturnsInternalFnOptions {
   pages: number[];
 }
 
-interface GetReturnsFnOptions {
+interface GetReturnsFnOptions<I extends RunnerInput, F extends BaseTaxTypeFailure> {
   task: TaskObject;
-  input: RunnerInput;
+  input: I;
   taxTypeId: TaxTypeNumericalCode;
-  failures: TaxTypeFailure;
+  failures: F;
 }
 
-interface TaxTypeFuncFnOptions {
-  failures: TaxTypeFailure;
-  input: RunnerInput;
+interface TaxTypeFuncFnOptions<I extends RunnerInput, F extends BaseTaxTypeFailure> {
+  failures: F;
+  input: I;
   task: TaskObject;
 }
 
-type TaxTypeFunc = (options: TaxTypeFuncFnOptions) => Promise<any>;
+type TaxTypeFunc<I extends RunnerInput, F extends BaseTaxTypeFailure>
+  = (options: TaxTypeFuncFnOptions<I, F>) => Promise<any>;
 
-interface RunTaxTypeTaskFnOptions {
+interface RunTaxTypeTaskAbstractFnOptions<I extends RunnerInput> {
   taxTypeId: TaxTypeNumericalCode;
   parentTaskId: TaskId;
-  input: RunnerInput;
+  input: I;
+}
+
+interface RunTaxTypeTaskFnOptions<
+  I extends RunnerInput,
+  F extends BaseTaxTypeFailure
+  > extends RunTaxTypeTaskAbstractFnOptions<I> {
   /** Function to run on the tax type. */
-  taxTypeFunc: TaxTypeFunc;
+  taxTypeFunc: TaxTypeFunc<I, F>;
 }
 
-interface GetReturnsForTaxTypeFnOptions {
-  taxTypeId: TaxTypeNumericalCode;
-  parentTaskId: TaskId;
-  input: RunnerInput;
-}
-
-interface RunTaxTypeTaskAbstractFnOptions {
-  taxTypeId: TaxTypeNumericalCode;
-  parentTaskId: TaskId;
-  input: RunnerInput;
-}
+interface GetReturnsForTaxTypeFnOptions<I extends RunnerInput> extends RunTaxTypeTaskAbstractFnOptions<I> { }
 
 export class ReturnHistoryRunner<
   Input extends RunnerInput = RunnerInput,
-  Output = BasicRunnerOutput
+  Output = BasicRunnerOutput,
+  TFailure extends BaseTaxTypeFailure = BaseTaxTypeFailure
   > extends ClientActionRunner<Input, Output> {
   taxTypeTaskTitle: TaxTypeTaskTitleFn = () => '';
 
-  failures: TaxTypeFailures = {};
+  failures: TaxTypeFailures<TFailure> = {};
 
   anyFailures: boolean = false;
 
@@ -314,7 +309,7 @@ export class ReturnHistoryRunner<
    */
   async getReturns({
     task, input, taxTypeId, failures,
-  }: GetReturnsFnOptions) {
+  }: GetReturnsFnOptions<Input, TFailure>) {
     // If getting certain return history pages failed last time, only get those pages.
     const { value: pages } = getInput(input, `returnHistoryPages.${taxTypeId}`, { defaultValue: [] });
 
@@ -339,7 +334,7 @@ export class ReturnHistoryRunner<
    * Returns whether a tax type failed based on the provided `TaxTypeFailure`.
    */
   // eslint-disable-next-line class-methods-use-this
-  checkIfTaxTypeFailed(failures: TaxTypeFailure): boolean {
+  checkIfTaxTypeFailed(failures: TFailure): boolean {
     return failures.errorThrown || failures.returnHistoryPages.length > 0;
   }
 
@@ -349,10 +344,10 @@ export class ReturnHistoryRunner<
    */
   async runTaxTypeTask({
     taxTypeId, parentTaskId, input, taxTypeFunc,
-  }: RunTaxTypeTaskFnOptions): Promise<TaxTypeFailure> {
+  }: RunTaxTypeTaskFnOptions<Input, TFailure>): Promise<TFailure> {
     const taxType = taxTypes[taxTypeId];
 
-    const failures: TaxTypeFailure = {
+    const failures: Partial<TFailure> = {
       returnHistoryPages: [],
       errorThrown: false,
       failed: false,
@@ -381,7 +376,7 @@ export class ReturnHistoryRunner<
     return failures;
   }
 
-  getReturnsForTaxType({ taxTypeId, parentTaskId, input }: GetReturnsForTaxTypeFnOptions) {
+  getReturnsForTaxType({ taxTypeId, parentTaskId, input }: GetReturnsForTaxTypeFnOptions<Input>) {
     return this.runTaxTypeTask({
       input,
       taxTypeId,
@@ -398,7 +393,7 @@ export class ReturnHistoryRunner<
    */
   runTaxTypeTaskAbstract({
     taxTypeId, parentTaskId, input,
-  }: RunTaxTypeTaskAbstractFnOptions): Promise<TaxTypeFailure> {
+  }: RunTaxTypeTaskAbstractFnOptions<Input>): Promise<TFailure> {
     return this.getReturnsForTaxType({ taxTypeId, parentTaskId, input });
   }
 
@@ -462,8 +457,8 @@ export class ReturnHistoryRunner<
     return this.getUnknownRetryReasonMessage();
   }
 
-  getRetryInput(): RunnerInput {
-    const retryInput: RunnerInput = {
+  getRetryInput(): Input {
+    const retryInput: Partial<Input> = {
       taxTypeIds: [],
     };
     for (const taxTypeId of objKeysExact(this.failures)) {
@@ -490,37 +485,63 @@ export class ReturnHistoryRunner<
   }
 }
 
-interface TaxTypeInfo {
-  input: RunnerInput;
+export namespace ReturnHistoryReturnDependentClientAction {
+  export interface Input extends ReturnHistoryClientAction.Input {
+    /** Returns by tax type ID. */
+    returns?: TaxTypeIdMap<TaxReturn[]>;
+  }
+
+  export interface TaxTypeFailure extends BaseTaxTypeFailure {
+    returns?: TaxReturn[];
+  }
+}
+
+interface TaxTypeInfo<I extends ReturnHistoryReturnDependentClientAction.Input> {
+  input: I;
   task: TaskObject;
   taxTypeId: TaxTypeNumericalCode;
 }
 
-interface TaxTypeRunInfo {
-  input: RunnerInput;
+interface TaxTypeRunInfo<I extends ReturnHistoryReturnDependentClientAction.Input> {
+  input: I;
   taxTypeId: TaxTypeNumericalCode
 }
 
-type ShouldRunReturnDependentFuncOnTaxTypeFn = (options: TaxTypeRunInfo) => boolean;
+type ShouldRunReturnDependentFuncOnTaxTypeFn<I extends ReturnHistoryReturnDependentClientAction.Input>
+  = (options: TaxTypeRunInfo<I>) => boolean;
 
-type TaxTypeTaskProgressMaxFn = (options: TaxTypeRunInfo) => number;
+type TaxTypeTaskProgressMaxFn<I extends ReturnHistoryReturnDependentClientAction.Input>
+  = (options: TaxTypeRunInfo<I>) => number;
 
-export interface ReturnDependentFnOptions extends TaxTypeInfo {
+export interface ReturnDependentFnOptions<
+  I extends ReturnHistoryReturnDependentClientAction.Input
+  > extends TaxTypeInfo<I> {
   returns: TaxReturn[];
 }
 
 /**
  * @returns Any tax returns that the dependent function failed to run on and should be retried.
  */
-type ReturnDependentFn = (options: ReturnDependentFnOptions) => Promise<TaxReturn[]>
+type ReturnDependentFn<I extends ReturnHistoryReturnDependentClientAction.Input>
+  = (options: ReturnDependentFnOptions<I>) => Promise<TaxReturn[]>
 
-interface AbstractTaxTypeFuncOptions extends TaxTypeInfo {
-  failures: TaxTypeFailure;
+interface AbstractTaxTypeFuncOptions<
+  I extends ReturnHistoryReturnDependentClientAction.Input,
+  F extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure
+  > extends TaxTypeInfo<I> {
+  failures: F;
 }
 
-type AbstractTaxTypeFunc = (options: AbstractTaxTypeFuncOptions) => Promise<any>;
+type AbstractTaxTypeFunc<
+  I extends ReturnHistoryReturnDependentClientAction.Input,
+  F extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure,
+  >
+  = (options: AbstractTaxTypeFuncOptions<I, F>) => Promise<any>;
 
-interface GetReturnsSmartFnOptions extends AbstractTaxTypeFuncOptions { }
+interface GetReturnsSmartFnOptions<
+  I extends ReturnHistoryReturnDependentClientAction.Input,
+  F extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure,
+  > extends AbstractTaxTypeFuncOptions<I, F> { }
 
 /**
  * Runs an extra step on each collected tax return.
@@ -528,19 +549,19 @@ interface GetReturnsSmartFnOptions extends AbstractTaxTypeFuncOptions { }
  * When extending this class, make sure to give a message for returns failing by extending
  * `getRetryReasons`.
  */
-// FIXME: Use different input and output types
 export abstract class ReturnHistoryReturnDependentRunner<
-  Input extends RunnerInput = RunnerInput,
-  Output = BasicRunnerOutput
-  > extends ReturnHistoryRunner<Input, Output> {
+  Input extends ReturnHistoryReturnDependentClientAction.Input = ReturnHistoryReturnDependentClientAction.Input,
+  Output = BasicRunnerOutput,
+  TFailure extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure = ReturnHistoryReturnDependentClientAction.TaxTypeFailure
+  > extends ReturnHistoryRunner<Input, Output, TFailure> {
   /**
    * Function that decides whether the function that depends on returns should be run on a
    * particular tax type.
    */
-  shouldRunReturnDependentFuncOnTaxType: ShouldRunReturnDependentFuncOnTaxTypeFn = () => true;
+  shouldRunReturnDependentFuncOnTaxType: ShouldRunReturnDependentFuncOnTaxTypeFn<Input> = () => true;
 
   /** Maximum progress for the task run on each tax type. */
-  taxTypeTaskProgressMax: TaxTypeTaskProgressMaxFn = ({ input, taxTypeId }) => {
+  taxTypeTaskProgressMax: TaxTypeTaskProgressMaxFn<Input> = ({ input, taxTypeId }) => {
     let progressMax = 2;
     if (!this.shouldRunReturnDependentFuncOnTaxType({ input, taxTypeId })) {
       progressMax--;
@@ -555,10 +576,10 @@ export abstract class ReturnHistoryReturnDependentRunner<
    *
    * Note: Make sure to set task status in this function.
    */
-  returnDependentFunc: ReturnDependentFn | null = null;
+  returnDependentFunc: ReturnDependentFn<Input> | null = null;
 
   /** Function to be run on each tax type. */
-  taxTypeFunc: AbstractTaxTypeFunc | null = null;
+  taxTypeFunc: AbstractTaxTypeFunc<Input, TFailure> | null = null;
 
   /**
    * Gets all tax returns, or those that failed or were from pages that failed in the previous run.
@@ -567,7 +588,7 @@ export abstract class ReturnHistoryReturnDependentRunner<
    */
   async getReturnsSmart({
     task, input, taxTypeId, failures,
-  }: GetReturnsSmartFnOptions) {
+  }: GetReturnsSmartFnOptions<Input, TFailure>) {
     // If only certain returns failed in the last run, use those.
     const returnsInput = getInput(input, `returns.${taxTypeId}`, { defaultValue: [] });
     this.addTaxTypesReturns(taxTypeId, returnsInput.value);
@@ -596,12 +617,16 @@ export abstract class ReturnHistoryReturnDependentRunner<
     }
   }
 
-  checkIfTaxTypeFailed(failures: TaxTypeFailure): boolean {
+  checkIfTaxTypeFailed(failures: TFailure): boolean {
     return super.checkIfTaxTypeFailed(failures)
       || failures.returns.length > 0;
   }
 
-  async runTaxTypeTaskAbstract({ input, taxTypeId, parentTaskId }: RunTaxTypeTaskAbstractFnOptions) {
+  async runTaxTypeTaskAbstract({
+    input,
+    taxTypeId,
+    parentTaskId,
+  }: RunTaxTypeTaskAbstractFnOptions<Input>) {
     return this.runTaxTypeTask({
       input,
       taxTypeId,

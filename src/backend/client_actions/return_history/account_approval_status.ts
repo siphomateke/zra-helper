@@ -4,7 +4,7 @@ import {
   GetReturnHistoryClientActionOptions,
   ReturnHistoryReturnDependentRunner,
   TaxReturn,
-  ReturnHistoryClientAction,
+  ReturnHistoryReturnDependentClientAction,
   ReturnDependentFnOptions,
 } from './base';
 import {
@@ -50,7 +50,7 @@ interface TaxReturnExtended extends TaxReturn {
 }
 
 export namespace AccountApprovalStatusClientAction {
-  export interface Input extends ReturnHistoryClientAction.Input {
+  export interface Input extends ReturnHistoryReturnDependentClientAction.Input {
     taxTypeIds: TaxTypeNumericalCode[];
     getAckReceipts: boolean;
   }
@@ -233,7 +233,7 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
     taxTypeId,
     returns,
     task,
-  }: ReturnDependentFnOptions) {
+  }: ReturnDependentFnOptions<AccountApprovalStatusClientAction.Input>) {
     const failedReturns = [];
     task.status = `Extract information from ${returns.length} acknowledgement of returns receipt(s)`;
     const taxTypeTask = await createTask(store, {
