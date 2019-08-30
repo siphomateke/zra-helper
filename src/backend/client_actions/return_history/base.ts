@@ -486,7 +486,7 @@ export class ReturnHistoryRunner<
 }
 
 export namespace ReturnHistoryReturnDependentClientAction {
-  export interface Input extends ReturnHistoryClientAction.Input {
+  export interface Input extends RunnerInput {
     /** Returns by tax type ID. */
     returns?: TaxTypeIdMap<TaxReturn[]>;
   }
@@ -496,51 +496,49 @@ export namespace ReturnHistoryReturnDependentClientAction {
   }
 }
 
-interface TaxTypeInfo<I extends ReturnHistoryReturnDependentClientAction.Input> {
+type DepInput = ReturnHistoryReturnDependentClientAction.Input;
+type DepTaxTypeFailure = ReturnHistoryReturnDependentClientAction.TaxTypeFailure;
+
+interface TaxTypeInfo<I extends DepInput> {
   input: I;
   task: TaskObject;
   taxTypeId: TaxTypeNumericalCode;
 }
 
-interface TaxTypeRunInfo<I extends ReturnHistoryReturnDependentClientAction.Input> {
+interface TaxTypeRunInfo<I extends DepInput> {
   input: I;
   taxTypeId: TaxTypeNumericalCode
 }
 
-type ShouldRunReturnDependentFuncOnTaxTypeFn<I extends ReturnHistoryReturnDependentClientAction.Input>
-  = (options: TaxTypeRunInfo<I>) => boolean;
+type ShouldRunReturnDependentFuncOnTaxTypeFn<I extends DepInput> = (options: TaxTypeRunInfo<I>) => boolean;
 
-type TaxTypeTaskProgressMaxFn<I extends ReturnHistoryReturnDependentClientAction.Input>
-  = (options: TaxTypeRunInfo<I>) => number;
+type TaxTypeTaskProgressMaxFn<I extends DepInput> = (options: TaxTypeRunInfo<I>) => number;
 
-export interface ReturnDependentFnOptions<
-  I extends ReturnHistoryReturnDependentClientAction.Input
-  > extends TaxTypeInfo<I> {
+export interface ReturnDependentFnOptions<I extends DepInput> extends TaxTypeInfo<I> {
   returns: TaxReturn[];
 }
 
 /**
  * @returns Any tax returns that the dependent function failed to run on and should be retried.
  */
-type ReturnDependentFn<I extends ReturnHistoryReturnDependentClientAction.Input>
-  = (options: ReturnDependentFnOptions<I>) => Promise<TaxReturn[]>
+type ReturnDependentFn<I extends DepInput> = (options: ReturnDependentFnOptions<I>) => Promise<TaxReturn[]>;
 
 interface AbstractTaxTypeFuncOptions<
-  I extends ReturnHistoryReturnDependentClientAction.Input,
-  F extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure
+  I extends DepInput,
+  F extends DepTaxTypeFailure
   > extends TaxTypeInfo<I> {
   failures: F;
 }
 
 type AbstractTaxTypeFunc<
-  I extends ReturnHistoryReturnDependentClientAction.Input,
-  F extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure,
+  I extends DepInput,
+  F extends DepTaxTypeFailure,
   >
   = (options: AbstractTaxTypeFuncOptions<I, F>) => Promise<any>;
 
 interface GetReturnsSmartFnOptions<
-  I extends ReturnHistoryReturnDependentClientAction.Input,
-  F extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure,
+  I extends DepInput,
+  F extends DepTaxTypeFailure,
   > extends AbstractTaxTypeFuncOptions<I, F> { }
 
 /**
@@ -550,9 +548,9 @@ interface GetReturnsSmartFnOptions<
  * `getRetryReasons`.
  */
 export abstract class ReturnHistoryReturnDependentRunner<
-  Input extends ReturnHistoryReturnDependentClientAction.Input = ReturnHistoryReturnDependentClientAction.Input,
+  Input extends DepInput = DepInput,
   Output = BasicRunnerOutput,
-  TFailure extends ReturnHistoryReturnDependentClientAction.TaxTypeFailure = ReturnHistoryReturnDependentClientAction.TaxTypeFailure
+  TFailure extends DepTaxTypeFailure = DepTaxTypeFailure
   > extends ReturnHistoryRunner<Input, Output, TFailure> {
   /**
    * Function that decides whether the function that depends on returns should be run on a
