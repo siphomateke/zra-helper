@@ -176,10 +176,6 @@ export class ClientActionRunner {
    */
   mergeAllRunOutputs() {
     const outputs = this.storeProxy.allRunOutputs;
-    let initialValue = {};
-    if (outputs.length > 0 && Array.isArray(outputs[0])) {
-      initialValue = [];
-    }
     const merged = outputs.reduce((prevOutput, output) => {
       if (prevOutput !== null && output !== null) {
         return this.mergeRunOutputs(prevOutput, output);
@@ -192,7 +188,7 @@ export class ClientActionRunner {
         return prevOutput;
       }
       return null;
-    }, initialValue);
+    }, null);
     this.storeProxy.output = merged;
   }
 
