@@ -1,6 +1,7 @@
 import { createClientAction, ClientActionRunner } from '../base';
 import '@/vue_init';
 import store from '@/store';
+import { getInstanceClassById } from '@/store/modules/client_actions';
 
 /**
  * @typedef {import('../base').ClientActionObject} ClientActionObject
@@ -44,7 +45,7 @@ export function getFakeRunInstanceClassFromAction(action) {
     client: {},
     config: {},
   });
-  return store.getters['clientActions/getInstanceClassById'](instanceId);
+  return getInstanceClassById(instanceId);
 }
 
 /**

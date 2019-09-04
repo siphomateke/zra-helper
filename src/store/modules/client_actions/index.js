@@ -49,8 +49,6 @@ import { taskFunction, getClientIdentifier } from '@/backend/client_actions/util
  * @property {Object.<string, ActionObject>} actions Client actions stored by IDs.
  * @property {Object.<string, ActionInstanceData>} instances
  * Client action runner instances' data stored by instance ID.
- * @property {Object.<string, ActionInstanceClass>} instanceClasses
- * Client action runner instances stored by instance ID.
  * @property {ActionRun[]} runs Action runs stored by run IDs.
  * @property {number} currentRunId Which run the program is currently on.
  */
@@ -144,20 +142,190 @@ function initializeInstances({ commit, getters }, {
   }
 }
 
+/**
+ * @typedef {Object.<string, string[]>} DependentInstances
+ * Dependent instances grouped by the instance they depend on.
+ */
+
+/**
+ * Gets all the instances that depend on each provided instance.
+ * @param {import('vuex').ActionContext} context
+ * @param {string[]} instanceIds
+ * @returns {DependentInstances}
+ */
+function getDependentInstances({ getters }, instanceIds) {
+  const dependentInstances = {};
+  for (const instanceId of instanceIds) {
+    /** @type {ActionInstanceData} */
+    const instance = getters.getInstanceById(instanceId);
+    for (const dependedInstanceId of instance.dependencies) {
+      if (!(dependedInstanceId in dependentInstances)) {
+        dependentInstances[dependedInstanceId] = [];
+      }
+      dependentInstances[dependedInstanceId].push(instanceId);
+    }
+  }
+  return dependentInstances;
+}
+
+/**
+ * Checks if all the instances an instance depends on have completed.
+ * @param {ActionInstanceData} instance
+ * @param {string[]} completedInstanceIds
+ * @returns {boolean}
+ */
+function allDependedInstancesCompleted(instance, completedInstanceIds) {
+  for (const instanceId of instance.dependencies) {
+    if (!completedInstanceIds.includes(instanceId)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @typedef {(instance: ActionInstanceData) => Promise<void>} ActionInstancePromise
+ */
+
+/**
+ * Runs all the instances that depend on the provided instance.
+ * @param {import('vuex').ActionContext<State>} context
+ * @param {Object} options
+ * @param {ActionInstanceData} options.instance
+ * @param {DependentInstances} options.dependentInstances
+ * @param {string[]} options.completedInstanceIds
+ * @param {ActionInstancePromise} options.getInstancePromise
+ * @returns {Promise<void>}
+ */
+async function runDependentInstances({ getters }, {
+  instance: parentInstance,
+  dependentInstances,
+  completedInstanceIds,
+  getInstancePromise,
+}) {
+  if (parentInstance.id in dependentInstances) {
+    /** The instances that depends on this instance. */
+    const instanceIds = dependentInstances[parentInstance.id];
+    const promises = [];
+    for (const instanceId of instanceIds) {
+      /** @type {ActionInstanceData} */
+      const instance = getters.getInstanceById(instanceId);
+      // Check if all the instances this instance depends on completed
+      if (allDependedInstancesCompleted(instance, completedInstanceIds)) {
+        // If they did, the instance can now be run.
+        promises.push(getInstancePromise(instance));
+      }
+    }
+    await Promise.all(promises);
+  }
+}
+
+/**
+ * Recursively get instances of dependent actions.
+ * @param {import('vuex').ActionContext} context
+ * @param {Object} options
+ * @param {Client} options.client
+ * @param {string[]} options.requiredActions
+ * @param {ActionInstanceData[]} options.instances
+ * @param {string} options.parentInstanceId The ID of the instance that `requiredActions` belong to.
+ * @returns {ActionInstanceData[]}
+ */
+// TODO: Make this less confusing
+function getDependedActionInstances(context, {
+  client,
+  requiredActions,
+  instances: instancesParam,
+  parentInstanceId,
+}) {
+  let instances = instancesParam.slice();
+  const { commit, getters } = context;
+  for (const dependedActionId of requiredActions) {
+    const existingInstance = instances.find(instance => instance.actionId === dependedActionId);
+    let dependedInstanceId;
+    if (!existingInstance) {
+      dependedInstanceId = addNewInstance(context, {
+        actionId: dependedActionId,
+        client,
+      });
+      /** @type {ActionInstanceData} */
+      const dependedInstance = getters.getInstanceById(dependedInstanceId);
+      /** @type {ActionObject} */
+      const action = getters.getActionById(dependedInstance.actionId);
+      instances.push(dependedInstance);
+      instances = getDependedActionInstances(context, {
+        client,
+        requiredActions: action.requiredActions,
+        instances,
+        parentInstanceId: dependedInstanceId,
+      });
+    } else {
+      dependedInstanceId = existingInstance.id;
+    }
+
+    // Add this depended instance to the list of instance's instance dependencies.
+    commit('addDependedInstanceToInstance', {
+      id: parentInstanceId,
+      dependedInstanceId,
+    });
+  }
+  return instances;
+}
+
+/**
+ * Creates instances from actions as well as any dependent instances.
+ * @param {import('vuex').ActionContext} context
+ * @param {string[]} actionIds
+ * @param {Client} client
+ * @returns {ActionInstanceData[]}
+ */
+// TODO: Make this less confusing
+function convertActionsToInstances(context, actionIds, client) {
+  const { getters } = context;
+  /** @type {ActionInstanceData[]} */
+  let instances = [];
+  for (const actionId of actionIds) {
+    const instanceId = addNewInstance(context, { actionId, client });
+    /** @type {ActionInstanceData} */
+    const instance = getters.getInstanceById(instanceId);
+    instances.push(instance);
+    /** @type {ActionObject} */
+    const action = getters.getActionById(actionId);
+    instances = getDependedActionInstances(context, {
+      client,
+      requiredActions: action.requiredActions,
+      instances,
+      parentInstanceId: instanceId,
+    });
+  }
+  return instances;
+}
+
+/**
+ * @type {Object.<string, ActionInstanceClass>}
+ * Client action runner instances stored by instance ID.
+ */
+const instanceClasses = {};
+
+/**
+ * @param {string|number} instanceId
+ * @returns {ActionInstanceClass}
+ */
+export function getInstanceClassById(instanceId) {
+  return instanceClasses[instanceId];
+}
+
 /** @type {import('vuex').Module<State>} */
 const vuexModule = {
   namespaced: true,
   state: {
     actions: {},
     instances: {},
-    instanceClasses: {},
     runs: [],
     currentRunId: null,
   },
   getters: {
     getActionById: state => id => state.actions[id],
     getInstanceById: state => id => state.instances[id],
-    getInstanceClassById: state => id => state.instanceClasses[id],
     getRunById: state => id => state.runs[id],
     currentRun: state => state.runs[state.currentRunId],
     previousRun: state => state.runs[state.currentRunId - 1],
@@ -429,7 +597,7 @@ const vuexModule = {
       // Actually create the instance and store the class whose methods will be called.
       const instanceClass = new Runner();
       instanceClass.create(instanceId);
-      Vue.set(state.instanceClasses, instanceId, instanceClass);
+      instanceClasses[instanceId] = instanceClass;
 
       // Initialize the instance's data.
       instanceClass.init({ client, config });
@@ -473,6 +641,9 @@ const vuexModule = {
     },
     setInstancePreviousOutput(state, { id, output }) {
       state.instances[id].allRunOutputs.unshift(output);
+    },
+    addDependedInstanceToInstance(state, { id, dependedInstanceId }) {
+      state.instances[id].dependencies.push(dependedInstanceId);
     },
   },
   actions: {
@@ -518,7 +689,7 @@ const vuexModule = {
               log.setCategory(clientAction.logCategory);
 
               /** @type {ActionInstanceClass} */
-              const instanceClass = getters.getInstanceClassById(instanceId);
+              const instanceClass = getInstanceClassById(instanceId);
               await instanceClass.run({
                 task,
                 loggedInTabId,
@@ -565,17 +736,16 @@ const vuexModule = {
      * @param {string[]} payload.instanceIds
      * @param {number} payload.parentTaskId
      */
-    async runActionsOnClient({
-      rootState,
-      commit,
-      getters,
-      dispatch,
-    }, {
+    // TODO: Use instance IDs only
+    async runActionsOnClient(context, {
       client,
       actionIds,
       instanceIds,
       parentTaskId,
     }) {
+      const {
+        rootState, commit, getters, dispatch,
+      } = context;
       const isSingleAction = actionIds.length === 1;
       let singleAction = null;
 
@@ -660,6 +830,45 @@ const vuexModule = {
                   }
                 }
 
+                /**
+                 * Creates a promise that will actually run an instance.
+                 * @param {ActionInstanceData} instance
+                 * @returns {Promise<void>}
+                 */
+                /* eslint-disable no-inner-declarations */
+                function getInstancePromise(instance) {
+                  return dispatch('runActionOnClient', {
+                    instanceId: instance.id,
+                    client,
+                    mainTask,
+                    isSingleAction,
+                    loggedInTabId,
+                  });
+                }
+
+                // FIXME: Allow for multiple instances of the same action.
+                const dependentInstances = getDependentInstances(context, instanceIds);
+
+                const completedInstanceIds = [];
+
+                /**
+                 * Gets a promise that runs the provided instance as well as any instances
+                 * that depend on it.
+                 * @param {ActionInstanceData} instance
+                 * @returns {Promise<void>}
+                 */
+                async function getInstanceWithDependentsPromise(instance) {
+                  await getInstancePromise(instance);
+                  completedInstanceIds.push(instance.id);
+                  await runDependentInstances(context, {
+                    instance,
+                    dependentInstances,
+                    completedInstanceIds,
+                    getInstancePromise: getInstanceWithDependentsPromise,
+                  });
+                }
+                /* eslint-enable no-inner-declarations */
+
                 // Run actions in parallel
                 if (!isSingleAction) {
                   mainTask.status = 'Running actions';
@@ -668,14 +877,14 @@ const vuexModule = {
                 }
                 const promises = [];
                 for (const instanceId of instanceIds) {
-                  promises.push(dispatch('runActionOnClient', {
-                    instanceId,
-                    client,
-                    mainTask,
-                    isSingleAction,
-                    loggedInTabId,
-                  }));
+                  /** @type {ActionInstanceData} */
+                  const instance = getters.getInstanceById(instanceId);
+                  // Run the instances that don't depend on any other ones first.
+                  if (instance.dependencies.length === 0) {
+                    promises.push(getInstanceWithDependentsPromise(instance));
+                  }
                 }
+
                 await Promise.all(promises);
               } catch (error) {
                 for (const instanceId of instanceIds) {
@@ -685,7 +894,7 @@ const vuexModule = {
               } finally {
                 for (const instanceId of instanceIds) {
                   /** @type {ActionInstanceClass} */
-                  const instanceClass = getters.getInstanceClassById(instanceId);
+                  const instanceClass = getInstanceClassById(instanceId);
                   instanceClass.checkIfShouldRetry();
                   // Outputs must be merged here so it happens even if logging in failed
                   instanceClass.mergeAllRunOutputs();
@@ -745,7 +954,6 @@ const vuexModule = {
     }) {
       const {
         state,
-        getters,
         rootState,
         commit,
         dispatch,
@@ -779,25 +987,10 @@ const vuexModule = {
             catchErrors: true,
             setStateBasedOnChildren: true,
             async func() {
-              const allInstanceIds = [];
-              const clientActionIds = [];
+              /* eslint-disable no-await-in-loop */
               for (const client of validClients) {
                 const actionIds = getClientsActionIds(client);
-                clientActionIds.push(actionIds);
-
-                // Initialize all client action runner instances.
-                const instanceIds = actionIds.map(
-                  actionId => addNewInstance(context, { actionId, client }),
-                );
-                allInstanceIds.push(instanceIds);
-              }
-              /* eslint-disable no-await-in-loop */
-              for (let i = 0; i < validClients.length; i++) {
-                const client = validClients[i];
-                const instanceIds = allInstanceIds[i];
-
-                /** @type {ActionInstanceData[]} */
-                const instances = instanceIds.map(id => getters.getInstanceById(id));
+                const instances = convertActionsToInstances(context, actionIds, client);
                 initializeInstances(context, {
                   instances,
                   actionInputs,
@@ -808,12 +1001,11 @@ const vuexModule = {
                 rootTask.status = client.name;
                 // TODO: Consider checking if a tab has been closed prematurely all the time.
                 // Currently, only tabLoaded checks for this.
-                const actionIds = clientActionIds[i];
                 await dispatch('runActionsOnClient', {
                   client,
-                  actionIds,
+                  actionIds: instances.map(instance => instance.actionId),
                   actionInputs,
-                  instanceIds,
+                  instanceIds: instances.map(instance => instance.id),
                   parentTaskId: rootTask.id,
                 });
               }
