@@ -97,19 +97,22 @@ export function getCurrentBrowser() {
 }
 
 /**
- * Checks which properties are missing from an object.
+ * Checks if the provided properties are missing from or exist in an object
  * @param {Object} obj
  * @param {string[]} properties
- * @return {string[]} The missing properties.
+ * @return {{missing: string[], existing: string[]}} The missing and existing properties.
  */
 export function objectHasProperties(obj, properties) {
   const missing = [];
+  const existing = [];
   for (const property of properties) {
     if (!(property in obj)) {
       missing.push(property);
+    } else {
+      existing.push(property);
     }
   }
-  return missing;
+  return { missing, existing };
 }
 
 /**

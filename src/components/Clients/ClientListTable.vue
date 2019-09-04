@@ -60,7 +60,8 @@ export default {
       default: () => [],
       validator(value) {
         for (const client of value) {
-          if (!objectHasProperties(client, clientProperties)) {
+          const { missing } = objectHasProperties(client, clientProperties);
+          if (missing.length > 0) {
             return false;
           }
         }

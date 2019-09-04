@@ -266,7 +266,7 @@ function validateActionOptions(options) {
     const validFormats = Object.values(exportFormatCodes);
 
     const requiredProperties = ['defaultOutputFormat', 'outputFormats', 'outputFormatter'];
-    const missing = objectHasProperties(options, requiredProperties);
+    const { missing } = objectHasProperties(options, requiredProperties);
     if (
       !missing.includes('defaultOutputFormat')
       && !validFormats.includes(options.defaultOutputFormat)
