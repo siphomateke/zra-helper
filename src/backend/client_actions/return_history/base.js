@@ -176,6 +176,11 @@ export const GetReturnHistoryClientActionOptions = {
     fromDate: '01/01/2013',
     toDate: moment().format('31/12/YYYY'),
   }),
+  inputValidation: {
+    taxTypeIds: 'required|taxTypeIds',
+    fromDate: 'required|date_format:dd/MM/yyyy|before:toDate,true',
+    toDate: 'required|date_format:dd/MM/yyyy|after:fromDate,true',
+  },
 };
 
 /**
