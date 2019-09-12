@@ -1,5 +1,5 @@
 import { get } from 'dot-prop';
-import { createClientAction, getInput } from '../base';
+import { createClientAction, getInput, createOutputFile } from '../base';
 import { GetReturnHistoryClientActionOptions, ReturnHistoryReturnDependentRunner } from './base';
 import {
   taxTypeNumericalCodes,
@@ -66,92 +66,97 @@ const CheckAccountApprovalStatusClientAction = createClientAction({
     getAckReceipts: false,
   }),
   hasOutput: true,
-  defaultOutputFormat: exportFormatCodes.CSV,
-  outputFormats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
-  outputFormatter({
-    clients,
-    outputs: clientOutputs,
-    format,
-    anonymizeClients,
-  }) {
-    // TODO: Only include provisional column if `getAckReceipts` is true
-    if (format === exportFormatCodes.CSV) {
-      const csvOutput = {};
-      for (const client of clients) {
-        if (client.id in clientOutputs) {
-          /** @type {{value: RunnerOutput}} */
-          const { value } = clientOutputs[client.id];
-          if (value) {
-            const clientIdentifier = getClientIdentifier(client, anonymizeClients);
-            const clientOutput = {};
-            for (const taxTypeId of Object.keys(value)) {
-              const taxReturns = value[taxTypeId];
-              const rows = [];
-              for (const taxReturn of taxReturns) {
-                let provisionalCol = null;
-                if ('provisional' in taxReturn) {
-                  if (taxReturn.provisional === true) {
-                    provisionalCol = 'Provisional';
-                  } else if (taxReturn.provisional === false) {
-                    provisionalCol = 'Annual';
+  generateOutputFiles({ clients, outputs }) {
+    return createOutputFile({
+      label: 'All clients account approval statuses',
+      value: outputs,
+      defaultFormat: exportFormatCodes.CSV,
+      formats: [exportFormatCodes.CSV, exportFormatCodes.JSON],
+      formatter({
+        output: clientOutputs,
+        format,
+        anonymizeClients,
+      }) {
+        // TODO: Only include provisional column if `getAckReceipts` is true
+        if (format === exportFormatCodes.CSV) {
+          const csvOutput = {};
+          for (const client of clients) {
+            if (client.id in clientOutputs) {
+              /** @type {{value: RunnerOutput}} */
+              const { value } = clientOutputs[client.id];
+              if (value) {
+                const clientIdentifier = getClientIdentifier(client, anonymizeClients);
+                const clientOutput = {};
+                for (const taxTypeId of Object.keys(value)) {
+                  const taxReturns = value[taxTypeId];
+                  const rows = [];
+                  for (const taxReturn of taxReturns) {
+                    let provisionalCol = null;
+                    if ('provisional' in taxReturn) {
+                      if (taxReturn.provisional === true) {
+                        provisionalCol = 'Provisional';
+                      } else if (taxReturn.provisional === false) {
+                        provisionalCol = 'Annual';
+                      }
+                    }
+                    rows.push({
+                      fromDate: taxReturn.returnPeriodFrom,
+                      toDate: taxReturn.returnPeriodTo,
+                      status: taxReturn.status,
+                      statusType: taxReturn.statusType,
+                      statusDescription: taxReturn.statusDescription,
+                      applicationType: taxReturn.applicationType,
+                      returnAppliedDate: taxReturn.returnAppliedDate,
+                      provisional: provisionalCol,
+                    });
                   }
+                  clientOutput[taxTypes[taxTypeId]] = rows;
                 }
-                rows.push({
-                  fromDate: taxReturn.returnPeriodFrom,
-                  toDate: taxReturn.returnPeriodTo,
-                  status: taxReturn.status,
-                  statusType: taxReturn.statusType,
-                  statusDescription: taxReturn.statusDescription,
-                  applicationType: taxReturn.applicationType,
-                  returnAppliedDate: taxReturn.returnAppliedDate,
-                  provisional: provisionalCol,
-                });
+                csvOutput[clientIdentifier] = clientOutput;
               }
-              clientOutput[taxTypes[taxTypeId]] = rows;
             }
-            csvOutput[clientIdentifier] = clientOutput;
+          }
+          const columns = new Map([
+            ['client', 'Client'],
+            ['taxType', 'Tax type'],
+            ['fromDate', 'Period from'],
+            ['toDate', 'Period to'],
+            ['status', 'Status'],
+            ['statusType', 'Status type'],
+            ['statusDescription', 'Status description'],
+            ['applicationType', 'Application Type'],
+            ['returnAppliedDate', 'Return applied date'],
+            ['provisional', 'Provisional/Annual'],
+          ]);
+          const rows = objectToCsvTable(csvOutput, columns);
+          return unparseCsv(rows);
+        }
+        const json = {};
+        for (const client of clients) {
+          if (client.id in clientOutputs) {
+            const output = clientOutputs[client.id];
+            let jsonClient = { id: client.id };
+            if (!anonymizeClients) {
+              jsonClient = Object.assign(jsonClient, {
+                name: client.name,
+                username: client.username,
+              });
+            }
+            if (output.value !== null) {
+              json[client.id] = {
+                client: jsonClient,
+                actionId: output.actionId,
+                taxReturns: output.value,
+                error: output.error,
+              };
+            } else {
+              json[client.id] = null;
+            }
           }
         }
-      }
-      const columns = new Map([
-        ['client', 'Client'],
-        ['taxType', 'Tax type'],
-        ['fromDate', 'Period from'],
-        ['toDate', 'Period to'],
-        ['status', 'Status'],
-        ['statusType', 'Status type'],
-        ['statusDescription', 'Status description'],
-        ['applicationType', 'Application Type'],
-        ['returnAppliedDate', 'Return applied date'],
-        ['provisional', 'Provisional/Annual'],
-      ]);
-      const rows = objectToCsvTable(csvOutput, columns);
-      return unparseCsv(rows);
-    }
-    const json = {};
-    for (const client of clients) {
-      if (client.id in clientOutputs) {
-        const output = clientOutputs[client.id];
-        let jsonClient = { id: client.id };
-        if (!anonymizeClients) {
-          jsonClient = Object.assign(jsonClient, {
-            name: client.name,
-            username: client.username,
-          });
-        }
-        if (output.value !== null) {
-          json[client.id] = {
-            client: jsonClient,
-            actionId: output.actionId,
-            taxReturns: output.value,
-            error: output.error,
-          };
-        } else {
-          json[client.id] = null;
-        }
-      }
-    }
-    return writeJson(json);
+        return writeJson(json);
+      },
+    });
   },
 });
 
