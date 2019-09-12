@@ -1,5 +1,5 @@
 import { get } from 'dot-prop';
-import { createClientAction, getInput, createOutputFile, BaseFormattedOutput } from '../base';
+import { createClientAction, getInput, BaseFormattedOutput, createOutputFile } from '../base';
 import {
   GetReturnHistoryClientActionOptions,
   ReturnHistoryReturnDependentRunner,
@@ -144,7 +144,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
                       provisional: provisionalCol,
                     });
                   }
-                  clientOutput[taxTypes[(<TaxTypeNumericalCode>taxTypeId)]] = rows;
+                  clientOutput[taxTypes[taxTypeId]] = rows;
                 }
                 csvOutput[clientIdentifier] = clientOutput;
               }
