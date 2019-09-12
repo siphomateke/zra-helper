@@ -96,6 +96,10 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
     taxTypeIds: [TaxTypeNumericalCode.ITX],
     getAckReceipts: false,
   }),
+  inputValidation: {
+    ...GetReturnHistoryClientActionOptions.inputValidation,
+    getAckReceipts: 'required',
+  },
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {
     return createOutputFile({
