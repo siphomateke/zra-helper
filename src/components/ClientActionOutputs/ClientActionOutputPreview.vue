@@ -35,7 +35,7 @@
         />
         <b-field>
           <b-checkbox
-            v-if="selectedFormat !== exportFormatCodes.TXT"
+            v-if="selectedFormat !== ExportFormatCode.TXT"
             v-model="displayRawOutput"
           >Show raw output</b-checkbox>
         </b-field>
@@ -44,7 +44,7 @@
         v-else-if="!outputGenerationErrorMessage"
         class="bordered-section"
       >
-        <LoadingMessage message="Generating output preview"/>
+        <LoadingMessage message="Generating output preview" />
       </div>
       <b-message
         v-if="outputGenerationErrorMessage"
@@ -56,15 +56,15 @@
       v-else
       class="bordered-section"
     >
-      <EmptyMessage message="Output is empty"/>
+      <EmptyMessage message="Output is empty" />
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import EmptyMessage from '@/components/EmptyMessage.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
-import { exportFormatCodes } from '@/backend/constants';
+import { ExportFormatCode } from '@/backend/constants';
 import ExportViewer from '@/components/ExportData/ExportViewer.vue';
 import { errorToString } from '@/backend/errors';
 import ExportGeneratorsMixin from '@/components/ExportData/export_generators_mixin';
@@ -88,7 +88,7 @@ export default {
     return {
       output: null,
       outputGenerated: false,
-      exportFormatCodes,
+      ExportFormatCode,
       displayRawOutput: false,
       outputGenerationError: null,
     };

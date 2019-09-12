@@ -10,6 +10,7 @@ module.exports = {
   extends: [
     'plugin:vue/recommended',
     '@vue/airbnb',
+    '@vue/typescript',
   ],
   rules: {
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
@@ -19,6 +20,9 @@ module.exports = {
     'no-plusplus': 'off',
     'no-shadow': 'off',
     'vue/prop-name-casing': 'error',
+    // Don't check for duplicate exports because TypeScript allows duplicate exports when
+    // overloading functions
+    'import/export': 'off',
   },
   overrides: [
     {
@@ -30,6 +34,6 @@ module.exports = {
     },
   ],
   parserOptions: {
-    parser: 'babel-eslint',
+    parser: '@typescript-eslint/parser',
   },
 };

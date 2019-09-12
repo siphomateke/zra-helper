@@ -319,7 +319,7 @@
 import { deepReactiveClone, getCurrentBrowser } from '@/utils';
 import configMixin from '@/mixins/config';
 import BaseCard from '@/components/BaseCard.vue';
-import { browserFeatures, featuresSupportedByBrowsers } from '@/backend/constants';
+import { BrowserFeature, featuresSupportedByBrowsers } from '@/backend/constants';
 
 const currentBrowser = getCurrentBrowser();
 
@@ -337,7 +337,7 @@ export default {
   computed: {
     mhtmlSupported() {
       const featuresSupportedByCurrentBrowser = featuresSupportedByBrowsers[currentBrowser];
-      return featuresSupportedByCurrentBrowser.includes(browserFeatures.MHTML);
+      return featuresSupportedByCurrentBrowser.includes(BrowserFeature.MHTML);
     },
     pageDownloadTypes() {
       const options = [

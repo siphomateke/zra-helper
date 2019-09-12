@@ -1,7 +1,9 @@
 {
   "json.schemas": [
     {
-      "fileMatch": ["manifest.json"],
+      "fileMatch": [
+        "manifest.json"
+      ],
       "url": "http://json.schemastore.org/webextension"
     }
   ],
@@ -11,7 +13,11 @@
     "**/dist/**": true
   },
   "editor.formatOnSave": true,
-  "prettier.disableLanguages": ["javascript", "vue"],
+  "prettier.disableLanguages": [
+    "javascript",
+    "typescript",
+    "vue"
+  ],
   "vetur.format.defaultFormatter.js": "none",
   "vetur.format.defaultFormatter.html": "prettyhtml",
   "vetur.format.defaultFormatterOptions": {

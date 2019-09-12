@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import { taxTypeNumericalCodes } from '@/backend/constants';
+import { TaxTypeNumericalCode } from '@/backend/constants';
 import CheckboxList from './CheckboxList.vue';
 
 export default {
@@ -61,14 +61,14 @@ export default {
   data() {
     return {
       taxTypeLabels: {
-        [taxTypeNumericalCodes.ITX]: 'Income tax',
-        [taxTypeNumericalCodes.VAT]: 'Value added tax',
-        [taxTypeNumericalCodes.PAYE]: 'Employment tax (pay as you earn)',
-        [taxTypeNumericalCodes.TOT]: 'Turnover tax',
-        [taxTypeNumericalCodes.WHT]: 'Withholding tax',
-        [taxTypeNumericalCodes.PTT]: 'Property transfer tax',
-        [taxTypeNumericalCodes.MINROY]: 'Mineral royalty',
-        [taxTypeNumericalCodes.TLEVY]: 'Medical levy tax',
+        [TaxTypeNumericalCode.ITX]: 'Income tax',
+        [TaxTypeNumericalCode.VAT]: 'Value added tax',
+        [TaxTypeNumericalCode.PAYE]: 'Employment tax (pay as you earn)',
+        [TaxTypeNumericalCode.TOT]: 'Turnover tax',
+        [TaxTypeNumericalCode.WHT]: 'Withholding tax',
+        [TaxTypeNumericalCode.PTT]: 'Property transfer tax',
+        [TaxTypeNumericalCode.MINROY]: 'Mineral royalty',
+        [TaxTypeNumericalCode.TLEVY]: 'Medical levy tax',
       },
       taxTypeIds: [],
     };

@@ -34,8 +34,17 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { errorToString } from '@/backend/errors';
+
+interface ComponentData {
+  download: browser.downloads.DownloadItem | null;
+  inProgress: boolean;
+  fetchingDownloadInfo: boolean;
+  error: Error | null;
+  downloadIdInvalid: boolean;
+  fetchedDownloadInfo: boolean;
+}
 
 // TODO: Hide raw download.open errors in a collapsible section.
 export default {
@@ -45,9 +54,8 @@ export default {
       required: true,
     },
   },
-  data() {
+  data(): ComponentData {
     return {
-      /** @type {browser.downloads.DownloadItem} */
       download: null,
       inProgress: false,
       fetchingDownloadInfo: true,

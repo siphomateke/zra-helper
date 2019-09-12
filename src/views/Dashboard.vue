@@ -4,7 +4,9 @@
       <form @submit.prevent="submit">
         <div>
           <b-field>
-            <b-checkbox v-model="useCsvForClientList">Use CSV to add clients</b-checkbox>
+            <b-checkbox v-model="useCsvForClientList">
+              Use CSV to add clients
+            </b-checkbox>
           </b-field>
           <div
             v-if="useCsvForClientList"
@@ -12,7 +14,7 @@
           >
             <label class="label">Client list</label>
             <div class="control">
-              <ClientListFileUpload @input="updateClients"/>
+              <ClientListFileUpload @input="updateClients" />
             </div>
           </div>
           <SingleClientInput
@@ -81,12 +83,16 @@
           :class="[runActionsFormInvalid ? 'is-danger' : 'is-primary']"
           class="button"
           type="submit"
-        >Run selected action(s)</button>
+        >
+          Run selected action(s)
+        </button>
       </form>
     </section>
     <section class="dashboard-section">
-      <h3 class="title is-4">Log</h3>
-      <Log/>
+      <h3 class="title is-4">
+        Log
+      </h3>
+      <Log />
     </section>
     <section
       v-if="zraLiteModeEnabled"
@@ -97,10 +103,14 @@
         icon-size="small"
         has-icon
         headerless
-      >The ZRA website is in basic HTML mode until all running tasks have completed.</b-message>
+      >
+        The ZRA website is in basic HTML mode until all running tasks have completed.
+      </b-message>
     </section>
     <section class="dashboard-section">
-      <h3 class="title is-4">Tasks</h3>
+      <h3 class="title is-4">
+        Tasks
+      </h3>
       <TaskList
         :tasks="tasks"
         :is-root="true"
@@ -117,7 +127,9 @@
               v-for="runId in runsWithFailures"
               :key="runId"
               :value="runId"
-            >{{ runId + 1 }}</option>
+            >
+              {{ runId + 1 }}
+            </option>
           </b-select>
           <p class="control">
             <button
@@ -147,7 +159,9 @@
       v-if="anyRunsWithOutputs"
       class="dashboard-section"
     >
-      <h3 class="title is-4">Outputs</h3>
+      <h3 class="title is-4">
+        Outputs
+      </h3>
       <div
         v-for="(run, runId) in runs"
         :key="runId"
@@ -156,7 +170,9 @@
           <h4
             v-if="runs.length > 1"
             class="title is-5"
-          >Run {{ runId + 1 }}</h4>
+          >
+            Run {{ runId + 1 }}
+          </h4>
           <ClientActionOutput
             v-for="actionId in actionsWithOutputsInRun(run)"
             :key="actionId"
@@ -174,7 +190,7 @@
         title="Parsed clients"
       >
         <template slot-scope="{ clientIds }">
-          <ParsedClientsViewer :client-ids="clientIds"/>
+          <ParsedClientsViewer :client-ids="clientIds" />
         </template>
       </ClientListModal>
       <ClientListModal
@@ -193,7 +209,9 @@
           <button
             class="button"
             @click="autoSelectValidClients"
-          >Auto-select valid clients</button>
+          >
+            Auto-select valid clients
+          </button>
         </div>
       </ClientListModal>
       <ClientListModal
@@ -222,7 +240,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import ClientListFileUpload from '@/components/Clients/ClientListFileUpload.vue';
 import SingleClientInput from '@/components/Clients/SingleClientInput.vue';
 import ClientListModal from '@/components/Clients/ClientListModal.vue';
@@ -451,11 +469,11 @@ export default {
     },
     /**
      * Removes clients that are no longer valid from a list.
-     * @param {string} list The name of the list to remove clients from.
-     * @param {(id: number) => boolean} test
+     * @param list The name of the list to remove clients from.
+     * @param test
      * Function that, given the ID of a client, decides whether said client should be removed.
      */
-    removeInvalidClientsFromList(list, test) {
+    removeInvalidClientsFromList(list: string, test: (id: number) => boolean) {
       for (let i = this[list].length - 1; i >= 0; i--) {
         const id = this[list][i];
         const shouldRemove = test(id);

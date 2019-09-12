@@ -1,49 +1,108 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
-    "version": "2.0.0",
-    "tasks": [
-      {
-        "type": "npm",
-        "script": "build",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "serve",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "devtools",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "lint",
-        "problemMatcher": [
-          "$eslint-stylish"
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "serve",
+      "problemMatcher": {
+        "owner": "ts",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^ERROR\\sin\\s(.+)$",
+            "file": 1
+          },
+          {
+            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
         ]
       },
-      {
-        "type": "npm",
-        "script": "serve:firefox",
-        "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "serve:chrome",
+      "problemMatcher": {
+        "owner": "ts",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^ERROR\\sin\\s(.+)$",
+            "file": 1
+          },
+          {
+            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
+        ]
       },
-      {
-        "type": "npm",
-        "script": "build:firefox",
-        "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "serve:firefox",
+      "problemMatcher": {
+        "owner": "ts",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^ERROR\\sin\\s(.+)$",
+            "file": 1
+          },
+          {
+            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
+            "line": 1,
+            "column": 2,
+            "message": 3
+          }
+        ]
       },
-      {
-        "type": "npm",
-        "script": "build:all",
-        "problemMatcher": []
-      },
-      {
-        "type": "npm",
-        "script": "test:unit",
-        "problemMatcher": []
-      }
-    ]
-  }
+    },
+    {
+      "type": "npm",
+      "script": "devtools",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": [
+        "$eslint-stylish"
+      ]
+    },
+    {
+      "label": "tsc",
+      "type": "shell",
+      "command": "./node_modules/.bin/tsc",
+      "args": [
+        "--noEmit"
+      ],
+      "problemMatcher": "$tsc"
+    },
+    {
+      "type": "npm",
+      "script": "build:firefox",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "build:all",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "test:unit",
+      "problemMatcher": []
+    }
+  ]
+}

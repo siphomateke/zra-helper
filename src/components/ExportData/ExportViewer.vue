@@ -15,15 +15,15 @@
 </template>
 
 <script>
-import { exportFormatCodes } from '../../backend/constants';
+import { ExportFormatCode } from '../../backend/constants';
 import TextExportViewer from './previews/TextExportViewer.vue';
 import CsvExportViewer from './previews/CsvExportViewer.vue';
 import JsonExportViewer from './previews/JsonExportViewer.vue';
 
 const previewComponentFromFormat = {
-  [exportFormatCodes.TXT]: TextExportViewer,
-  [exportFormatCodes.CSV]: CsvExportViewer,
-  [exportFormatCodes.JSON]: JsonExportViewer,
+  [ExportFormatCode.TXT]: TextExportViewer,
+  [ExportFormatCode.CSV]: CsvExportViewer,
+  [ExportFormatCode.JSON]: JsonExportViewer,
 };
 
 export default {
@@ -48,7 +48,7 @@ export default {
   },
   data() {
     return {
-      exportFormatCodes,
+      ExportFormatCode,
     };
   },
   computed: {

@@ -18,29 +18,44 @@
           :sortable="true"
           field="id"
           label="ID"
-        >{{ row.id }}</b-table-column>
+        >
+          {{ row.id }}
+        </b-table-column>
         <b-table-column
           :sortable="true"
           field="name"
           label="Name"
-        >{{ row.name }}</b-table-column>
+        >
+          {{ row.name }}
+        </b-table-column>
         <b-table-column
           :sortable="true"
           field="username"
           label="Username"
-        >{{ row.username }}</b-table-column>
+        >
+          {{ row.username }}
+        </b-table-column>
         <b-table-column
           :sortable="true"
           field="password"
           label="Password"
-        >{{ row.password }}</b-table-column>
+        >
+          {{ row.password }}
+        </b-table-column>
       </template>
     </b-table>
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import clientIdMixin from '@/mixins/client_ids';
+import { Client } from '@/backend/constants';
+
+interface ComponentData {
+  selected: Client[];
+  /** Client IDs */
+  selectedIds: number[];
+}
 
 export default {
   name: 'ClientSelector',
@@ -59,11 +74,9 @@ export default {
       default: false,
     },
   },
-  data() {
+  data(): ComponentData {
     return {
-      /** @type {import('@/backend/constants').Client[]} */
       selected: [],
-      /** @type {number[]} Client IDs */
       selectedIds: this.value,
     };
   },

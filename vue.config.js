@@ -9,7 +9,7 @@ function addContentScripts(folder) {
   const contentScripts = fs.readdirSync(contentScriptsPath);
   for (const file of contentScripts) {
     const ext = path.extname(file);
-    if (ext === '.js') {
+    if (ext === '.ts') {
       const filename = path.basename(file, ext);
       const outputPath = path.join('content_scripts', folder, filename);
       contentScriptEntries[outputPath] = path.join(contentScriptsPath, file);
@@ -81,12 +81,12 @@ module.exports = {
   },
   pages: {
     dashboard: {
-      entry: 'src/main.js',
+      entry: 'src/main.ts',
       filename: 'app.html',
       title: 'ZRA Helper',
     },
     options: {
-      entry: 'src/options/options.js',
+      entry: 'src/options/options.ts',
       filename: 'options.html',
       title: 'Options',
     },
@@ -103,7 +103,7 @@ module.exports = {
       autoImportPolyfill: true,
       componentOptions: {
         background: {
-          entry: 'src/backend/background.js',
+          entry: 'src/backend/background.ts',
         },
         contentScripts: {
           entries: contentScriptEntries,
