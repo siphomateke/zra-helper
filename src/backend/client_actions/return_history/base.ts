@@ -34,6 +34,7 @@ import {
   ClientActionOptions,
   BasicRunnerOutput,
   ClientActionObject,
+  BasicRunnerConfig,
 } from '../base';
 import { TaskId } from '@/store/modules/tasks';
 import { objKeysExact } from '@/utils';
@@ -264,18 +265,18 @@ export class ReturnHistoryRunner<
   Input extends RunnerInput = RunnerInput,
   Output = BasicRunnerOutput,
   TFailure extends BaseTaxTypeFailure = BaseTaxTypeFailure
-  > extends ClientActionRunner<Input, Output> {
+  > extends ClientActionRunner<Input, Output, BasicRunnerConfig, TaxTypeFailures<TFailure>> {
   taxTypeTaskTitle: TaxTypeTaskTitleFn = () => '';
 
   failures: TaxTypeFailures<TFailure> = {};
 
-  anyFailures: boolean = false;
-
   /** Returns per tax type ID. Includes returns that are being retried. */
   taxTypeReturns: TaxTypeIdMap<TaxReturn[]> = {};
 
-  // TODO: Make sure the reason is always known.
-  getUnknownRetryReasonMessage = () => 'Failed for unknown reason.';
+  // eslint-disable-next-line class-methods-use-this
+  getInitialFailuresObj() {
+    return {};
+  }
 
   /**
    * Stores the tax returns for a particular tax type.
@@ -400,7 +401,7 @@ export class ReturnHistoryRunner<
   /**
    * Runs `runTaxTypeTaskAbstract` on every tax type and stores the failures.
    */
-  async runAllTaxTypes() {
+  async runInternal() {
     // We get the input here once to reduce the overhead from querying Vuex.
     const { client, task, input } = this.storeProxy;
 
@@ -421,7 +422,6 @@ export class ReturnHistoryRunner<
         });
         if (taxTypeFailure.failed) {
           this.failures[taxTypeId] = taxTypeFailure;
-          this.anyFailures = true;
         }
       },
     });
@@ -441,20 +441,16 @@ export class ReturnHistoryRunner<
     return anyPagesFailed;
   }
 
-  getRetryReasons(): string[] {
-    const reasons = [];
+  checkIfAnythingFailed() {
+    return Object.keys(this.failures).length > 0;
+  }
+
+  getRetryReasons() {
+    const reasons = super.getRetryReasons();
     if (this.anyPagesFailed()) {
       reasons.push('Some return history pages could not be retrieved.');
     }
     return reasons;
-  }
-
-  getRetryReason() {
-    const reasons = this.getRetryReasons();
-    if (reasons.length > 0) {
-      return reasons.join(', ');
-    }
-    return this.getUnknownRetryReasonMessage();
   }
 
   getRetryInput(): Input {
@@ -469,19 +465,6 @@ export class ReturnHistoryRunner<
       retryInput.taxTypeIds.push(taxTypeId);
     }
     return retryInput;
-  }
-
-  async runInternal() {
-    this.anyFailures = false;
-    try {
-      await this.runAllTaxTypes();
-    } finally {
-      if (this.anyFailures) {
-        this.storeProxy.shouldRetry = true;
-        this.storeProxy.retryReason = this.getRetryReason();
-        this.storeProxy.retryInput = this.getRetryInput();
-      }
-    }
   }
 }
 
@@ -749,10 +732,10 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryReturnDependentRun
     return failedReturns;
   }
 
-  async runAllTaxTypes() {
+  async runInternal() {
     // TODO: Rename this to be generic
     await startDownloadingReceipts();
-    await super.runAllTaxTypes();
+    await super.runInternal();
     await finishDownloadingReceipts();
   }
 

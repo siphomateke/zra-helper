@@ -28,6 +28,8 @@ import {
   createClientAction,
   ClientActionRunner,
   getInput,
+  BasicRunnerOutput,
+  BasicRunnerConfig,
 } from './base';
 import { InvalidReceiptError } from '../errors';
 import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
@@ -265,6 +267,11 @@ export namespace GetPaymentReceiptsAction {
     receipts?: PaymentReceipt[];
     receiptDataPages?: number[];
   }
+
+  export interface Failures {
+    receipts: PaymentReceipt[];
+    receiptDataPages: number[];
+  }
 }
 
 const GetPaymentReceiptsClientAction = createClientAction<GetPaymentReceiptsAction.Input>({
@@ -282,21 +289,32 @@ const GetPaymentReceiptsClientAction = createClientAction<GetPaymentReceiptsActi
 
 
 GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
-  GetPaymentReceiptsAction.Input
+  GetPaymentReceiptsAction.Input,
+  BasicRunnerOutput,
+  BasicRunnerConfig,
+  GetPaymentReceiptsAction.Failures
   > {
+  failures: GetPaymentReceiptsAction.Failures = {
+    receipts: [],
+    receiptDataPages: [],
+  };
+
   constructor() {
     super(GetPaymentReceiptsClientAction);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getInitialFailuresObj() {
+    return {
+      receipts: [],
+      receiptDataPages: [],
+    };
   }
 
   async runInternal() {
     const { task: actionTask, client, input } = this.storeProxy;
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
-
-    const failed: { receipts: PaymentReceipt[]; receiptDataPages: number[] } = {
-      receipts: [],
-      receiptDataPages: [],
-    };
 
     await taskFunction({
       task: actionTask,
@@ -321,7 +339,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
             pages,
           });
           receipts.push(...data);
-          failed.receiptDataPages = failedPages;
+          this.failures.receiptDataPages = failedPages;
         }
 
         // TODO: Indicate why receipts weren't downloaded
@@ -337,20 +355,31 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
             },
           });
           await finishDownloadingReceipts();
-          failed.receipts = getFailedResponseItems(downloadResponses);
+          this.failures.receipts = getFailedResponseItems(downloadResponses);
         }
       },
     });
+  }
 
-    if (failed.receipts.length > 0 || failed.receiptDataPages.length > 0) {
-      this.setRetryReason('Some receipts failed to download.');
-      if (failed.receipts.length > 0) {
-        this.storeProxy.retryInput.receipts = failed.receipts;
-      }
-      if (failed.receiptDataPages.length > 0) {
-        this.storeProxy.retryInput.receiptDataPages = failed.receiptDataPages;
-      }
+  checkIfAnythingFailed() {
+    return this.failures.receipts.length > 0 || this.failures.receiptDataPages.length > 0;
+  }
+
+  getRetryReasons() {
+    const reasons = super.getRetryReasons();
+    reasons.push('Some receipts failed to download.');
+    return reasons;
+  }
+
+  getRetryInput() {
+    const retryInput: GetPaymentReceiptsAction.Input = {};
+    if (this.failures.receipts.length > 0) {
+      retryInput.receipts = this.failures.receipts;
     }
+    if (this.failures.receiptDataPages.length > 0) {
+      retryInput.receiptDataPages = this.failures.receiptDataPages;
+    }
+    return retryInput;
   }
 };
 

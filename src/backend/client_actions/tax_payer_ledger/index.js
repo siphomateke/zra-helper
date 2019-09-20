@@ -107,13 +107,33 @@ const TaxPayerLedgerClientAction = createClientAction({
 });
 
 /**
+ * FIXME: Use TypeScript
+ * @typedef LedgerFailures
+ * @property {import('@/backend/constants').TaxTypeNumericalCode[]} taxTypes
+ * @property {Object.<string, number[]>} pages Failed pages by tax type ID
+ */
+
+/**
  * @typedef {Object.<string, import('@/backend/reports').TaxPayerLedgerRecord[]>} LedgerOutput
  * Ledger records by tax type ID
  */
 
 TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
+  /** @type {LedgerFailures} */
+  failures = {
+    taxTypes: [],
+    pages: {},
+  };
+
   constructor() {
     super(TaxPayerLedgerClientAction);
+  }
+
+  getInitialFailuresObj() {
+    return {
+      taxTypes: [],
+      pages: {},
+    };
   }
 
   async runInternal() {
@@ -195,12 +215,6 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
     });
 
     const output = {};
-    const failures = {
-      /** @type {import('@/backend/constants').TaxTypeNumericalCode[]} */
-      taxTypeIds: [],
-      /** @type { Object.<string, number[]>} Failed pages by tax type ID */
-      pages: {},
-    };
     for (const taxTypeResponse of taxTypeResponses) {
       const { taxTypeId } = taxTypeResponse.item;
       if (!('error' in taxTypeResponse)) {
@@ -210,36 +224,50 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
           if (!('error' in response)) {
             records.push(...response.value.records);
           } else {
-            if (!(taxTypeId in failures.pages)) {
-              failures.pages[taxTypeId] = [];
+            if (!(taxTypeId in this.failures.pages)) {
+              this.failures.pages[taxTypeId] = [];
             }
-            failures.pages[taxTypeId].push(response.page);
+            this.failures.pages[taxTypeId].push(response.page);
           }
         }
-        if (taxTypeId in failures.pages) {
-          failures.taxTypeIds.push(taxTypeId);
+        if (taxTypeId in this.failures.pages) {
+          this.failures.taxTypeIds.push(taxTypeId);
         }
         output[taxTypeId] = records;
       } else {
-        failures.taxTypeIds.push(taxTypeId);
+        this.failures.taxTypeIds.push(taxTypeId);
       }
     }
-    const somePagesFailed = Object.keys(failures.pages).length > 0;
-    if (failures.taxTypeIds.length > 0 || somePagesFailed) {
-      /** @type {RunnerInput} */
-      const retryInput = {};
-      if (failures.taxTypeIds.length > 0) {
-        retryInput.taxTypeIds = failures.taxTypeIds;
-      }
-      if (somePagesFailed) {
-        retryInput.pages = failures.pages;
-      }
-      const failedTaxTypes = failures.taxTypeIds.map(id => taxTypes[id]);
-      this.setRetryReason(`Failed to get some ledger records from the following tax accounts: [ ${failedTaxTypes.join(', ')} ].`);
-      this.storeProxy.retryInput = retryInput;
-    }
+
     // FIXME: Merge records from retry with previous try
-    this.storeProxy.output = output;
+    this.setOutput(output);
+  }
+
+  checkIfAnyPagesFailed() {
+    return Object.keys(this.failures.pages).length > 0;
+  }
+
+  checkIfAnythingFailed() {
+    return this.failures.taxTypeIds.length > 0 || this.checkIfAnyPagesFailed();
+  }
+
+  getRetryReasons() {
+    const reasons = super.getRetryReasons();
+    const failedTaxTypes = this.failures.taxTypeIds.map(id => taxTypes[id]);
+    reasons.push(`Failed to get some ledger records from the following tax accounts: [ ${failedTaxTypes.join(', ')} ].`);
+    return reasons;
+  }
+
+  getRetryInput() {
+    /** @type {RunnerInput} */
+    const retryInput = {};
+    if (this.failures.taxTypeIds.length > 0) {
+      retryInput.taxTypeIds = this.failures.taxTypeIds;
+    }
+    if (this.checkIfAnyPagesFailed()) {
+      retryInput.pages = this.failures.pages;
+    }
+    return retryInput;
   }
 };
 export default TaxPayerLedgerClientAction;
