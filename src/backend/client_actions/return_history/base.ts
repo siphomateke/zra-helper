@@ -717,14 +717,16 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryReturnDependentRun
    * @returns Returns whose ack receipts or return forms could not be downloaded.
    */
   async downloadItems({ returns, task, taxTypeId }: DownloadItemsFnOptions): Promise<TaxReturn[]> {
-    const taskTitle = this.downloadItemsTaskTitle(returns.length);
-    task.status = taskTitle;
+    const downloadTask = await createTask(store, {
+      title: this.downloadItemsTaskTitle(returns.length),
+      parent: task.id,
+    });
+    task.status = downloadTask.title;
     const { client } = this.storeProxy;
     const downloadResponses = await downloadPages({
-      taskTitle,
+      task: downloadTask,
       list: returns,
-      parentTaskId: task.id,
-      downloadPageFn: (taxReturn, parentTaskId) => this.downloadFunc({
+      func: (taxReturn, parentTaskId) => this.downloadFunc({
         taxReturn, parentTaskId, client, taxType: taxTypeId,
       }),
     });
