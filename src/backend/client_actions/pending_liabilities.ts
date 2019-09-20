@@ -283,7 +283,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
   },
 });
 
-GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
+class PendingLiabilityTotalsRunner extends ClientActionRunner<
   PendingLiabilitiesAction.Input,
   PendingLiabilitiesAction.Output,
   BasicRunnerConfig,
