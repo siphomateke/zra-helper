@@ -328,7 +328,7 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
 
     let taxTypeIds = client.taxTypes !== null ? client.taxTypes : [];
 
-    const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
+    const taxTypeIdsInput = getInput<PendingLiabilitiesAction.Input['taxTypeIds']>(input, 'taxTypeIds', { checkArrayLength: false });
     if (taxTypeIdsInput.exists) {
       taxTypeIds = taxTypeIds.filter(id => taxTypeIdsInput.value.includes(id));
     }

@@ -297,10 +297,10 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
       setStateBasedOnChildren: true,
       func: async () => {
         // If specific receipts have been requested to be downloaded, use those.
-        const { value: receipts } = getInput(input, 'receipts', { defaultValue: [] });
+        const { value: receipts } = getInput<Exclude<GetPaymentReceiptsAction.Input['receipts'], undefined>>(input, 'receipts', { defaultValue: [] });
 
         // If getting certain receipt data pages failed last time, only get those pages.
-        const { value: pages } = getInput(input, 'receiptDataPages', { defaultValue: [] });
+        const { value: pages } = getInput<Exclude<GetPaymentReceiptsAction.Input['receiptDataPages'], undefined>>(input, 'receiptDataPages', { defaultValue: [] });
 
         if (pages.length > 0 || receipts.length === 0) {
           actionTask.status = 'Getting payment receipt numbers';
