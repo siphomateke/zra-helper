@@ -224,7 +224,7 @@ CheckAccountApprovalStatusClientAction.Runner = class extends ReturnHistoryRetur
 
     this.shouldRunReturnDependentFuncOnTaxType = ({ input, taxTypeId }) => {
       // TODO: Cache checking input
-      const { value: getAckReceipts } = getInput(input, 'getAckReceipts');
+      const { value: getAckReceipts } = getInput<Exclude<AccountApprovalStatusClientAction.Input['getAckReceipts'], undefined>>(input, 'getAckReceipts');
       return getAckReceipts && taxTypeId === TaxTypeNumericalCode.ITX;
     };
   }

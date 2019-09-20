@@ -516,21 +516,26 @@ interface GetInputFnOptions {
   defaultValue?: any;
 }
 
-interface GetInputFnResponse {
+interface GetInputFnResponse<T> {
   /** Whether the input at the provided path exists. */
   exists: boolean;
   /** Value of input or default value if it was specified. */
-  value: any;
+  value: T;
 }
 
 /**
  * Gets a runner's input using a dot notation path. Also, returns if the input existed.
  * @param path The dot notation path.
  */
-export function getInput(input: object, path: string, options: GetInputFnOptions = {}): GetInputFnResponse {
+// FIXME: Make sure generic `T` is never undefined when a non-undefined defaultValue is provided.
+export function getInput<T>(
+  input: object,
+  path: string,
+  options: GetInputFnOptions = {},
+): GetInputFnResponse<T> {
   const { checkArrayLength = true } = options;
 
-  let value = get(input, path);
+  let value: any = get(input, path);
   let exists = typeof value !== 'undefined';
   if (exists && checkArrayLength && Array.isArray(value) && value.length === 0) {
     exists = false;

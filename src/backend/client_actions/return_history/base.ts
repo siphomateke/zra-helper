@@ -311,7 +311,7 @@ export class ReturnHistoryRunner<
     task, input, taxTypeId, failures,
   }: GetReturnsFnOptions<Input, TFailure>) {
     // If getting certain return history pages failed last time, only get those pages.
-    const { value: pages } = getInput(input, `returnHistoryPages.${taxTypeId}`, { defaultValue: [] });
+    const { value: pages } = getInput<Exclude<Exclude<Input['returnHistoryPages'], undefined>[TaxTypeNumericalCode], undefined>>(input, `returnHistoryPages.${taxTypeId}`, { defaultValue: [] });
 
     task.status = 'Getting returns';
     const returns: TaxReturn[] = [];
@@ -407,7 +407,7 @@ export class ReturnHistoryRunner<
     let taxTypeIds = client.taxTypes !== null ? client.taxTypes : [];
 
     // Filter tax type IDs using input
-    const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
+    const taxTypeIdsInput = getInput<Input['taxTypeIds']>(input, 'taxTypeIds', { checkArrayLength: false });
     if (taxTypeIdsInput.exists) {
       taxTypeIds = taxTypeIds.filter(id => taxTypeIdsInput.value.includes(id));
     }
@@ -588,7 +588,7 @@ export abstract class ReturnHistoryReturnDependentRunner<
     task, input, taxTypeId, failures,
   }: GetReturnsSmartFnOptions<Input, TFailure>) {
     // If only certain returns failed in the last run, use those.
-    const returnsInput = getInput(input, `returns.${taxTypeId}`, { defaultValue: [] });
+    const returnsInput = getInput<Exclude<Exclude<Input['returns'], undefined>[TaxTypeNumericalCode], undefined>>(input, `returns.${taxTypeId}`, { defaultValue: [] });
     this.addTaxTypesReturns(taxTypeId, returnsInput.value);
 
     const pagesInputExists = inputExists(input, `returnHistoryPages.${taxTypeId}`);
