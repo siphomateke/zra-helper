@@ -18,6 +18,7 @@ import {
   createOutputFile,
   ClientActionOutputFormatterOptions,
   BaseFormattedOutput,
+  BasicRunnerConfig,
 } from './base';
 import { getPendingLiabilityPage } from '../reports';
 import { errorToString } from '../errors';
@@ -125,6 +126,10 @@ export namespace PendingLiabilitiesAction {
     totals: TaxTypeCodeMap<Totals>;
     /** Errors retrieving particular tax types stored by tax type ID. */
     retrievalErrors: TaxTypeCodeMap<any>;
+  }
+
+  export interface Failures {
+    taxTypeIds: TaxTypeNumericalCode[],
   }
 }
 
@@ -280,10 +285,24 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
 
 GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
   PendingLiabilitiesAction.Input,
-  PendingLiabilitiesAction.Output
+  PendingLiabilitiesAction.Output,
+  BasicRunnerConfig,
+  PendingLiabilitiesAction.Failures,
   > {
+
+  failures: PendingLiabilitiesAction.Failures = {
+    taxTypeIds: [],
+  };
+
   constructor() {
     super(GetAllPendingLiabilitiesClientAction);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getInitialFailuresObj() {
+    return {
+      taxTypeIds: [],
+    };
   }
 
   /**
@@ -345,7 +364,6 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
       totals: {},
       retrievalErrors: {},
     };
-    const failedTaxTypeIds = [];
     for (const response of responses) {
       const taxTypeId = response.item;
       const taxType = taxTypes[taxTypeId];
@@ -353,15 +371,35 @@ GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
         output.totals[taxType] = Object.assign({}, response.value);
       } else {
         output.retrievalErrors[taxType] = response.error;
-        failedTaxTypeIds.push(taxTypeId);
+        this.failures.taxTypeIds.push(taxTypeId);
       }
     }
     this.setOutput(output);
-    const failedTaxTypes = objKeysExact(output.retrievalErrors);
-    if (failedTaxTypes.length > 0) {
-      this.setRetryReason(`Failed to get some tax types: ${failedTaxTypes}`);
-      this.storeProxy.retryInput = { taxTypeIds: failedTaxTypeIds };
+  }
+
+  anyTaxTypesFailed() {
+    return this.failures.taxTypeIds.length > 0;
+  }
+
+  checkIfAnythingFailed() {
+    return this.anyTaxTypesFailed();
+  }
+
+  getRetryReasons() {
+    const reasons = super.getRetryReasons();
+    if (this.anyTaxTypesFailed()) {
+      const failedTaxTypes = this.failures.taxTypeIds.map(taxTypeId => taxTypes[taxTypeId]);
+      reasons.push(`Failed to get some tax types: ${failedTaxTypes}`);
     }
+    return reasons;
+  }
+
+  getRetryInput() {
+    const retryInput: PendingLiabilitiesAction.Input = {};
+    if (this.anyTaxTypesFailed()) {
+      retryInput.taxTypeIds = this.failures.taxTypeIds;
+    }
+    return retryInput;
   }
 };
 

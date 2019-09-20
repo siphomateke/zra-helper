@@ -154,6 +154,7 @@ interface RunnerRunOptions {
 export interface BasicRunnerInput { }
 export interface BasicRunnerOutput { }
 export interface BasicRunnerConfig { }
+export interface BasicRunnerFailures { }
 
 /**
  * The part of a client action that will actually be run.
@@ -164,11 +165,18 @@ export interface BasicRunnerConfig { }
 export abstract class ClientActionRunner<
   Input extends object = BasicRunnerInput,
   Output = BasicRunnerOutput,
-  Config = BasicRunnerConfig
+  Config = BasicRunnerConfig,
+  Failures = BasicRunnerFailures,
   > {
   id: string | null = null;
 
   storeProxy: TypedClientActionRunnerProxy<Input, Output, Config>;
+
+  /**
+   * Anything that failed to run. Mainly used to decide what this action's input should be when
+   * retrying it.
+   */
+  abstract failures: Failures;
 
   constructor(public action: ClientActionObject<Input, Output>) { }
 
@@ -269,6 +277,16 @@ export abstract class ClientActionRunner<
     this.storeProxy.output = merged;
   }
 
+  /** Gets a clean empty initial failures object. */
+  // TODO: TypeScript partial type parameter inference: Use `failures` prop type as return type.
+  abstract getInitialFailuresObj(): Failures;
+
+  /** Returns true if anything went wrong running the action and it should be retried. */
+  // eslint-disable-next-line class-methods-use-this
+  checkIfAnythingFailed(): boolean {
+    return false;
+  }
+
   /**
    * Runs the business logic of the runner.
    *
@@ -279,6 +297,7 @@ export abstract class ClientActionRunner<
   async run(data: RunnerRunOptions) {
     this.storeProxy.loggedInTabId = data.loggedInTabId;
     this.storeProxy.task = data.task;
+    this.failures = this.getInitialFailuresObj();
     try {
       this.storeProxy.running = true;
       await this.runInternal();
@@ -290,12 +309,39 @@ export abstract class ClientActionRunner<
     }
   }
 
+  // eslint-disable-next-line class-methods-use-this
+  getRetryReasons(): string[] {
+    return [];
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getUnknownRetryReasonMessage() {
+    return 'Failed for unknown reason.';
+  }
+
+  getRetryReason() {
+    const reasons = this.getRetryReasons();
+    if (reasons.length > 0) {
+      return reasons.join(', ');
+    }
+    return this.getUnknownRetryReasonMessage();
+  }
+
+  abstract getRetryInput(): Input;
+
   /**
    * Called after this runner has finished running to decide whether it failed in some way and
-   * should be run again.
+   * should be run again. If it is decided that this runner should be run again, this function
+   * then also sets the retry reason and input.
    */
   checkIfShouldRetry() {
+    if (this.checkIfAnythingFailed()) {
+      this.storeProxy.shouldRetry = true;
+      this.storeProxy.retryReason = this.getRetryReason();
+      this.storeProxy.retryInput = this.getRetryInput();
+    }
     // Don't override any retry reasons that have already been given.
+    // `shouldRetry` is null by default and thus remains that way when an error is thrown.
     if (this.storeProxy.shouldRetry === null) {
       const { error } = this.storeProxy;
       if (error !== null) {
@@ -307,21 +353,13 @@ export abstract class ClientActionRunner<
         ) {
           this.storeProxy.shouldRetry = false;
         } else {
-          this.setRetryReason(errorToString(error));
+          this.storeProxy.shouldRetry = true;
+          this.storeProxy.retryReason = errorToString(error);
         }
       } else {
         this.storeProxy.shouldRetry = false;
       }
     }
-  }
-
-  /**
-   * Indicates that an instance should be retried and why.
-   * @param reason The reason why this instance should be retried.
-   */
-  setRetryReason(reason: string) {
-    this.storeProxy.shouldRetry = true;
-    this.storeProxy.retryReason = reason;
   }
 
   getActionOutput(actionId: string) {
