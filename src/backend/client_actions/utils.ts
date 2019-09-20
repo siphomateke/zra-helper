@@ -131,16 +131,23 @@ interface ParallelTaskMapFnOptionsBase<I, R> {
   neverReject?: boolean;
 }
 
+/**
+ * Describes the relationship between ParallelTaskMapFnOption's `list` and `count` properties.
+ * One or none of the two properties can be provided.
+ */
+type ParallelTaskMapFnListCountOptions<ListItem, Count extends number | undefined> = {
+  /** The list to loop through */
+  list: Array<ListItem>;
+  count?: never;
+} | {
+  /** The number of times to run. This is can be provided instead of a list. */
+  count: Count;
+  list?: never;
+};
+
 type ParallelTaskMapFnOptions<Response, ListItem, Count extends number | undefined> =
-  ParallelTaskMapFnOptionsBase<Count extends undefined ? ListItem : number, Response> & ({
-    /** The list to loop through */
-    list: Array<ListItem>;
-    count?: never;
-  } | {
-    /** The number of times to run. This is can be provided instead of a list. */
-    count: Count;
-    list?: never;
-  });
+  ParallelTaskMapFnOptionsBase<Count extends undefined ? ListItem : number, Response>
+  & ParallelTaskMapFnListCountOptions<ListItem, Count>;
 
 /**
  * Loops through a list or `count` number of times and runs a provided function asynchronously
@@ -726,35 +733,30 @@ export async function downloadPage({
   });
 }
 
-type DownloadPageFn<L, R> = (item: L, parentTaskId: TaskId) => Promise<R>;
-
-interface DownloadPagesFnOptions<L, R> {
-  /** Title of the task that will be a parent to all the page downloading tasks. */
-  taskTitle?: string;
-  parentTaskId: TaskId;
-  /** Array of data to use when downloading pages. */
-  list: Array<L>;
+interface DownloadPagesFnOptionsBase<I, R> extends Omit<ParallelTaskMapFnOptionsBase<I, R>, 'neverReject'> {
+  /** Task that will be a parent to all the page downloading tasks. */
+  task: TaskObject;
   /** Function called on each item in the array of data list that should download a page. */
-  downloadPageFn: DownloadPageFn<L, R>;
+  func: ParallelTaskMapFunction<I, R>;
 }
+
+type DownloadPagesFnOptions<Response, ListItem, Count extends number | undefined> =
+  DownloadPagesFnOptionsBase<Count extends undefined ? ListItem : number, Response>
+  & ParallelTaskMapFnListCountOptions<ListItem, Count>;
 
 /**
  * Downloads multiple pages in parallel.
  */
-export async function downloadPages<L, R>({
-  taskTitle = 'Download pages',
-  parentTaskId,
-  list,
-  downloadPageFn,
-}: DownloadPagesFnOptions<L, R>) {
-  const task = await createTask(store, { title: taskTitle, parent: parentTaskId });
+export async function downloadPages<
+  Response,
+  ListItem,
+  Count extends number | undefined = undefined
+>(options: DownloadPagesFnOptions<Response, ListItem, Count>) {
   const initialMaxOpenTabs = config.maxOpenTabs;
   config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
   const response = await parallelTaskMap({
-    list,
-    task,
+    ...options,
     neverReject: true,
-    func: downloadPageFn,
   });
   config.maxOpenTabs = initialMaxOpenTabs;
   return response;

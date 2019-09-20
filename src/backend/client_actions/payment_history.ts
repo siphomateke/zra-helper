@@ -34,6 +34,8 @@ import { InvalidReceiptError } from '../errors';
 import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
 import { TaskId } from '@/store/modules/tasks';
 import { objKeysExact } from '@/utils';
+import createTask from '@/transitional/tasks';
+import store from '@/store';
 
 interface PrnNo extends ParsedTableLinkCell {
   /** E.g. '118019903987' */
@@ -341,10 +343,12 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
           actionTask.status = `Downloading ${receipts.length} payment receipt(s)`;
           await startDownloadingReceipts();
           const downloadResponses = await downloadPages({
-            taskTitle: `Download ${receipts.length} payment receipt(s)`,
-            parentTaskId: actionTask.id,
+            task: await createTask(store, {
+              title: `Download ${receipts.length} payment receipt(s)`,
+              parent: actionTask.id,
+            }),
             list: receipts,
-            downloadPageFn(receipt, parentTaskId) {
+            func(receipt, parentTaskId) {
               return downloadPaymentReceipt({ receipt, parentTaskId, client });
             },
           });
