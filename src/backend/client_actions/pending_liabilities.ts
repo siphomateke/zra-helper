@@ -398,7 +398,7 @@ export function csvOutputParser(csvString) {
   return pendingLiabilities;
 }
 
-GetAllPendingLiabilitiesClientAction.Runner = class extends ClientActionRunner<
+class PendingLiabilityTotalsRunner extends ClientActionRunner<
   PendingLiabilitiesAction.Input,
   PendingLiabilitiesAction.Output,
   BasicRunnerConfig,
