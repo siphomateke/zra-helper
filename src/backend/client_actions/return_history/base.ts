@@ -21,10 +21,10 @@ import {
   taskFunction,
   downloadPages,
   GetDataFromPageFunctionReturn,
+  startDownloadingPages,
+  finishDownloadingPages,
 } from '../utils';
 import {
-  startDownloadingReceipts,
-  finishDownloadingReceipts,
   getFailedResponseItems,
   getReceiptData,
 } from '../receipts';
@@ -704,9 +704,9 @@ export class ReturnHistoryDownloadRunner extends ReturnHistoryReturnDependentRun
 
   async runInternal() {
     // TODO: Rename this to be generic
-    await startDownloadingReceipts();
+    await startDownloadingPages();
     await super.runInternal();
-    await finishDownloadingReceipts();
+    await finishDownloadingPages();
   }
 
   getRetryReasons() {
