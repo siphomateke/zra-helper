@@ -59,6 +59,20 @@ export function generateTotals<
   return totals;
 }
 
+type PendingLiabilityPages = { [page: number]: HTMLDocument };
+
+interface GetPendingLiabilitiesFnResponse {
+  totals: Totals | null;
+  numPages: number;
+  pages: PendingLiabilityPages;
+  /**
+   * Set if there were any errors getting pending liabilities.
+   *
+   * This is set instead of just throwing an error so the other response properties can be accessed.
+   */
+  error?: any;
+}
+
 /**
  * Gets the pending liability totals of a tax type.
  */
@@ -66,52 +80,61 @@ async function getPendingLiabilities(
   client: Client,
   taxTypeId: TaxTypeNumericalCode,
   parentTaskId: TaskId,
-): Promise<Totals | null> {
-  const taxType = taxTypes[taxTypeId];
-
+): Promise<GetPendingLiabilitiesFnResponse> {
   const task = await createTask(store, {
-    title: `Get ${taxType} totals`,
+    title: `Get ${taxTypes[taxTypeId]} totals`,
     parent: parentTaskId,
     progressMax: 2,
   });
   return taskFunction({
     task,
     async func() {
-      task.status = 'Getting totals from first page';
-      let response = await getPendingLiabilityPage({
-        taxTypeId,
-        page: 1,
-        tpin: client.username,
-      });
+      const pages: PendingLiabilityPages = {};
 
-      if (response.numPages > 1) {
-        task.addStep('More than one page found. Getting totals from last page');
-        response = await getPendingLiabilityPage({
+      // TODO: Investigate performance of creating this function here.
+      async function getPage(page: number) {
+        const response = await getPendingLiabilityPage({
           taxTypeId,
-          page: response.numPages,
+          page,
           tpin: client.username,
         });
+        pages[page] = response.reportDocument;
+        return response;
       }
 
-      let totals: Totals | null;
-      const { records } = response.parsedTable;
-      if (records.length > 0) {
-        const totalsRow = records[records.length - 1];
-        // Make sure we are getting totals from the grand total row.
-        if (totalsRow.srNo.toLowerCase() === 'grand total') {
-          totals = {} as Totals;
-          for (const column of totalsColumns) {
-            const cell = totalsRow[column];
-            totals[column] = cell.replace(/\n\n/g, '');
+      task.status = 'Getting totals from first page';
+      let response = await getPage(1);
+
+      let totals: Totals | null = null;
+      try {
+        if (response.numPages > 1) {
+          task.addStep('More than one page found. Getting totals from last page');
+          response = await getPage(response.numPages);
+        }
+
+        const { records } = response.parsedTable;
+        if (records.length > 0) {
+          const totalsRow = records[records.length - 1];
+          // Make sure we are getting totals from the grand total row.
+          if (totalsRow.srNo.toLowerCase() === 'grand total') {
+            totals = {} as Totals;
+            for (const column of totalsColumns) {
+              const cell = totalsRow[column];
+              totals[column] = cell.replace(/\n\n/g, '');
+            }
+          } else {
+            totals = null;
           }
         } else {
-          totals = null;
+          totals = generateTotals(totalsColumns, '0');
         }
-      } else {
-        totals = generateTotals(totalsColumns, '0');
-      }
 
-      return totals;
+        return { totals, numPages: response.numPages, pages };
+      } catch (error) {
+        return {
+          totals, numPages: response.numPages, pages, error,
+        };
+      }
     },
   });
 }
@@ -297,6 +320,10 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
     taxTypeIds: [],
   };
 
+  numPages: number = 0;
+
+  pages: PendingLiabilityPages = {};
+
   constructor() {
     super(GetAllPendingLiabilitiesClientAction);
   }
@@ -356,10 +383,19 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
     }
 
     const responses = await parallelTaskMap({
-      task: actionTask,
-      list: taxTypeIds,
-      async func(taxTypeId, parentTaskId) {
-        return getPendingLiabilities(client, taxTypeId, parentTaskId);
+      func: async (taxTypeId, parentTaskId) => {
+        const {
+          totals,
+          numPages,
+          pages,
+          error,
+        } = await getPendingLiabilities(client, taxTypeId, parentTaskId);
+        this.numPages = numPages;
+        this.pages = pages;
+        if (typeof error !== 'undefined') {
+          throw error;
+        }
+        return totals;
       },
     });
 
