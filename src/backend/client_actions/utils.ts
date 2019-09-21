@@ -808,3 +808,18 @@ export function getQuarterFromPeriodDates(fromDate, toDate) {
   const periodToMonth = moment(toDate, 'DD/MM/YYYY').format('MM');
   return getQuarterFromPeriodMonths(periodFromMonth, periodToMonth);
 }
+
+/**
+ * Disables lite mode so pages' assets are correctly downloaded.
+ *
+ * This could be done immediately before downloading a page but if many pages are being downloaded
+ * it will be toggled very rapidly causing performance issues.
+ */
+export function startDownloadingPages() {
+  return changeLiteMode(false);
+}
+
+/** Re-enables lite mode after downloading pages with assets. */
+export function finishDownloadingPages() {
+  return changeLiteMode(true);
+}

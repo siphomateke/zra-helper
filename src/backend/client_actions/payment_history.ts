@@ -7,10 +7,10 @@ import {
   downloadPage,
   getQuarterFromPeriodMonths,
   GetDataFromPageFunctionReturn,
+  startDownloadingPages,
+  finishDownloadingPages,
 } from './utils';
 import {
-  startDownloadingReceipts,
-  finishDownloadingReceipts,
   getFailedResponseItems,
   getReceiptData,
   getDataFromReceiptTab,
@@ -348,7 +348,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
           actionTask.status = `Downloading ${receipts.length} payment receipt(s)`;
-          await startDownloadingReceipts();
+          await startDownloadingPages();
           const downloadResponses = await downloadPages({
             task: await createTask(store, {
               title: `Download ${receipts.length} payment receipt(s)`,
@@ -359,7 +359,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
               return downloadPaymentReceipt({ receipt, parentTaskId, client });
             },
           });
-          await finishDownloadingReceipts();
+          await finishDownloadingPages();
           this.failures.receipts = getFailedResponseItems(downloadResponses);
         }
       },
