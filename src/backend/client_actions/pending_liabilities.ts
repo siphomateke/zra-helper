@@ -144,6 +144,7 @@ async function getPendingLiabilities(
 export namespace PendingLiabilitiesAction {
   export interface Input {
     taxTypeIds?: TaxTypeNumericalCode[];
+    downloadPages?: boolean;
   }
 
   export interface Output {
@@ -286,9 +287,11 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
   requiresTaxTypes: true,
   defaultInput: () => ({
     taxTypeIds: taxTypeNumericalCodes,
+    downloadPages: false,
   }),
   inputValidation: {
     taxTypeIds: 'required|taxTypeIds',
+    downloadPages: 'required',
   },
   hasOutput: true,
   generateOutputFiles({ clients, allClients, outputs }) {
