@@ -5,6 +5,15 @@
       :disabled="disabled"
       :multiple="true"
     />
+    <!-- eslint-disable max-len -->
+    <b-checkbox
+      v-model="input.downloadPages"
+      title="Whether the pending liability pages should be downloaded as proof that the collected pending liability amounts are accurate."
+      :disabled="disabled"
+    >
+      Download pages
+    </b-checkbox>
+    <!-- eslint-enable max-len -->
   </div>
 </template>
 
