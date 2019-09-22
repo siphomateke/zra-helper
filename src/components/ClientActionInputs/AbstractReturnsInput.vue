@@ -17,6 +17,7 @@
 import DateRangeInput from '@/components/fields/DateRangeInput.vue';
 import TaxTypeSelect from '@/components/fields/TaxTypeSelect.vue';
 import ClientActionInputMixin from './mixin';
+import { GetReturnHistoryClientActionOptions } from '@/backend/client_actions/return_history/base';
 
 // FIXME: Add `returns` and `returnHistoryPages` inputs.
 export default {
@@ -24,17 +25,7 @@ export default {
     DateRangeInput,
     TaxTypeSelect,
   },
-  mixins: [ClientActionInputMixin],
-  props: {
-    value: {
-      type: Object,
-      default: () => ({
-        fromDate: null,
-        toDate: null,
-        taxTypeIds: null,
-      }),
-    },
-  },
+  mixins: [ClientActionInputMixin(GetReturnHistoryClientActionOptions)],
   methods: {
     dateRangeInput(value) {
       this.$set(this.input, 'fromDate', value.fromDate);

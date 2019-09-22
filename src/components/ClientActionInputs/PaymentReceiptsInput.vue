@@ -11,6 +11,7 @@
 <script>
 import DateRangeInput from '@/components/fields/DateRangeInput.vue';
 import ClientActionInputMixin from './mixin';
+import GetPaymentReceiptsClientAction from '@/backend/client_actions/payment_history';
 
 // FIXME: Add `receipts` and `receiptDataPages` inputs.
 export default {
@@ -18,16 +19,7 @@ export default {
   components: {
     DateRangeInput,
   },
-  mixins: [ClientActionInputMixin],
-  props: {
-    value: {
-      type: Object,
-      default: () => ({
-        fromDate: null,
-        toDate: null,
-      }),
-    },
-  },
+  mixins: [ClientActionInputMixin(GetPaymentReceiptsClientAction)],
   methods: {
     dateRangeInput(value) {
       this.$set(this.input, 'fromDate', value.fromDate);

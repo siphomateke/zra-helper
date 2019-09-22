@@ -10,36 +10,32 @@
       :disabled="disabled"
       :multiple="true"
     />
-    <b-checkbox v-model="input.getAckReceipts">Check if returns are provisional</b-checkbox>
+    <b-checkbox v-model="input.getAckReceipts">
+      Check if returns are provisional
+    </b-checkbox>
     <!-- eslint-disable max-len -->
     <b-notification
       :active="showAckReceiptWarning && !ackReceiptWarningDismissed"
       type="is-warning"
       closable
       @update:active="dismissAckReceiptWarning"
-    >Checking if returns are provisional requires checking acknowledgement of returns receipts which will make this action take significantly longer.</b-notification>
+    >
+      Checking if returns are provisional requires checking acknowledgement of returns receipts which will make this action take significantly longer.
+    </b-notification>
     <!-- eslint-enable max-len -->
   </div>
 </template>
 
 <script>
 import AbstractReturnsInput from './AbstractReturnsInput.vue';
+import CheckAccountApprovalStatusClientAction from '@/backend/client_actions/return_history/account_approval_status';
+import ClientActionInputsMixin from './mixin';
 
 // FIXME: Don't duplicate AbstractReturnsInput's template
 export default {
   name: 'ClientActionAccountApprovalStatusInput',
   extends: AbstractReturnsInput,
-  props: {
-    value: {
-      type: Object,
-      default: () => ({
-        fromDate: null,
-        toDate: null,
-        taxTypeIds: null,
-        getAckReceipts: null,
-      }),
-    },
-  },
+  mixins: [ClientActionInputsMixin(CheckAccountApprovalStatusClientAction)],
   data() {
     return {
       showAckReceiptWarning: false,
