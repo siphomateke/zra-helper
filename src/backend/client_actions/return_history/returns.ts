@@ -6,6 +6,7 @@ import {
   ReturnHistoryDownloadFn,
 } from './base';
 import { downloadPage } from '../utils';
+import { ZraDomain } from '@/backend/constants';
 
 const downloadReturn: ReturnHistoryDownloadFn = function ({
   taxReturn,
@@ -32,7 +33,7 @@ const downloadReturn: ReturnHistoryDownloadFn = function ({
     taskTitle: `Download return ${referenceNumber}`,
     parentTaskId,
     createTabPostOptions: {
-      url: 'https://www.zra.org.zm/eRet.htm',
+      url: `${ZraDomain}/eRet.htm`,
       data: {
         actionCode,
         ackNo: referenceNumber,

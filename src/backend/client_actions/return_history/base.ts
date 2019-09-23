@@ -12,6 +12,7 @@ import {
   TaxTypeCode,
   DateString,
   taxTypeNumericalCodes,
+  ZraDomain,
 } from '../../constants';
 import { getDocumentByAjax } from '../../utils';
 import { parseTableAdvanced } from '../../content_scripts/helpers/zra';
@@ -83,7 +84,7 @@ async function getReturnHistoryRecords(
   }: GetReturnHistoryRecordsFnOptions,
 ): Promise<GetDataFromPageFunctionReturn<TaxReturn[]>> {
   const doc = await getDocumentByAjax({
-    url: 'https://www.zra.org.zm/retHist.htm',
+    url: `${ZraDomain}/retHist.htm`,
     method: 'post',
     data: {
       'retHistVO.fromDate': fromDate,

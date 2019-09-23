@@ -4,7 +4,9 @@ import { taskFunction } from '@/backend/client_actions/utils';
 import { xmlRequest } from '@/backend/utils';
 import store from '@/store';
 import { ReportCode } from './reports';
-import { TaxAccountName, TaxAccountCode, TaxTypeNumericalCode } from './constants';
+import {
+  TaxAccountName, TaxAccountCode, TaxTypeNumericalCode, ZraDomain,
+} from './constants';
 import { TaskId } from '@/store/modules/tasks';
 
 /**
@@ -55,7 +57,7 @@ export default async function getAccountCodeTask({
 
       // Get the codes and names of all tax accounts that have the specified tax type.
       const response = await xmlRequest({
-        url: 'https://www.zra.org.zm/frontController.do?actionCode=RPRTPAJAXCHILDCOMBO',
+        url: `${ZraDomain}/frontController.do?actionCode=RPRTPAJAXCHILDCOMBO`,
         method: 'post',
         data: {
           prm_ajaxComboTarget: 'accountName',

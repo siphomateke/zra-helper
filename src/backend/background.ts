@@ -1,5 +1,5 @@
 import { getCurrentBrowser } from '@/utils';
-import { BrowserCode } from './constants';
+import { BrowserCode, ZraDomain } from './constants';
 
 const currentBrowser = getCurrentBrowser();
 
@@ -12,21 +12,21 @@ browser.browserAction.onClicked.addListener(() => {
 /** Resource URLs that should never be blocked from loading when in lite mode. */
 const blacklist = [
   // Required to generate login captcha
-  'https://www.zra.org.zm/GenerateCaptchaServlet.do',
+  `${ZraDomain}/GenerateCaptchaServlet.do`,
 
   // Required to get pending liabilities
   // TODO: Remove this when we can get pending liabilities without opening tabs.
-  'https://www.zra.org.zm/pages/ReportsNew/script/ajaxrequest.js',
-  'https://www.zra.org.zm/pages/ReportsNew/script/rprtParameterCustom.js',
-  'https://www.zra.org.zm/pages/ReportsNew/script/common.js',
+  `${ZraDomain}/pages/ReportsNew/script/ajaxrequest.js`,
+  `${ZraDomain}/pages/ReportsNew/script/rprtParameterCustom.js`,
+  `${ZraDomain}/pages/ReportsNew/script/common.js`,
 ];
 
 /** URLs of pages whose resources should not be blocked in lite mode. Only used in Firefox. */
 const blacklistPages = [
   // Payment receipts
-  'https://www.zra.org.zm/ePaymentController.htm?',
+  `${ZraDomain}/ePaymentController.htm?`,
   // Acknowledgement of returns receipts
-  'https://www.zra.org.zm/retHist.htm?',
+  `${ZraDomain}/retHist.htm?`,
 ];
 
 // FIXME: Remove this once the actual details can be extracted from @types/firefox-webext-browser
@@ -67,7 +67,7 @@ function enableZraLiteMode() {
   browser.webRequest.onBeforeRequest.addListener(
     webRequestListener,
     {
-      urls: ['https://www.zra.org.zm/*'],
+      urls: [`${ZraDomain}/*`],
       types: ['image', 'font', 'media', 'script', 'stylesheet'],
     },
     ['blocking'],

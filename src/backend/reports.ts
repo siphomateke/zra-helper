@@ -1,7 +1,7 @@
 import { parseReportTable, ParsedReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
 import {
-  TPIN, TaxTypeNumericalCode, DateString, TaxAccountCode,
+  TPIN, TaxTypeNumericalCode, DateString, TaxAccountCode, ZraDomain,
 } from './constants';
 
 export enum ReportCode {
@@ -80,7 +80,7 @@ async function getReportPage<H extends string>({
   page,
 }: GetReportPageFnOptions<H>): Promise<ReportPage<H>> {
   const response = await makeRequest({
-    url: 'https://www.zra.org.zm/frontController.do',
+    url: `${ZraDomain}/frontController.do`,
     method: 'post',
     data: {
       ...request,

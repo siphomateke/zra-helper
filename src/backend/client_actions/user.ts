@@ -15,7 +15,7 @@ import OCRAD from 'ocrad.js';
 import md5 from 'md5';
 import { checkLogin } from '../content_scripts/helpers/check_login';
 import { TaskState, TaskId } from '@/store/modules/tasks';
-import { Client } from '../constants';
+import { Client, ZraDomain } from '../constants';
 import { RequiredBy } from '@/utils';
 
 /**
@@ -45,7 +45,7 @@ function getFreshCaptcha(scale: number = 2): Promise<HTMLCanvasElement> {
     // Set crossOrigin to 'anonymous' to fix the "operation is insecure" error in Firefox.
     // See https://stackoverflow.com/a/17035132/2999486.
     image.crossOrigin = 'anonymous';
-    const src = `https://www.zra.org.zm/GenerateCaptchaServlet.do?sourcePage=LOGIN&t=${new Date().getTime()}`;
+    const src = `${ZraDomain}/GenerateCaptchaServlet.do?sourcePage=LOGIN&t=${new Date().getTime()}`;
     image.src = src;
     image.onload = function onload() {
       resolve(imageToCanvas(image, scale));
@@ -167,7 +167,7 @@ export async function login({
     async func() {
       // Retrieve login page to get hidden 'pwd' field's value.
       const doc = await getDocumentByAjax({
-        url: 'https://www.zra.org.zm/login.htm?actionCode=newLogin',
+        url: `${ZraDomain}/login.htm?actionCode=newLogin`,
         data: { flag: 'TAXPAYER' },
       });
       const pwd = (<HTMLInputElement>getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input')).value;
@@ -176,7 +176,7 @@ export async function login({
       task.addStep('Initiating login');
       try {
         const loginRequest = {
-          url: 'https://www.zra.org.zm/login.htm',
+          url: `${ZraDomain}/login.htm`,
           data: {
             actionCode: 'loginUser',
             flag: 'TAXPAYER',
@@ -262,7 +262,7 @@ export async function logout({ parentTaskId }: LogoutFnOptions): Promise<void> {
     task,
     async func() {
       const doc = await getDocumentByAjax({
-        url: 'https://www.zra.org.zm/login.htm?actionCode=logOutUser',
+        url: `${ZraDomain}/login.htm?actionCode=logOutUser`,
         method: 'post',
         data: { userType: 'TAXPAYER' },
       });
