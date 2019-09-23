@@ -38,7 +38,7 @@ async function getDataUrlFromResourceUrlNoCache(resolvedUrl: string): Promise<st
   } catch (error) {
     // Since there are a lot of references to non-existent resources on the ZRA website,
     // we can just ignore missing resources.
-    if ('response' in error && error.response.status === 404) {
+    if (typeof error.response !== 'undefined' && error.response.status === 404) {
       dataUrl = EMPTY_DATA_URL;
     } else {
       // If there was any other error, throw it as the generated HTML file will be incomplete
