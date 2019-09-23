@@ -8,7 +8,7 @@
         v-validate="'required'"
         :checkboxes="checkboxes"
         :disabled="disabled"
-        name="tax_types"
+        :name="name"
       />
     </template>
     <b-select
@@ -18,7 +18,7 @@
       :value="value"
       :multiple="multiple"
       :disabled="disabled"
-      name="tax_types"
+      :name="name"
       @input="onInput"
     >
       <option
@@ -30,10 +30,10 @@
       </option>
     </b-select>
     <p
-      v-if="$errors.has('tax_types')"
+      v-if="$errors.has(name)"
       class="help is-danger"
     >
-      {{ $errors.first('tax_types') }}
+      {{ $errors.first(name) }}
     </p>
   </div>
 </template>
@@ -61,6 +61,19 @@ export default {
       type: Boolean,
       default: false,
     },
+    /**
+     * Same as HTML input 'name' attribute.
+     *
+     * Must be set when there is more than one TaxTypeSelect in use.
+     */
+    name: {
+      type: String,
+      default: 'tax_types',
+    },
+    label: {
+      type: String,
+      default: '',
+    },
   },
   data() {
     return {
@@ -70,6 +83,9 @@ export default {
   },
   computed: {
     fieldLabel() {
+      if (this.label) {
+        return this.label;
+      }
       return this.multiple ? 'Tax types' : 'Tax type';
     },
     allTaxTypeIds() {
