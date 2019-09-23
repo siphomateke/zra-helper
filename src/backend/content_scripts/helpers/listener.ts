@@ -17,9 +17,9 @@ export default function addContentScriptListener<
   getConfig: boolean = false,
 ) {
   // FIXME: Update promise return type to be an empty object only if response is not an object.
-  function listener(message: M): Promise<R | object> {
+  function listener(message: M, sender: browser.runtime.MessageSender): Promise<R | object> {
     return new Promise((resolve) => {
-      if (message.command === command) {
+      if (sender.id === browser.runtime.id && message.command === command) {
         handler(message)
           .then((response) => {
             if (typeof response !== 'object') {
