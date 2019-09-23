@@ -23,9 +23,9 @@ export type ClientActionOutputFormatter<O> = (options: ClientActionOutputFormatt
 
 interface ClientActionOutputFile<Output extends ClientActionOutputFileValue> {
   label: string;
-  /** 
+  /**
    * Whether this output file is not an actual output file but just a wrapper for others. If this is
-   * set to true, `children` must also be set. 
+   * set to true, `children` must also be set.
    */
   wrapper: boolean;
   filename?: string;
@@ -475,7 +475,7 @@ function validateActionOptions<I extends object, O>(options: Partial<ClientActio
  * @throws {Error}
  */
 export function createOutputFile<Output>(
-  options: Partial<ClientActionOutputFile<Output>>
+  options: Partial<ClientActionOutputFile<Output>>,
 ): ClientActionOutputFile<Output> {
   if (typeof options !== 'object') {
     throw new Error(`Client action output files must be objects, not ${typeof options}`);
