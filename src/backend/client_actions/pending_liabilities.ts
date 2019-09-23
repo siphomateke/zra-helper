@@ -881,6 +881,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
     }),
     inputValidation: {
       ...BaseGetAllPendingLiabilitiesClientActionOptions.inputValidation,
+      totalsTaxTypeIds: 'required_if:downloadPages,false|taxTypeIds',
       downloadsTaxTypeIds: 'required_if:downloadPages,true|taxTypeIds',
       downloadPages: 'required',
     },
