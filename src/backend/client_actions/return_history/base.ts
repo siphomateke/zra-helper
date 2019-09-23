@@ -236,7 +236,6 @@ export class ReturnHistoryRunner<
   /** Returns per tax type ID. Includes returns that are being retried. */
   taxTypeReturns: TaxTypeIdMap<TaxReturn[]> = {};
 
-  // eslint-disable-next-line class-methods-use-this
   getInitialFailuresObj() {
     return {};
   }
@@ -302,7 +301,6 @@ export class ReturnHistoryRunner<
   /**
    * Returns whether a tax type failed based on the provided `TaxTypeFailure`.
    */
-  // eslint-disable-next-line class-methods-use-this
   checkIfTaxTypeFailed(failures: TFailure): boolean {
     return failures.errorThrown || failures.returnHistoryPages.length > 0;
   }

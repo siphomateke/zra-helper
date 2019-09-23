@@ -23,6 +23,7 @@ module.exports = {
     // Don't check for duplicate exports because TypeScript allows duplicate exports when
     // overloading functions
     'import/export': 'off',
+    'class-methods-use-this': 'off',
   },
   overrides: [
     {

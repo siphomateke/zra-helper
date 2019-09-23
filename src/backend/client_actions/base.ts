@@ -246,7 +246,6 @@ export abstract class ClientActionRunner<
     this.storeProxy.task.state = TaskState.SUCCESS;
   }
 
-  // eslint-disable-next-line class-methods-use-this
   mergeRunOutputs(prevOutput: Output, output: Output) {
     return deepAssign(prevOutput, output, {
       clone: true,
@@ -282,7 +281,6 @@ export abstract class ClientActionRunner<
   abstract getInitialFailuresObj(): Failures;
 
   /** Returns true if anything went wrong running the action and it should be retried. */
-  // eslint-disable-next-line class-methods-use-this
   checkIfAnythingFailed(): boolean {
     return false;
   }
@@ -309,12 +307,10 @@ export abstract class ClientActionRunner<
     }
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getRetryReasons(): string[] {
     return [];
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getUnknownRetryReasonMessage() {
     return 'Failed for unknown reason.';
   }
