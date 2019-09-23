@@ -12,9 +12,10 @@ import {
   startDownload,
   runContentScript,
   CreateTabPostOptions,
+  createTabFromHtml,
 } from '../utils';
 import {
-  taxPayerSearchTaxTypeNames,
+  taxPayerSearchTaxTypeNamesMap,
   BrowserCode,
   TaxTypeNumericalCode,
   TPIN,
@@ -82,7 +83,7 @@ export async function taskFunction<R>({
 /**
  * @template I Current item in the loop.
  * @template R Parallel task map function response
- * 
+ *
  * @param item This can either be an item from the list if one is provided, or an index if count
  * is provided.
  * FIXME: Document parameters somehow.
@@ -130,6 +131,15 @@ interface ParallelTaskMapFnOptionsBase<I, R> {
   autoCalculateTaskState?: boolean;
   /** Set to true to always resolve even if all tasks failed. */
   neverReject?: boolean;
+  /**
+   * Whether the task's max progress should be set based on the number of items in the list or the
+   * count provided.
+   *
+   * Set this to false if the task is used for more than just this parallelTaskMap. If set to false,
+   * the task's max progress must be manually set to include the total number of task's that will
+   * be created by parallelTaskMap.
+   */
+  setTaskMaxProgress?: boolean;
 }
 
 /**
@@ -172,6 +182,7 @@ export function parallelTaskMap<
   func,
   autoCalculateTaskState = true,
   neverReject = false,
+  setTaskMaxProgress = true,
 }: ParallelTaskMapFnOptions<Response, ListItem, Count>):
   Promise<Array<ParallelTaskMapResponse<Response, Item>>> {
   return new Promise((resolve, reject) => {
@@ -192,7 +203,11 @@ export function parallelTaskMap<
       );
     }
 
-    task.progressMax = loopCount;
+    // In case the task was already used for some other things, don't assume progressMax will not
+    // have already beens set.
+    if (setTaskMaxProgress) {
+      task.progressMax = loopCount;
+    }
     const promises: Promise<ParallelTaskMapResponse<Response, Item>>[] = [];
     for (let i = startIndex; i < loopCount; i++) {
       // if not in list mode, item is the index
@@ -350,10 +365,14 @@ export async function getPagedData<R>({
 
         // Then get the rest of the pages in parallel.
         task.status = `Getting data from ${result.numPages} page(s)`;
+        // The task's max progress must be set here and not by parallelTaskMap because it will
+        // not be aware of the first page.
+        task.progressMax = result.numPages;
         results = await parallelTaskMap(
           Object.assign(parallelTaskMapOptions, {
             startIndex: firstPage + 1,
             count: result.numPages + firstPage,
+            setTaskMaxProgress: false,
           }),
         );
       } else {
@@ -491,9 +510,9 @@ export async function getTaxAccounts<S>({
         - "CLIENT-WITHHOLDING TAX-02"
         */
         let taxTypeId = null;
-        for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNames)) {
+        for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNamesMap)) {
           if (accountName.indexOf(taxTypeName) > -1) {
-            taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
+            taxTypeId = taxPayerSearchTaxTypeNamesMap[taxTypeName];
             break;
           }
         }
@@ -581,7 +600,7 @@ async function imagesInTabHaveLoaded(tabId: number): LoadedImagesResponse {
 type FilenameGenerator =
   (dataSource: browser.tabs.Tab | HTMLDocument) => Promise<string | string[]>;
 
-interface DownloadPageOptions {
+interface BaseDownloadPageOptions {
   /**
    * Filename of the downloaded page.
    *
@@ -593,18 +612,31 @@ interface DownloadPageOptions {
   filename: string | string[] | FilenameGenerator;
   taskTitle: string;
   parentTaskId: TaskId;
+}
+
+interface DownloadPageByRequestOptions extends BaseDownloadPageOptions {
   createTabPostOptions: CreateTabPostOptions;
 }
 
+interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
+  htmlDocument: HTMLDocument;
+  /** Original URL of `htmlDocument`. Used to get the correct URLs for the page's assets. */
+  htmlDocumentUrl: string;
+}
+
+type DownloadPageOptions = DownloadPageByRequestOptions | DownloadPageByDocumentOptions;
+
+/**
+ * Downloads a page generated from a `HTMLDocument`.
+ */
+export async function downloadPage(options: DownloadPageByDocumentOptions): Promise<void>;
 /**
  * Downloads a page generated from a POST request.
  */
-export async function downloadPage({
-  filename,
-  taskTitle,
-  parentTaskId,
-  createTabPostOptions,
-}: DownloadPageOptions) {
+export async function downloadPage(options: DownloadPageByRequestOptions): Promise<void>;
+export async function downloadPage(options: DownloadPageOptions): Promise<void> {
+  const { filename, taskTitle, parentTaskId } = options;
+
   /** Whether the filename of the downloaded page will be based on data within the page. */
   // TODO: TS: Make this a type guard somehow
   const filenameUsesPage = typeof filename === 'function';
@@ -633,7 +665,12 @@ export async function downloadPage({
         // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
         const initialMaxOpenTabs = config.maxOpenTabs;
         config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
-        const tab = await createTabPost(createTabPostOptions);
+        let tab: browser.tabs.Tab;
+        if ('createTabPostOptions' in options) {
+          tab = await createTabPost(options.createTabPostOptions);
+        } else {
+          tab = await createTabFromHtml(options.htmlDocument);
+        }
         config.maxOpenTabs = initialMaxOpenTabs;
         try {
           task.addStep('Waiting for page to load');
@@ -658,11 +695,19 @@ export async function downloadPage({
           closeTab(tab.id);
         }
       } else if (config.export.pageDownloadFileType === 'html') {
-        task.status = 'Fetching page';
-        const doc = await getDocumentByAjax({
-          ...createTabPostOptions,
-          method: 'post',
-        });
+        let url: string;
+        let doc: HTMLDocument;
+        if ('createTabPostOptions' in options) {
+          task.status = 'Fetching page';
+          doc = await getDocumentByAjax({
+            ...options.createTabPostOptions,
+            method: 'post',
+          });
+          ({ url } = options.createTabPostOptions);
+        } else {
+          doc = options.htmlDocument;
+          url = options.htmlDocumentUrl;
+        }
         if (filenameUsesPage) {
           task.addStep('Generating filename');
           generatedFilename = await (<Function>filename)(doc);
@@ -677,7 +722,7 @@ export async function downloadPage({
           }
         }
         // FIXME: Generate multiple blobs when filename is an array.
-        blob = await downloadSingleHtmlFile(doc, createTabPostOptions.url, htmlPageTitle);
+        blob = await downloadSingleHtmlFile(doc, url, htmlPageTitle);
       }
       if (blob !== null) {
         const url = URL.createObjectURL(blob);
@@ -761,4 +806,19 @@ export async function downloadPages<
   });
   config.maxOpenTabs = initialMaxOpenTabs;
   return response;
+}
+
+/**
+ * Disables lite mode so pages' assets are correctly downloaded.
+ *
+ * This could be done immediately before downloading a page but if many pages are being downloaded
+ * it will be toggled very rapidly causing performance issues.
+ */
+export function startDownloadingPages() {
+  return changeLiteMode(false);
+}
+
+/** Re-enables lite mode after downloading pages with assets. */
+export function finishDownloadingPages() {
+  return changeLiteMode(true);
 }

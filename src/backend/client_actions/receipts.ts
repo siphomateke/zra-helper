@@ -3,7 +3,6 @@ import createTask from '@/transitional/tasks';
 import { InvalidReceiptError } from '../errors';
 import { runContentScript } from '../utils';
 import {
-  changeLiteMode,
   getPagedData,
   GetDataFromPageFunction,
   ParallelTaskMapResponse,
@@ -22,14 +21,6 @@ export async function getDataFromReceiptTab(tab: browser.tabs.Tab, type: Receipt
     throw new InvalidReceiptError('Invalid receipt; failed to collect receipt data.');
   }
   return receiptData;
-}
-
-export function startDownloadingReceipts() {
-  return changeLiteMode(false);
-}
-
-export function finishDownloadingReceipts() {
-  return changeLiteMode(true);
 }
 
 interface GetReceiptDataResponse<R> {

@@ -115,7 +115,7 @@ export type TaxTypeName = string;
  * Maps tax type names to their corresponding numerical codes.
  * This is primarily used when parsing payment history receipts.
  */
-export const taxTypeNames: {
+export const taxTypeNamesMap: {
   readonly [taxTypeName: string]: TaxTypeNumericalCode
 } = {
   'income tax': TaxTypeNumericalCode.ITX,
@@ -133,7 +133,7 @@ export const taxTypeNames: {
  * Tax type names found in the results of tax payer searches mapped to their corresponding
  * numerical codes.
  */
-export const taxPayerSearchTaxTypeNames: {
+export const taxPayerSearchTaxTypeNamesMap: {
   readonly [taxTypeName: string]: TaxTypeNumericalCode
 } = {
   'income tax': TaxTypeNumericalCode.ITX,
@@ -145,6 +145,19 @@ export const taxPayerSearchTaxTypeNames: {
   ptt: TaxTypeNumericalCode.PTT,
   'mineral royalty': TaxTypeNumericalCode.MINROY,
   'medical levy tax': TaxTypeNumericalCode.TLEVY,
+};
+
+export const taxTypeHumanNames: {
+  [taxTypeId in TaxTypeNumericalCode]: string;
+} = {
+  [TaxTypeNumericalCode.ITX]: 'Income Tax',
+  [TaxTypeNumericalCode.VAT]: 'Value Added Tax',
+  [TaxTypeNumericalCode.PAYE]: 'Employment Tax (Pay as You Earn)',
+  [TaxTypeNumericalCode.TOT]: 'Turnover Tax',
+  [TaxTypeNumericalCode.WHT]: 'Withholding Tax',
+  [TaxTypeNumericalCode.PTT]: 'Property Transfer Tax',
+  [TaxTypeNumericalCode.MINROY]: 'Mineral Royalty',
+  [TaxTypeNumericalCode.TLEVY]: 'Medical Levy Tax',
 };
 
 /** Tax account ID. E.g. 119608 or 405534 */

@@ -1,10 +1,38 @@
 <template>
   <div>
-    <TaxTypeSelect
-      v-model="input.taxTypeIds"
+    <!-- eslint-disable max-len -->
+    <b-checkbox
+      v-model="input.downloadPages"
+      title="Whether the pending liability pages should be downloaded as proof that the collected pending liability amounts are accurate."
       :disabled="disabled"
-      :multiple="true"
-    />
+    >
+      Download pages
+    </b-checkbox>
+    <!-- eslint-enable max-len -->
+    <div class="columns">
+      <div class="column">
+        <TaxTypeSelect
+          v-model="input.totalsTaxTypeIds"
+          label="Tax types for totals"
+          :validation-rules="!input.downloadPages ? 'required' : ''"
+          name="pending_liability_totals_tax_types"
+          :disabled="disabled"
+          :multiple="true"
+        />
+      </div>
+      <div
+        v-if="input.downloadPages"
+        class="column"
+      >
+        <TaxTypeSelect
+          v-model="input.downloadsTaxTypeIds"
+          label="Tax types for pages to download"
+          name="pending_liability_page_downloads_tax_types"
+          :disabled="disabled"
+          :multiple="true"
+        />
+      </div>
+    </div>
   </div>
 </template>
 

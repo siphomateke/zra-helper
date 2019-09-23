@@ -3,39 +3,43 @@
     <label class="label">{{ fieldLabel }}</label>
     <template v-if="multiple">
       <CheckboxList
-        v-validate="'required'"
         key="tax-type-checkbox-list"
         v-model="taxTypeIds"
+        v-validate="validationRules"
         :checkboxes="checkboxes"
         :disabled="disabled"
-        name="tax_types"
+        :name="name"
       />
     </template>
     <b-select
-      v-validate="'required'"
       v-else
       key="tax-type-select"
+      v-validate="validationRules"
       :value="value"
       :multiple="multiple"
       :disabled="disabled"
-      name="tax_types"
+      :name="name"
       @input="onInput"
     >
       <option
         v-for="taxTypeId in allTaxTypeIds"
         :key="taxTypeId"
         :value="taxTypeId"
-      >{{ taxTypeLabels[taxTypeId] }}</option>
+      >
+        {{ taxTypeLabels[taxTypeId] }}
+      </option>
     </b-select>
     <p
-      v-if="$errors.has('tax_types')"
+      v-if="$errors.has(name)"
       class="help is-danger"
-    >{{ $errors.first('tax_types') }}</p>
+    >
+      {{ $errors.first(name) }}
+    </p>
   </div>
 </template>
 
 <script>
-import { TaxTypeNumericalCode } from '@/backend/constants';
+import { TaxTypeNumericalCode, taxTypeHumanNames } from '@/backend/constants';
 import CheckboxList from './CheckboxList.vue';
 
 export default {
@@ -57,24 +61,35 @@ export default {
       type: Boolean,
       default: false,
     },
+    /**
+     * Same as HTML input 'name' attribute.
+     *
+     * Must be set when there is more than one TaxTypeSelect in use.
+     */
+    name: {
+      type: String,
+      default: 'tax_types',
+    },
+    label: {
+      type: String,
+      default: '',
+    },
+    validationRules: {
+      type: String,
+      default: 'required',
+    },
   },
   data() {
     return {
-      taxTypeLabels: {
-        [TaxTypeNumericalCode.ITX]: 'Income tax',
-        [TaxTypeNumericalCode.VAT]: 'Value added tax',
-        [TaxTypeNumericalCode.PAYE]: 'Employment tax (pay as you earn)',
-        [TaxTypeNumericalCode.TOT]: 'Turnover tax',
-        [TaxTypeNumericalCode.WHT]: 'Withholding tax',
-        [TaxTypeNumericalCode.PTT]: 'Property transfer tax',
-        [TaxTypeNumericalCode.MINROY]: 'Mineral royalty',
-        [TaxTypeNumericalCode.TLEVY]: 'Medical levy tax',
-      },
+      taxTypeLabels: taxTypeHumanNames,
       taxTypeIds: [],
     };
   },
   computed: {
     fieldLabel() {
+      if (this.label) {
+        return this.label;
+      }
       return this.multiple ? 'Tax types' : 'Tax type';
     },
     allTaxTypeIds() {

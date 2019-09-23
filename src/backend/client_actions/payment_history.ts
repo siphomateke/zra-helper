@@ -6,16 +6,16 @@ import {
   downloadPages,
   downloadPage,
   GetDataFromPageFunctionReturn,
+  startDownloadingPages,
+  finishDownloadingPages,
 } from './utils';
 import {
-  startDownloadingReceipts,
-  finishDownloadingReceipts,
   getFailedResponseItems,
   getReceiptData,
   getDataFromReceiptTab,
 } from './receipts';
 import {
-  taxTypeNames,
+  taxTypeNamesMap,
   TaxTypeNumericalCode,
   taxTypes,
   DateString,
@@ -101,7 +101,7 @@ async function getPaymentReceipts(
     noRecordsString: 'No Records Found',
     parseLinks: true,
   });
-  let { records } = table;
+  const { records } = table;
   if (records.length > 0) {
     // Remove header row
     records.shift();
@@ -190,7 +190,7 @@ function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptD
   }
 
   return uniquePayments.map((payment) => {
-    const taxTypeId = taxTypeNames[payment.taxType.toLowerCase()];
+    const taxTypeId = taxTypeNamesMap[payment.taxType.toLowerCase()];
     const periodFrom = moment(payment.periodFrom, 'DD/MM/YYYY');
     const periodTo = moment(payment.periodTo, 'DD/MM/YYYY');
     let filename = `receipt-${client.username}-${taxTypes[taxTypeId]}`;
@@ -342,7 +342,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
         // TODO: Indicate why receipts weren't downloaded
         if (receipts.length > 0) {
           actionTask.status = `Downloading ${receipts.length} payment receipt(s)`;
-          await startDownloadingReceipts();
+          await startDownloadingPages();
           const downloadResponses = await downloadPages({
             task: await createTask(store, {
               title: `Download ${receipts.length} payment receipt(s)`,
@@ -353,7 +353,7 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
               return downloadPaymentReceipt({ receipt, parentTaskId, client });
             },
           });
-          await finishDownloadingReceipts();
+          await finishDownloadingPages();
           this.failures.receipts = getFailedResponseItems(downloadResponses);
         }
       },
