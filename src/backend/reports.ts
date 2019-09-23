@@ -173,6 +173,10 @@ async function getReportPage<H extends string>({
   reportHeaders,
   page,
 }: GetReportPageFnOptions<H>): Promise<ReportPage<H>> {
+  if (page === 0) {
+    throw new Error('The report page request expects the first page to be 1, not 0.');
+  }
+
   const response = await makeRequest<string>({
     url: `${ZraDomain}/frontController.do`,
     method: 'post',
