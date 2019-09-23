@@ -10,7 +10,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.zra.org.zm/login.htm*"],
+      "matches": ["https://eservices.zra.org.zm/login.htm*"],
       "js": ["content_scripts/pages/login_page.js"]
     }
   ],
@@ -23,7 +23,7 @@
     "downloads.open",
     "tabs",
     "storage",
-    "https://www.zra.org.zm/*",
+    "https://eservices.zra.org.zm/*",
     "notifications",
     "webRequest",
     "webRequestBlocking"

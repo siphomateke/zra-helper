@@ -22,6 +22,7 @@ import {
   ReferenceNumber,
   TaxTypeName,
   Client,
+  ZraDomain,
 } from '../constants';
 import {
   createClientAction,
@@ -82,7 +83,7 @@ async function getPaymentReceipts(
   }: GetPaymentReceiptsOptions,
 ): Promise<GetDataFromPageFunctionReturn<PaymentReceipt[]>> {
   const doc = await getDocumentByAjax({
-    url: 'https://www.zra.org.zm/ePaymentController.htm?actionCode=SearchPmtDetails',
+    url: `${ZraDomain}/ePaymentController.htm?actionCode=SearchPmtDetails`,
     method: 'post',
     data: {
       currentPage: page,
@@ -244,7 +245,7 @@ function downloadPaymentReceipt({
     taskTitle: `Download receipt ${refNo}`,
     parentTaskId,
     createTabPostOptions: {
-      url: 'https://www.zra.org.zm/ePaymentController.htm',
+      url: `${ZraDomain}/ePaymentController.htm`,
       data: {
         actionCode: 'generateView',
         searchcode: searchCode,

@@ -20,6 +20,7 @@ import {
   TPIN,
   Client,
   TaxAccountName,
+  ZraDomain,
 } from '../constants';
 import { getCurrentBrowser, RequiredBy, Omit } from '@/utils';
 import { parseTableAdvanced, ParsedTableRecord } from '../content_scripts/helpers/zra';
@@ -410,7 +411,7 @@ export async function getTaxAccountPage({
   GetDataFromPageFunctionReturn<ParsedTableRecord<keyof TaxAccountRecord>[]>
 > {
   const doc = await getDocumentByAjax({
-    url: 'https://www.zra.org.zm/WebContentMgmt.htm',
+    url: `${ZraDomain}/WebContentMgmt.htm`,
     method: 'post',
     data: {
       actionCode: 'getTaxPayerRegistrationDetail',

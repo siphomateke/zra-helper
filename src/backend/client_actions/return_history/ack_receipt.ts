@@ -6,7 +6,7 @@ import {
   ReturnHistoryDownloadFn,
 } from './base';
 import { downloadPage } from '../utils';
-import { TaxTypeNumericalCode, ReferenceNumber } from '@/backend/constants';
+import { TaxTypeNumericalCode, ReferenceNumber, ZraDomain } from '@/backend/constants';
 import { CreateTabPostOptions } from '@/backend/utils';
 
 export function generateAckReceiptRequest(
@@ -14,7 +14,7 @@ export function generateAckReceiptRequest(
   referenceNumber: ReferenceNumber,
 ): CreateTabPostOptions {
   return {
-    url: 'https://www.zra.org.zm/retHist.htm',
+    url: `${ZraDomain}/retHist.htm`,
     data: {
       actionCode: 'printReceipt',
       flag: 'rtnHistRcpt',

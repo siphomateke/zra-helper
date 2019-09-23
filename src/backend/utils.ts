@@ -11,7 +11,7 @@ import {
   TabError,
   DownloadError,
 } from './errors';
-import { BrowserCode } from './constants';
+import { BrowserCode, ZraDomain } from './constants';
 import PromiseQueue from './promise_queue';
 import {
   ContentScriptCommand,
@@ -412,7 +412,7 @@ export async function createTabPost({
       The current solution is to open a page on the ZRA website, inject a form and then
       submit it. We open manageUpload.htm because it's a nice blank page.
       */
-      tab = await createTab('https://www.zra.org.zm/manageUpload.htm', active);
+      tab = await createTab(`${ZraDomain}/manageUpload.htm`, active);
       await tabLoaded(tab.id);
       // Insert the form into the page.
       await runContentScript(tab.id, 'inject_form', { html: formHtml });
