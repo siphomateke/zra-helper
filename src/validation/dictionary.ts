@@ -1,3 +1,5 @@
+const taxTypesRequiredStr = 'At least one tax type must be selected';
+
 export default {
   en: {
     attributes: {
@@ -9,6 +11,8 @@ export default {
 
       // client action inputs
       tax_types: 'tax types',
+      pending_liability_totals_tax_types: 'tax types',
+      pending_liability_page_downloads_tax_types: 'tax types',
       from_date: 'from date',
       to_date: 'to date',
       previous_date: 'previous date',
@@ -19,7 +23,13 @@ export default {
     },
     custom: {
       tax_types: {
-        required: 'At least one tax type must be selected',
+        required: taxTypesRequiredStr,
+      },
+      pending_liability_totals_tax_types: {
+        required: taxTypesRequiredStr,
+      },
+      pending_liability_page_downloads_tax_types: {
+        required: taxTypesRequiredStr,
       },
     },
   },

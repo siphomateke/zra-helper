@@ -1,5 +1,5 @@
 import store from '@/store';
-import createTask from '@/transitional/tasks';
+import createTask, { TaskObject } from '@/transitional/tasks';
 import {
   ExportFormatCode,
   taxTypes,
@@ -9,9 +9,20 @@ import {
   TaxTypeCodeMap,
   taxTypeNumericalCodes,
   TaxTypeCode,
+  TPIN,
+  TaxTypeIdMap,
+  TaxAccountName,
 } from '../constants';
 import { writeJson, unparseCsv, objectToCsvTable } from '../file_utils';
-import { taskFunction, parallelTaskMap, getClientIdentifier } from './utils';
+import {
+  taskFunction,
+  parallelTaskMap,
+  getClientIdentifier,
+  downloadPage,
+  downloadPages,
+  startDownloadingPages,
+  finishDownloadingPages,
+} from './utils';
 import {
   createClientAction,
   ClientActionRunner,
@@ -20,14 +31,20 @@ import {
   ClientActionOutputFormatterOptions,
   BaseFormattedOutput,
   BasicRunnerConfig,
+  ClientActionOptions,
+  ClientActionObject,
 } from './base';
-import { getPendingLiabilityPage } from '../reports';
+import {
+  getPendingLiabilityPage,
+  getFirstPendingLiabilityPage,
+  changeTableOfFullReportPage,
+  ZraReportPageUrl,
+} from '../reports';
 import { errorToString } from '../errors';
-import { deepAssign, joinSpecialLast, objKeysExact } from '@/utils';
+import { deepAssign, joinSpecialLast, objKeysExact, Omit, PickByValue, } from '@/utils';
 import { parseAmountString } from '../content_scripts/helpers/zra';
 import { TaskId } from '@/store/modules/tasks';
 import { ClientActionOutputs, ClientActionOutput } from '@/store/modules/client_actions/types';
-import { Omit } from '@/utils';
 
 export const pendingLiabilityTypes = [
   'principal',
@@ -164,10 +181,248 @@ async function getPendingLiabilities(
   });
 }
 
-export namespace PendingLiabilitiesAction {
+interface DownloadPendingLiabilityPageFnOptions {
+  tpin: TPIN;
+  taxTypeId: TaxTypeNumericalCode;
+  parentTaskId: TaskId;
+  pendingLiabilityPage: HTMLDocument;
+  page: number;
+}
+
+function downloadPendingLiabilityPage({
+  tpin,
+  taxTypeId,
+  parentTaskId,
+  pendingLiabilityPage,
+  page,
+}: DownloadPendingLiabilityPageFnOptions) {
+  return downloadPage({
+    filename: `pendingLiability-${tpin}-${taxTypes[taxTypeId]}-P${page}`,
+    taskTitle: 'Download page',
+    parentTaskId,
+    htmlDocument: pendingLiabilityPage,
+    htmlDocumentUrl: ZraReportPageUrl,
+  });
+}
+
+interface GetPendingLiabilityPageToDownloadFnOptions {
+  page: number;
+  taxTypeId: TaxTypeNumericalCode;
+  tpin: TPIN;
+  accountName: TaxAccountName;
+  cachedPages: PendingLiabilityPages;
+  firstPendingLiabilityPage: HTMLDocument | null;
+}
+
+async function getPendingLiabilityPageToDownload({
+  page,
+  taxTypeId,
+  tpin,
+  accountName,
+  cachedPages,
+  firstPendingLiabilityPage,
+}: GetPendingLiabilityPageToDownloadFnOptions) {
+  let pageToDownload: HTMLDocument;
+  // Only use a cached version of the page if it's not page 1. This is because the cached pages
+  // are only the inner pending liability table and not the full page which is required for
+  // page 1.
+  if (page in cachedPages && page !== 1) {
+    pageToDownload = cachedPages[page];
+  } else if (page === 1) {
+    // If getting the first page, get the full HTML for the pending liability page
+    pageToDownload = await getFirstPendingLiabilityPage({
+      taxTypeId,
+      tpin,
+      accountName,
+    });
+  } else {
+    // If getting any other page, re-use most of the HTML from the first page and just
+    // swap out the table with the one from the next page.
+    const { reportDocument: pendingLiabilityPage } = await getPendingLiabilityPage({
+      taxTypeId,
+      page,
+      tpin,
+    });
+    if (firstPendingLiabilityPage === null) {
+      throw new Error('The first pending liability page was missing but is required to generate the other pages.');
+    }
+    pageToDownload = await changeTableOfFullReportPage(
+      firstPendingLiabilityPage,
+      pendingLiabilityPage,
+    );
+  }
+  return pageToDownload;
+}
+
+interface DownloadPendingLiabilityPageTaskFnOptions {
+  page: number;
+  parentTaskId: TaskId;
+  taxTypeId: TaxTypeNumericalCode;
+  tpin: TPIN;
+  getPageFn: (page: number) => Promise<HTMLDocument>;
+}
+
+async function downloadPendingLiabilityPageTask({
+  page,
+  parentTaskId,
+  taxTypeId,
+  tpin,
+  getPageFn,
+}: DownloadPendingLiabilityPageTaskFnOptions) {
+  const pageTask = await createTask(store, {
+    title: `Download page ${page}`,
+    parent: parentTaskId,
+    unknownMaxProgress: false,
+    progressMax: 2,
+  });
+  return taskFunction({
+    task: pageTask,
+    async func() {
+      pageTask.status = 'Get page';
+      const pageToDownload = await taskFunction({
+        task: await createTask(store, {
+          title: 'Get page',
+          parent: pageTask.id,
+        }),
+        func: () => getPageFn(page),
+      });
+
+      pageTask.addStep('Download page');
+      await downloadPendingLiabilityPage({
+        taxTypeId,
+        tpin,
+        parentTaskId: pageTask.id,
+        pendingLiabilityPage: pageToDownload,
+        page,
+      });
+    },
+  });
+}
+
+interface DownloadPendingLiabilityPagesFnOptions {
+  parentTaskId: TaskId;
+  /** Pages to get with the first one being '1'. */
+  pages: number[];
+  cachedPages: PendingLiabilityPages;
+  taxTypeId: TaxTypeNumericalCode;
+  tpin: TPIN;
+  accountName: TaxAccountName;
+}
+
+// TODO: Consider reducing duplication between this and `getPagedData`.
+/**
+ * Downloads full pending liability pages.
+ *
+ * @returns
+ * The pages that failed to download.
+ * Note: If the first page fails to download, the function throws an error.
+ */
+async function downloadPendingLiabilityPages({
+  parentTaskId: mainParentTaskId,
+  pages,
+  cachedPages,
+  taxTypeId,
+  tpin,
+  accountName,
+}: DownloadPendingLiabilityPagesFnOptions): Promise<number[]> {
+  let firstPendingLiabilityPage: HTMLDocument | null = null;
+  async function getPage(page: number) {
+    const pageToDownload = await getPendingLiabilityPageToDownload({
+      page,
+      taxTypeId,
+      tpin,
+      accountName,
+      cachedPages,
+      firstPendingLiabilityPage,
+    });
+    if (page === 1) {
+      // Make sure to clone it because the original copy will be modified when it is downloaded.
+      firstPendingLiabilityPage = <HTMLDocument>pageToDownload.cloneNode(true);
+    }
+    return pageToDownload;
+  }
+
+  async function download(page: number, parentTaskId: TaskId) {
+    return downloadPendingLiabilityPageTask({
+      page,
+      parentTaskId,
+      getPageFn: getPage,
+      taxTypeId,
+      tpin,
+    });
+  }
+
+  const pagesToGet = pages.slice();
+
+  // The first page always needs be retrieved because its HTML is used to generate the other pages.
+  if (!pagesToGet.includes(1)) {
+    pagesToGet.push(1);
+  }
+
+  let numPages = pagesToGet.length;
+  // The number of pages reported by ZRA will be zero when there are no pending liabilities.
+  // However, an empty pending liability page can still be downloaded so just treat is as if there
+  // is one page.
+  if (numPages === 0) {
+    numPages = 1;
+  }
+  const task = await createTask(store, {
+    title: `Download ${numPages} ${taxTypes[taxTypeId]} pending liability page(s)`,
+    parent: mainParentTaskId,
+    unknownMaxProgress: false,
+    progressMax: numPages,
+  });
+
+  await startDownloadingPages();
+
+  const failedPages: number[] = [];
+
+  // The first page always needs be retrieved because its HTML is used to generate the other pages.
+  if (pagesToGet.length > 1) {
+    try {
+      await download(1, task.id);
+    } catch (error) {
+      task.markAsComplete();
+      task.setError(error);
+      throw error;
+    }
+  } else {
+    await taskFunction({
+      task,
+      func: () => download(1, task.id),
+    });
+  }
+
+  // Don't get page 1 again
+  const pageOneIndex = pagesToGet.indexOf(1);
+  if (pageOneIndex > -1) {
+    pagesToGet.splice(pageOneIndex, 1);
+  }
+
+  if (pagesToGet.length > 0) {
+    const results = await downloadPages({
+      task,
+      list: pagesToGet,
+      setTaskMaxProgress: false,
+      func: (page, parentTaskId) => download(page, parentTaskId),
+    });
+
+    for (const result of results) {
+      if ('error' in result) {
+        failedPages.push(Number(result.item));
+      }
+    }
+  }
+
+  await finishDownloadingPages();
+
+  return failedPages;
+}
+
+export namespace BasePendingLiabilitiesAction {
   export interface Input {
-    taxTypeIds?: TaxTypeNumericalCode[];
-    downloadPages?: boolean;
+    /** Which tax types to get pending liability totals from. */
+    totalsTaxTypeIds?: TaxTypeNumericalCode[];
   }
 
   export interface Output {
@@ -178,15 +433,15 @@ export namespace PendingLiabilitiesAction {
   }
 
   export interface Failures {
-    taxTypeIds: TaxTypeNumericalCode[],
+    totalsTaxTypeIds: TaxTypeNumericalCode[];
   }
 }
 
 interface OutputFormatterOptions extends Omit<
-  ClientActionOutputFormatterOptions<PendingLiabilitiesAction.Output>, 
+  ClientActionOutputFormatterOptions<BasePendingLiabilitiesAction.Output>,
   'output'
 > {
-  clientOutputs: ClientActionOutputs<PendingLiabilitiesAction.Output>;
+  clientOutputs: ClientActionOutputs<BasePendingLiabilitiesAction.Output>;
 }
 
 type OutputFormatter = (options: OutputFormatterOptions) => string;
@@ -206,9 +461,9 @@ namespace FormattedOutput {
     export interface ClientOutput {
       client: BaseFormattedOutput.JSON.Client;
       actionId: string;
-      totals: PendingLiabilitiesAction.Output['totals'];
+      totals: BasePendingLiabilitiesAction.Output['totals'];
       taxTypeErrors: TaxTypeErrors;
-      error: ClientActionOutput<PendingLiabilitiesAction.Output>['error'];
+      error: ClientActionOutput<BasePendingLiabilitiesAction.Output>['error'];
     }
     export type Output = BaseFormattedOutput.JSON.Output<ClientOutput>;
   }
@@ -228,7 +483,7 @@ const outputFormatter: OutputFormatter = function outputFormatter({
     }
 
     const clientOutputsByUsername: {
-      [username: string]: ClientActionOutput<PendingLiabilitiesAction.Output>
+      [username: string]: ClientActionOutput<BasePendingLiabilitiesAction.Output>
     } = {};
     for (const clientId of Object.keys(clientOutputs)) {
       const client = allClientsById.get(clientId)!;
@@ -237,7 +492,7 @@ const outputFormatter: OutputFormatter = function outputFormatter({
 
     const csvOutput: FormattedOutput.CSV.Output = {};
     for (const client of allClients) {
-      let value: PendingLiabilitiesAction.Output | null = null;
+      let value: BasePendingLiabilitiesAction.Output | null = null;
       if (client.username in clientOutputsByUsername) {
         ({ value } = clientOutputsByUsername[client.username]);
       }
@@ -299,41 +554,39 @@ const outputFormatter: OutputFormatter = function outputFormatter({
     }
   }
   return writeJson(json);
-}
+};
 
-const GetAllPendingLiabilitiesClientAction = createClientAction<
-  PendingLiabilitiesAction.Input,
-  PendingLiabilitiesAction.Output
->({
-  id: 'getAllPendingLiabilities',
-  name: 'Get all pending liabilities',
-  requiresTaxTypes: true,
-  defaultInput: () => ({
-    taxTypeIds: taxTypeNumericalCodes,
-    downloadPages: false,
-  }),
-  inputValidation: {
-    taxTypeIds: 'required|taxTypeIds',
-    downloadPages: 'required',
-  },
-  hasOutput: true,
-  generateOutputFiles({ clients, allClients, outputs }) {
-    return createOutputFile({
-      label: 'All clients pending liabilities',
-      filename: 'pendingLiabilities',
-      value: outputs,
-      formats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
-      defaultFormat: ExportFormatCode.CSV,
-      formatter: ({ output, format, anonymizeClients }) => outputFormatter({
-        clients,
-        allClients,
-        clientOutputs: output,
-        format,
-        anonymizeClients,
-      }),
-    });
-  },
-});
+const BaseGetAllPendingLiabilitiesClientActionOptions: ClientActionOptions<
+  BasePendingLiabilitiesAction.Input,
+  BasePendingLiabilitiesAction.Output
+  > = {
+    id: 'getAllPendingLiabilities',
+    name: 'Get all pending liabilities',
+    requiresTaxTypes: true,
+    defaultInput: () => ({
+      totalsTaxTypeIds: taxTypeNumericalCodes,
+    }),
+    inputValidation: {
+      totalsTaxTypeIds: 'required|taxTypeIds',
+    },
+    hasOutput: true,
+    generateOutputFiles({ clients, allClients, outputs }) {
+      return createOutputFile({
+        label: 'All clients pending liabilities',
+        filename: 'pendingLiabilities',
+        value: outputs,
+        formats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
+        defaultFormat: ExportFormatCode.CSV,
+        formatter: ({ output, format, anonymizeClients }) => outputFormatter({
+          clients,
+          allClients,
+          clientOutputs: output,
+          format,
+          anonymizeClients,
+        }),
+      });
+    },
+  };
 
 /**
  * @typedef {Object} ParsedPendingLiabilitiesOutput
@@ -424,29 +677,38 @@ export function csvOutputParser(csvString) {
   return pendingLiabilities;
 }
 
-class PendingLiabilityTotalsRunner extends ClientActionRunner<
-  PendingLiabilitiesAction.Input,
-  PendingLiabilitiesAction.Output,
-  BasicRunnerConfig,
-  PendingLiabilitiesAction.Failures,
-  > {
+const BaseGetAllPendingLiabilitiesClientAction = createClientAction<
+  BasePendingLiabilitiesAction.Input,
+  BasePendingLiabilitiesAction.Output
+  >(BaseGetAllPendingLiabilitiesClientActionOptions);
 
-  failures: PendingLiabilitiesAction.Failures = {
-    taxTypeIds: [],
+class PendingLiabilityTotalsRunner<
+  Input extends BasePendingLiabilitiesAction.Input = BasePendingLiabilitiesAction.Input,
+  Failures extends BasePendingLiabilitiesAction.Failures = BasePendingLiabilitiesAction.Failures
+> extends ClientActionRunner<
+  Input,
+  BasePendingLiabilitiesAction.Output,
+  BasicRunnerConfig,
+  Failures
+  > {
+  failures: Failures = {
+    totalsTaxTypeIds: [],
   };
 
   numPages: number = 0;
 
   pages: PendingLiabilityPages = {};
 
-  constructor() {
-    super(GetAllPendingLiabilitiesClientAction);
+  constructor(
+    action: ClientActionObject<any, any, any> = BaseGetAllPendingLiabilitiesClientAction,
+  ) {
+    super(action);
   }
 
   // eslint-disable-next-line class-methods-use-this
   getInitialFailuresObj() {
     return {
-      taxTypeIds: [],
+      totalsTaxTypeIds: [],
     };
   }
 
@@ -456,9 +718,9 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
    */
   // eslint-disable-next-line class-methods-use-this
   mergeRunOutputs(
-    prevOutput: PendingLiabilitiesAction.Output,
-    output: PendingLiabilitiesAction.Output,
-  ): PendingLiabilitiesAction.Output {
+    prevOutput: BasePendingLiabilitiesAction.Output,
+    output: BasePendingLiabilitiesAction.Output,
+  ): BasePendingLiabilitiesAction.Output {
     const { totals } = deepAssign({ totals: prevOutput.totals }, { totals: output.totals }, {
       clone: true,
       concatArrays: true,
@@ -487,17 +749,40 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
     };
   }
 
-  async runInternal() {
-    const { task: actionTask, client, input } = this.storeProxy;
-
+  /**
+   * Gets a tax type IDs array input by name.
+   * @param name The name of the tax type IDs array in the input.
+   */
+  // eslint-disable-next-line class-methods-use-this
+  getTaxTypeIdsToRun(
+    client: Client,
+    input: Input,
+    name: keyof PickByValue<Input, TaxTypeNumericalCode[] | undefined>,
+  ) {
     let taxTypeIds = client.taxTypes !== null ? client.taxTypes : [];
-
-    const taxTypeIdsInput = getInput<PendingLiabilitiesAction.Input['taxTypeIds']>(input, 'taxTypeIds', { checkArrayLength: false });
+    const taxTypeIdsInput = getInput<TaxTypeNumericalCode[] | undefined>(
+      input, name, { checkArrayLength: false },
+    );
     if (taxTypeIdsInput.exists) {
       taxTypeIds = taxTypeIds.filter(id => taxTypeIdsInput.value.includes(id));
     }
+    return taxTypeIds;
+  }
+
+  /**
+   * Runs the main runner on a particular task.
+   *
+   * This pretty much only exists so it's easier to extend this class and make the getting totals
+   * task a sub-task of a task that isn't the main action task.
+   */
+  async runUsingTask(task: TaskObject) {
+    const { client, input } = this.storeProxy;
+
+    const totalsTaxTypeIds = this.getTaxTypeIdsToRun(client, input, 'totalsTaxTypeIds');
 
     const responses = await parallelTaskMap({
+      task,
+      list: totalsTaxTypeIds,
       func: async (taxTypeId, parentTaskId) => {
         const {
           totals,
@@ -514,7 +799,7 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
       },
     });
 
-    const output: PendingLiabilitiesAction.Output = {
+    const output: BasePendingLiabilitiesAction.Output = {
       totals: {},
       retrievalErrors: {},
     };
@@ -525,14 +810,19 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
         output.totals[taxType] = Object.assign({}, response.value);
       } else {
         output.retrievalErrors[taxType] = response.error;
-        this.failures.taxTypeIds.push(taxTypeId);
+        this.failures.totalsTaxTypeIds.push(taxTypeId);
       }
     }
     this.setOutput(output);
   }
 
+  async runInternal() {
+    const { task: actionTask } = this.storeProxy;
+    await this.runUsingTask(actionTask);
+  }
+
   anyTaxTypesFailed() {
-    return this.failures.taxTypeIds.length > 0;
+    return this.failures.totalsTaxTypeIds.length > 0;
   }
 
   checkIfAnythingFailed() {
@@ -542,19 +832,217 @@ class PendingLiabilityTotalsRunner extends ClientActionRunner<
   getRetryReasons() {
     const reasons = super.getRetryReasons();
     if (this.anyTaxTypesFailed()) {
-      const failedTaxTypes = this.failures.taxTypeIds.map(taxTypeId => taxTypes[taxTypeId]);
+      const failedTaxTypes = this.failures.totalsTaxTypeIds.map(taxTypeId => taxTypes[taxTypeId]);
       reasons.push(`Failed to get some tax types: ${failedTaxTypes}`);
     }
     return reasons;
   }
 
   getRetryInput() {
-    const retryInput: PendingLiabilitiesAction.Input = {};
+    const retryInput: BasePendingLiabilitiesAction.Input = {};
     if (this.anyTaxTypesFailed()) {
-      retryInput.taxTypeIds = this.failures.taxTypeIds;
+      retryInput.totalsTaxTypeIds = this.failures.totalsTaxTypeIds;
     }
     return retryInput;
   }
-};
+}
+
+export namespace PendingLiabilitiesAction {
+  export interface Input extends BasePendingLiabilitiesAction.Input {
+    /** Which tax types to download pending liability pages from. */
+    downloadsTaxTypeIds?: TaxTypeNumericalCode[];
+    /**
+     * Whether pending liability pages should be downloaded as proof that the retrieved totals are
+     * correct.
+     */
+    downloadPages?: boolean;
+    /** Pending liability pages to download. */
+    pages?: TaxTypeIdMap<number[]>;
+  }
+
+  export interface Output extends BasePendingLiabilitiesAction.Output { }
+
+  export interface Failures extends BasePendingLiabilitiesAction.Failures {
+    downloadsTaxTypeIds: TaxTypeNumericalCode[];
+    /** Pending liability pages that failed to download */
+    pages: TaxTypeIdMap<number[]>;
+  }
+}
+
+const GetAllPendingLiabilitiesClientAction = createClientAction<
+  PendingLiabilitiesAction.Input,
+  PendingLiabilitiesAction.Output
+  >({
+    ...BaseGetAllPendingLiabilitiesClientActionOptions,
+    defaultInput: () => ({
+      ...BaseGetAllPendingLiabilitiesClientActionOptions.defaultInput!(),
+      downloadsTaxTypeIds: taxTypeNumericalCodes,
+      downloadPages: false,
+    }),
+    inputValidation: {
+      ...BaseGetAllPendingLiabilitiesClientActionOptions.inputValidation,
+      downloadsTaxTypeIds: 'required_if:downloadPages,true|taxTypeIds',
+      downloadPages: 'required',
+    },
+  });
+
+/**
+ * Gets pending liability totals and downloads the pages the totals were retrieved from as proof.
+ *
+ * This doesn't currently need to be separate from the main `PendingLiabilityTotalsRunner` but is
+ * just so it will be easier to do make it separate if that is required in the future.
+ */
+// TODO: Add retry testing
+class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
+  PendingLiabilitiesAction.Input,
+  PendingLiabilitiesAction.Failures
+> {
+  failures: PendingLiabilitiesAction.Failures = {
+    totalsTaxTypeIds: [],
+    downloadsTaxTypeIds: [],
+    pages: {},
+  };
+
+  constructor() {
+    super(GetAllPendingLiabilitiesClientAction);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getInitialFailuresObj() {
+    return {
+      ...super.getInitialFailuresObj(),
+      downloadsTaxTypeIds: [],
+      pages: {},
+    };
+  }
+
+  /**
+   * Gets pending liability totals and then, if the `downloadPages` input is set to true,
+   * downloads the pages they were retrieved from.
+   *
+   * Note: the only reason this function has parameters is for performance reasons. They could all
+   * alternatively be retrieved from the `storeProxy`.
+   */
+  async runAndDownloadPages(
+    actionTask: TaskObject,
+    input: PendingLiabilitiesAction.Input,
+    client: Client,
+    shouldGetTotals: boolean,
+  ) {
+    // Get totals but don't let any errors that occur while getting them prevent
+    // the pending liability pages from being downloaded.
+    let error;
+    if (shouldGetTotals) {
+      try {
+        const totalsTask = await createTask(store, {
+          title: 'Get pending liability totals',
+          parent: actionTask.id,
+        });
+        await super.runUsingTask(totalsTask);
+      } catch (e) {
+        error = e;
+      }
+    }
+
+    const downloadsTaxTypeIds = this.getTaxTypeIdsToRun(client, input, 'downloadsTaxTypeIds');
+    const responses = await parallelTaskMap({
+      task: await createTask(store, {
+        title: 'Download pending liability pages',
+        parent: actionTask.id,
+      }),
+      list: downloadsTaxTypeIds,
+      func: async (taxTypeId, parentTaskId) => {
+        let pagesToDownload: number[] = [];
+        for (let page = 1; page < this.numPages + 1; page++) {
+          pagesToDownload.push(page);
+        }
+        const pagesToDownloadInput = getInput<Exclude<Exclude<PendingLiabilitiesAction.Input['pages'], undefined>[TaxTypeNumericalCode], undefined>>(input, `pages.${taxTypeId}`, { defaultValue: [] });
+        if (pagesToDownloadInput.exists) {
+          pagesToDownload = pagesToDownloadInput.value;
+        }
+
+        const taxAccount = client.taxAccounts.find(account => account.taxTypeId === taxTypeId);
+        const failedPages = await downloadPendingLiabilityPages({
+          tpin: client.username,
+          pages: pagesToDownload,
+          cachedPages: this.pages,
+          parentTaskId,
+          accountName: taxAccount.accountName,
+          taxTypeId,
+        });
+        if (failedPages.length > 0) {
+          this.failures.pages[taxTypeId] = failedPages;
+          this.failures.downloadsTaxTypeIds.push(taxTypeId);
+        }
+      },
+    });
+    for (const response of responses) {
+      const taxTypeId = response.item;
+      if ('error' in response && !this.failures.downloadsTaxTypeIds.includes(taxTypeId)) {
+        this.failures.downloadsTaxTypeIds.push(taxTypeId);
+      }
+    }
+
+    // Now that pending liability pages have been downloaded, if an error was caught when getting
+    // totals, throw it.
+    if (shouldGetTotals && typeof error !== 'undefined') {
+      throw error;
+    }
+  }
+
+  async runInternal() {
+    const { task: actionTask, input, client } = this.storeProxy;
+
+    const { value: shouldDownloadPages } = getInput<Exclude<PendingLiabilitiesAction.Input['downloadPages'], undefined>>(input, 'downloadPages', { defaultValue: false });
+    const totalsTaxTypeIds = this.getTaxTypeIdsToRun(client, input, 'totalsTaxTypeIds');
+    const shouldGetTotals = totalsTaxTypeIds.length > 0;
+
+    if (shouldGetTotals) {
+      actionTask.progressMax = 1;
+    }
+    if (shouldDownloadPages) {
+      actionTask.unknownMaxProgress = false;
+      actionTask.progressMax += 1;
+      await taskFunction({
+        task: actionTask,
+        setStateBasedOnChildren: true,
+        func: () => this.runAndDownloadPages(actionTask, input, client, shouldGetTotals),
+      });
+    } else {
+      await super.runInternal();
+    }
+  }
+
+  anyPendingLiabilityPagesFailed() {
+    return Object.keys(this.failures.pages).length > 0;
+  }
+
+  checkIfAnythingFailed() {
+    return super.checkIfAnythingFailed() || this.anyPendingLiabilityPagesFailed();
+  }
+
+  getRetryReasons() {
+    const reasons = super.getRetryReasons();
+    if (this.anyPendingLiabilityPagesFailed()) {
+      reasons.push('Failed to download some pending liability pages');
+    }
+    return reasons;
+  }
+
+  getRetryInput() {
+    const retryInput: PendingLiabilitiesAction.Input = {
+      ...super.getRetryInput(),
+      pages: {},
+      downloadsTaxTypeIds: [],
+    };
+    if (this.anyPendingLiabilityPagesFailed()) {
+      retryInput.pages = this.failures.pages;
+      retryInput.downloadsTaxTypeIds = this.failures.downloadsTaxTypeIds;
+    }
+    return retryInput;
+  }
+}
+
+GetAllPendingLiabilitiesClientAction.Runner = DownloadPendingLiabilityPagesRunner;
 
 export default GetAllPendingLiabilitiesClientAction;

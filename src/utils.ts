@@ -8,7 +8,11 @@ export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 /** Makes sure the provided type can be assigned to the another and has no excess properties. */
 // FIXME: Use this
-export type Exact<T, TExpected> = T & (Exclude<keyof T, keyof TExpected> extends never ? {} : "Type may only specify known properties");
+export type Exact<T, TExpected> = T & (Exclude<keyof T, keyof TExpected> extends never ? {} : 'Type may only specify known properties');
+export type PickByValue<T, ValueType> = Pick<
+  T,
+  { [Key in keyof T]: T[Key] extends ValueType ? Key : never }[keyof T]
+>;
 
 export const objKeysExact = Object.keys as <T>(o: T) => (Extract<keyof T, string>)[];
 
