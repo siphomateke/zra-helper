@@ -706,7 +706,6 @@ class PendingLiabilityTotalsRunner<
     super(action);
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getInitialFailuresObj() {
     return {
       totalsTaxTypeIds: [],
@@ -717,7 +716,6 @@ class PendingLiabilityTotalsRunner<
    * A custom merger is required to make sure retrievalErrors for tax types that have since been
    * successfully retrieved aren't carried over
    */
-  // eslint-disable-next-line class-methods-use-this
   mergeRunOutputs(
     prevOutput: BasePendingLiabilitiesAction.Output,
     output: BasePendingLiabilitiesAction.Output,
@@ -754,7 +752,6 @@ class PendingLiabilityTotalsRunner<
    * Gets a tax type IDs array input by name.
    * @param name The name of the tax type IDs array in the input.
    */
-  // eslint-disable-next-line class-methods-use-this
   getTaxTypeIdsToRun(
     client: Client,
     input: Input,
@@ -909,7 +906,6 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
     super(GetAllPendingLiabilitiesClientAction);
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getInitialFailuresObj() {
     return {
       ...super.getInitialFailuresObj(),

@@ -12,12 +12,10 @@ TestLoginClientAction.Runner = class extends ClientActionRunner {
     super(TestLoginClientAction);
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getInitialFailuresObj() {
     return {};
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getRetryInput() {
     return {};
   }

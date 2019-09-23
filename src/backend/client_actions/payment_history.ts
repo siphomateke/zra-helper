@@ -306,7 +306,6 @@ GetPaymentReceiptsClientAction.Runner = class extends ClientActionRunner<
     super(GetPaymentReceiptsClientAction);
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getInitialFailuresObj() {
     return {
       receipts: [],
