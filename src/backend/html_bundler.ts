@@ -108,7 +108,7 @@ class SingleHtmlFileGenerator {
    * @param url Original url of the HTMLDocument.
    * @param title Optional string that will replace the page's title.
    */
-  constructor(public doc: HTMLDocument, url: string, public title: string = null) {
+  constructor(public doc: HTMLDocument, url: string, public title: string | null = null) {
     this.baseUrl = url;
   }
 
