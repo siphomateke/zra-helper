@@ -14,6 +14,7 @@
         <TaxTypeSelect
           v-model="input.totalsTaxTypeIds"
           label="Tax types for totals"
+          :validation-rules="!input.downloadPages ? 'required' : ''"
           name="pending_liability_totals_tax_types"
           :disabled="disabled"
           :multiple="true"

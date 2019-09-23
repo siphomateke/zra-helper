@@ -5,7 +5,7 @@
       <CheckboxList
         key="tax-type-checkbox-list"
         v-model="taxTypeIds"
-        v-validate="'required'"
+        v-validate="validationRules"
         :checkboxes="checkboxes"
         :disabled="disabled"
         :name="name"
@@ -14,7 +14,7 @@
     <b-select
       v-else
       key="tax-type-select"
-      v-validate="'required'"
+      v-validate="validationRules"
       :value="value"
       :multiple="multiple"
       :disabled="disabled"
@@ -73,6 +73,10 @@ export default {
     label: {
       type: String,
       default: '',
+    },
+    validationRules: {
+      type: String,
+      default: 'required',
     },
   },
   data() {
