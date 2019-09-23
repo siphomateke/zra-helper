@@ -38,6 +38,11 @@ export interface GetReceiptDataMessage extends ContentScriptListenerMessage {
   type: ReceiptType;
 }
 
+export interface InjectHtmlMessage extends ContentScriptListenerMessage {
+  command: 'inject_html';
+  html: string;
+}
+
 export interface InjectFormMessage extends ContentScriptListenerMessage {
   command: 'inject_form';
   html: string;
@@ -51,6 +56,7 @@ export interface ContentScriptMessages {
   check_login: CheckLoginMessage;
   click_element: ClickElementMessage;
   get_receipt_data: GetReceiptDataMessage;
+  inject_html: InjectHtmlMessage;
   inject_form: InjectFormMessage;
   receive_config: ConfigMessage;
   find_unloaded_images: FindUnloadedImages;
@@ -72,6 +78,7 @@ export interface ContentScriptResponses<
   click_element: void;
   // FIXME: Choose response from `GetDataFromReceiptResponses` based on `Message.type`
   get_receipt_data: GetDataFromReceiptResponses[ReceiptType];
+  inject_html: void;
   inject_form: void;
   receive_config: void;
   find_unloaded_images: FindUnloadedImagesResponse;

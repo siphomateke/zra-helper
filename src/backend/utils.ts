@@ -245,7 +245,7 @@ class TabCreator {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
       while (this.queue.length > 0 && this.slotFree()) {
-        const callback = <Function>this.queue.shift();
+        const callback = <Function> this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
 
@@ -373,6 +373,37 @@ export function closeTab(tabId: number) {
   return browser.tabs.remove(tabId);
 }
 
+/**
+ * URL of a page on the ZRA website that is empty and loads fast making it suitable for injection.
+ */
+export const BlankZraPageUrl = `${ZraDomain}/manageUpload.htm`;
+
+/**
+ * Creates a tab whose contents are the provided HTMLDocument.
+ */
+export async function createTabFromHtml(
+  htmlDocument: HTMLDocument,
+  active: boolean = false,
+): Promise<browser.tabs.Tab> {
+  let tab = null;
+  try {
+    // We use a ZRA website URL so we can inject other scripts into the page. We could
+    // alternatively use a blank extension page but injecting into it would be more difficult
+    // due to permissions issues.
+    tab = await createTab(BlankZraPageUrl, active);
+    await tabLoaded(tab.id);
+    await runContentScript(tab.id, 'inject_html', { html: htmlDocument.documentElement.innerHTML });
+    return tab;
+  } catch (error) {
+    // If there were any errors but the tab was already opened, make sure it's closed.
+    if (tab && tab.id) {
+      // TODO: Catch tab close errors
+      closeTab(tab.id);
+    }
+    throw error;
+  }
+}
+
 export interface CreateTabPostOptions {
   /** The URL to send a POST request to */
   url: string;
@@ -410,9 +441,9 @@ export async function createTabPost({
       /*
       Firefox doesn't allow executing data URLs from extensions so we need a workaround.
       The current solution is to open a page on the ZRA website, inject a form and then
-      submit it. We open manageUpload.htm because it's a nice blank page.
+      submit it.
       */
-      tab = await createTab(`${ZraDomain}/manageUpload.htm`, active);
+      tab = await createTab(BlankZraPageUrl, active);
       await tabLoaded(tab.id);
       // Insert the form into the page.
       await runContentScript(tab.id, 'inject_form', { html: formHtml });
