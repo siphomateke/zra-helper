@@ -154,6 +154,7 @@ export async function login({
   const task = await createTask(store, {
     title: 'Login',
     parent: parentTaskId,
+    unknownMaxProgress: false,
     progressMax: 4,
     status: 'Getting session hash',
   });

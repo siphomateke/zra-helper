@@ -103,6 +103,7 @@ async function getPendingLiabilities(
   const task = await createTask(store, {
     title: `Get ${taxTypes[taxTypeId]} totals`,
     parent: parentTaskId,
+    unknownMaxProgress: false,
     progressMax: 2,
   });
   return taskFunction({
