@@ -6,8 +6,20 @@ const TestLoginClientAction = createClientAction({
 });
 
 TestLoginClientAction.Runner = class extends ClientActionRunner {
+  failures: {} = {};
+
   constructor() {
     super(TestLoginClientAction);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getInitialFailuresObj() {
+    return {};
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getRetryInput() {
+    return {};
   }
 };
 
