@@ -1,8 +1,15 @@
 import { parseReportTable, ParsedReportTable } from './content_scripts/helpers/zra';
 import { makeRequest, parseDocument } from './utils';
 import {
-  TPIN, TaxTypeNumericalCode, DateString, TaxAccountCode, ZraDomain,
+  TPIN,
+  TaxTypeNumericalCode,
+  DateString,
+  TaxAccountCode,
+  ZraDomain,
+  taxTypeHumanNames,
+  TaxAccountName,
 } from './constants';
+import { getElementFromDocument } from './content_scripts/helpers/elements';
 
 export enum ReportCode {
   PENDING_LIABILITY = '10093',
@@ -50,19 +57,49 @@ export function parseReportPage(response: string): ReportData {
   return data;
 }
 
+/**
+ * Generates a string representing report header parameters from an object. Report header
+ * parameters are the headers shown above report tables such as tax payer ledger and pending
+ * liability reports.
+ *
+ * The header parameters are key value pairs with keys and values separated by ':' and pairs
+ * separated by '~'.
+ *
+ * @example
+ * generateReportHeaderParamStrFromObj({
+ *   TPIN: '1000000000',
+ *   'Tax Type': 'Income Tax',
+ * });
+ * // => 'TPIN:1000000000~Tax+Type:Income+Tax~'
+ */
+function generateReportHeaderParamStrFromObj(obj: { [key: string]: string }): string {
+  let str = '';
+  for (const key of Object.keys(obj)) {
+    str += `${key}:${obj[key]}~`;
+  }
+  // Note: The ZRA website seems to replace spaces with pluses(+). We aren't currently doing that
+  // because when tested, the pluses incorrectly showed up in the generated report.
+  return str;
+}
+
 interface ReportPage<H extends string> {
   numPages: number;
   numRecords: number;
   parsedTable: ParsedReportTable<H>;
+  /** The internal HTML table element from the report. */
+  reportDocument: HTMLDocument;
 }
 
-interface GetReportPageFnOptions<H extends string> {
+interface BaseGetReportPageFnOptions {
   /** Same as client's username. */
   tpin: TPIN;
   /** The ID of the type of report to get. */
   reportCode: ReportCode;
   /** Parameters to pass to the HTTP request. */
   request: object;
+}
+
+interface GetReportPageFnOptions<H extends string> extends BaseGetReportPageFnOptions {
   /** The columns in the report table. */
   reportHeaders: H[];
   /** The page of the report to get. */
@@ -70,7 +107,64 @@ interface GetReportPageFnOptions<H extends string> {
 }
 
 /**
+ * Root URL of ZRA report pages.
+ *
+ * This variable is pretty much only here so it can be used as the root URL of page resources when
+ * downloading report pages.
+ */
+export const ZraReportPageUrl = `${ZraDomain}/frontController.do`;
+
+/**
+ * Gets the full first page of a report, not just the table.
+ */
+async function getFirstReportPage({
+  request,
+  reportCode,
+  tpin,
+}: BaseGetReportPageFnOptions): Promise<HTMLDocument> {
+  const response = await makeRequest<string>({
+    url: ZraReportPageUrl,
+    method: 'post',
+    data: {
+      ...request,
+      ...{
+        actionCode: 'REPORTSEARCHRESULTSNEW',
+        FromParaPage: 'TRUE',
+        prm_tpin: tpin,
+        prm0_actionCode: 'RPRTPARAMETERPAGE',
+        prm0_reportCode: reportCode,
+        reportCode,
+        tpin,
+      },
+    },
+  });
+  return parseDocument(response);
+}
+
+/**
+ * Inserts a report page table into the full first page of a report.
+ * @param fullReportPage The full first page of the report.
+ * @param reportPageTable A report page table retrieved using `getReportPage`.
+ * @returns A modified version of the full report page with the passed report page table inserted
+ * into it.
+ */
+export function changeTableOfFullReportPage(
+  fullReportPage: HTMLDocument,
+  reportPageTable: HTMLDocument,
+): HTMLDocument {
+  const fullReportPageCopy = <HTMLDocument>fullReportPage.cloneNode(true);
+  const table = getElementFromDocument(fullReportPageCopy, '#rsltTableHtml', 'report inner table');
+  if (reportPageTable.body.firstElementChild === null) {
+    throw new Error('Report page has no root body element');
+  }
+  table.innerHTML = reportPageTable.body.firstElementChild.innerHTML;
+  return fullReportPageCopy;
+}
+
+/**
  * Gets a particular page of a report.
+ *
+ * Note: this only gets the inner table of the report where the actual data lives.
  */
 async function getReportPage<H extends string>({
   reportCode,
@@ -79,7 +173,7 @@ async function getReportPage<H extends string>({
   reportHeaders,
   page,
 }: GetReportPageFnOptions<H>): Promise<ReportPage<H>> {
-  const response = await makeRequest({
+  const response = await makeRequest<string>({
     url: `${ZraDomain}/frontController.do`,
     method: 'post',
     data: {
@@ -114,24 +208,76 @@ async function getReportPage<H extends string>({
     parsedTable,
     numPages: Number(parsed.noOfPages),
     numRecords: Number(parsed.totalRowCnt),
+    reportDocument,
   };
 }
 
-interface GetPendingLiabilityPageFnOptions {
+interface GeneratePendingLiabilityReportHeaderParamStrFnOptions {
+  tpin: TPIN;
+  taxTypeId: TaxTypeNumericalCode;
+  /** Lowercase account name */
+  accountName: TaxAccountName;
+}
+
+/**
+ * Generates a pending liability report header parameters string.
+ */
+function generatePendingLiabilityReportHeaderParamStr({
+  tpin, taxTypeId, accountName,
+}: GeneratePendingLiabilityReportHeaderParamStrFnOptions) {
+  return generateReportHeaderParamStrFromObj({
+    TPIN: tpin,
+    'Tax Type': taxTypeHumanNames[taxTypeId],
+    'Account Name': accountName.toUpperCase(),
+  });
+}
+
+interface BaseGetPendingLiabilityPageFnOptions {
   /** Same as client's username. */
   tpin: TPIN;
   /**
-   * ID of the tax account to get pending liability totals from. E.g. 119608 or 405534. If this is not
-   * provided, all the accounts with the provided tax type will be retrieved instead.
+   * ID of the tax account to get pending liability totals from. E.g. 119608 or 405534. If this is
+   * not provided, all the accounts with the provided tax type will be retrieved instead.
    */
-  accountCode?: TaxAccountCode;
   taxTypeId: TaxTypeNumericalCode;
+}
+
+interface GetFirstPendingLiabilityPageFnOptions extends BaseGetPendingLiabilityPageFnOptions {
+  accountName: TaxAccountName;
+}
+
+interface GetPendingLiabilityPageFnOptions extends BaseGetPendingLiabilityPageFnOptions {
+  accountCode?: TaxAccountCode;
   /** The page to get */
   page: number;
 }
 
 /**
+ * Gets the full first pending liability page.
+ */
+export function getFirstPendingLiabilityPage({
+  tpin,
+  taxTypeId,
+  accountName,
+}: GetFirstPendingLiabilityPageFnOptions) {
+  return getFirstReportPage({
+    tpin,
+    reportCode: ReportCode.PENDING_LIABILITY,
+    request: {
+      prm0_tpin: tpin,
+      prm_TaxType: taxTypeId,
+      hParaShowString: generatePendingLiabilityReportHeaderParamStr({
+        tpin, taxTypeId, accountName,
+      }),
+      prm_ajaxComboTarget: 'accountName',
+    },
+  });
+}
+
+/**
  * Gets a single page of pending liabilities.
+ *
+ * Note: this only gets the inner table of the report where the actual data lives.
  */
 export function getPendingLiabilityPage({
   tpin,
@@ -161,7 +307,26 @@ export function getPendingLiabilityPage({
   });
 }
 
-interface GetTaxPayerLedgerPageFnOptions {
+interface GenerateTaxPayerLedgerReportHeaderParamStrFnOptions {
+  accountName: TaxAccountName;
+  fromDate: DateString;
+  toDate: DateString;
+}
+
+/**
+ * Generates a tax payer ledger report header parameters string.
+ */
+function generateTaxPayerLedgerReportHeaderParamStr({
+  accountName, fromDate, toDate,
+}: GenerateTaxPayerLedgerReportHeaderParamStrFnOptions) {
+  return generateReportHeaderParamStrFromObj({
+    'Account Name': accountName.toUpperCase(),
+    'Date From': fromDate,
+    'Date To': toDate,
+  });
+}
+
+interface BaseGetTaxPayerLedgerPageFnOptions {
   /** Same as client's username. */
   tpin: TPIN;
   /** E.g. 119608 or 405534 */
@@ -170,6 +335,13 @@ interface GetTaxPayerLedgerPageFnOptions {
   fromDate: DateString;
   /** Format must be DD/MM/YYYY */
   toDate: DateString;
+}
+
+interface GetFirstTaxPayerLedgerPageFnOptions extends BaseGetTaxPayerLedgerPageFnOptions {
+  accountName: TaxAccountName;
+}
+
+interface GetTaxPayerLedgerPageFnOptions extends BaseGetTaxPayerLedgerPageFnOptions {
   /** The page to get. */
   page: number;
 }
@@ -208,7 +380,36 @@ export const ledgerTableColumns = [
 ];
 
 /**
+ * Gets the full first tax payer ledger page.
+ */
+export function getFirstTaxPayerLedgerPage({
+  tpin,
+  accountCode,
+  accountName,
+  fromDate,
+  toDate,
+}: GetFirstTaxPayerLedgerPageFnOptions) {
+  return getFirstReportPage({
+    tpin,
+    reportCode: ReportCode.TAX_PAYER_LEDGER,
+    request: {
+      prm_Dtto: toDate,
+      prm_Dtfrom: fromDate,
+      prm_acntName: accountCode,
+      prm_ajaxComboTarget: '',
+      hParaShowString: generateTaxPayerLedgerReportHeaderParamStr({
+        accountName,
+        fromDate,
+        toDate,
+      }),
+    },
+  });
+}
+
+/**
  * Gets a single page from the tax payer ledger.
+ *
+ * Note: this only gets the inner table of the report where the actual data lives.
  */
 export function getTaxPayerLedgerPage({
   tpin,
