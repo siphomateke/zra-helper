@@ -3,18 +3,18 @@
     <label class="label">{{ fieldLabel }}</label>
     <template v-if="multiple">
       <CheckboxList
-        v-validate="'required'"
         key="tax-type-checkbox-list"
         v-model="taxTypeIds"
+        v-validate="'required'"
         :checkboxes="checkboxes"
         :disabled="disabled"
         name="tax_types"
       />
     </template>
     <b-select
-      v-validate="'required'"
       v-else
       key="tax-type-select"
+      v-validate="'required'"
       :value="value"
       :multiple="multiple"
       :disabled="disabled"
@@ -25,17 +25,21 @@
         v-for="taxTypeId in allTaxTypeIds"
         :key="taxTypeId"
         :value="taxTypeId"
-      >{{ taxTypeLabels[taxTypeId] }}</option>
+      >
+        {{ taxTypeLabels[taxTypeId] }}
+      </option>
     </b-select>
     <p
       v-if="$errors.has('tax_types')"
       class="help is-danger"
-    >{{ $errors.first('tax_types') }}</p>
+    >
+      {{ $errors.first('tax_types') }}
+    </p>
   </div>
 </template>
 
 <script>
-import { TaxTypeNumericalCode } from '@/backend/constants';
+import { TaxTypeNumericalCode, taxTypeHumanNames } from '@/backend/constants';
 import CheckboxList from './CheckboxList.vue';
 
 export default {
@@ -60,16 +64,7 @@ export default {
   },
   data() {
     return {
-      taxTypeLabels: {
-        [TaxTypeNumericalCode.ITX]: 'Income tax',
-        [TaxTypeNumericalCode.VAT]: 'Value added tax',
-        [TaxTypeNumericalCode.PAYE]: 'Employment tax (pay as you earn)',
-        [TaxTypeNumericalCode.TOT]: 'Turnover tax',
-        [TaxTypeNumericalCode.WHT]: 'Withholding tax',
-        [TaxTypeNumericalCode.PTT]: 'Property transfer tax',
-        [TaxTypeNumericalCode.MINROY]: 'Mineral royalty',
-        [TaxTypeNumericalCode.TLEVY]: 'Medical levy tax',
-      },
+      taxTypeLabels: taxTypeHumanNames,
       taxTypeIds: [],
     };
   },

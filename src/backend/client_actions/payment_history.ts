@@ -15,7 +15,7 @@ import {
   getDataFromReceiptTab,
 } from './receipts';
 import {
-  taxTypeNames,
+  taxTypeNamesMap,
   TaxTypeNumericalCode,
   taxTypes,
   DateString,
@@ -101,7 +101,7 @@ async function getPaymentReceipts(
     noRecordsString: 'No Records Found',
     parseLinks: true,
   });
-  let { records } = table;
+  const { records } = table;
   if (records.length > 0) {
     // Remove header row
     records.shift();
@@ -190,7 +190,7 @@ function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptD
   }
 
   return uniquePayments.map((payment) => {
-    const taxTypeId = taxTypeNames[payment.taxType.toLowerCase()];
+    const taxTypeId = taxTypeNamesMap[payment.taxType.toLowerCase()];
     const periodFrom = moment(payment.periodFrom, 'DD/MM/YYYY');
     const periodTo = moment(payment.periodTo, 'DD/MM/YYYY');
     let filename = `receipt-${client.username}-${taxTypes[taxTypeId]}`;
