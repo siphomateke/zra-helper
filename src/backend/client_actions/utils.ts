@@ -28,7 +28,7 @@ import { getCurrentBrowser, RequiredBy, Omit } from '@/utils';
 import { parseTableAdvanced, ParsedTableRecord } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
 import { Store } from 'vuex';
-import downloadSingleHtmlFile from '../html_bundler';
+import getSingleFileHtmlBlob from '../html_bundler';
 import { ImagesInTabFailedToLoad } from '../errors';
 import { LoadedImagesResponse } from '@/backend/content_scripts/helpers/images';
 
@@ -661,7 +661,7 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
   return taskFunction({
     task,
     async func() {
-      let blob = null;
+      const blobs: { [filename: string]: Blob } = {};
       if (config.export.pageDownloadFileType === 'mhtml') {
         task.status = 'Opening tab';
         // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
@@ -691,7 +691,14 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
             generatedFilename = await (<Function>filename)(tab);
           }
           task.addStep('Converting page to MHTML');
-          blob = await saveAsMHTML({ tabId: tab.id });
+          const blob = await saveAsMHTML({ tabId: tab.id });
+          if (Array.isArray(generatedFilename)) {
+            for (const filename of generatedFilename) {
+              blobs[filename] = blob;
+            }
+          } else {
+            blobs[generatedFilename] = blob;
+          }
         } finally {
           // TODO: Catch tab close errors
           closeTab(tab.id);
@@ -715,68 +722,74 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
           generatedFilename = await (<Function>filename)(doc);
         }
         task.addStep('Bundling page into single HTML file');
-        let htmlPageTitle: string | null = null;
+        let filenames: string[];
+        if (typeof generatedFilename === 'string') {
+          filenames = [generatedFilename];
+        } else {
+          filenames = generatedFilename;
+        }
         if (config.export.useFilenameAsHtmlPageTitle) {
-          if (Array.isArray(generatedFilename) && generatedFilename.length === 1) {
-            [htmlPageTitle] = generatedFilename;
-          } else if (typeof generatedFilename === 'string') {
-            htmlPageTitle = generatedFilename;
+          const promises: Promise<any>[] = [];
+          for (const filename of filenames) {
+            promises.push((async () => {
+              blobs[filename] = await getSingleFileHtmlBlob(doc, url, filename);
+            })());
+          }
+          await Promise.all(promises);
+        } else {
+          const blob = await getSingleFileHtmlBlob(doc, url);
+          for (const filename of filenames) {
+            blobs[filename] = blob;
           }
         }
-        // FIXME: Generate multiple blobs when filename is an array.
-        blob = await downloadSingleHtmlFile(doc, url, htmlPageTitle);
       }
-      if (blob !== null) {
-        const url = URL.createObjectURL(blob);
-        try {
-          let fileTypeName = 'file';
-          if (config.export.pageDownloadFileType === 'mhtml') {
-            fileTypeName = 'MHTML file';
-          } else if (config.export.pageDownloadFileType === 'html') {
-            fileTypeName = 'HTML file';
-          }
-          task.addStep(`Downloading generated ${fileTypeName}`);
 
-          let generatedFilenames;
-          if (typeof generatedFilename === 'string') {
-            generatedFilenames = [generatedFilename];
-          } else {
-            generatedFilenames = generatedFilename;
-          }
-          const taskProgressBeforeDownload = task.progress;
-          if (Array.isArray(generatedFilenames)) {
-            const promises = [];
-            for (const generatedFilename of generatedFilenames) {
-              promises.push((async () => {
-                let downloadFilename = generatedFilename;
-                if (
-                  config.export.pageDownloadFileType === 'mhtml'
-                  && !config.export.removeMhtmlExtension
-                ) {
-                  downloadFilename += '.mhtml';
-                } else if (config.export.pageDownloadFileType === 'html') {
-                  downloadFilename += '.html';
-                }
-                const downloadId = await startDownload({
-                  url,
-                  filename: downloadFilename,
-                });
-                task.addDownload(downloadId);
-                await monitorDownloadProgress(downloadId, (downloadProgress: number) => {
-                  if (downloadProgress !== -1) {
-                    task.progress = taskProgressBeforeDownload + downloadProgress;
-                  }
-                });
-              })());
-            }
-            await Promise.all(promises);
-          } else {
+      let fileTypeName = 'file';
+      if (config.export.pageDownloadFileType === 'mhtml') {
+        fileTypeName = 'MHTML file';
+      } else if (config.export.pageDownloadFileType === 'html') {
+        fileTypeName = 'HTML file';
+      }
+
+      task.addStep(`Downloading generated ${fileTypeName}`);
+
+      const taskProgressBeforeDownload = task.progress;
+      const promises: Promise<any>[] = [];
+      for (const filename of Object.keys(blobs)) {
+        // eslint-disable-next-line no-loop-func
+        promises.push((async () => {
+          if (typeof filename !== 'string') {
             throw new Error('Invalid filename attribute; filename must be a string, array or function.');
           }
-        } finally {
-          URL.revokeObjectURL(url);
-        }
+
+          const blob = blobs[filename];
+          const url = URL.createObjectURL(blob);
+          try {
+            let downloadFilename = filename;
+            if (
+              config.export.pageDownloadFileType === 'mhtml'
+              && !config.export.removeMhtmlExtension
+            ) {
+              downloadFilename += '.mhtml';
+            } else if (config.export.pageDownloadFileType === 'html') {
+              downloadFilename += '.html';
+            }
+            const downloadId = await startDownload({
+              url,
+              filename: downloadFilename,
+            });
+            task.addDownload(downloadId);
+            await monitorDownloadProgress(downloadId, (downloadProgress: number) => {
+              if (downloadProgress !== -1) {
+                task.progress = taskProgressBeforeDownload + downloadProgress;
+              }
+            });
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        })());
       }
+      await Promise.all(promises);
     },
   });
 }
