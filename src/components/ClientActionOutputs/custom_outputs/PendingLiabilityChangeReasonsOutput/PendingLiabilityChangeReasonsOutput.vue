@@ -23,7 +23,7 @@
 <script>
 import CardCollapse from '@/components/CardCollapse.vue';
 import LedgerLogicResponse from './LedgerLogicResponse.vue';
-import { taxTypes, taxTypeLabels } from '@/backend/constants';
+import { taxTypes, taxTypeHumanNames } from '@/backend/constants';
 import { validateClients } from '@/validation/props/client';
 
 export default {
@@ -89,7 +89,7 @@ export default {
       return this.clientsById[clientId];
     },
     getTaxTypeName(taxTypeId) {
-      return `${taxTypeLabels[taxTypeId]} (${taxTypes[taxTypeId]})`;
+      return `${taxTypeHumanNames[taxTypeId]} (${taxTypes[taxTypeId]})`;
     },
   },
 };

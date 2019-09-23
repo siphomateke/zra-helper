@@ -15,7 +15,7 @@ import {
   CreateTabPostOptions,
 } from '../utils';
 import {
-  taxPayerSearchTaxTypeNames,
+  taxPayerSearchTaxTypeNamesMap,
   BrowserCode,
   TaxTypeNumericalCode,
   TPIN,
@@ -83,7 +83,7 @@ export async function taskFunction<R>({
 /**
  * @template I Current item in the loop.
  * @template R Parallel task map function response
- * 
+ *
  * @param item This can either be an item from the list if one is provided, or an index if count
  * is provided.
  * FIXME: Document parameters somehow.
@@ -492,9 +492,9 @@ export async function getTaxAccounts<S>({
         - "CLIENT-WITHHOLDING TAX-02"
         */
         let taxTypeId = null;
-        for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNames)) {
+        for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNamesMap)) {
           if (accountName.indexOf(taxTypeName) > -1) {
-            taxTypeId = taxPayerSearchTaxTypeNames[taxTypeName];
+            taxTypeId = taxPayerSearchTaxTypeNamesMap[taxTypeName];
             break;
           }
         }
