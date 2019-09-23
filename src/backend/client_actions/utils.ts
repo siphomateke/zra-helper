@@ -13,6 +13,7 @@ import {
   startDownload,
   runContentScript,
   CreateTabPostOptions,
+  createTabFromHtml,
 } from '../utils';
 import {
   taxPayerSearchTaxTypeNamesMap,
@@ -582,7 +583,7 @@ async function imagesInTabHaveLoaded(tabId: number): LoadedImagesResponse {
 type FilenameGenerator =
   (dataSource: browser.tabs.Tab | HTMLDocument) => Promise<string | string[]>;
 
-interface DownloadPageOptions {
+interface BaseDownloadPageOptions {
   /**
    * Filename of the downloaded page.
    *
@@ -594,18 +595,31 @@ interface DownloadPageOptions {
   filename: string | string[] | FilenameGenerator;
   taskTitle: string;
   parentTaskId: TaskId;
+}
+
+interface DownloadPageByRequestOptions extends BaseDownloadPageOptions {
   createTabPostOptions: CreateTabPostOptions;
 }
 
+interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
+  htmlDocument: HTMLDocument;
+  /** Original URL of `htmlDocument`. Used to get the correct URLs for the page's assets. */
+  htmlDocumentUrl: string;
+}
+
+type DownloadPageOptions = DownloadPageByRequestOptions | DownloadPageByDocumentOptions;
+
+/**
+ * Downloads a page generated from a `HTMLDocument`.
+ */
+export async function downloadPage(options: DownloadPageByDocumentOptions): Promise<void>;
 /**
  * Downloads a page generated from a POST request.
  */
-export async function downloadPage({
-  filename,
-  taskTitle,
-  parentTaskId,
-  createTabPostOptions,
-}: DownloadPageOptions) {
+export async function downloadPage(options: DownloadPageByRequestOptions): Promise<void>;
+export async function downloadPage(options: DownloadPageOptions): Promise<void> {
+  const { filename, taskTitle, parentTaskId } = options;
+
   /** Whether the filename of the downloaded page will be based on data within the page. */
   // TODO: TS: Make this a type guard somehow
   const filenameUsesPage = typeof filename === 'function';
@@ -634,7 +648,12 @@ export async function downloadPage({
         // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
         const initialMaxOpenTabs = config.maxOpenTabs;
         config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
-        const tab = await createTabPost(createTabPostOptions);
+        let tab: browser.tabs.Tab;
+        if ('createTabPostOptions' in options) {
+          tab = await createTabPost(options.createTabPostOptions);
+        } else {
+          tab = await createTabFromHtml(options.htmlDocument);
+        }
         config.maxOpenTabs = initialMaxOpenTabs;
         try {
           task.addStep('Waiting for page to load');
@@ -659,11 +678,19 @@ export async function downloadPage({
           closeTab(tab.id);
         }
       } else if (config.export.pageDownloadFileType === 'html') {
-        task.status = 'Fetching page';
-        const doc = await getDocumentByAjax({
-          ...createTabPostOptions,
-          method: 'post',
-        });
+        let url: string;
+        let doc: HTMLDocument;
+        if ('createTabPostOptions' in options) {
+          task.status = 'Fetching page';
+          doc = await getDocumentByAjax({
+            ...options.createTabPostOptions,
+            method: 'post',
+          });
+          ({ url } = options.createTabPostOptions);
+        } else {
+          doc = options.htmlDocument;
+          url = options.htmlDocumentUrl;
+        }
         if (filenameUsesPage) {
           task.addStep('Generating filename');
           generatedFilename = await (<Function>filename)(doc);
@@ -678,7 +705,7 @@ export async function downloadPage({
           }
         }
         // FIXME: Generate multiple blobs when filename is an array.
-        blob = await downloadSingleHtmlFile(doc, createTabPostOptions.url, htmlPageTitle);
+        blob = await downloadSingleHtmlFile(doc, url, htmlPageTitle);
       }
       if (blob !== null) {
         const url = URL.createObjectURL(blob);
