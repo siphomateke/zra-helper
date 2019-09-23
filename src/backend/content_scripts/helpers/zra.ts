@@ -167,7 +167,7 @@ export async function parseTableAdvanced<H extends string>({
   };
 }
 
-export interface ParsedReportTable<H extends string, C> extends ParsedTable<H, C> { }
+export interface ParsedReportTable<H extends string, C = string> extends ParsedTable<H, C> { }
 
 interface ParseReportTableOptions<H extends string> {
   root: RootElement;
