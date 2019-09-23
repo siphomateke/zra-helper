@@ -131,6 +131,15 @@ interface ParallelTaskMapFnOptionsBase<I, R> {
   autoCalculateTaskState?: boolean;
   /** Set to true to always resolve even if all tasks failed. */
   neverReject?: boolean;
+  /**
+   * Whether the task's max progress should be set based on the number of items in the list or the
+   * count provided.
+   *
+   * Set this to false if the task is used for more than just this parallelTaskMap. If set to false,
+   * the task's max progress must be manually set to include the total number of task's that will
+   * be created by parallelTaskMap.
+   */
+  setTaskMaxProgress?: boolean;
 }
 
 /**
@@ -173,6 +182,7 @@ export function parallelTaskMap<
   func,
   autoCalculateTaskState = true,
   neverReject = false,
+  setTaskMaxProgress = true,
 }: ParallelTaskMapFnOptions<Response, ListItem, Count>):
   Promise<Array<ParallelTaskMapResponse<Response, Item>>> {
   return new Promise((resolve, reject) => {
@@ -193,7 +203,11 @@ export function parallelTaskMap<
       );
     }
 
-    task.progressMax = loopCount;
+    // In case the task was already used for some other things, don't assume progressMax will not
+    // have already beens set.
+    if (setTaskMaxProgress) {
+      task.progressMax = loopCount;
+    }
     const promises: Promise<ParallelTaskMapResponse<Response, Item>>[] = [];
     for (let i = startIndex; i < loopCount; i++) {
       // if not in list mode, item is the index
@@ -351,10 +365,14 @@ export async function getPagedData<R>({
 
         // Then get the rest of the pages in parallel.
         task.status = `Getting data from ${result.numPages} page(s)`;
+        // The task's max progress must be set here and not by parallelTaskMap because it will
+        // not be aware of the first page.
+        task.progressMax = result.numPages;
         results = await parallelTaskMap(
           Object.assign(parallelTaskMapOptions, {
             startIndex: firstPage + 1,
             count: result.numPages + firstPage,
+            setTaskMaxProgress: false,
           }),
         );
       } else {
