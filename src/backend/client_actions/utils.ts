@@ -645,6 +645,7 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
   const task = await createTask(store, {
     title: taskTitle,
     parent: parentTaskId,
+    unknownMaxProgress: false,
     progressMax: 3,
     status: 'Waiting for slot in queue',
   });
