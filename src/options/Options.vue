@@ -1,8 +1,9 @@
 <template>
   <div
     id="app"
-    class="page-content">
-    <Settings @cancel="cancel"/>
+    class="page-content"
+  >
+    <Settings @cancel="cancel" />
   </div>
 </template>
 

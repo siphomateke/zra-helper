@@ -25,7 +25,7 @@ export function generateAckReceiptRequest(
   };
 }
 
-const downloadAckReceipt: ReturnHistoryDownloadFn = function ({
+const downloadAckReceipt: ReturnHistoryDownloadFn = function downloadAckReceipt({
   taxReturn,
   client,
   taxType,

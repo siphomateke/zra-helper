@@ -3,7 +3,7 @@
     :message="message"
     :icon="icon"
   >
-    <div class="spinner is-centered"/>
+    <div class="spinner is-centered" />
   </CenterMessage>
 </template>
 

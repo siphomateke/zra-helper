@@ -7,7 +7,7 @@
     @confirm="confirm"
   >
     <p>{{ confirmMessage }}</p>
-    <ClientListTable :clients="clients"/>
+    <ClientListTable :clients="clients" />
   </BaseDialog>
 </template>
 

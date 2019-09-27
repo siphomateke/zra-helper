@@ -54,9 +54,14 @@ interface ListItemStoreOptions {
 export class ListItemStore<S> {
   // TODO: Don't duplicate this in `ListItemStoreOptions`
   namespace: string;
+
   list: string;
+
   id: number;
-  module: any; // FIXME: Find out what type this should be
+
+  // FIXME: Find out what type this should be
+  module: any;
+
   constructor(public store: Store<S>, { namespace, list, id }: ListItemStoreOptions) {
     this.namespace = namespace;
     this.list = list;

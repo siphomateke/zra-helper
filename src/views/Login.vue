@@ -12,7 +12,9 @@
         :disabled="running"
         class="button is-primary"
         type="submit"
-      >Login</button>
+      >
+        Login
+      </button>
     </form>
     <TaskList
       :tasks="tasks"

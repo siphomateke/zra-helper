@@ -6,8 +6,8 @@
   >
     <DownloadPill
       v-for="downloadId of downloadIds"
-      :key="downloadId"
       :id="downloadId"
+      :key="downloadId"
     />
   </b-field>
 </template>

@@ -1,4 +1,6 @@
-import Action, { generateTotals, pendingLiabilityColumns, Totals, PendingLiabilitiesAction } from './pending_liabilities';
+import Action, {
+  generateTotals, pendingLiabilityColumns, Totals, PendingLiabilitiesAction,
+} from './pending_liabilities';
 import { getFakeRunInstanceClassFromAction, testMergingAllRunOutputs } from './tests/utils';
 import { ClientActionRunner, BasicRunnerConfig } from './base';
 

@@ -6,11 +6,11 @@
       :scrollable="false"
     >
       <ClientActionInput
-        slot="body"
         :id="actionId"
+        slot="body"
+        v-model="input"
         :disabled="disabled"
         :bus="inputBus"
-        v-model="input"
         @input="onInput"
       />
       <div slot="foot">
@@ -19,12 +19,16 @@
           class="button is-primary"
           type="button"
           @click="submit"
-        >Save</button>
+        >
+          Save
+        </button>
         <button
           class="button"
           type="button"
           @click="internalActive = false"
-        >Cancel</button>
+        >
+          Cancel
+        </button>
       </div>
     </CardModal>
   </div>

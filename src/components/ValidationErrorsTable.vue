@@ -15,17 +15,17 @@
       >
         <b-icon
           v-if="!props.row.valid"
-          :title="invalidString"
           icon="exclamation-circle"
           size="is-small"
           type="is-danger"
+          :title="invalidString"
         />
       </b-table-column>
       <b-table-column
         v-for="(column, index) in columns"
+        :key="index"
         :class="getCellClass(props.row, column)"
         :data-tooltip="getCellTooltip(props.row, column)"
-        :key="index"
         :label="column.label"
         :field="column.field"
         :sortable="true"

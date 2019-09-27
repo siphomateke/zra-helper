@@ -6,8 +6,8 @@
       :output="output"
     />
     <component
-      v-else
       :is="previewComponent"
+      v-else
       :format="format"
       :output="output"
     />

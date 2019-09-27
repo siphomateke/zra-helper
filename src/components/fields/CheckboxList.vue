@@ -16,7 +16,9 @@
         v-model="checked"
         :native-value="checkbox.value"
         :disabled="disabled"
-      >{{ checkbox.label }}</b-checkbox>
+      >
+        {{ checkbox.label }}
+      </b-checkbox>
     </div>
   </div>
 </template>

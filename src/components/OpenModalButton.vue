@@ -6,7 +6,7 @@
     v-on="$listeners"
   >
     <span v-if="label">{{ label }}</span>
-    <slot/>
+    <slot />
     <b-icon
       icon="angle-right"
       size="is-small"

@@ -1,5 +1,7 @@
 import { get } from 'dot-prop';
-import { createClientAction, getInput, BaseFormattedOutput, createOutputFile } from '../base';
+import {
+  createClientAction, getInput, BaseFormattedOutput, createOutputFile,
+} from '../base';
 import {
   GetReturnHistoryClientActionOptions,
   ReturnHistoryReturnDependentRunner,

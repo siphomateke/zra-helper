@@ -39,16 +39,15 @@
 
 <script lang="ts">
 import CardCollapse from '@/components/CardCollapse.vue';
-import ClientActionOutputFile from './ClientActionOutputFile.vue';
+import ClientActionOutputFileVue from './ClientActionOutputFile.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
-import { validateActionOutputFile } from '../../backend/client_actions/base';
-import { ClientActionOutputFile } from '@/backend/client_actions/base';
+import { validateActionOutputFile, ClientActionOutputFile } from '@/backend/client_actions/base';
 
 export default {
   name: 'ClientActionOutputFileWrapper',
   components: {
     CardCollapse,
-    ClientActionOutputFile,
+    ClientActionOutputFile: ClientActionOutputFileVue,
     LoadingMessage,
   },
   props: {

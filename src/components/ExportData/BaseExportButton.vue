@@ -15,7 +15,7 @@
       />
       <span v-if="!compact">{{ label }}</span>
     </slot>
-    <slot/>
+    <slot />
   </button>
 </template>
 
