@@ -20,7 +20,9 @@
           :key="format"
           :value="format"
           :disabled="disabled"
-        >{{ getFormatName(format) }}</option>
+        >
+          {{ getFormatName(format) }}
+        </option>
       </b-select>
       <CopyToClipboardButton
         :format="selectedFormat"

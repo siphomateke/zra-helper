@@ -10,63 +10,15 @@
     },
     {
       "type": "npm",
-      "script": "serve",
-      "problemMatcher": {
-        "owner": "ts",
-        "fileLocation": "absolute",
-        "pattern": [
-          {
-            "regexp": "^ERROR\\sin\\s(.+)$",
-            "file": 1
-          },
-          {
-            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
-            "line": 1,
-            "column": 2,
-            "message": 3
-          }
-        ]
-      },
+      "script": "serve"
     },
     {
       "type": "npm",
-      "script": "serve:chrome",
-      "problemMatcher": {
-        "owner": "ts",
-        "fileLocation": "absolute",
-        "pattern": [
-          {
-            "regexp": "^ERROR\\sin\\s(.+)$",
-            "file": 1
-          },
-          {
-            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
-            "line": 1,
-            "column": 2,
-            "message": 3
-          }
-        ]
-      },
+      "script": "serve:chrome"
     },
     {
       "type": "npm",
-      "script": "serve:firefox",
-      "problemMatcher": {
-        "owner": "ts",
-        "fileLocation": "absolute",
-        "pattern": [
-          {
-            "regexp": "^ERROR\\sin\\s(.+)$",
-            "file": 1
-          },
-          {
-            "regexp": "^(\\d+):(\\d+)\\s(.+?)$",
-            "line": 1,
-            "column": 2,
-            "message": 3
-          }
-        ]
-      },
+      "script": "serve:firefox"
     },
     {
       "type": "npm",

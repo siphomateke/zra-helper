@@ -7,7 +7,9 @@
       v-if="title"
       class="modal-card-head"
     >
-      <p class="modal-card-title">{{ title }}</p>
+      <p class="modal-card-title">
+        {{ title }}
+      </p>
     </header>
 
     <section class="modal-card-body">
@@ -27,7 +29,7 @@
           />
         </div>
         <div class="media-content">
-          <slot/>
+          <slot />
         </div>
       </div>
       <slot
@@ -42,14 +44,18 @@
         ref="cancelButton"
         class="button"
         @click="cancel"
-      >{{ cancelText }}</button>
-      <slot name="buttons"/>
+      >
+        {{ cancelText }}
+      </button>
+      <slot name="buttons" />
       <button
         ref="confirmButton"
         :class="type"
         class="button"
         @click="confirm"
-      >{{ confirmText }}</button>
+      >
+        {{ confirmText }}
+      </button>
     </footer>
   </div>
 </template>

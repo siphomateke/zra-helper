@@ -13,20 +13,22 @@
         class="modal-card-head"
       >
         <slot name="head">
-          <p class="modal-card-title">{{ title }}</p>
+          <p class="modal-card-title">
+            {{ title }}
+          </p>
         </slot>
       </header>
       <section
         v-if="this.$slots.body"
         class="modal-card-body"
       >
-        <slot name="body"/>
+        <slot name="body" />
       </section>
       <section
         v-if="this.$slots.foot"
         class="modal-card-foot"
       >
-        <slot name="foot"/>
+        <slot name="foot" />
       </section>
     </div>
   </b-modal>

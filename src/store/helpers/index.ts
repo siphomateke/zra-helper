@@ -17,7 +17,7 @@ type MapObj = { [key: string]: any };
  * Normalize the map. Same as Vuex's normalizeMap.
  */
 function normalizeMap<
-  T extends (any[] | MapObj),
+  T extends(any[] | MapObj),
   K extends T extends any[] ? number : keyof T
 >(map: T): { key: K, val: T[K] }[] {
   return Array.isArray(map)

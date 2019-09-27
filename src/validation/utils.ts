@@ -28,7 +28,7 @@ export async function validateObject<R extends ValidationRules>(
   validator: Validator,
   obj: any,
   validationRules: R,
-  errorsOnly: boolean = false
+  errorsOnly: boolean = false,
 ): Promise<ValidationResults<R> | string[]> {
   // FIXME: Make sure using `objKeysExact` isn't a mistake here.
   const properties = objKeysExact(validationRules);
@@ -59,6 +59,6 @@ export async function named() {
     taxTypeIds: '',
   });
   if (typeof response.taxTypeIds !== 'undefined') {
-    response.taxTypeIds.failedRules
+    response.taxTypeIds.failedRules;
   }
 }

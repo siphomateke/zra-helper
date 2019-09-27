@@ -4,7 +4,9 @@
       v-if="errorMessage"
       type="is-danger"
       title="Failed to parse CSV output"
-    >{{ errorMessage }}</b-message>
+    >
+      {{ errorMessage }}
+    </b-message>
     <div
       v-else
       class="scrollable-section"
@@ -18,7 +20,9 @@
             <td
               v-for="(column, columnIndex) in row"
               :key="columnIndex"
-            >{{ column }}</td>
+            >
+              {{ column }}
+            </td>
           </tr>
         </tbody>
       </table>

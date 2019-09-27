@@ -6,8 +6,8 @@
       label="From date"
     >
       <DateInput
-        v-validate="fromDateValidation"
         v-model="fromDate"
+        v-validate="fromDateValidation"
         :disabled="disabled"
         name="from_date"
       />
@@ -18,8 +18,8 @@
       label="To date"
     >
       <DateInput
-        v-validate="toDateValidation"
         v-model="toDate"
+        v-validate="toDateValidation"
         :disabled="disabled"
         name="to_date"
       />

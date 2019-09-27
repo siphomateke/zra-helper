@@ -21,10 +21,10 @@
           @click="editInput(item.id)"
         />
         <ClientActionInputModal
+          v-model="actionInputs[item.id]"
           :action-id="item.id"
           :active.sync="inputModalsVisible[item.id]"
           :disabled="disabled"
-          v-model="actionInputs[item.id]"
         />
       </template>
     </DraggableList>

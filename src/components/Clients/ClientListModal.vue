@@ -18,7 +18,7 @@
         <template v-if="internalSearch.length > 0">
           <p>Found {{ shownClientIds.length }} client(s) matching your query</p>
         </template>
-        <slot :client-ids="shownClientIds"/>
+        <slot :client-ids="shownClientIds" />
       </template>
       <section
         v-else

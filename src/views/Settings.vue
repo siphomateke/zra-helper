@@ -11,55 +11,73 @@
                 <b-checkbox
                   v-model="config.debug.devtools"
                   title="Whether the app should communicate with devtools. Extension must be reloaded for this to take effect."
-                >Devtools</b-checkbox>
+                >
+                  Devtools
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.logToConsole"
                   title="Show all user-side logs in the console."
-                >Mirror log to developer console</b-checkbox>
+                >
+                  Mirror log to developer console
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.showTaskErrorsInConsole"
                   title="Logs full details of all task errors to the console."
-                >Show task errors in console</b-checkbox>
+                >
+                  Show task errors in console
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.errors"
                   title="Show detailed information about errors if available."
-                >Detailed error information</b-checkbox>
+                >
+                  Detailed error information
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.progressBars"
                   :title="`Show raw progress bar values such as current value and max value.\nAdditionally keeps progress bars visible even after they are complete.`"
-                >Progress bars</b-checkbox>
+                >
+                  Progress bars
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.sendConfigToContentScripts"
                   title="Whether these settings should be sent to content scripts. This will be removed if we ever need the settings in the content scripts for more than debugging."
-                >Send settings to content scripts</b-checkbox>
+                >
+                  Send settings to content scripts
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.missingElementInfo"
                   :title="`Enable this to help debug errors like 'logout button not found' error.\n\n'Send settings to content scripts' must be enabled to use this`"
-                >Collect extra information about missing element errors</b-checkbox>
+                >
+                  Collect extra information about missing element errors
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.anonymizeClientsInExports"
                   title="Enable this to remove sensitive client information such as names, usernames and passwords from exports."
-                >Anonymize clients in exports</b-checkbox>
+                >
+                  Anonymize clients in exports
+                </b-checkbox>
               </div>
               <div class="control">
                 <b-checkbox
                   v-model="config.debug.calculateTaskDuration"
                   title="Tracks how long tasks take and displays the information in their titles. Must be enabled before running the tasks."
-                >Measure task duration</b-checkbox>
+                >
+                  Measure task duration
+                </b-checkbox>
               </div>
             </div>
           </BaseCard>
@@ -70,7 +88,9 @@
           <BaseCard title="Export">
             <div class="field">
               <div class="control">
-                <b-checkbox v-model="config.export.showSaveAsDialog">Show 'save as' dialogs</b-checkbox>
+                <b-checkbox v-model="config.export.showSaveAsDialog">
+                  Show 'save as' dialogs
+                </b-checkbox>
               </div>
             </div>
             <div class="field">
@@ -79,7 +99,9 @@
                   v-model="config.export.taskDuration"
                   title="Whether to include how long tasks took to run in the task export. 'Measure task duration' must have been enabled before the tasks were run for this to work."
                   @input="enabled => {if (enabled) config.debug.calculateTaskDuration = true}"
-                >Include task duration in exports</b-checkbox>
+                >
+                  Include task duration in exports
+                </b-checkbox>
               </div>
             </div>
             <b-field
@@ -92,35 +114,47 @@
                   v-for="option in pageDownloadTypes"
                   :key="option.value"
                   :value="option.value"
-                >{{ option.label }}</option>
+                >
+                  {{ option.label }}
+                </option>
               </b-select>
             </b-field>
             <b-field v-if="config.export.pageDownloadFileType === 'mhtml'">
               <b-checkbox
                 v-model="config.export.removeMhtmlExtension"
                 title="Removes the .mhtml file extension from all downloaded receipts. Enable this to stop Chrome on Windows from warning that every downloaded receipt is dangerous."
-              >Remove '.mhtml' extension from downloaded receipts</b-checkbox>
+              >
+                Remove '.mhtml' extension from downloaded receipts
+              </b-checkbox>
             </b-field>
             <b-field v-if="config.export.pageDownloadFileType === 'html'">
               <b-checkbox
                 v-model="config.export.useFilenameAsHtmlPageTitle"
                 title="Makes the page title of downloaded HTML files the same as their filenames. This is useful when re-saving HTML files as PDFs in Chrome since it uses page titles as filenames."
-              >Use HTML filename as title</b-checkbox>
+              >
+                Use HTML filename as title
+              </b-checkbox>
             </b-field>
             <b-field label="End of line character">
               <b-select v-model="config.export.eol">
                 <option
                   title="Automatically detect end of line character based on operating system."
                   value="auto"
-                >Auto</option>
+                >
+                  Auto
+                </option>
                 <option
                   title="\n"
                   value="LF"
-                >LF</option>
+                >
+                  LF
+                </option>
                 <option
                   title="\r\n"
                   value="CRLF"
-                >CRLF</option>
+                >
+                  CRLF
+                </option>
               </b-select>
             </b-field>
           </BaseCard>
@@ -131,7 +165,9 @@
           <BaseCard title="Log">
             <div class="field">
               <div class="control">
-                <b-checkbox v-model="config.log.showDateInTimestamp">Show date in timestamp</b-checkbox>
+                <b-checkbox v-model="config.log.showDateInTimestamp">
+                  Show date in timestamp
+                </b-checkbox>
               </div>
             </div>
           </BaseCard>
@@ -145,7 +181,9 @@
             <b-field
               title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable."
             >
-              <b-checkbox v-model="config.zraLiteMode">Use basic HTML version of ZRA when running</b-checkbox>
+              <b-checkbox v-model="config.zraLiteMode">
+                Use basic HTML version of ZRA when running
+              </b-checkbox>
             </b-field>
             <b-field
               label="HTTP request timeout"
@@ -262,13 +300,17 @@
         <div class="column">
           <BaseCard title="Misc">
             <b-field title="Whether to send a notification when all running tasks have completed.">
-              <b-checkbox v-model="config.sendNotifications">Send notification when done</b-checkbox>
+              <b-checkbox v-model="config.sendNotifications">
+                Send notification when done
+              </b-checkbox>
             </b-field>
 
             <b-field
               title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed."
             >
-              <b-checkbox v-model="config.promptRetryActions">Prompt to retry actions that fail</b-checkbox>
+              <b-checkbox v-model="config.promptRetryActions">
+                Prompt to retry actions that fail
+              </b-checkbox>
             </b-field>
 
             <b-field

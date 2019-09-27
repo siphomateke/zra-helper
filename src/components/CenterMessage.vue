@@ -1,6 +1,6 @@
 <template>
   <div class="content has-text-grey has-text-centered">
-    <slot/>
+    <slot />
     <p v-if="icon">
       <b-icon
         :icon="icon"

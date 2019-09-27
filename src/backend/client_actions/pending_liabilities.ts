@@ -521,7 +521,7 @@ export namespace BasePendingLiabilitiesAction {
 interface OutputFormatterOptions extends Omit<
   ClientActionOutputFormatterOptions<BasePendingLiabilitiesAction.Output>,
   'output'
-> {
+  > {
   clientOutputs: ClientActionOutputs<BasePendingLiabilitiesAction.Output>;
 }
 
@@ -639,44 +639,44 @@ const outputFormatter: OutputFormatter = function outputFormatter({
 const BaseGetAllPendingLiabilitiesClientActionOptions: ClientActionOptions<
   BasePendingLiabilitiesAction.Input,
   BasePendingLiabilitiesAction.Output
-  > = {
-    id: 'getAllPendingLiabilities',
-    name: 'Get all pending liabilities',
-    requiresTaxTypes: true,
-    defaultInput: () => ({
-      totalsTaxTypeIds: taxTypeNumericalCodes,
-    }),
-    inputValidation: {
-      totalsTaxTypeIds: 'required|taxTypeIds',
-    },
-    hasOutput: true,
-    generateOutputFiles({ clients, allClients, outputs }) {
-      return createOutputFile({
-        label: 'All clients pending liabilities',
-        filename: 'pendingLiabilities',
-        value: outputs,
-        formats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
-        defaultFormat: ExportFormatCode.CSV,
-        formatter: ({ output, format, anonymizeClients }) => outputFormatter({
-          clients,
-          allClients,
-          clientOutputs: output,
-          format,
-          anonymizeClients,
-        }),
-      });
-    },
-  };
+> = {
+  id: 'getAllPendingLiabilities',
+  name: 'Get all pending liabilities',
+  requiresTaxTypes: true,
+  defaultInput: () => ({
+    totalsTaxTypeIds: taxTypeNumericalCodes,
+  }),
+  inputValidation: {
+    totalsTaxTypeIds: 'required|taxTypeIds',
+  },
+  hasOutput: true,
+  generateOutputFiles({ clients, allClients, outputs }) {
+    return createOutputFile({
+      label: 'All clients pending liabilities',
+      filename: 'pendingLiabilities',
+      value: outputs,
+      formats: [ExportFormatCode.CSV, ExportFormatCode.JSON],
+      defaultFormat: ExportFormatCode.CSV,
+      formatter: ({ output, format, anonymizeClients }) => outputFormatter({
+        clients,
+        allClients,
+        clientOutputs: output,
+        format,
+        anonymizeClients,
+      }),
+    });
+  },
+};
 
 const BaseGetAllPendingLiabilitiesClientAction = createClientAction<
   BasePendingLiabilitiesAction.Input,
   BasePendingLiabilitiesAction.Output
-  >(BaseGetAllPendingLiabilitiesClientActionOptions);
+>(BaseGetAllPendingLiabilitiesClientActionOptions);
 
 class PendingLiabilityTotalsRunner<
   Input extends BasePendingLiabilitiesAction.Input = BasePendingLiabilitiesAction.Input,
   Failures extends BasePendingLiabilitiesAction.Failures = BasePendingLiabilitiesAction.Failures
-> extends ClientActionRunner<
+  > extends ClientActionRunner<
   Input,
   BasePendingLiabilitiesAction.Output,
   BasicRunnerConfig,
@@ -891,7 +891,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
 class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
   PendingLiabilitiesAction.Input,
   PendingLiabilitiesAction.Failures
-> {
+  > {
   failures: PendingLiabilitiesAction.Failures = {
     totalsTaxTypeIds: [],
     downloadsTaxTypeIds: [],

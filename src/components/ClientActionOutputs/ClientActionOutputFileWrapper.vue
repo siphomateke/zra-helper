@@ -60,15 +60,17 @@
 </template>
 
 <script lang="ts">
-import ClientActionOutputFile from './ClientActionOutputFile.vue';
+import ClientActionOutputFileVue from './ClientActionOutputFile.vue';
 import LoadingMessage from '@/components/LoadingMessage.vue';
-import { validateActionOutputFile } from '../../backend/client_actions/base';
-import { ClientActionOutputFile } from '@/backend/client_actions/base';
+import {
+  validateActionOutputFile,
+  ClientActionOutputFile,
+} from '@/backend/client_actions/base';
 
 export default {
   name: 'ClientActionOutputFileWrapper',
   components: {
-    ClientActionOutputFile,
+    ClientActionOutputFile: ClientActionOutputFileVue,
     LoadingMessage,
   },
   props: {

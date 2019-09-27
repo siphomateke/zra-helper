@@ -8,9 +8,11 @@
         <b-radio
           v-for="format of formats"
           :key="format"
-          :native-value="format"
           v-model="selectedFormat"
-        >{{ getFormatName(format) }}</b-radio>
+          :native-value="format"
+        >
+          {{ getFormatName(format) }}
+        </b-radio>
       </div>
       <b-select
         v-else
@@ -20,7 +22,9 @@
           v-for="format of formats"
           :key="format"
           :value="format"
-        >{{ getFormatName(format) }}</option>
+        >
+          {{ getFormatName(format) }}
+        </option>
       </b-select>
     </b-field>
     <div
@@ -37,7 +41,9 @@
           <b-checkbox
             v-if="selectedFormat !== ExportFormatCode.TXT"
             v-model="displayRawOutput"
-          >Show raw output</b-checkbox>
+          >
+            Show raw output
+          </b-checkbox>
         </b-field>
       </template>
       <div
@@ -50,7 +56,9 @@
         v-if="outputGenerationErrorMessage"
         type="is-danger"
         title="Error generating output"
-      >{{ outputGenerationErrorMessage }}</b-message>
+      >
+        {{ outputGenerationErrorMessage }}
+      </b-message>
     </div>
     <div
       v-else

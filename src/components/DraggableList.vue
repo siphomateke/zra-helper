@@ -25,7 +25,7 @@
           size="is-small"
           class="handle"
         />
-        <slot :item="item"/>
+        <slot :item="item" />
       </div>
     </transition-group>
   </draggable>

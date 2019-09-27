@@ -71,7 +71,9 @@
                   <li
                     v-for="(error, index) of inputValidationErrors[action.id]"
                     :key="index"
-                  >{{ error }}</li>
+                  >
+                    {{ error }}
+                  </li>
                 </ul>
               </li>
             </ul>
@@ -189,8 +191,8 @@
         :active.sync="parsedClientsViewerVisible"
         title="Parsed clients"
       >
-        <template slot-scope="{ clientIds }">
-          <ParsedClientsViewer :client-ids="clientIds" />
+        <template slot-scope="{ slotClientIds }">
+          <ParsedClientsViewer :client-ids="slotClientIds" />
         </template>
       </ClientListModal>
       <ClientListModal
@@ -198,10 +200,10 @@
         :active.sync="validClientSelectorVisible"
         title="Valid client selector"
       >
-        <template slot-scope="{ clientIds }">
+        <template slot-scope="{ slotClientIds }">
           <ClientSelector
             v-model="selectedValidClientIds"
-            :client-ids="clientIds"
+            :client-ids="slotClientIds"
             :disabled="clientActionsRunning"
           />
         </template>
@@ -340,9 +342,9 @@ export default {
     },
     // TODO: Validate form using VeeValidate
     runActionsButtonDisabled() {
-      return this.noActionsSelected
-        || this.selectedClientIds.length === 0
-        || this.clientActionsRunning;
+      return (
+        this.noActionsSelected || this.selectedClientIds.length === 0 || this.clientActionsRunning
+      );
     },
     runActionsButtonDisabledReason() {
       if (this.clientActionsRunning) {
@@ -430,23 +432,25 @@ export default {
     async validateActionInputs() {
       let valid = true;
       this.inputValidationErrors = {};
-      await Promise.all(Object.keys(this.actionInputs).map(async (actionId) => {
-        /** @type {import('@/backend/client_actions/base').ClientActionObject} */
-        const action = this.getActionById(actionId);
-        if ('inputValidation' in action) {
-          const actionInput = this.actionInputs[actionId];
-          const validationErrors = await validateObject(
-            inputValidator,
-            actionInput,
-            action.inputValidation,
-            true,
-          );
-          if (validationErrors.length > 0) {
-            valid = false;
-            this.inputValidationErrors[actionId] = validationErrors;
+      await Promise.all(
+        Object.keys(this.actionInputs).map(async (actionId) => {
+          /** @type {import('@/backend/client_actions/base').ClientActionObject} */
+          const action = this.getActionById(actionId);
+          if ('inputValidation' in action) {
+            const actionInput = this.actionInputs[actionId];
+            const validationErrors = await validateObject(
+              inputValidator,
+              actionInput,
+              action.inputValidation,
+              true,
+            );
+            if (validationErrors.length > 0) {
+              valid = false;
+              this.inputValidationErrors[actionId] = validationErrors;
+            }
           }
-        }
-      }));
+        }),
+      );
       this.anyActionsWithInvalidInputs = !valid;
       return valid;
     },
@@ -488,7 +492,8 @@ export default {
       if (response.invalidUsernames.length > 0) {
         const props = {
           title: 'Warning',
-          confirmMessage: 'Duplicate clients with different passwords were detected. The following clients will not be run because of this:',
+          confirmMessage:
+            'Duplicate clients with different passwords were detected. The following clients will not be run because of this:',
           type: 'is-warning',
           hasIcon: true,
           clients: response.invalidClients,

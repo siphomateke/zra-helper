@@ -7,7 +7,9 @@
       has-icon
       icon-size="small"
       @close="warningDismissed"
-    >Running this may interfere with tasks elsewhere such as those in the Dashboard.</b-message>
+    >
+      Running this may interfere with tasks elsewhere such as those in the Dashboard.
+    </b-message>
     <b-field
       :type="fileUploadFieldType"
       :message="fileUploadFieldMessage"

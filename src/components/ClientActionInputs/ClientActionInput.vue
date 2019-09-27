@@ -1,16 +1,18 @@
 <template>
   <form @submit.prevent="submit">
     <component
-      v-if="typeof actionInputComponent !== 'undefined'"
       :is="actionInputComponent"
+      v-if="typeof actionInputComponent !== 'undefined'"
+      v-model="input"
       :disabled="disabled"
       :bus="bus"
-      v-model="input"
     />
     <button
       v-show="false"
       type="submit"
-    >Submit</button>
+    >
+      Submit
+    </button>
   </form>
 </template>
 

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <FileUpload @input="fileUploaded"/>
+    <FileUpload @input="fileUploaded" />
     <p v-show="clients.length > 0">Parsed {{ clients.length }} client(s)</p>
   </div>
 </template>

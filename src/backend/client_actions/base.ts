@@ -21,7 +21,7 @@ export interface ClientActionOutputFormatterOptions<Output> {
 
 export type ClientActionOutputFormatter<O> = (options: ClientActionOutputFormatterOptions<O>) => string;
 
-interface ClientActionOutputFile<Output extends ClientActionOutputFileValue> {
+export interface ClientActionOutputFile<Output extends ClientActionOutputFileValue> {
   label: string;
   /**
    * Whether this output file is not an actual output file but just a wrapper for others. If this is

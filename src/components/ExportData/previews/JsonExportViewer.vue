@@ -2,7 +2,7 @@
   <pre
     v-highlightjs="output"
     class="scrollable-section"
-  ><code class="json"/></pre>
+  ><code class="json" /></pre>
 </template>
 
 

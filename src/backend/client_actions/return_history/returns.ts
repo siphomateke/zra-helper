@@ -8,7 +8,7 @@ import {
 import { downloadPage } from '../utils';
 import { ZraDomain } from '@/backend/constants';
 
-const downloadReturn: ReturnHistoryDownloadFn = function ({
+const downloadReturn: ReturnHistoryDownloadFn = function downloadReturn({
   taxReturn,
   client,
   taxType,

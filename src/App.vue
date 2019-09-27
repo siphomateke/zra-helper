@@ -4,8 +4,8 @@
     class="container"
   >
     <TabNav
-      :tabs="tabs"
       v-model="activeTab"
+      :tabs="tabs"
       @change="tabChanged"
     />
     <keep-alive>

@@ -18,7 +18,9 @@
         v-if="format !== ExportFormatCode.TXT"
         slot="foot"
         v-model="showRawExport"
-      >Show raw export</b-checkbox>
+      >
+        Show raw export
+      </b-checkbox>
     </CardModal>
   </div>
 </template>

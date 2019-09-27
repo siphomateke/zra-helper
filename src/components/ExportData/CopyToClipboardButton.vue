@@ -64,7 +64,7 @@ export default {
           this.copyComplete(true);
         }).catch(() => {
           this.copyComplete(false);
-      });
+        });
     },
   },
 };
