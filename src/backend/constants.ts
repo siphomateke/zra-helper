@@ -1,7 +1,7 @@
 import { objectFlip } from '@/utils';
 import { TaxAccount } from './client_actions/utils';
 
-export const ZraDomain = 'https://eservices.zra.org.zm:8000';
+export const ZraDomain = 'https://eservices.zra.org.zm';
 
 // #region Browser
 export enum BrowserCode {
