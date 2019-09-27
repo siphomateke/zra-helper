@@ -255,12 +255,32 @@ async function getPendingLiabilityPageToDownload({
   return pageToDownload;
 }
 
-interface DownloadPendingLiabilityPageTaskFnOptions {
+interface GetPageTaskFnOptions {
   page: number;
   parentTaskId: TaskId;
+  getPageFn: (page: number) => Promise<HTMLDocument>;
+}
+
+/**
+ * Creates a task to get a single pending liability page.
+ */
+async function getPendingLiabilityPageTask({
+  page,
+  parentTaskId,
+  getPageFn,
+}: GetPageTaskFnOptions) {
+  return taskFunction({
+    task: await createTask(store, {
+      title: 'Get page',
+      parent: parentTaskId,
+    }),
+    func: () => getPageFn(page),
+  });
+}
+
+interface DownloadPendingLiabilityPageTaskFnOptions extends GetPageTaskFnOptions {
   taxTypeId: TaxTypeNumericalCode;
   tpin: TPIN;
-  getPageFn: (page: number) => Promise<HTMLDocument>;
 }
 
 async function downloadPendingLiabilityPageTask({
@@ -280,12 +300,10 @@ async function downloadPendingLiabilityPageTask({
     task: pageTask,
     async func() {
       pageTask.status = 'Get page';
-      const pageToDownload = await taskFunction({
-        task: await createTask(store, {
-          title: 'Get page',
-          parent: pageTask.id,
-        }),
-        func: () => getPageFn(page),
+      const pageToDownload = await getPendingLiabilityPageTask({
+        getPageFn,
+        page,
+        parentTaskId: pageTask.id,
       });
 
       pageTask.addStep('Download page');
@@ -343,21 +361,42 @@ async function downloadPendingLiabilityPages({
     return pageToDownload;
   }
 
-  async function download(page: number, parentTaskId: TaskId) {
-    return downloadPendingLiabilityPageTask({
-      page,
-      parentTaskId,
-      getPageFn: getPage,
-      taxTypeId,
-      tpin,
-    });
+  /**
+   * Gets and downloads a page and creates the appropriate tasks.
+   */
+  async function doPage(page: number, parentTaskId: TaskId, downloadPage: boolean = true) {
+    if (downloadPage) {
+      return downloadPendingLiabilityPageTask({
+        page,
+        parentTaskId,
+        getPageFn: getPage,
+        taxTypeId,
+        tpin,
+      });
+    } else {
+      return getPendingLiabilityPageTask({
+        page,
+        parentTaskId,
+        getPageFn: getPage,
+      });
+    }
   }
 
   const pagesToGet = pages.slice();
 
+  /** 
+   * Whether the first page should be downloaded as well as retrieved. Automatically set to false
+   * when page one was not included in the `pages` parameter.
+   */
+  let shouldDownloadPageOne: boolean;
+
   // The first page always needs be retrieved because its HTML is used to generate the other pages.
+  // However, it only needs to be downloaded if it was included in the `pages` parameter.
   if (!pagesToGet.includes(1)) {
     pagesToGet.push(1);
+    shouldDownloadPageOne = false;
+  } else {
+    shouldDownloadPageOne = true;
   }
 
   let numPages = pagesToGet.length;
@@ -381,7 +420,7 @@ async function downloadPendingLiabilityPages({
   // The first page always needs be retrieved because its HTML is used to generate the other pages.
   if (pagesToGet.length > 1) {
     try {
-      await download(1, task.id);
+      await doPage(1, task.id, shouldDownloadPageOne);
     } catch (error) {
       task.markAsComplete();
       task.setError(error);
@@ -390,7 +429,7 @@ async function downloadPendingLiabilityPages({
   } else {
     await taskFunction({
       task,
-      func: () => download(1, task.id),
+      func: () => doPage(1, task.id, shouldDownloadPageOne),
     });
   }
 
@@ -405,7 +444,7 @@ async function downloadPendingLiabilityPages({
       task,
       list: pagesToGet,
       setTaskMaxProgress: false,
-      func: (page, parentTaskId) => download(page, parentTaskId),
+      func: (page, parentTaskId) => doPage(page, parentTaskId),
     });
 
     for (const result of results) {
