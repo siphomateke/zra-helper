@@ -8,6 +8,14 @@
     >
       Download pages
     </b-checkbox>
+    <b-checkbox
+      v-if="input.downloadPages"
+      v-model="input.downloadEmptyPages"
+      title="Whether the pending liability pages of tax types with no pending liabilities should be downloaded."
+      :disabled="disabled"
+    >
+      Download empty pages
+    </b-checkbox>
     <!-- eslint-enable max-len -->
     <div class="columns">
       <div class="column">

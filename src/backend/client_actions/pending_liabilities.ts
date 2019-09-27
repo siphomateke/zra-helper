@@ -259,7 +259,10 @@ async function getPendingLiabilityPageToDownload({
 interface GetPageTaskFnOptions {
   page: number;
   parentTaskId: TaskId;
-  getPageFn: (page: number) => Promise<HTMLDocument>;
+  getPageFn: (page: number) => Promise<{
+    pageToDownload: HTMLDocument,
+    numPages: number | null,
+  }>;
 }
 
 /**
@@ -282,14 +285,20 @@ async function getPendingLiabilityPageTask({
 interface DownloadPendingLiabilityPageTaskFnOptions extends GetPageTaskFnOptions {
   taxTypeId: TaxTypeNumericalCode;
   tpin: TPIN;
+  /**
+   * Whether pending liability pages should be downloaded for tax types with zero pending
+   * liabilities.
+   */
+  shouldDownloadEmptyPages: boolean;
 }
 
-async function downloadPendingLiabilityPageTask({
+async function getAndDownloadPendingLiabilityPageTask({
   page,
   parentTaskId,
   taxTypeId,
   tpin,
   getPageFn,
+  shouldDownloadEmptyPages,
 }: DownloadPendingLiabilityPageTaskFnOptions) {
   const pageTask = await createTask(store, {
     title: `Download page ${page}`,
@@ -301,11 +310,17 @@ async function downloadPendingLiabilityPageTask({
     task: pageTask,
     async func() {
       pageTask.status = 'Get page';
-      const pageToDownload = await getPendingLiabilityPageTask({
+      const { pageToDownload, numPages } = await getPendingLiabilityPageTask({
         getPageFn,
         page,
         parentTaskId: pageTask.id,
       });
+
+      if (!shouldDownloadEmptyPages && numPages !== null && numPages === 0) {
+        // TODO: Log this
+        pageTask.progressMax -= 1;
+        return;
+      }
 
       pageTask.addStep('Download page');
       await downloadPendingLiabilityPage({
@@ -331,6 +346,11 @@ interface DownloadPendingLiabilityPagesFnOptions {
   taxTypeId: TaxTypeNumericalCode;
   tpin: TPIN;
   accountName: TaxAccountName;
+  /**
+   * Whether pending liability pages should be downloaded for tax types with zero pending
+   * liabilities.
+   */
+  shouldDownloadEmptyPages: boolean;
 }
 
 // TODO: Consider reducing duplication between this and `getPagedData`.
@@ -348,6 +368,7 @@ async function downloadPendingLiabilityPages({
   taxTypeId,
   tpin,
   accountName,
+  shouldDownloadEmptyPages,
 }: DownloadPendingLiabilityPagesFnOptions): Promise<number[]> {
   let firstPendingLiabilityPage: HTMLDocument | null = null;
   /** Pages to get and download. Is only null when the number of pages is unknown. */
@@ -356,7 +377,7 @@ async function downloadPendingLiabilityPages({
     pagesToGet = pages.slice();
   }
 
-  async function getPage(page: number) {
+  const getPage: GetPageTaskFnOptions['getPageFn'] = async function getPage(page) {
     const pageToDownload = await getPendingLiabilityPageToDownload({
       page,
       taxTypeId,
@@ -365,33 +386,35 @@ async function downloadPendingLiabilityPages({
       cachedPages,
       firstPendingLiabilityPage,
     });
+    let numPages: number | null = null;
     if (page === 1) {
       // Make sure to clone it because the original copy will be modified when it is downloaded.
       firstPendingLiabilityPage = <HTMLDocument>pageToDownload.cloneNode(true);
 
       // Find out the number of pages if it's not already known.
       if (pagesToGet === null) {
-        const parsed = await parseFullPendingLiabilityPage(pageToDownload);
+        ({ numPages } = await parseFullPendingLiabilityPage(pageToDownload));
         pagesToGet = [];
-        for (let page = 2; page < parsed.numPages + 1; page++) {
+        for (let page = 2; page < numPages + 1; page++) {
           pagesToGet.push(page);
         }
       }
     }
-    return pageToDownload;
-  }
+    return { pageToDownload, numPages };
+  };
 
   /**
    * Gets and downloads a page and creates the appropriate tasks.
    */
   async function doPage(page: number, parentTaskId: TaskId, downloadPage: boolean = true) {
     if (downloadPage) {
-      return downloadPendingLiabilityPageTask({
+      return getAndDownloadPendingLiabilityPageTask({
         page,
         parentTaskId,
         getPageFn: getPage,
         taxTypeId,
         tpin,
+        shouldDownloadEmptyPages,
       });
     }
     return getPendingLiabilityPageTask({
@@ -934,6 +957,11 @@ export namespace PendingLiabilitiesAction {
      * correct.
      */
     downloadPages?: boolean;
+    /**
+     * Whether pending liability pages should be downloaded for tax types with zero pending
+     * liabilities.
+     */
+    downloadEmptyPages?: boolean;
     /** Pending liability pages to download. */
     pages?: TaxTypeIdMap<number[]>;
   }
@@ -956,6 +984,7 @@ const GetAllPendingLiabilitiesClientAction = createClientAction<
       ...BaseGetAllPendingLiabilitiesClientActionOptions.defaultInput!(),
       downloadsTaxTypeIds: taxTypeNumericalCodes,
       downloadPages: false,
+      downloadEmptyPages: false,
     }),
     inputValidation: {
       ...BaseGetAllPendingLiabilitiesClientActionOptions.inputValidation,
@@ -1000,12 +1029,17 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
    *
    * Note: the only reason this function has parameters is for performance reasons. They could all
    * alternatively be retrieved from the `storeProxy`.
+   *
+   * @param shouldDownloadEmptyPages
+   * Whether pending liability pages should be downloaded for tax types with zero pending
+   * liabilities.
    */
   async runAndDownloadPages(
     actionTask: TaskObject,
     input: PendingLiabilitiesAction.Input,
     client: Client,
     shouldGetTotals: boolean,
+    shouldDownloadEmptyPages: boolean,
   ) {
     // Get totals but don't let any errors that occur while getting them prevent
     // the pending liability pages from being downloaded.
@@ -1037,6 +1071,11 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
         } else {
           const numPages = this.numPages[taxTypeId];
           if (typeof numPages !== 'undefined') {
+            // If we aren't supposed to download pending liabilities with no records and this
+            // tax type has no records, stop right here.
+            if (!shouldDownloadEmptyPages && numPages === 0) {
+              return;
+            }
             pagesToDownload = [];
             for (let page = 1; page < numPages + 1; page++) {
               pagesToDownload.push(page);
@@ -1057,6 +1096,7 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
           parentTaskId,
           accountName: taxAccount.accountName,
           taxTypeId,
+          shouldDownloadEmptyPages,
         });
         if (failedPages.length > 0) {
           this.failures.pages[taxTypeId] = failedPages;
@@ -1082,6 +1122,7 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
     const { task: actionTask, input, client } = this.storeProxy;
 
     const { value: shouldDownloadPages } = getInput<Exclude<PendingLiabilitiesAction.Input['downloadPages'], undefined>>(input, 'downloadPages', { defaultValue: false });
+    const { value: shouldDownloadEmptyPages } = getInput<Exclude<PendingLiabilitiesAction.Input['downloadEmptyPages'], undefined>>(input, 'downloadEmptyPages', { defaultValue: false });
     const totalsTaxTypeIds = this.getTaxTypeIdsToRun(client, input, 'totalsTaxTypeIds');
     const shouldGetTotals = totalsTaxTypeIds.length > 0;
 
@@ -1094,7 +1135,13 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
       await taskFunction({
         task: actionTask,
         setStateBasedOnChildren: true,
-        func: () => this.runAndDownloadPages(actionTask, input, client, shouldGetTotals),
+        func: () => this.runAndDownloadPages(
+          actionTask,
+          input,
+          client,
+          shouldGetTotals,
+          shouldDownloadEmptyPages,
+        ),
       });
     } else {
       await super.runInternal();
