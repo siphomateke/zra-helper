@@ -101,7 +101,7 @@ interface BaseGetReportPageFnOptions {
 
 interface GetReportPageFnOptions<H extends string> extends BaseGetReportPageFnOptions {
   /** The columns in the report table. */
-  reportHeaders: H[];
+  reportHeaders: H[] | readonly H[];
   /** The page of the report to get. */
   page: number;
 }
@@ -142,6 +142,13 @@ async function getFirstReportPage({
 }
 
 /**
+ * Extracts the result table element from a full ZRA report page.
+ */
+function getResultTableFromFullReportPage(fullReportPage: HTMLDocument) {
+  return getElementFromDocument(fullReportPage, '#rsltTableHtml', 'report inner table');
+}
+
+/**
  * Inserts a report page table into the full first page of a report.
  * @param fullReportPage The full first page of the report.
  * @param reportPageTable A report page table retrieved using `getReportPage`.
@@ -153,7 +160,7 @@ export function changeTableOfFullReportPage(
   reportPageTable: HTMLDocument,
 ): HTMLDocument {
   const fullReportPageCopy = <HTMLDocument>fullReportPage.cloneNode(true);
-  const table = getElementFromDocument(fullReportPageCopy, '#rsltTableHtml', 'report inner table');
+  const table = getResultTableFromFullReportPage(fullReportPageCopy);
   if (reportPageTable.body.firstElementChild === null) {
     throw new Error('Report page has no root body element');
   }
@@ -278,6 +285,25 @@ export function getFirstPendingLiabilityPage({
   });
 }
 
+export const pendingLiabilityReportHeaders = [
+  'srNo',
+  'accountName',
+  'periodFrom',
+  'periodTo',
+  'principal',
+  'interest',
+  'penalty',
+  'total',
+] as const;
+
+export function parseFullPendingLiabilityPage(page: HTMLDocument) {
+  const table = getResultTableFromFullReportPage(page);
+  return parseReportTable({
+    root: table,
+    headers: pendingLiabilityReportHeaders,
+  });
+}
+
 /**
  * Gets a single page of pending liabilities.
  *
@@ -298,16 +324,7 @@ export function getPendingLiabilityPage({
       prm1_TaxType: taxTypeId,
       prm1_ajaxComboTarget: 'accountName',
     },
-    reportHeaders: [
-      'srNo',
-      'accountName',
-      'periodFrom',
-      'periodTo',
-      'principal',
-      'interest',
-      'penalty',
-      'total',
-    ],
+    reportHeaders: pendingLiabilityReportHeaders,
   });
 }
 

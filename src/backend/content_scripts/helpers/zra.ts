@@ -171,7 +171,7 @@ export interface ParsedReportTable<H extends string, C = string> extends ParsedT
 
 interface ParseReportTableOptions<H extends string> {
   root: RootElement;
-  headers: H[];
+  headers: H[] | readonly H[];
 }
 
 /**
