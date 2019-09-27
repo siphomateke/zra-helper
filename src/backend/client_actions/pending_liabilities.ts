@@ -38,12 +38,13 @@ import {
   getFirstPendingLiabilityPage,
   changeTableOfFullReportPage,
   ZraReportPageUrl,
+  parseFullPendingLiabilityPage,
 } from '../reports';
 import { errorToString } from '../errors';
 import {
   deepAssign, objKeysExact, Omit, PickByValue,
 } from '@/utils';
-import { TaskId } from '@/store/modules/tasks';
+import { TaskId, TaskState } from '@/store/modules/tasks';
 import { ClientActionOutputs, ClientActionOutput } from '@/store/modules/client_actions/types';
 
 /** Columns to get from the pending liabilities table */
@@ -297,8 +298,12 @@ async function downloadPendingLiabilityPageTask({
 
 interface DownloadPendingLiabilityPagesFnOptions {
   parentTaskId: TaskId;
-  /** Pages to get with the first one being '1'. */
-  pages: number[];
+  /**
+   * Pages to get with the first one being '1'.
+   *
+   * Setting this to null means the number of pages and thus which to get is unknown.
+   */
+  pages: number[] | null;
   cachedPages: PendingLiabilityPages;
   taxTypeId: TaxTypeNumericalCode;
   tpin: TPIN;
@@ -322,6 +327,12 @@ async function downloadPendingLiabilityPages({
   accountName,
 }: DownloadPendingLiabilityPagesFnOptions): Promise<number[]> {
   let firstPendingLiabilityPage: HTMLDocument | null = null;
+  /** Pages to get and download. Is only null when the number of pages is unknown. */
+  let pagesToGet: number[] | null = null;
+  if (pages !== null) {
+    pagesToGet = pages.slice();
+  }
+
   async function getPage(page: number) {
     const pageToDownload = await getPendingLiabilityPageToDownload({
       page,
@@ -334,6 +345,15 @@ async function downloadPendingLiabilityPages({
     if (page === 1) {
       // Make sure to clone it because the original copy will be modified when it is downloaded.
       firstPendingLiabilityPage = <HTMLDocument>pageToDownload.cloneNode(true);
+
+      // Find out the number of pages if it's not already known.
+      if (pagesToGet === null) {
+        const parsed = await parseFullPendingLiabilityPage(pageToDownload);
+        pagesToGet = [];
+        for (let page = 2; page < parsed.numPages + 1; page++) {
+          pagesToGet.push(page);
+        }
+      }
     }
     return pageToDownload;
   }
@@ -350,41 +370,49 @@ async function downloadPendingLiabilityPages({
         taxTypeId,
         tpin,
       });
-    } else {
-      return getPendingLiabilityPageTask({
-        page,
-        parentTaskId,
-        getPageFn: getPage,
-      });
     }
+    return getPendingLiabilityPageTask({
+      page,
+      parentTaskId,
+      getPageFn: getPage,
+    });
   }
 
-  const pagesToGet = pages.slice();
-
-  /** 
+  /**
    * Whether the first page should be downloaded as well as retrieved. Automatically set to false
    * when page one was not included in the `pages` parameter.
    */
   let shouldDownloadPageOne: boolean;
 
-  // The first page always needs be retrieved because its HTML is used to generate the other pages.
-  // However, it only needs to be downloaded if it was included in the `pages` parameter.
-  if (!pagesToGet.includes(1)) {
+  /*
+  The first page always needs be retrieved because its HTML is used to generate the other pages
+  and to figure out the number of pages if that is not already known.
+  However, it only needs to be downloaded if it was included in the `pages` parameter or the
+  number of pages was not known.
+  */
+  if (pagesToGet !== null && !pagesToGet.includes(1)) {
     pagesToGet.push(1);
     shouldDownloadPageOne = false;
   } else {
     shouldDownloadPageOne = true;
   }
 
-  let numPages = pagesToGet.length;
+  // If the number of pages is unknown, just pretend there is only one page.
+  let numPages = pagesToGet !== null ? pagesToGet.length : 1;
   // The number of pages reported by ZRA will be zero when there are no pending liabilities.
   // However, an empty pending liability page can still be downloaded so just treat is as if there
   // is one page.
   if (numPages === 0) {
     numPages = 1;
   }
+  let taskTitle: string;
+  if (pagesToGet !== null) {
+    taskTitle = `Download ${numPages} ${taxTypes[taxTypeId]} pending liability page(s)`;
+  } else {
+    taskTitle = `Download ${taxTypes[taxTypeId]} pending liability pages`;
+  }
   const task = await createTask(store, {
-    title: `Download ${numPages} ${taxTypes[taxTypeId]} pending liability page(s)`,
+    title: taskTitle,
     parent: mainParentTaskId,
     unknownMaxProgress: false,
     progressMax: numPages,
@@ -394,21 +422,34 @@ async function downloadPendingLiabilityPages({
 
   const failedPages: number[] = [];
 
-  // The first page always needs be retrieved because its HTML is used to generate the other pages.
-  if (pagesToGet.length > 1) {
+  // Get and possibly download the first page.
+  const numPagesWasUnknown = pagesToGet === null;
+  if (pagesToGet === null || pagesToGet.length > 1) {
     try {
       await doPage(1, task.id, shouldDownloadPageOne);
     } catch (error) {
       task.markAsComplete();
       task.setError(error);
       throw error;
+    } finally {
+      // If it is discovered that this was the only page that needed downloading when the total
+      // number of pages was originally unknown, mark the task as complete
+      if (numPagesWasUnknown && (pagesToGet === null || pagesToGet.length <= 1)) {
+        task.state = TaskState.SUCCESS;
+        task.markAsComplete();
+      }
     }
   } else {
+    // Only use the whole task for getting the first page if we are sure it's the only page.
     await taskFunction({
       task,
       func: () => doPage(1, task.id, shouldDownloadPageOne),
     });
   }
+
+  // By this point, `pagesToGet` cannot be null as the total number of pages would have been figured
+  // out after getting the first page.
+  pagesToGet = <number[]>pagesToGet;
 
   // Don't get page 1 again
   const pageOneIndex = pagesToGet.indexOf(1);
@@ -876,18 +917,18 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
       }),
       list: downloadsTaxTypeIds,
       func: async (taxTypeId, parentTaskId) => {
-        let numPages = this.numPages[taxTypeId];
-        if (typeof numPages === 'undefined') {
-          throw new Error('The number of pending liability pages could not be determined and they thus cannot be downloaded');
-        }
-
-        let pagesToDownload: number[] = [];
-        for (let page = 1; page < numPages + 1; page++) {
-          pagesToDownload.push(page);
-        }
+        let pagesToDownload: number[] | null = null;
         const pagesToDownloadInput = getInput<Exclude<Exclude<PendingLiabilitiesAction.Input['pages'], undefined>[TaxTypeNumericalCode], undefined>>(input, `pages.${taxTypeId}`, { defaultValue: [] });
         if (pagesToDownloadInput.exists) {
           pagesToDownload = pagesToDownloadInput.value;
+        } else {
+          const numPages = this.numPages[taxTypeId];
+          if (typeof numPages !== 'undefined') {
+            pagesToDownload = [];
+            for (let page = 1; page < numPages + 1; page++) {
+              pagesToDownload.push(page);
+            }
+          }
         }
 
         let cachedPages: PendingLiabilityPages = {};
