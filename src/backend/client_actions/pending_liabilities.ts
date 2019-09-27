@@ -622,9 +622,9 @@ class PendingLiabilityTotalsRunner<
     totalsTaxTypeIds: [],
   };
 
-  numPages: number = 0;
+  numPages: TaxTypeIdMap<number> = {};
 
-  pages: PendingLiabilityPages = {};
+  pages: TaxTypeIdMap<PendingLiabilityPages> = {};
 
   constructor(
     action: ClientActionObject<any, any, any> = BaseGetAllPendingLiabilitiesClientAction,
@@ -714,8 +714,8 @@ class PendingLiabilityTotalsRunner<
           pages,
           error,
         } = await getPendingLiabilities(client, taxTypeId, parentTaskId);
-        this.numPages = numPages;
-        this.pages = pages;
+        this.numPages[taxTypeId] = numPages;
+        this.pages[taxTypeId] = pages;
         if (typeof error !== 'undefined') {
           throw error;
         }
@@ -876,8 +876,13 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
       }),
       list: downloadsTaxTypeIds,
       func: async (taxTypeId, parentTaskId) => {
+        let numPages = this.numPages[taxTypeId];
+        if (typeof numPages === 'undefined') {
+          throw new Error('The number of pending liability pages could not be determined and they thus cannot be downloaded');
+        }
+
         let pagesToDownload: number[] = [];
-        for (let page = 1; page < this.numPages + 1; page++) {
+        for (let page = 1; page < numPages + 1; page++) {
           pagesToDownload.push(page);
         }
         const pagesToDownloadInput = getInput<Exclude<Exclude<PendingLiabilitiesAction.Input['pages'], undefined>[TaxTypeNumericalCode], undefined>>(input, `pages.${taxTypeId}`, { defaultValue: [] });
@@ -885,11 +890,16 @@ class DownloadPendingLiabilityPagesRunner extends PendingLiabilityTotalsRunner<
           pagesToDownload = pagesToDownloadInput.value;
         }
 
+        let cachedPages: PendingLiabilityPages = {};
+        if (typeof this.pages[taxTypeId] !== 'undefined') {
+          cachedPages = this.pages[taxTypeId];
+        }
+
         const taxAccount = client.taxAccounts.find(account => account.taxTypeId === taxTypeId);
         const failedPages = await downloadPendingLiabilityPages({
           tpin: client.username,
           pages: pagesToDownload,
-          cachedPages: this.pages,
+          cachedPages,
           parentTaskId,
           accountName: taxAccount.accountName,
           taxTypeId,
