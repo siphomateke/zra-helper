@@ -112,8 +112,8 @@ const TaxPayerLedgerClientAction = createClientAction({
  */
 
 TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
-  constructor(data) {
-    super(data, TaxPayerLedgerClientAction);
+  constructor() {
+    super(TaxPayerLedgerClientAction);
   }
 
   async runInternal() {

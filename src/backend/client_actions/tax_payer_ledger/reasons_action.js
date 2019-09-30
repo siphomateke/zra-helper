@@ -188,8 +188,8 @@ const PendingLiabilityChangeReasonsClientAction = createClientAction({
  */
 
 PendingLiabilityChangeReasonsClientAction.Runner = class extends ClientActionRunner {
-  constructor(data) {
-    super(data, PendingLiabilityChangeReasonsClientAction);
+  constructor() {
+    super(PendingLiabilityChangeReasonsClientAction);
     this.records = [];
   }
 
