@@ -10,7 +10,7 @@ import {
   createClientAction,
   ClientActionRunner,
   createOutputFile,
-  inInput,
+  getInput,
 } from '../base';
 import moment from 'moment';
 import { unparseCsv, writeJson } from '@/backend/file_utils';
@@ -124,8 +124,11 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
 
     let taxAccounts = client.registeredTaxAccounts;
 
-    if (inInput(input, 'taxTypeIds')) {
-      taxAccounts = taxAccounts.filter(account => input.taxTypeIds.includes(account.taxTypeId));
+    const taxTypeIdsInput = getInput(input, 'taxTypeIds', { checkArrayLength: false });
+    if (taxTypeIdsInput.exists) {
+      taxAccounts = taxAccounts.filter(
+        account => taxTypeIdsInput.value.includes(account.taxTypeId),
+      );
     }
 
     // Get data for each tax account
@@ -163,10 +166,7 @@ TaxPayerLedgerClientAction.Runner = class extends ClientActionRunner {
               indeterminate: true,
             });
 
-            let pages = [];
-            if (inInput(input, 'pages') && taxTypeId in input.pages) {
-              pages = input.pages[taxTypeId];
-            }
+            const { value: pages } = getInput(input, `pages.${taxTypeId}`, { defaultValue: [] });
 
             taxAccountTask.status = 'Get data from all pages';
             const allResponses = await getPagedData({
