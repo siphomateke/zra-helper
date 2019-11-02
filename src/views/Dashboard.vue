@@ -191,7 +191,7 @@
         :active.sync="parsedClientsViewerVisible"
         title="Parsed clients"
       >
-        <template slot-scope="{ slotClientIds }">
+        <template slot-scope="{ clientIds: slotClientIds }">
           <ParsedClientsViewer :client-ids="slotClientIds" />
         </template>
       </ClientListModal>
@@ -200,7 +200,7 @@
         :active.sync="validClientSelectorVisible"
         title="Valid client selector"
       >
-        <template slot-scope="{ slotClientIds }">
+        <template slot-scope="{ clientIds: slotClientIds }">
           <ClientSelector
             v-model="selectedValidClientIds"
             :client-ids="slotClientIds"
@@ -221,10 +221,10 @@
         :active.sync="clientSelectorVisible"
         title="Client selector"
       >
-        <template slot-scope="{ clientIds }">
+        <template slot-scope="{ clientIds: slotClientIds }">
           <ClientSelector
             v-model="selectedClientIds"
-            :client-ids="clientIds"
+            :client-ids="slotClientIds"
             :disabled="clientActionsRunning"
           />
         </template>
