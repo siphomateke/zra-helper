@@ -189,6 +189,7 @@ interface GetPendingLiabilityPageToDownloadFnOptions {
   taxTypeId: TaxTypeNumericalCode;
   tpin: TPIN;
   accountName: TaxAccountName;
+  /** Cached inner tables of pending liability pages. */
   cachedPages: PendingLiabilityPages;
   firstPendingLiabilityPage: HTMLDocument | null;
 }
@@ -202,12 +203,7 @@ async function getPendingLiabilityPageToDownload({
   firstPendingLiabilityPage,
 }: GetPendingLiabilityPageToDownloadFnOptions) {
   let pageToDownload: HTMLDocument;
-  // Only use a cached version of the page if it's not page 1. This is because the cached pages
-  // are only the inner pending liability table and not the full page which is required for
-  // page 1.
-  if (page in cachedPages && page !== 1) {
-    pageToDownload = cachedPages[page];
-  } else if (page === 1) {
+  if (page === 1) {
     // If getting the first page, get the full HTML for the pending liability page
     pageToDownload = await getFirstPendingLiabilityPage({
       taxTypeId,
@@ -215,13 +211,22 @@ async function getPendingLiabilityPageToDownload({
       accountName,
     });
   } else {
-    // If getting any other page, re-use most of the HTML from the first page and just
-    // swap out the table with the one from the next page.
-    const { reportDocument: pendingLiabilityPage } = await getPendingLiabilityPage({
-      taxTypeId,
-      page,
-      tpin,
-    });
+    let pendingLiabilityPage;
+    if (page in cachedPages) {
+      // Only use a cached version of the page if it's not page 1. This is because the cached pages
+      // are only the inner pending liability table and not the full page which is required for
+      // page 1.
+      pendingLiabilityPage = cachedPages[page];
+    } else {
+      // If getting any other page, re-use most of the HTML from the first page and just
+      // swap out the table with the one from the next page.
+      const { reportDocument } = await getPendingLiabilityPage({
+        taxTypeId,
+        page,
+        tpin,
+      });
+      pendingLiabilityPage = reportDocument;
+    }
     if (firstPendingLiabilityPage === null) {
       throw new Error('The first pending liability page was missing but is required to generate the other pages.');
     }
@@ -688,6 +693,9 @@ class PendingLiabilityTotalsRunner<
 
   numPages: TaxTypeIdMap<number> = {};
 
+  /**
+   * The retrieved pending liability page inner tables.
+   */
   pages: TaxTypeIdMap<PendingLiabilityPages> = {};
 
   constructor(
