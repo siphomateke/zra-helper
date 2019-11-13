@@ -156,3 +156,26 @@ export function joinSpecialLast(arr: string[], separator: string, lastSeparator:
 export async function delay(timeout: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, timeout));
 }
+
+/** Message, Color */
+type FancyLogChunk = [string, string]
+
+export function fancyLog(chunks: FancyLogChunk[]) {
+  const logString: string[] = [];
+  const logColors: string[] = [];
+  chunks.forEach(([message, color], index) => {
+    logString.push(` ${message} `);
+    let borderRadius = '';
+    if (index === 0) {
+      borderRadius = 'border-radius: 3px 0 0 3px;';
+    } else if (index === chunks.length - 1) {
+      borderRadius = 'border-radius: 0 3px 3px 0;';
+    }
+    const style = `background: ${color}; padding: 1px; ${borderRadius} color: #fff`;
+    logColors.push(style);
+  });
+  console.log(
+    `%c${logString.join('%c')}`,
+    ...logColors,
+  );
+}
