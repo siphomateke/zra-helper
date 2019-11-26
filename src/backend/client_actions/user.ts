@@ -364,3 +364,7 @@ export async function robustLogin({
     },
   });
 }
+
+export function getPasswordExpiryDate(tabId: number) {
+  return runContentScript(tabId, 'get_password_expiry_date');
+}

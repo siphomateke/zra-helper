@@ -23,6 +23,19 @@ export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo | nu
 }
 
 /**
+ * Gets the date when a client's password will expire.
+ */
+export function getPasswordExpiryDate(root: HTMLDocument | HTMLElement) {
+  const passwordExpiryEl = <HTMLElement | null>(
+    root.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(29)>b>label')
+  );
+  if (passwordExpiryEl) {
+    return passwordExpiryEl.innerText;
+  }
+  return null;
+}
+
+/**
  * Checks if the specified username exists in a client's information.
  */
 export function usernameInClientInfo(username: string, clientInfo: ClientInfo): boolean {

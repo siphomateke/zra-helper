@@ -55,9 +55,9 @@ type ClientActionOutputFilesGenerator<O> = (options: ClientActionOutputFilesGene
 
 export namespace BaseFormattedOutput {
   export namespace CSV {
-    export type ClientOutput<Row> = { [taxTypeCode in TaxTypeCode]?: Row[] };
-    export type Output<Row> = {
-      [clientIdentifier: string]: ClientOutput<Row>;
+    export type TaxTypeClientOutput<Row> = { [taxTypeCode in TaxTypeCode]?: Row[] };
+    export type TaxTypeOutput<Row> = {
+      [clientIdentifier: string]: TaxTypeClientOutput<Row>;
     }
   }
 

@@ -538,8 +538,8 @@ namespace FormattedOutput {
       /** The error that the tax type encountered. */
       error?: string;
     }
-    export type ClientOutput = BaseFormattedOutput.CSV.ClientOutput<Row>;
-    export type Output = BaseFormattedOutput.CSV.Output<Row>;
+    export type ClientOutput = BaseFormattedOutput.CSV.TaxTypeClientOutput<Row>;
+    export type Output = BaseFormattedOutput.CSV.TaxTypeOutput<Row>;
   }
 
   export namespace JSON {

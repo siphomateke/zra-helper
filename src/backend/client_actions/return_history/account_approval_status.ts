@@ -71,8 +71,8 @@ namespace FormattedOutput {
       returnAppliedDate: TaxReturnExtended['returnAppliedDate'],
       provisional: string | null,
     }
-    export type ClientOutput = BaseFormattedOutput.CSV.ClientOutput<Row>;
-    export type Output = BaseFormattedOutput.CSV.Output<Row>;
+    export type ClientOutput = BaseFormattedOutput.CSV.TaxTypeClientOutput<Row>;
+    export type Output = BaseFormattedOutput.CSV.TaxTypeOutput<Row>;
   }
 
   export namespace JSON {
@@ -104,7 +104,7 @@ const CheckAccountApprovalStatusClientAction = createClientAction<
   },
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {
-    return createOutputFile({
+    return createOutputFile<AccountApprovalStatusClientAction.Output>({
       label: 'All clients account approval statuses',
       value: outputs,
       defaultFormat: ExportFormatCode.CSV,
