@@ -14,7 +14,7 @@ type ClientInfo = string;
  */
 export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo | null {
   const clientEl = <HTMLElement | null>(
-    root.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(27)>b>label')
+    root.querySelector('#partnershipTaxpayerDetails>div:nth-child(2)>div:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)')
   );
   if (clientEl) {
     return clientEl.innerText;
@@ -59,7 +59,7 @@ export function getWrongClientError(clientInfo: ClientInfo): LoginError {
 export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
   // Detect login errors such as expired password, invalid username and invalid password
   const expiredPasswordErrorEl = <HTMLElement | null>(
-    root.querySelector('#loginAdminForm>p.tablerowhead')
+    root.querySelector('.auth-box>.alert')
   );
   const errorEl = <HTMLElement | null>root.querySelector('.error');
   if (expiredPasswordErrorEl || errorEl) {
@@ -76,8 +76,8 @@ export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
         error = new LoginError("Client's password has expired", 'PasswordExpired', {
           clientName: client.username,
         });
-      } else if (lowerCaseErrorString.includes('invalid login id or password')) {
-        let errorMessage = 'Invalid login ID or password';
+      } else if (lowerCaseErrorString.includes('invalid username or password or captcha')) {
+        let errorMessage = 'Invalid username or password or captcha';
         const errorData: { clientName: string; attemptsRemaining: number | null } = {
           clientName: client.username,
           attemptsRemaining: null,
@@ -86,6 +86,7 @@ export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
         // Add extra information about the error if it's available.
         // This is mainly used to show the number of attempts left.
         const loginErrorDetailsEl = <HTMLElement | null>(
+          // TODO: Update
           root.querySelector('#loginForm #layer1>table>tbody>tr.whitepapartdBig')
         );
         if (loginErrorDetailsEl) {

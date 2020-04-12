@@ -10,13 +10,13 @@ import {
 } from '@/backend/utils';
 import { taskFunction } from './utils';
 import { getElementFromDocument, getHtmlFromNode } from '../content_scripts/helpers/elements';
-import { CaptchaLoadError, LogoutError } from '@/backend/errors';
+import { CaptchaLoadError, LogoutError, ElementNotFoundError } from '@/backend/errors';
 import OCRAD from 'ocrad.js';
-import md5 from 'md5';
 import { checkLogin } from '../content_scripts/helpers/check_login';
 import { TaskState, TaskId } from '@/store/modules/tasks';
-import { Client, ZraDomain } from '../constants';
+import { Client, ZraDomain, ZraCaptchaUrl } from '../constants';
 import { RequiredBy } from '@/utils';
+import config from '@/transitional/config';
 
 /**
  * Creates a canvas from a HTML image element
@@ -45,7 +45,7 @@ function getFreshCaptcha(scale: number = 2): Promise<HTMLCanvasElement> {
     // Set crossOrigin to 'anonymous' to fix the "operation is insecure" error in Firefox.
     // See https://stackoverflow.com/a/17035132/2999486.
     image.crossOrigin = 'anonymous';
-    const src = `${ZraDomain}/GenerateCaptchaServlet.do?sourcePage=LOGIN&t=${new Date().getTime()}`;
+    const src = `${ZraCaptchaUrl}?${Math.random()}`;
     image.src = src;
     image.onload = function onload() {
       resolve(imageToCanvas(image, scale));
@@ -53,35 +53,13 @@ function getFreshCaptcha(scale: number = 2): Promise<HTMLCanvasElement> {
     image.onerror = function onerror() {
       reject(new CaptchaLoadError('Error loading captcha.', null, { src }));
     };
+    document.body.append(image);
   });
 }
 
-/**
- * Solves a simple arithmetic captcha.
- *
- * The input text should be in the format: "<number> <operator> <number>?". For example, '112-11?'.
- * Spaces and question marks are automatically stripped.
- * @param text Text containing arithmetic question.
- * @example
- * solveCaptcha('112- 11?') // 101
- */
-function solveCaptcha(text: string): number {
-  const captchaArithmetic = text.replace(/\s/g, '').replace(/\?/g, '');
-  let numbers = captchaArithmetic.split(/\+|-/).map(str => parseInt(str, 10));
-  // TODO: Find out why we are converting to a number twice.
-  numbers = numbers.map(number => Number(number)); // convert to actual numbers
-  const operator = captchaArithmetic[captchaArithmetic.search(/\+|-/)];
-  if (operator === '+') {
-    return numbers[0] + numbers[1];
-  }
-  return numbers[0] - numbers[1];
+async function ocrCaptchaCanvas(canvas: HTMLCanvasElement): Promise<string> {
+  return OCRAD(canvas);
 }
-
-/**
- * Common characters that the OCR engine incorrectly outputs and their
- * correct counterparts
- */
-const commonIncorrectCharacters = [['l', '1'], ['o', '0']];
 
 /**
  * Gets and solves the login captcha.
@@ -89,28 +67,22 @@ const commonIncorrectCharacters = [['l', '1'], ['o', '0']];
  * The maximum number of times that a new captcha will be loaded if the OCR fails
  * @returns The solution to the captcha.
  */
-async function getCaptchaText(maxCaptchaRefreshes: number): Promise<number | null> {
+async function getCaptchaText(maxCaptchaRefreshes: number): Promise<string | null> {
   // Solve captcha
-  let answer: number | null = null;
+  let answer: string | null = null;
   let refreshes = 0;
   /* eslint-disable no-await-in-loop */
   while (refreshes < maxCaptchaRefreshes) {
     const captcha = await getFreshCaptcha();
-    const captchaText: string = OCRAD(captcha);
-    answer = solveCaptcha(captchaText);
-
-    // If captcha reading failed, try again with common recognition errors fixed.
-    let newText = '';
-    if (Number.isNaN(answer)) {
-      newText = captchaText;
-      for (const error of commonIncorrectCharacters) {
-        newText = newText.replace(new RegExp(error[0], 'g'), error[1]);
-      }
-      answer = solveCaptcha(newText);
+    const captchaText: string = (await ocrCaptchaCanvas(captcha)).trim();
+    if (config.debug.captchaSolving) {
+      console.log(`'${captchaText}' captcha text for attempt ${refreshes}`);
     }
 
+    answer = captchaText;
+
     // If captcha reading still failed, try again with a new one.
-    if (Number.isNaN(answer)) {
+    if (answer.length !== 6) {
       refreshes++;
     } else {
       break;
@@ -166,26 +138,15 @@ export async function login({
     task,
     setState: false,
     async func() {
-      // Retrieve login page to get hidden 'pwd' field's value.
-      const doc = await getDocumentByAjax({
-        url: `${ZraDomain}/login.htm?actionCode=newLogin`,
-        data: { flag: 'TAXPAYER' },
-      });
-      const pwd = (<HTMLInputElement>getElementFromDocument(doc, '#loginForm>[name="pwd"]', 'secret pwd input')).value;
-
       let tabId: number | null = null;
       task.addStep('Initiating login');
       try {
         const loginRequest = {
-          url: `${ZraDomain}/login.htm`,
+          url: `${ZraDomain}/loginAction`,
           data: {
-            actionCode: 'loginUser',
-            flag: 'TAXPAYER',
-            userName: client.username,
-            pwd: md5(pwd),
-            xxZTT9p2wQ: md5(client.password),
-            // Note: the ZRA website misspelled captcha
-            captcahText: await getCaptchaText(10),
+            username: client.username,
+            password: client.password,
+            captcha: await getCaptchaText(10),
           },
         };
 
@@ -262,22 +223,17 @@ export async function logout({ parentTaskId }: LogoutFnOptions): Promise<void> {
   return taskFunction({
     task,
     async func() {
-      const doc = await getDocumentByAjax({
-        url: `${ZraDomain}/login.htm?actionCode=logOutUser`,
-        method: 'post',
-        data: { userType: 'TAXPAYER' },
-      });
-      // TODO: Somehow convert the element not found errors thrown here to logout errors.
-      const el = getElementFromDocument(
-        doc,
-        'body>table>tbody>tr>td>table>tbody>tr>td>form>table>tbody>tr:nth-child(1)>td',
-        'logout message',
-      );
-      const logoutMessage = el.innerText.toLowerCase();
-      if (!logoutMessage.includes('you have successfully logged off')) {
-        throw new LogoutError('Logout success message was empty.', null, {
-          html: getHtmlFromNode(doc),
-        });
+      const doc = await getDocumentByAjax({ url: `${ZraDomain}/logout` });
+      try {
+        getElementFromDocument(doc, '.login-card', 'login card');
+      } catch (error) {
+        if (error instanceof ElementNotFoundError) {
+          throw new LogoutError('Logout redirect page is missing the login form', null, {
+            html: getHtmlFromNode(doc),
+          });
+        } else {
+          throw error;
+        }
       }
       log.log('Done logging out');
     },

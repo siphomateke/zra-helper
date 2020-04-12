@@ -39,6 +39,10 @@ export interface ConfigState {
      * running the tasks.
      */
     calculateTaskDuration: boolean;
+    /**
+     * Log steps taken to solve captchas.
+     */
+    captchaSolving: boolean;
   };
   /** The amount of time to wait for a tab to load (in milliseconds). */
   tabLoadTimeout: number;
@@ -133,6 +137,7 @@ const defaultConfig: ConfigState = {
     missingElementInfo: true,
     anonymizeClientsInExports: false,
     calculateTaskDuration: false,
+    captchaSolving: false,
   },
   tabLoadTimeout: 20000,
   requestTimeout: 20000,

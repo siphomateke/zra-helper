@@ -1,5 +1,5 @@
 import { getCurrentBrowser } from '@/utils';
-import { BrowserCode, ZraDomain } from './constants';
+import { BrowserCode, ZraDomain, ZraCaptchaUrl } from './constants';
 
 const currentBrowser = getCurrentBrowser();
 
@@ -12,7 +12,7 @@ browser.browserAction.onClicked.addListener(() => {
 /** Resource URLs that should never be blocked from loading when in lite mode. */
 const blacklist = [
   // Required to generate login captcha
-  `${ZraDomain}/GenerateCaptchaServlet.do`,
+  ZraCaptchaUrl,
 
   // Required to get pending liabilities
   // TODO: Remove this when we can get pending liabilities without opening tabs.
