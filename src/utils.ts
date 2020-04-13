@@ -179,3 +179,13 @@ export function fancyLog(chunks: FancyLogChunk[]) {
     ...logColors,
   );
 }
+
+/**
+ * Rounds a number to a certain number of significant figures.
+ * @param num
+ * @param figures Number of significant figures.
+ */
+export function round(num: number, figures: number = 2) {
+  const tenPower = 10 ** figures;
+  return Math.round(num * tenPower) / tenPower;
+}

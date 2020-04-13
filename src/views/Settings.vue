@@ -79,6 +79,14 @@
                   Measure task duration
                 </b-checkbox>
               </div>
+              <div class="control">
+                <b-checkbox
+                  v-model="config.debug.captchaSolving"
+                  title="Logs captcha solving steps and recognition probabilities."
+                >
+                  Captcha solving
+                </b-checkbox>
+              </div>
             </div>
           </BaseCard>
         </div>
@@ -178,9 +186,7 @@
       <div class="columns">
         <div class="column">
           <BaseCard title="Performance">
-            <b-field
-              title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable."
-            >
+            <b-field title="If enabled, when running actions, the ZRA website will be stripped down to the bare minimum to increase performance. This means that while the extension is running, the ZRA website may not be usable.">
               <b-checkbox v-model="config.zraLiteMode">
                 Use basic HTML version of ZRA when running
               </b-checkbox>
@@ -305,9 +311,7 @@
               </b-checkbox>
             </b-field>
 
-            <b-field
-              title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed."
-            >
+            <b-field title="Whether to show a prompt to retry actions that encountered errors when all running tasks have completed.">
               <b-checkbox v-model="config.promptRetryActions">
                 Prompt to retry actions that fail
               </b-checkbox>
@@ -321,6 +325,17 @@
               <b-input
                 v-model="config.maxLoginAttempts"
                 type="number"
+              />
+            </b-field>
+            <b-field
+              label="Captcha Solver URL"
+              title="IP address and port of the TensorFlow model server used to solve ZRA's captchas."
+              horizontal
+            >
+              <b-input
+                v-model="config.tensorflowCaptchaServerUrl"
+                placeholder="http://localhost:8501"
+                type="text"
               />
             </b-field>
           </BaseCard>
