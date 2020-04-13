@@ -113,6 +113,12 @@ export class CaptchaLoadError extends ImageLoadError {
     this.setType('CaptchaLoadError');
   }
 }
+export class CaptchaSolveError extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('CaptchaSolveError');
+  }
+}
 
 interface LoginErrorProps {
   /** The name of the client that failed to login. */

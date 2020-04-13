@@ -124,6 +124,8 @@ export interface ConfigState {
       ackReceiptsPerformanceWarning: boolean;
     },
   },
+  /** IP address and port of the TensorFlow model server used to solve ZRA's captchas. */
+  tensorflowCaptchaServerUrl: string;
 }
 
 const defaultConfig: ConfigState = {
@@ -170,6 +172,7 @@ const defaultConfig: ConfigState = {
       ackReceiptsPerformanceWarning: false,
     },
   },
+  tensorflowCaptchaServerUrl: 'http://localhost:8501',
 };
 
 // TODO: Use TypeScript

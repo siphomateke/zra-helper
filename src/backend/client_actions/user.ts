@@ -10,13 +10,15 @@ import {
 } from '@/backend/utils';
 import { taskFunction } from './utils';
 import { getElementFromDocument, getHtmlFromNode } from '../content_scripts/helpers/elements';
-import { CaptchaLoadError, LogoutError, ElementNotFoundError } from '@/backend/errors';
-import OCRAD from 'ocrad.js';
+import {
+  CaptchaLoadError, LogoutError, ElementNotFoundError, CaptchaSolveError,
+} from '@/backend/errors';
 import { checkLogin } from '../content_scripts/helpers/check_login';
 import { TaskState, TaskId } from '@/store/modules/tasks';
 import { Client, ZraDomain, ZraCaptchaUrl } from '../constants';
-import { RequiredBy } from '@/utils';
+import { RequiredBy, round } from '@/utils';
 import config from '@/transitional/config';
+import axios from 'axios';
 
 /**
  * Creates a canvas from a HTML image element
@@ -39,7 +41,7 @@ function imageToCanvas(image: HTMLImageElement, scale: number = 1): HTMLCanvasEl
  * Generates a new captcha as a canvas
  * @param scale Optional scale to help recognize the image
  */
-function getFreshCaptcha(scale: number = 2): Promise<HTMLCanvasElement> {
+function getFreshCaptcha(scale: number = 1): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     // Set crossOrigin to 'anonymous' to fix the "operation is insecure" error in Firefox.
@@ -53,36 +55,71 @@ function getFreshCaptcha(scale: number = 2): Promise<HTMLCanvasElement> {
     image.onerror = function onerror() {
       reject(new CaptchaLoadError('Error loading captcha.', null, { src }));
     };
-    document.body.append(image);
   });
 }
 
-async function ocrCaptchaCanvas(canvas: HTMLCanvasElement): Promise<string> {
-  return OCRAD(canvas);
+interface TensorFlowRequestResponse {
+  outputs: {
+    probability: number;
+    output: string;
+  };
 }
+
+interface CaptchaRecognitionData {
+  /** Prediction confidence */
+  probability: number;
+  text: string;
+}
+
+async function ocrCaptchaCanvas(canvas: HTMLCanvasElement): Promise<CaptchaRecognitionData> {
+  const base64Canvas = canvas.toDataURL().replace('data:image/png;base64,', '');
+  const { data: response } = await axios.post<TensorFlowRequestResponse>(
+    `${config.tensorflowCaptchaServerUrl}/v1/models/captcha:predict`,
+    { inputs: { input: { b64: base64Canvas } } },
+  );
+  const { probability, output } = response.outputs;
+  return {
+    probability,
+    text: output,
+  };
+}
+
+const captchaLength = 6;
 
 /**
  * Gets and solves the login captcha.
  * @param maxCaptchaRefreshes
  * The maximum number of times that a new captcha will be loaded if the OCR fails
+ * @param minRecognitionProbability
+ * The minimum recognition probability before the recognition is discarded and a fresh captcha
+ * attempted.
  * @returns The solution to the captcha.
  */
-async function getCaptchaText(maxCaptchaRefreshes: number): Promise<string | null> {
+async function getCaptchaText(
+  maxCaptchaRefreshes: number,
+  minRecognitionProbability: number = 0.98,
+): Promise<string | null> {
   // Solve captcha
   let answer: string | null = null;
   let refreshes = 0;
   /* eslint-disable no-await-in-loop */
   while (refreshes < maxCaptchaRefreshes) {
     const captcha = await getFreshCaptcha();
-    const captchaText: string = (await ocrCaptchaCanvas(captcha)).trim();
+    const data = await ocrCaptchaCanvas(captcha);
+    answer = data.text.trim();
     if (config.debug.captchaSolving) {
-      console.log(`'${captchaText}' captcha text for attempt ${refreshes}`);
+      console.log(`[Attempt ${refreshes}]: Recognized captcha as '${answer}'. Probability ${round(data.probability, 4) * 100}%.`);
     }
 
-    answer = captchaText;
-
     // If captcha reading still failed, try again with a new one.
-    if (answer.length !== 6) {
+    if (answer.length !== captchaLength || data.probability < minRecognitionProbability) {
+      if (config.debug.captchaSolving) {
+        if (data.probability < minRecognitionProbability) {
+          console.log(`[Attempt ${refreshes}]: Recognized captcha probability was too low. (${round(data.probability, 4) * 100}% < ${round(minRecognitionProbability, 4) * 100}%)`);
+        } else if (answer.length !== captchaLength) {
+          console.log(`[Attempt ${refreshes}]: Recognized captcha was not ${captchaLength} characters.`);
+        }
+      }
       refreshes++;
     } else {
       break;
@@ -139,14 +176,20 @@ export async function login({
     setState: false,
     async func() {
       let tabId: number | null = null;
-      task.addStep('Initiating login');
+      task.addStep('Solving captcha');
       try {
+        const captchaText = await getCaptchaText(10);
+
+        if (captchaText === null) {
+          throw new CaptchaSolveError('Failed to solve captcha');
+        }
+
         const loginRequest = {
           url: `${ZraDomain}/loginAction`,
           data: {
             username: client.username,
             password: client.password,
-            captcha: await getCaptchaText(10),
+            captcha: captchaText,
           },
         };
 
