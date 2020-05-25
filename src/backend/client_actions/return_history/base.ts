@@ -44,6 +44,11 @@ import { objKeysExact } from '@/utils';
 import { getElementFromDocument } from '@/backend/content_scripts/helpers/elements';
 import { getTaxAccountCode } from '@/backend/tax_account_code';
 
+type TaxReturnApplicationType = 'ORIGINAL - NON-NIL'
+  | 'ORIGINAL - NIL'
+  | 'AMENDED - NON-NIL'
+  | 'AMENDED - NIL'
+
 export interface TaxReturn {
   srNo: string;
   referenceNo: ReferenceNumber;
@@ -53,7 +58,7 @@ export interface TaxReturn {
   returnAppliedDate: string;
   accountName: TaxAccountName;
   /** E.g. "ORIGINAL - NIL" */
-  applicationType: string;
+  applicationType: TaxReturnApplicationType;
   /** Financial account status code. */
   // FIXME: Confirm `FinancialAccountStatus` are the correct codes and update any old code referencing this.
   // No longer has asterisk and is in full
