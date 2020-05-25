@@ -78,12 +78,12 @@ export function getElementsFromDocument<T extends Selectors>(
  * @param name A descriptive name of the element. Used when generating errors.
  * @throws {ElementNotFoundError}
  */
-export function getElementFromDocument(
+export function getElementFromDocument<T extends HTMLElement>(
   document: HTMLDocument | HTMLElement,
   selector: Selector,
   name?: string,
-): HTMLElement {
-  const element = document.querySelector<HTMLElement>(selector);
+): T {
+  const element = document.querySelector<T>(selector);
   if (!element) {
     if (!name) name = selector;
     throw new ElementNotFoundError(`Element "${name}" not found.`, null, {
