@@ -40,7 +40,7 @@ const downloadAckReceipt: ReturnHistoryDownloadFn = function downloadAckReceipt(
     }),
     taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
-    createTabPostOptions: generateAckReceiptRequest(taxType, referenceNumber),
+    downloadUrl: `${ZraDomain}/uploads/returns/acknowledgements/${referenceNumber}.pdf`,
   });
 };
 
