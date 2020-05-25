@@ -199,7 +199,8 @@ export enum FinancialAccountStatus {
   /** Pending for Document upload */
   PNDC = 'PNDC',
   /** Rejected */
-  REJD = 'REJD',
+  REJECTED = 'REJECTED',
+  SUBMITTED = 'SUBMITTED',
 }
 
 const f = FinancialAccountStatus;
@@ -216,7 +217,8 @@ export const financialAccountStatusDescriptionsMap: { [key in FinancialAccountSt
   [f.RJCTAMND]: 'Return Rejected by approving authority from Acceptance of Amended return',
   [f.SBJTAPRV]: 'Acceptance of amended return task subject to approval from approving authority',
   [f.PNDC]: 'Pending for Document upload',
-  [f.REJD]: 'Rejected',
+  [f.REJECTED]: 'Rejected',
+  [f.SUBMITTED]: 'Submitted',
 };
 
 export enum FinancialAccountStatusType {
@@ -239,7 +241,7 @@ export const financialAccountStatusTypesMap: {
     f.RJCTACKN,
     f.RJCTAMND,
     f.RJCTDDED,
-    f.REJD,
+    f.REJECTED,
   ],
   [FinancialAccountStatusType.IN_PROGRESS]: [
     f.RECD,
@@ -250,6 +252,7 @@ export const financialAccountStatusTypesMap: {
     f.SBJTAPRV,
     f.PNDC,
   ],
+  // FIXME: What type is SUBMITTED?
 };
 // #endregion
 
