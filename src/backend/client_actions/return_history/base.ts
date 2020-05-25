@@ -93,6 +93,7 @@ async function getReturnHistoryRecords(
       'returnAppliedDate',
       'returnPeriod',
       'status',
+      'actions',
     ],
     recordSelector: 'tbody>tr',
   });
