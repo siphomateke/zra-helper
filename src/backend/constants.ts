@@ -122,12 +122,19 @@ export const taxTypeNamesMap: {
   'income tax': TaxTypeNumericalCode.ITX,
   'value added tax': TaxTypeNumericalCode.VAT,
   'employment tax (pay as you earn)': TaxTypeNumericalCode.PAYE,
+  paye: TaxTypeNumericalCode.PAYE,
+  'skills development levy': TaxTypeNumericalCode.PAYE,
   'turnover tax': TaxTypeNumericalCode.TOT,
   'withholding tax': TaxTypeNumericalCode.WHT,
+  rents: TaxTypeNumericalCode.WHT,
+  commissions: TaxTypeNumericalCode.WHT,
+  'management or consultant fees': TaxTypeNumericalCode.WHT,
   'property transfer tax': TaxTypeNumericalCode.PTT,
+  'property transfer ': TaxTypeNumericalCode.PTT, // TODO: Should this have a space?
   'mineral royalty': TaxTypeNumericalCode.MINROY,
   'mineral royalty tax': TaxTypeNumericalCode.MINROY,
   'medical levy tax': TaxTypeNumericalCode.TLEVY,
+  // "tourism levy": "tourism levy" FIXME: Find out this should be TLEVY
 };
 
 /**

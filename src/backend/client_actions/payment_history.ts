@@ -1,6 +1,6 @@
 import moment from 'moment';
-import { getDocumentByAjax } from '../utils';
-import { parseTableAdvanced, ParsedTableLinkCell } from '../content_scripts/helpers/zra';
+import { getDocumentByAjax, makeRequest } from '../utils';
+import { ParsedTableLinkCell, parseTable } from '../content_scripts/helpers/zra';
 import {
   taskFunction,
   downloadPages,
@@ -12,14 +12,12 @@ import {
 import {
   getFailedResponseItems,
   getReceiptData,
-  getDataFromReceiptTab,
 } from './receipts';
 import {
   taxTypeNamesMap,
   TaxTypeNumericalCode,
   taxTypes,
   DateString,
-  ReferenceNumber,
   TaxTypeName,
   Client,
   ZraDomain,
@@ -31,81 +29,76 @@ import {
   BasicRunnerOutput,
   BasicRunnerConfig,
 } from './base';
-import { InvalidReceiptError } from '../errors';
-import getDataFromReceipt, { PaymentReceiptData } from '../content_scripts/helpers/receipt_data';
 import { TaskId } from '@/store/modules/tasks';
 import { objKeysExact } from '@/utils';
 import createTask from '@/transitional/tasks';
 import store from '@/store';
+import { getElementFromDocument } from '../content_scripts/helpers/elements';
 
-interface PrnNo extends ParsedTableLinkCell {
-  /** E.g. '118019903987' */
+interface ViewDetailsColumn extends ParsedTableLinkCell {
+  /** E.g. '"Details"' */
   innerText: string;
   /**
-   * Contains information about the payment such as search code, reference number and payment type
-   * in the following format:
-   * `payementHistory('<search code>','<reference number>','<payment type>')`
-   * E.g.
-   * `payementHistory('123456789','123456789','ABC')`
+   * Contains the payment ID in the following format:
+   * `viewPaymentDetails('123456')`
    */
   onclick: string;
 }
+
+interface PrintReceiptColumn extends ParsedTableLinkCell {
+  /** E.g. 'Print Receipt' */
+  innerText: string;
+  /**
+   * Contains the payment ID in the following format:
+   * `printReceipt('194902')`
+   */
+  onclick: string;
+}
+
+type PaymentId = string;
 
 interface PaymentReceipt {
   /** Serial number */
   srNo: string;
   /** PRN number */
-  prnNo: PrnNo;
+  prnNo: string;
   /** Amount in Kwacha */
   amount: string;
   /** E.g. 'Payment received' */
   status: string;
-  prnDate: DateString;
-  paymentDate: DateString;
-  /** Payment type. E.g. 'Electronic' */
-  type: string;
+  /** E.g. '21 May, 2020' */
+  generatedDate: string; // TODO: Is this the same as prnDate?
+  viewDetails: ViewDetailsColumn;
+  printReceipt: PrintReceiptColumn;
 }
 
 interface GetPaymentReceiptsOptions {
   fromDate: DateString;
   toDate: DateString;
-  receiptNumber?: string;
-  referenceNumber?: ReferenceNumber;
 }
 
 /**
  * Gets payment receipts from a single page.
  */
 async function getPaymentReceipts(
-  page: number,
-  {
-    fromDate, toDate, referenceNumber = '', receiptNumber = '',
-  }: GetPaymentReceiptsOptions,
+  page: number, { fromDate, toDate }: GetPaymentReceiptsOptions,
 ): Promise<GetDataFromPageFunctionReturn<PaymentReceipt[]>> {
-  const doc = await getDocumentByAjax({
-    url: `${ZraDomain}/ePaymentController.htm?actionCode=SearchPmtDetails`,
-    method: 'post',
-    data: {
-      currentPage: page,
-      periodFrom: fromDate,
-      periodTo: toDate,
-      ackNo: referenceNumber,
-      prnNo: receiptNumber,
-    },
-  });
-  const table = await parseTableAdvanced({
-    root: doc,
-    headers: ['srNo', 'prnNo', 'amount', 'status', 'prnDate', 'paymentDate', 'type'],
-    tableInfoSelector: '#contentDiv>table>tbody>tr>td',
-    recordSelector: '#contentDiv>table:nth-child(2)>tbody>tr',
-    noRecordsString: 'No Records Found',
+  // TODO: Try passing period start date and to date
+  const doc = await getDocumentByAjax({ url: `${ZraDomain}/paymentHistory/history` });
+  const records = await parseTable({
+    root: getElementFromDocument(doc, '#paymentHistory', 'payment history table'),
+    headers: [
+      'srNo',
+      'generatedDate',
+      'prnNo',
+      'amount',
+      'status',
+      'viewDetails',
+      'printReceipt',
+    ],
+    recordSelector: 'tbody>tr',
     parseLinks: true,
   });
-  const { records } = table;
-  if (records.length > 0) {
-    // Remove header row
-    records.shift();
-  }
   // Since `parseLinks` is true when parsing the table, if any of the cells contain links, they
   // will be parsed. To make sure no fields that currently aren't links aren't parsed as links in
   // the future, make sure to convert each cell to the correct type.
@@ -114,7 +107,7 @@ async function getPaymentReceipts(
     const convertedRecord: PaymentReceipt = {} as PaymentReceipt;
     for (const key of objKeysExact(record)) {
       const value = record[key];
-      if (key !== 'prnNo') {
+      if (!(key === 'viewDetails' || key === 'printReceipt')) {
         if (typeof value === 'string') {
           convertedRecord[key] = value;
         } else {
@@ -128,10 +121,11 @@ async function getPaymentReceipts(
   });
   if (convertedRecords.length > 0) {
     // Ignore all the payment registrations
-    convertedRecords = convertedRecords.filter(record => record.status.toLowerCase() !== 'prn generated');
+    convertedRecords = convertedRecords.filter(record => record.status.toLowerCase() !== 'generated');
+    // FIXME: Filter by fromDate and toDate
   }
   return {
-    numPages: table.numPages,
+    numPages: 1,
     value: convertedRecords,
   };
 }
@@ -140,6 +134,19 @@ interface Payment {
   taxType: TaxTypeName;
   periodFrom: string;
   periodTo: string;
+}
+
+interface PaymentReceiptPayment {
+  taxType: string;
+  liabilityType: string;
+  periodFrom: DateString;
+  periodTo: DateString;
+  amount: number;
+}
+
+interface PaymentReceiptData {
+  prn: string;
+  payments: PaymentReceiptPayment[];
 }
 
 /**
@@ -175,7 +182,7 @@ function getQuarterFromPeriod(from: string, to: string): number | null {
 }
 
 function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptData): string[] {
-  const uniquePayments = [];
+  const uniquePayments: PaymentReceiptPayment[] = [];
   for (const payment of receiptData.payments) {
     let unique = true;
     for (const paymentCompare of uniquePayments) {
@@ -201,6 +208,9 @@ function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptD
       const periodFromMonth = periodFrom.format('MM');
       const periodToMonth = periodTo.format('MM');
       // Don't add quarter if the period is a whole year
+      // Note: we could also check `payment.liabilityType` as it contains 'annual' if annual but
+      // checking the actual period difference is probably more reliable.
+      // TODO: Confirm the periods are indeed reliable.
       if (Number(periodToMonth) - Number(periodFromMonth) < 11) {
         const chargeQuater = getQuarterFromPeriod(periodFromMonth, periodToMonth);
         if (chargeQuater !== null) {
@@ -215,7 +225,34 @@ function getPaymentReceiptFilenames(client: Client, receiptData: PaymentReceiptD
   });
 }
 
-function downloadPaymentReceipt({
+interface PaymentDetailsJson {
+  AMOUNT: number;
+  /** @example '-' */
+  LIABILITY_REFERENCE_NUMBER: string;
+  /** @example INCOME TAX PROVISIONAL */
+  LIABILITY_TYPE_ID: string;
+  /** @example 'January 01, 2020' */
+  TAX_PERIOD_END_DATE: string;
+  /** @example 'January 01, 2020' */
+  TAX_PERIOD_START_DATE: string;
+  /** @example 'Income Tax' */
+  TAX_TYPE: '';
+}
+
+async function getPaymentDetails(paymentId: PaymentId): Promise<PaymentReceiptPayment[]> {
+  const paymentDetailsJson = await makeRequest<PaymentDetailsJson[]>({
+    url: `${ZraDomain}/paymentHistory/history/${paymentId}/paymentDetail`,
+  });
+  return paymentDetailsJson.map(p => ({
+    taxType: p.TAX_TYPE,
+    liabilityType: p.LIABILITY_TYPE_ID,
+    periodFrom: moment(p.TAX_PERIOD_START_DATE, 'MMMM MM, YYYY').format('DD/MM/YYYY'),
+    periodTo: moment(p.TAX_PERIOD_END_DATE, 'MMMM MM, YYYY').format('DD/MM/YYYY'),
+    amount: p.AMOUNT,
+  }));
+}
+
+async function downloadPaymentReceipt({
   client,
   receipt,
   parentTaskId,
@@ -224,36 +261,14 @@ function downloadPaymentReceipt({
   receipt: PaymentReceipt;
   parentTaskId: TaskId;
 }) {
-  const [searchCode, refNo, pmtRegType] = receipt.prnNo.onclick
-    .replace(/'/g, '')
-    .match(/\((.+)\)/)[1]
-    .split(',');
-
+  const paymentId: PaymentId = receipt.viewDetails.onclick.match(/\('(.+)'\)/)[1];
+  const payments = await getPaymentDetails(paymentId);
+  const filenames = getPaymentReceiptFilenames(client, { prn: receipt.prnNo, payments });
   return downloadPage({
-    async filename(dataSource) {
-      let receiptData: PaymentReceiptData;
-      if (dataSource instanceof HTMLDocument) {
-        receiptData = await getDataFromReceipt(dataSource, 'payment');
-      } else {
-        receiptData = await getDataFromReceiptTab(dataSource, 'payment');
-      }
-      if (!receiptData.referenceNumber) {
-        throw new InvalidReceiptError('Invalid receipt; missing reference number.');
-      }
-      return getPaymentReceiptFilenames(client, receiptData);
-    },
-    taskTitle: `Download receipt ${refNo}`,
+    filename: filenames,
+    taskTitle: `Download receipt ${paymentId}`,
     parentTaskId,
-    createTabFromRequestOptions: {
-      url: `${ZraDomain}/ePaymentController.htm`,
-      data: {
-        actionCode: 'generateView',
-        searchcode: searchCode,
-        referencecode: refNo,
-        pmtRegType,
-        printReceipt: 'N',
-      },
-    },
+    downloadUrl: `${ZraDomain}/paymentHistory/history/${paymentId}/receipt?exportToPDF=true`,
   });
 }
 
