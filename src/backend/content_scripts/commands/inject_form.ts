@@ -6,7 +6,7 @@ addContentScriptListener(
   async (message) => {
     document.body.innerHTML = message.html;
     const submitFormButton = <HTMLFormElement>(
-      getElement('#zra-helper-post-form', 'ZRA Helper submit POST form button')
+      getElement('#zra-helper-http-request-form', 'ZRA Helper submit POST form button')
     );
     submitFormButton.submit();
   },

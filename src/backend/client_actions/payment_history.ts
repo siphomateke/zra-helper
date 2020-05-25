@@ -244,7 +244,7 @@ function downloadPaymentReceipt({
     },
     taskTitle: `Download receipt ${refNo}`,
     parentTaskId,
-    createTabPostOptions: {
+    createTabFromRequestOptions: {
       url: `${ZraDomain}/ePaymentController.htm`,
       data: {
         actionCode: 'generateView',

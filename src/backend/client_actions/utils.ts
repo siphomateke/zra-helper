@@ -615,7 +615,7 @@ interface BaseDownloadPageOptions {
 }
 
 interface DownloadPageByRequestOptions extends BaseDownloadPageOptions {
-  createTabPostOptions: CreateTabRequestOptions;
+  createTabFromRequestOptions: CreateTabRequestOptions;
 }
 
 interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
@@ -684,8 +684,8 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
         const initialMaxOpenTabs = config.maxOpenTabs;
         config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
         let tab: browser.tabs.Tab;
-        if ('createTabPostOptions' in options) {
-          tab = await createTabFromRequest(options.createTabPostOptions);
+        if ('createTabFromRequestOptions' in options) {
+          tab = await createTabFromRequest(options.createTabFromRequestOptions);
         } else {
           tab = await createTabFromHtml(options.htmlDocument);
         }
@@ -723,13 +723,13 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
         fileTypeName = 'HTML file';
         let url: string;
         let doc: HTMLDocument;
-        if ('createTabPostOptions' in options) {
+        if ('createTabFromRequestOptions' in options) {
           task.status = 'Fetching page';
           doc = await getDocumentByAjax({
-            ...options.createTabPostOptions,
+            ...options.createTabFromRequestOptions,
             method: 'post',
           });
-          ({ url } = options.createTabPostOptions);
+          ({ url } = options.createTabFromRequestOptions);
         } else {
           doc = options.htmlDocument;
           url = options.htmlDocumentUrl;
