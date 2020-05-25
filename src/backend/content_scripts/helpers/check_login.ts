@@ -1,25 +1,22 @@
 import { LoginError } from '../../errors';
-import { getHtmlFromNode, getElementText } from './elements';
+import { getHtmlFromNode, getElementText, getElementFromDocument } from './elements';
 import { Client } from '@/backend/constants';
 
 /**
- * Client's name and username in the format: "<name>  (<username>)""
- *
- * For example, "JOHN DOE  (1000000000)"
+ * Client's username. E.g. "1000000000". This is vaguely called "client info" in case ZRA changes
+ * again and includes more information in the username field.
  */
 type ClientInfo = string;
 
 /**
  * Gets the currently logged in client's information.
+ * @throws {ElementNotFoundError}
  */
-export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo | null {
-  const clientEl = <HTMLElement | null>(
-    root.querySelector('#partnershipTaxpayerDetails>div:nth-child(2)>div:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)')
-  );
-  if (clientEl) {
-    return clientEl.innerText;
-  }
-  return null;
+export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo {
+  // ZRA returns a different tax payer detail's table wrapper depending on the type of client.
+  const wrapper = getElementFromDocument(root, '#otherTaxpayerDetails,#partnershipTaxpayerDetails', 'tax payer details table wrapper');
+  const clientEl = getElementFromDocument(wrapper, 'div:nth-child(2)>div:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)', 'tax payer details table TPIN');
+  return clientEl.innerText;
 }
 
 /**
@@ -27,6 +24,7 @@ export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo | nu
  */
 export function getPasswordExpiryDate(root: HTMLDocument | HTMLElement) {
   const passwordExpiryEl = <HTMLElement | null>(
+    // FIXME: Update for ZRA v2
     root.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(29)>b>label')
   );
   if (passwordExpiryEl) {
@@ -119,20 +117,22 @@ export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
     }
   }
 
-  const clientInfo = getClientInfo(root);
-  if (clientInfo) {
-    const foundUsername = usernameInClientInfo(client.username, clientInfo);
-    // If we did not find the username in the client info, then another client
-    // is already logged in.
-    if (foundUsername) {
-      return;
-    }
-    throw getWrongClientError(clientInfo);
+  let clientInfo;
+  try {
+    clientInfo = getClientInfo(root);
+  } catch (error) {
+    throw new LoginError('Error finding element to verify if login was successful', 'VerificationFailed', {
+      clientName: client.username,
+      documentString: getHtmlFromNode(root),
+      verificationError: error,
+    });
   }
-  // TODO: log no client info error
 
-  throw new LoginError('Unknown error logging in', null, {
-    clientName: client.username,
-    documentString: getHtmlFromNode(root),
-  });
+  const foundUsername = usernameInClientInfo(client.username, clientInfo);
+  // If we did not find the username in the client info, then another client
+  // is already logged in.
+  if (foundUsername) {
+    return;
+  }
+  throw getWrongClientError(clientInfo);
 }

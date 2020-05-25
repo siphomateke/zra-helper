@@ -129,8 +129,10 @@ interface LoginErrorProps {
   attemptsRemaining?: number | null;
   /** Entire document string.Only thrown when the login error is unknown. */
   documentString?: string | null;
+  /** Error encountered when verifying if the client was logged in */
+  verificationError?: Error;
 }
-type LoginErrorCodes = 'PasswordExpired' | 'InvalidUsernameOrPassword' | 'WrongClient';
+type LoginErrorCodes = 'PasswordExpired' | 'InvalidUsernameOrPassword' | 'WrongClient' | 'VerificationFailed';
 // TODO: Handle storing attempts remaining better. Perhaps a class that extends LoginError somehow
 export class LoginError extends ExtendedError {
   constructor(message: string, code: LoginErrorCodes | null = null, props: LoginErrorProps) {
