@@ -364,6 +364,12 @@ export async function robustLogin({
   });
 }
 
-export function getPasswordExpiryDate(tabId: number) {
-  return runContentScript(tabId, 'get_password_expiry_date');
+export async function getPasswordExpiryDate(): Promise<string> {
+  const doc = await getDocumentByAjax({ url: `${ZraDomain}/security/userprofile` });
+  const expiryDate = getElementFromDocument<HTMLInputElement>(
+    doc,
+    '#userDto>div:nth-child(3)>div:nth-child(2)>div>div>input',
+    'password expiry date',
+  ).value;
+  return expiryDate;
 }
