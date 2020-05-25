@@ -22,12 +22,7 @@ const blacklist = [
 ];
 
 /** URLs of pages whose resources should not be blocked in lite mode. Only used in Firefox. */
-const blacklistPages = [
-  // Payment receipts
-  `${ZraDomain}/ePaymentController.htm?`,
-  // Acknowledgement of returns receipts
-  `${ZraDomain}/retHist.htm?`,
-];
+const blacklistPages = [];
 
 // FIXME: Remove this once the actual details can be extracted from @types/firefox-webext-browser
 interface WebRequestOnBeforeRequestEventCallbackDetails {
