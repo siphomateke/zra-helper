@@ -95,7 +95,7 @@ export function parseTable<H extends string>({
       const innerText = column.innerText.trim();
       let value: string | ParsedTableLinkCell = innerText;
       if (parseLinks) {
-        const link = column.querySelector('a');
+        const link = column.querySelector('a,button');
         if (link) {
           const onclick = link.getAttribute('onclick');
           if (onclick) {
