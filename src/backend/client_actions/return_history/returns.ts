@@ -32,7 +32,7 @@ const downloadReturn: ReturnHistoryDownloadFn = function downloadReturn({
     }),
     taskTitle: `Download return ${referenceNumber}`,
     parentTaskId,
-    createTabPostOptions: {
+    createTabFromRequestOptions: {
       url: `${ZraDomain}/eRet.htm`,
       data: {
         actionCode,

@@ -6,7 +6,7 @@ import {
   closeTab,
   runContentScript,
   getDocumentByAjax,
-  createTabPost,
+  createTabFromRequest,
 } from '@/backend/utils';
 import { taskFunction } from './utils';
 import { getElementFromDocument, getHtmlFromNode } from '../content_scripts/helpers/elements';
@@ -196,7 +196,7 @@ export async function login({
         task.addStep('Waiting for login to complete');
         let doc = null;
         if (keepTabOpen) {
-          const tab = await createTabPost(loginRequest);
+          const tab = await createTabFromRequest(loginRequest);
           tabId = tab.id;
           await tabLoaded(tabId);
         } else {
