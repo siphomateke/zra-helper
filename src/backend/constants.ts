@@ -64,7 +64,7 @@ export interface ClientState {
   taxTypes: TaxTypeNumericalCode[] | null;
   /** All the tax accounts this client has. */
   taxAccounts: TaxAccount[] | null;
-  /** Tax accounts whose status is 'registered'. */
+  /** Tax accounts whose status is 'active'. */
   registeredTaxAccounts: TaxAccount[] | null;
 }
 

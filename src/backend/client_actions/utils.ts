@@ -24,7 +24,7 @@ import {
   ZraDomain,
 } from '../constants';
 import { getCurrentBrowser, RequiredBy, Omit } from '@/utils';
-import { parseTableAdvanced, ParsedTableRecord } from '../content_scripts/helpers/zra';
+import { parseTable, ParsedTableRecord } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
 import { Store } from 'vuex';
 import getSingleFileHtmlBlob from '../html_bundler';
@@ -406,9 +406,8 @@ interface TaxAccountRecord {
   accountName: TaxAccountName;
   /** E.g. "1997-02-01" */
   effectiveDateOfRegistration: string;
-  status: 'registered' | 'cancelled' | 'suspended';
-  /** E.g. "2014-07-25" */
-  effectiveCancellationDate: string;
+  // FIXME: Find out new tax account statuses
+  status: 'active' | 'cancelled' | 'suspended';
 }
 
 export interface TaxAccount extends TaxAccountRecord {
@@ -429,38 +428,28 @@ export async function getTaxAccountPage({
 }: GetTaxAccountPageFnOptions): Promise<
   GetDataFromPageFunctionReturn<ParsedTableRecord<keyof TaxAccountRecord>[]>
 > {
-  const doc = await getDocumentByAjax({
-    url: `${ZraDomain}/WebContentMgmt.htm`,
-    method: 'post',
-    data: {
-      actionCode: 'getTaxPayerRegistrationDetail',
-      tpinNo: tpin,
-      currentPage: page,
-    },
-  });
+  // TODO: [performance] Don't get this page again since it's already the default after login
+  const doc = await getDocumentByAjax({ url: `${ZraDomain}/main` });
 
   const tableWrapper = getElementFromDocument(
     doc,
-    '[name="interestRateForm"] table:nth-of-type(2)>tbody>tr:nth-child(2)>td',
+    '#simpletable',
     'tax account table wrapper',
   );
-  const parsedTable = await parseTableAdvanced({
+  const parsedTableRecords = await parseTable({
     root: tableWrapper,
     headers: [
       'srNo',
+      'taxType',
       'accountName',
       'effectiveDateOfRegistration',
       'status',
-      'effectiveCancellationDate',
     ],
-    recordSelector: 'table:nth-of-type(2)>tbody>tr:not(:first-child)',
-    tableInfoSelector: 'table.pagebody>tbody>tr>td',
-    /* TODO: There is always at least one tax account. Because of the this, the no records string
-    should not be checked. */
+    recordSelector: 'tbody>tr',
   });
   return {
-    numPages: parsedTable.numPages,
-    value: parsedTable.records,
+    numPages: 1, // ZRA V2 paginates using JavaScript so all the data is already there
+    value: parsedTableRecords,
   };
 }
 
@@ -526,7 +515,6 @@ export async function getTaxAccounts<S>({
           accountName,
           effectiveDateOfRegistration: account.effectiveDateOfRegistration,
           status,
-          effectiveCancellationDate: account.effectiveCancellationDate,
           taxTypeId,
         });
       }

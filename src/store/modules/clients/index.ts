@@ -70,7 +70,7 @@ const vuexModule: Module<ClientsState, RootState> = {
         commit('setTaxAccounts', { id, value: taxAccounts });
 
         const registeredTaxAccounts = taxAccounts.filter(
-          account => account.status === 'registered',
+          account => account.status === 'active',
         );
         commit('setRegisteredTaxAccounts', { id, value: registeredTaxAccounts });
 
