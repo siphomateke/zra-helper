@@ -575,6 +575,17 @@ const vuexModule: Module<ClientActions.State, RootState> = {
       Vue.set(state.instances[id], prop, value);
     },
     /**
+     * Pushes to an array in a client action runner instance's data.
+     * Used in ClientActionRunners to proxy the store.
+     * @param {Object} payload
+     * @param {string} payload.id ID of the instance.
+     * @param {string} payload.prop Array property to push to.
+     * @param {any} payload.value Value to push to array.
+     */
+    pushInstanceProperty(state, { id, prop, value }) {
+      state.instances[id][prop].push(value);
+    },
+    /**
      * Sets a client action runner instance's error.
      * @param {Object} payload
      * @param {string} payload.id ID of the instance.
