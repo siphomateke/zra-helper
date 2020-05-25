@@ -4,14 +4,14 @@ import createTask, { TaskObject } from '@/transitional/tasks';
 import config from '@/transitional/config';
 import {
   getDocumentByAjax,
-  createTabPost,
+  createTabFromRequest,
   tabLoaded,
   saveAsMHTML,
   closeTab,
   monitorDownloadProgress,
   startDownload,
   runContentScript,
-  CreateTabPostOptions,
+  CreateTabRequestOptions,
   createTabFromHtml,
 } from '../utils';
 import {
@@ -615,7 +615,7 @@ interface BaseDownloadPageOptions {
 }
 
 interface DownloadPageByRequestOptions extends BaseDownloadPageOptions {
-  createTabPostOptions: CreateTabPostOptions;
+  createTabPostOptions: CreateTabRequestOptions;
 }
 
 interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
@@ -624,7 +624,12 @@ interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
   htmlDocumentUrl: string;
 }
 
-type DownloadPageOptions = DownloadPageByRequestOptions | DownloadPageByDocumentOptions;
+interface DownloadPageByUrl extends BaseDownloadPageOptions {
+  downloadUrl: string;
+}
+
+type DownloadPageOptions =
+  DownloadPageByRequestOptions | DownloadPageByDocumentOptions | DownloadPageByUrl;
 
 /**
  * Downloads a page generated from a `HTMLDocument`.
@@ -634,6 +639,7 @@ export async function downloadPage(options: DownloadPageByDocumentOptions): Prom
  * Downloads a page generated from a POST request.
  */
 export async function downloadPage(options: DownloadPageByRequestOptions): Promise<void>;
+export async function downloadPage(options: DownloadPageByUrl): Promise<void>;
 export async function downloadPage(options: DownloadPageOptions): Promise<void> {
   const { filename, taskTitle, parentTaskId } = options;
 
@@ -660,15 +666,26 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
   return taskFunction({
     task,
     async func() {
-      const blobs: { [filename: string]: Blob } = {};
-      if (config.export.pageDownloadFileType === 'mhtml') {
+      const downloads: { [filename: string]: Blob | string } = {};
+      let fileTypeName = 'file';
+      // TODO: Merge duplicate code
+      if ('downloadUrl' in options) {
+        if (Array.isArray(generatedFilename)) {
+          for (const filename of generatedFilename) {
+            downloads[filename] = options.downloadUrl;
+          }
+        } else {
+          downloads[generatedFilename] = options.downloadUrl;
+        }
+      } else if (config.export.pageDownloadFileType === 'mhtml') {
+        fileTypeName = 'MHTML file';
         task.status = 'Opening tab';
         // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
         const initialMaxOpenTabs = config.maxOpenTabs;
         config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
         let tab: browser.tabs.Tab;
         if ('createTabPostOptions' in options) {
-          tab = await createTabPost(options.createTabPostOptions);
+          tab = await createTabFromRequest(options.createTabPostOptions);
         } else {
           tab = await createTabFromHtml(options.htmlDocument);
         }
@@ -693,16 +710,17 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
           const blob = await saveAsMHTML({ tabId: tab.id });
           if (Array.isArray(generatedFilename)) {
             for (const filename of generatedFilename) {
-              blobs[filename] = blob;
+              downloads[filename] = blob;
             }
           } else {
-            blobs[generatedFilename] = blob;
+            downloads[generatedFilename] = blob;
           }
         } finally {
           // TODO: Catch tab close errors
           closeTab(tab.id);
         }
       } else if (config.export.pageDownloadFileType === 'html') {
+        fileTypeName = 'HTML file';
         let url: string;
         let doc: HTMLDocument;
         if ('createTabPostOptions' in options) {
@@ -731,38 +749,31 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
           const promises: Promise<any>[] = [];
           for (const filename of filenames) {
             promises.push((async () => {
-              blobs[filename] = await getSingleFileHtmlBlob(doc, url, filename);
+              downloads[filename] = await getSingleFileHtmlBlob(doc, url, filename);
             })());
           }
           await Promise.all(promises);
         } else {
           const blob = await getSingleFileHtmlBlob(doc, url);
           for (const filename of filenames) {
-            blobs[filename] = blob;
+            downloads[filename] = blob;
           }
         }
-      }
-
-      let fileTypeName = 'file';
-      if (config.export.pageDownloadFileType === 'mhtml') {
-        fileTypeName = 'MHTML file';
-      } else if (config.export.pageDownloadFileType === 'html') {
-        fileTypeName = 'HTML file';
       }
 
       task.addStep(`Downloading generated ${fileTypeName}`);
 
       const taskProgressBeforeDownload = task.progress;
       const promises: Promise<any>[] = [];
-      for (const filename of Object.keys(blobs)) {
+      for (const filename of Object.keys(downloads)) {
         // eslint-disable-next-line no-loop-func
         promises.push((async () => {
           if (typeof filename !== 'string') {
             throw new Error('Invalid filename attribute; filename must be a string, array or function.');
           }
 
-          const blob = blobs[filename];
-          const url = URL.createObjectURL(blob);
+          const download = downloads[filename];
+          const url = download instanceof Blob ? URL.createObjectURL(download) : download;
           try {
             let downloadFilename = filename;
             if (
@@ -784,7 +795,9 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
               }
             });
           } finally {
-            URL.revokeObjectURL(url);
+            if (download instanceof Blob) {
+              URL.revokeObjectURL(url);
+            }
           }
         })());
       }
