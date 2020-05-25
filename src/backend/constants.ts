@@ -167,6 +167,7 @@ export type TaxAccountName = string;
 // #endregion
 
 // #region Financial accounts
+// FIXME: Update these codes
 export enum FinancialAccountStatus {
   /** Fact of Filling Completed */
   RECD = 'RECD',
@@ -177,7 +178,7 @@ export enum FinancialAccountStatus {
   /** Assessment Initiated */
   ASMT = 'ASMT',
   /** Approval Completed */
-  APRV = 'APRV',
+  APPROVED = 'APPROVED',
   /** Incomplete return Notice issued at FOF, task pending for clarification */
   ACKNPEND = 'ACKNPEND',
   /** Return rejected by Acknowledgement Authority from pending clarification - ackn */
@@ -201,7 +202,7 @@ export const financialAccountStatusDescriptionsMap: { [key in FinancialAccountSt
   [f.DDED]: 'Detail Data Entry Completed',
   [f.PRCD]: 'Data Entry Verification Completed/Bypassed Sampling.',
   [f.ASMT]: 'Assessment Initiated',
-  [f.APRV]: 'Approval Completed',
+  [f.APPROVED]: 'Approval Completed',
   [f.ACKNPEND]: 'Incomplete return Notice issued at FOF, task pending for clarification',
   [f.RJCTACKN]: 'Return rejected by Acknowledgement Authority from pending clarification - ackn',
   [f.RJCTDDED]: 'Return Rejected by dde authority from pending clarification - dde',
@@ -226,7 +227,7 @@ export const financialAccountStatusTypeNames: { [key in FinancialAccountStatusTy
 export const financialAccountStatusTypesMap: {
   [key in FinancialAccountStatusType]: FinancialAccountStatus[]
 } = {
-  [FinancialAccountStatusType.APPROVED]: [f.APRV],
+  [FinancialAccountStatusType.APPROVED]: [f.APPROVED],
   [FinancialAccountStatusType.REJECTED]: [
     f.RJCTACKN,
     f.RJCTAMND,

@@ -245,7 +245,7 @@ class TabCreator {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
       while (this.queue.length > 0 && this.slotFree()) {
-        const callback = <Function> this.queue.shift();
+        const callback = <Function>this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
 
@@ -674,15 +674,6 @@ async function parseXml<R extends object>(str: string): Promise<R> {
       resolve(result);
     });
   });
-}
-
-/**
- * Makes a request that returns XML and parses the XML response.
- * @returns The parsed XML.
- */
-export async function xmlRequest<R extends object>(options: RequestOptions): Promise<R> {
-  const xml: string = await makeRequest(options);
-  return parseXml<R>(xml);
 }
 
 /**
