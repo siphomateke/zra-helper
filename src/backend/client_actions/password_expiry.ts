@@ -46,7 +46,6 @@ const CheckPasswordExpiryDateAction = createClientAction<
 >({
   id: 'checkPasswordExpiryDate',
   name: 'Check password expiry date',
-  usesLoggedInTab: true,
   hasOutput: true,
   generateOutputFiles({ clients, outputs }) {
     return createOutputFile<ClientActionOutputs<PasswordExpiryDateAction.Output>>({
@@ -143,7 +142,7 @@ CheckPasswordExpiryDateAction.Runner = class extends ClientActionRunner<
   }
 
   async runInternal() {
-    const { task: actionTask, loggedInTabId } = this.storeProxy;
+    const { task: actionTask } = this.storeProxy;
     actionTask.unknownMaxProgress = false;
     actionTask.progressMax = 2;
 
@@ -152,14 +151,10 @@ CheckPasswordExpiryDateAction.Runner = class extends ClientActionRunner<
       task: actionTask,
       setStateBasedOnChildren: true,
       func: async () => {
-        const response = await getPasswordExpiryDate(loggedInTabId);
-        if ('expiryDate' in response) {
-          const expiryDateStr = response.expiryDate;
-          const expiryDate = moment(expiryDateStr, 'DD/MM/YYYY hh:mm:ss');
-          this.setOutput({ dateStr: expiryDateStr, date: expiryDate.valueOf() });
-        } else {
-          throw new Error('Response from tab did not contain a password expiry date');
-        }
+        const expiryDateStr = await getPasswordExpiryDate();
+        // TODO: Confirm that this is not supposed to be 12 hour and is 24 hour.
+        const expiryDate = moment(expiryDateStr, 'DD/MM/YYYY HH:mm:ss');
+        this.setOutput({ dateStr: expiryDateStr, date: expiryDate.valueOf() });
       },
     });
   }
