@@ -7,21 +7,13 @@ import {
 } from './base';
 import { downloadPage } from '../utils';
 import { TaxTypeNumericalCode, ReferenceNumber, ZraDomain } from '@/backend/constants';
-import { CreateTabPostOptions } from '@/backend/utils';
+import { CreateTabRequestOptions } from '@/backend/utils';
 
 export function generateAckReceiptRequest(
   taxType: TaxTypeNumericalCode,
   referenceNumber: ReferenceNumber,
-): CreateTabPostOptions {
-  return {
-    url: `${ZraDomain}/retHist.htm`,
-    data: {
-      actionCode: 'printReceipt',
-      flag: 'rtnHistRcpt',
-      ackNo: referenceNumber,
-      rtnType: taxType,
-    },
-  };
+): CreateTabRequestOptions {
+  return { url: `${ZraDomain}/returns/view/${referenceNumber}`, method: 'get' };
 }
 
 const downloadAckReceipt: ReturnHistoryDownloadFn = function downloadAckReceipt({

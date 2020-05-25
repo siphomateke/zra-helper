@@ -45,12 +45,13 @@ export default function getDataFromReceipt<T extends ReceiptType>(
   // TODO: Consider not forcing TS to think this has all the expected properties. It might be
   // risky assuming the correct receipt type is always passed.
   const data: GetDataFromReceiptResponses[T] = {} as GetDataFromReceiptResponses[T];
-  const mainTable = getElementFromDocument(
-    root,
-    'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
-    'main table',
-  );
   if (type === 'payment') {
+    // TODO: Update payment receipt parsing
+    const mainTable = getElementFromDocument(
+      root,
+      'form>table>tbody>tr:nth-child(2)>td:nth-child(2)>table:nth-child(1)>tbody',
+      'main table',
+    );
     const column = '4';
     const infoTable = getElementFromDocument(
       mainTable,
@@ -107,20 +108,23 @@ export default function getDataFromReceipt<T extends ReceiptType>(
     }
     data.payments = payments;
   } else if (type === 'ack_receipt') {
-    // Tax type in the format: 'Tax Type :  IT Partnership'
+    // Tax type in the format: '<TAX TYPE NAME> Individual Provisional'
+    // E.g. "Income Tax Individual Provisional"
     const taxType = getElementFromDocument(
-      mainTable,
-      'tbody>tr:nth-child(10)>td:nth-child(2)',
+      root,
+      '.page-body h5',
       'tax type',
-    ).innerText;
+    ).innerText.toLowerCase();
     /*
     Possible tax types include:
-    - IT Provisional
+    - individual provisional
+
+    FIXME: Find v2 version of these names
     - IT Individual
     - IT Non Individual
     - IT Partnership
     */
-    data.provisional = taxType.includes('IT Provisional');
+    data.provisional = taxType.includes('individual provisional');
   }
 
   return data;
