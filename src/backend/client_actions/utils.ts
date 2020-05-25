@@ -400,6 +400,31 @@ export async function getPagedData<R>({
   });
 }
 
+/**
+ *
+ * @param accountName Must be lower case
+ */
+export function getTaxTypeIdFromAccountName(
+  accountName: TaxAccountName,
+): TaxTypeNumericalCode | null {
+  /* The account name contains the name of the client and the name of the tax type separated
+  by a hyphen. We can thus figure out the account's tax type ID from the account name.
+  Account names can be in various formats;
+  - "CLIENT NAME-INCOME TAX"
+  - "CLIENT-NAME-INCOME TAX"
+  - "CLIENT-WITHHOLDING TAX"
+  - "CLIENT-WITHHOLDING TAX-02"
+  */
+  let taxTypeId = null;
+  for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNamesMap)) {
+    if (accountName.indexOf(taxTypeName) > -1) {
+      taxTypeId = taxPayerSearchTaxTypeNamesMap[taxTypeName];
+      break;
+    }
+  }
+  return taxTypeId;
+}
+
 interface TaxAccountRecord {
   srNo: string;
   /** E.g. "john smith-income tax" */
@@ -490,21 +515,8 @@ export async function getTaxAccounts<S>({
       const records = pageResponse.value;
       for (const account of records) {
         const accountName = account.accountName.toLowerCase();
-        /* The account name contains the name of the client and the name of the tax type separated
-        by a hyphen. We can thus figure out the account's tax type ID from the account name.
-        Account names can be in various formats;
-        - "CLIENT NAME-INCOME TAX"
-        - "CLIENT-NAME-INCOME TAX"
-        - "CLIENT-WITHHOLDING TAX"
-        - "CLIENT-WITHHOLDING TAX-02"
-        */
-        let taxTypeId = null;
-        for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNamesMap)) {
-          if (accountName.indexOf(taxTypeName) > -1) {
-            taxTypeId = taxPayerSearchTaxTypeNamesMap[taxTypeName];
-            break;
-          }
-        }
+
+        const taxTypeId = getTaxTypeIdFromAccountName(accountName);
 
         let status = account.status.toLowerCase();
         // Replace "De-registered" with "Cancelled" since it's the same thing.

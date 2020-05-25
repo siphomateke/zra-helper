@@ -1,4 +1,4 @@
-import { TaxAccountName } from './constants';
+import { TaxTypeNumericalCode } from './constants';
 
 interface ExtendedErrorJson {
   message: string;
@@ -233,14 +233,13 @@ export class MissingTaxTypesError extends ExtendedError {
   }
 }
 
-interface TaxAccountNameNotFoundProps {
-  /** The name of the account that could not be found. */
-  accountName: TaxAccountName;
+interface TaxAccountCodeNotFoundProps {
+  taxTypeId: TaxTypeNumericalCode;
 }
-export class TaxAccountNameNotFound extends ExtendedError {
-  constructor(message: string, code = null, props: TaxAccountNameNotFoundProps) {
+export class TaxAccountCodeNotFound extends ExtendedError {
+  constructor(message: string, code = null, props: TaxAccountCodeNotFoundProps) {
     super(message, code, props);
-    this.setType('TaxAccountNameNotFound');
+    this.setType('TaxAccountCodeNotFound');
   }
 }
 
