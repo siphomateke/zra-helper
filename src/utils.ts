@@ -186,6 +186,5 @@ export function fancyLog(chunks: FancyLogChunk[]) {
  * @param figures Number of significant figures.
  */
 export function round(num: number, figures: number = 2) {
-  const tenPower = 10 ** figures;
-  return Math.round(num * tenPower) / tenPower;
+  return num.toFixed(2);
 }
