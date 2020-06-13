@@ -13,8 +13,7 @@ type ClientInfo = string;
  * @throws {ElementNotFoundError}
  */
 export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo {
-  // ZRA returns a different tax payer detail's table wrapper depending on the type of client.
-  const wrapper = getElementFromDocument(root, '#otherTaxpayerDetails,#partnershipTaxpayerDetails', 'tax payer details table wrapper');
+  const wrapper = getElementFromDocument(root, '.page-body .user-card .tab-pane.active', 'tax payer details table wrapper');
   const clientEl = getElementFromDocument(wrapper, 'div:nth-child(2)>div:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)', 'tax payer details table TPIN');
   return clientEl.innerText;
 }
