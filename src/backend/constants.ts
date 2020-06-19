@@ -123,6 +123,7 @@ export const taxTypeNamesMap: {
   'value added tax': TaxTypeNumericalCode.VAT,
   'employment tax (pay as you earn)': TaxTypeNumericalCode.PAYE,
   paye: TaxTypeNumericalCode.PAYE,
+  'pay as you earn': TaxTypeNumericalCode.PAYE,
   'skills development levy': TaxTypeNumericalCode.PAYE,
   'turnover tax': TaxTypeNumericalCode.TOT,
   'withholding tax': TaxTypeNumericalCode.WHT,
