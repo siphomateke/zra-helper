@@ -137,7 +137,17 @@ export function generateDownloadFilename({
   } else {
     dateString = date.format('YYYY-MM');
   }
-  return `${type}-${client.username}-${taxTypes[taxType]}-${dateString}-${taxReturn.referenceNo}`;
+  const filenameData = [
+    type,
+    client.username,
+    taxTypes[taxType],
+    dateString,
+    taxReturn.referenceNo,
+  ];
+  if (taxReturn.applicationType.toLowerCase().includes('amended')) {
+    filenameData.splice(4, 0, 'Amd');
+  }
+  return filenameData.join('-');
 }
 
 export namespace ReturnHistoryClientAction {
