@@ -24,12 +24,12 @@ const downloadAckReceipt: ReturnHistoryDownloadFn = function downloadAckReceipt(
 }) {
   const referenceNumber = taxReturn.referenceNo;
   return downloadPage({
-    filename: generateDownloadFilename({
+    filename: `ack-${generateDownloadFilename({
       type: 'receipt',
       taxReturn,
       client,
       taxType,
-    }),
+    })}`,
     taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
     downloadUrl: `${ZraDomain}/uploads/returns/acknowledgements/${referenceNumber}.pdf`,
