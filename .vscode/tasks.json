@@ -14,11 +14,13 @@
     },
     {
       "type": "npm",
-      "script": "serve:chrome"
+      "script": "serve:chrome",
+      "problemMatcher": []
     },
     {
       "type": "npm",
-      "script": "serve:firefox"
+      "script": "serve:firefox",
+      "problemMatcher": []
     },
     {
       "type": "npm",
