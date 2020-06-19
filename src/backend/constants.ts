@@ -130,11 +130,12 @@ export const taxTypeNamesMap: {
   commissions: TaxTypeNumericalCode.WHT,
   'management or consultant fees': TaxTypeNumericalCode.WHT,
   'property transfer tax': TaxTypeNumericalCode.PTT,
-  'property transfer ': TaxTypeNumericalCode.PTT, // TODO: Should this have a space?
+  // Note that the space after "property transfer" is intentional
+  'property transfer ': TaxTypeNumericalCode.PTT,
   'mineral royalty': TaxTypeNumericalCode.MINROY,
   'mineral royalty tax': TaxTypeNumericalCode.MINROY,
-  'medical levy tax': TaxTypeNumericalCode.TLEVY,
-  // "tourism levy": "tourism levy" FIXME: Find out this should be TLEVY
+  // Note that "TLEVY" is "medical levy tax" everywhere else except payment history
+  'tourism levy': TaxTypeNumericalCode.TLEVY,
 };
 
 /**
