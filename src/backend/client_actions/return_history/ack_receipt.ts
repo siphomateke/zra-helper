@@ -13,6 +13,7 @@ export function generateAckReceiptRequest(
   taxType: TaxTypeNumericalCode,
   referenceNumber: ReferenceNumber,
 ): CreateTabRequestOptions {
+  // FIXME: This isn't the URL for ack receipts
   return { url: `${ZraDomain}/returns/view/${referenceNumber}`, method: 'get' };
 }
 

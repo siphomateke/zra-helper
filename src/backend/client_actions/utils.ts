@@ -726,8 +726,8 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
         if ('createTabFromRequestOptions' in options) {
           task.status = 'Fetching page';
           doc = await getDocumentByAjax({
-            ...options.createTabFromRequestOptions,
             method: 'post',
+            ...options.createTabFromRequestOptions,
           });
           ({ url } = options.createTabFromRequestOptions);
         } else {
