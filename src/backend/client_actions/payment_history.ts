@@ -67,7 +67,7 @@ interface PaymentReceipt {
   /** E.g. 'Payment received' */
   status: string;
   /** E.g. '21 May, 2020' */
-  generatedDate: string; // TODO: Is this the same as prnDate?
+  generatedDate: string;
   viewDetails: ViewDetailsColumn;
   printReceipt: PrintReceiptColumn;
 }
@@ -81,7 +81,9 @@ interface GetPaymentReceiptsOptions {
  * Gets payment receipts from a single page.
  */
 async function getPaymentReceipts(
-  page: number, { fromDate, toDate }: GetPaymentReceiptsOptions,
+  // This page argument is kept in case ZRA v2 paginates payment history again
+  page: number,
+  { fromDate, toDate }: GetPaymentReceiptsOptions,
 ): Promise<GetDataFromPageFunctionReturn<PaymentReceipt[]>> {
   // TODO: Try passing period start date and to date
   const doc = await getDocumentByAjax({ url: `${ZraDomain}/paymentHistory/history` });
