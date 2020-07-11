@@ -13,7 +13,7 @@ import { getElementFromDocument, getHtmlFromNode } from '../content_scripts/help
 import {
   CaptchaLoadError, LogoutError, ElementNotFoundError, CaptchaSolveError,
 } from '@/backend/errors';
-import { checkLogin } from '../content_scripts/helpers/check_login';
+import { checkLoggedInProfile, checkLogin } from '../content_scripts/helpers/check_login';
 import { TaskState, TaskId } from '@/store/modules/tasks';
 import { Client, ZraDomain, ZraCaptchaUrl } from '../constants';
 import { RequiredBy, round } from '@/utils';
@@ -211,6 +211,10 @@ export async function login({
           } else {
             checkLogin(doc, client);
           }
+          const checkLoginDoc = await getDocumentByAjax({
+            url: `${ZraDomain}/security/userprofile`,
+          });
+          checkLoggedInProfile(checkLoginDoc, client);
           log.log(`Done logging in "${client.name}"`);
           task.state = TaskState.SUCCESS;
         } catch (error) {
