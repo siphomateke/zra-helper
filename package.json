@@ -14,7 +14,7 @@
     "build": "vue-cli-service build",
     "build:firefox": "cross-env BROWSER=firefox yarn run build",
     "build:chrome": "cross-env BROWSER=chrome yarn run build",
-    "build:all": "yarn run build:firefox && yarn run build:chrome",
+    "build:all": "yarn run build:firefox || true && yarn run build:chrome",
     "lint": "vue-cli-service lint --format stylish --mode production",
     "devtools": "vue-devtools",
     "postversion": "concurrently \"git push --tags\" \"yarn run build:all\"",
