@@ -454,7 +454,7 @@ export async function getTaxAccountPage({
   GetDataFromPageFunctionReturn<ParsedTableRecord<keyof TaxAccountRecord>[]>
 > {
   // TODO: [performance] Don't get this page again since it's already the default after login
-  const doc = await getDocumentByAjax({ url: `${ZraDomain}/main` });
+  const doc = await getDocumentByAjax({ url: `${ZraDomain}/taxpayer-details` });
 
   const tableWrapper = getElementFromDocument(
     doc,
