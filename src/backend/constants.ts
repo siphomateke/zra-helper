@@ -253,8 +253,8 @@ export const financialAccountStatusTypesMap: {
     f.ACKNPEND,
     f.SBJTAPRV,
     f.PNDC,
+    f.SUBMITTED,
   ],
-  // FIXME: What type is SUBMITTED?
 };
 // #endregion
 
