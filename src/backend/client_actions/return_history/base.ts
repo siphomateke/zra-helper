@@ -13,9 +13,11 @@ import {
   DateString,
   taxTypeNumericalCodes,
   ZraDomain,
+  TaxAccountName,
+  FinancialAccountStatus,
 } from '../../constants';
 import { getDocumentByAjax } from '../../utils';
-import { parseTableAdvanced } from '../../content_scripts/helpers/zra';
+import { parseTable } from '../../content_scripts/helpers/zra';
 import {
   parallelTaskMap,
   taskFunction,
@@ -39,91 +41,79 @@ import {
 } from '../base';
 import { TaskId } from '@/store/modules/tasks';
 import { objKeysExact } from '@/utils';
+import { getElementFromDocument } from '@/backend/content_scripts/helpers/elements';
+import { getTaxAccountCode } from '@/backend/tax_account_code';
 
-/** Excise type numerical code. For example, '20025012' (Airtime) and '20025007' (ElectricalEnergy). */
-enum ExciseType {
-  Airtime = '20025012',
-  ElectricalEnergy = '20025007',
-  OpaqueBeer = '20025011',
-  OtherThanOpaqueBeer = '20025008',
-  FuelTerminal = '20025010',
-  SpiritsAndWine = '20025009',
-}
+type TaxReturnApplicationType = 'ORIGINAL - NON-NIL'
+  | 'ORIGINAL - NIL'
+  | 'AMENDED - NON-NIL'
+  | 'AMENDED - NIL'
 
 export interface TaxReturn {
   srNo: string;
   referenceNo: ReferenceNumber;
-  searchCode: string;
   returnPeriodFrom: string;
   returnPeriodTo: string;
+  /** E.g. "24/03/2020 16:07 PM" */
   returnAppliedDate: string;
-  accountName: string;
-  applicationType: string;
-  /** Financial account status code with an asterisk at the end. */
+  accountName: TaxAccountName;
+  /** E.g. "ORIGINAL - NIL" */
+  applicationType: TaxReturnApplicationType;
+  /** Financial account status code. */
+  // FIXME: Confirm `FinancialAccountStatus` are the correct codes and update any old code referencing this.
+  // No longer has asterisk and is in full
   status: string;
-  appliedThrough: string;
-  receipt: string;
-  submittedForm: string;
 }
 
 interface GetReturnHistoryRecordsFnOptions {
-  tpin: TPIN;
   taxType: TaxTypeNumericalCode;
   fromDate: DateString;
   toDate: DateString;
-  exciseType: ExciseType;
 }
 
 /**
  * Gets return history records that match the given criteria.
  */
 async function getReturnHistoryRecords(
-  page: number,
-  {
-    tpin, taxType, fromDate, toDate, exciseType,
-  }: GetReturnHistoryRecordsFnOptions,
+  page: number, { taxType, fromDate, toDate }: GetReturnHistoryRecordsFnOptions,
 ): Promise<GetDataFromPageFunctionReturn<TaxReturn[]>> {
+  const taxAccountId = await getTaxAccountCode({ accountName: '', taxTypeId: taxType });
   const doc = await getDocumentByAjax({
-    url: `${ZraDomain}/retHist.htm`,
+    url: `${ZraDomain}/returns/filedReturns`,
     method: 'post',
     data: {
-      'retHistVO.fromDate': fromDate,
-      'retHistVO.toDate': toDate,
-      'retHistVO.rtnackNo': '',
-      'retHistVO.rtnType': taxType,
-      'retHistVO.rtnTypeExc': exciseType,
-      'retHistVO.tinNo': tpin,
-      currentPage: page,
-      actionCode: 'dealerReturnsView',
-      dispatch: 'dealerReturnsView',
+      taxAccountId,
+      periodStartDate: fromDate,
+      periodEndDate: toDate,
     },
   });
 
-  const table = await parseTableAdvanced({
-    root: doc,
+  let records = await parseTable({
+    root: getElementFromDocument(doc, '#filed-returns', 'filed returns table'),
     headers: [
       'srNo',
       'referenceNo',
-      'searchCode',
-      'returnPeriodFrom',
-      'returnPeriodTo',
-      'returnAppliedDate',
       'accountName',
       'applicationType',
+      'returnAppliedDate',
+      'returnPeriod',
       'status',
-      'appliedThrough',
-      'receipt',
-      'submittedForm',
+      'actions',
     ],
-    tableInfoSelector: '#ReturnHistoryForm>table:nth-child(8)>tbody>tr>td',
-    recordSelector: '#ReturnHistoryForm>table.FORM_TAB_BORDER.marginStyle>tbody>tr.whitepapartd.borderlessInput',
-    noRecordsString: 'No Data Found',
+    recordSelector: 'tbody>tr',
   });
-  let { records } = table;
-  records = records.filter(record => record.appliedThrough.toLowerCase() === 'online');
+  records = records.filter(record => record.status.toLowerCase() !== 'rejected');
+  const convertedRecords = records.map((r) => {
+    // returnPeriod contains the from date and to date separate by a hyphen.
+    const splitPeriod = r.returnPeriod.split(' - ');
+    return Object.assign(r, {
+      returnPeriodFrom: splitPeriod[0],
+      returnPeriodTo: splitPeriod[1],
+    });
+  });
   return {
-    numPages: table.numPages,
-    value: records,
+    numPages: 1,
+    value: convertedRecords,
   };
 }
 
@@ -147,7 +137,17 @@ export function generateDownloadFilename({
   } else {
     dateString = date.format('YYYY-MM');
   }
-  return `${type}-${client.username}-${taxTypes[taxType]}-${dateString}-${taxReturn.referenceNo}`;
+  const filenameData = [
+    type,
+    client.username,
+    taxTypes[taxType],
+    dateString,
+    taxReturn.referenceNo,
+  ];
+  if (taxReturn.applicationType.toLowerCase().includes('amended')) {
+    filenameData.splice(4, 0, 'Amd');
+  }
+  return filenameData.join('-');
 }
 
 export namespace ReturnHistoryClientAction {
@@ -251,18 +251,16 @@ export class ReturnHistoryRunner<
   }
 
   async getReturnsInternal({ task, taxTypeId, pages }: GetReturnsInternalFnOptions) {
-    const { client, input } = this.storeProxy;
+    const { input } = this.storeProxy;
 
     const response = await getReceiptData({
       parentTaskId: task.id,
       taskTitle: 'Get returns',
       getPageTaskTitle: page => `Getting returns from page ${page}`,
       getDataFunction: page => getReturnHistoryRecords(page, {
-        tpin: client.username,
         taxType: taxTypeId,
         fromDate: input.fromDate,
         toDate: input.toDate,
-        exciseType: ExciseType.Airtime,
       }),
       pages,
     });

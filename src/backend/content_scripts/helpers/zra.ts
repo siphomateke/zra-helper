@@ -95,7 +95,7 @@ export function parseTable<H extends string>({
       const innerText = column.innerText.trim();
       let value: string | ParsedTableLinkCell = innerText;
       if (parseLinks) {
-        const link = column.querySelector('a');
+        const link = column.querySelector('a,button');
         if (link) {
           const onclick = link.getAttribute('onclick');
           if (onclick) {
@@ -116,8 +116,6 @@ export function parseTable<H extends string>({
 interface ParseTableAdvancedOptions<H extends string, P extends boolean> extends ParseTableOptions<H, P> {
   /** Selector of the element that contains information about the table such as the current page. */
   tableInfoSelector: string;
-  /** String that will exist when there are no records */
-  noRecordsString?: string;
 }
 
 /**
@@ -135,24 +133,27 @@ export function parseTableAdvanced<H extends string>(options: ParseTableAdvanced
  * Parses ZRA tables and returns the records, current page and number of pages.
  * @template H Headers
  */
-// TODO: Find out why this is async
+// Note, this is async just in case table parsing will need other data in the future.
 export async function parseTableAdvanced<H extends string>({
   root,
   headers,
   tableInfoSelector,
   recordSelector,
-  noRecordsString = 'No Records Found',
   parseLinks = false,
 }: ParseTableAdvancedOptions<H, boolean>): Promise<ParsedTable<H, ParsedTableLinkCell | string>> {
+  const recordsPerPage = Number(getElementFromDocument<HTMLSelectElement>(root, '.dataTables_length select').value);
   const tableInfoElement = getElementFromDocument(root, tableInfoSelector, 'table info');
   const tableInfo = tableInfoElement.innerText;
   let currentPage = 1;
   let numPages = 0;
   let records: ParsedTableRecord<H, ParsedTableLinkCell | string>[] = [];
-  if (!tableInfo.includes(noRecordsString)) {
-    const tableInfoMatches = tableInfo.match(/Current Page : (\d+)\s*\/\s*(\d+)/);
-    currentPage = Number(tableInfoMatches[1]);
-    numPages = Number(tableInfoMatches[2]);
+  if (!root.querySelector('.dataTables_empty')) {
+    const tableInfoMatches = tableInfo.match(/Showing (\d+)\s*to\s*(\d+)\s*of\s*(\d+)\s*entries/);
+    const firstRecordNum = Number(tableInfoMatches[1]);
+    const totalRecords = Number(tableInfoMatches[2]);
+    numPages = totalRecords / recordsPerPage;
+    currentPage = firstRecordNum % recordsPerPage;
+    // TODO: Make sure the parsed values are correct and mean what we think
     records = parseTable({
       root,
       headers,

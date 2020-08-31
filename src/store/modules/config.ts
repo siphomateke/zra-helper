@@ -39,6 +39,10 @@ export interface ConfigState {
      * running the tasks.
      */
     calculateTaskDuration: boolean;
+    /**
+     * Log steps taken to solve captchas.
+     */
+    captchaSolving: boolean;
   };
   /** The amount of time to wait for a tab to load (in milliseconds). */
   tabLoadTimeout: number;
@@ -120,6 +124,8 @@ export interface ConfigState {
       ackReceiptsPerformanceWarning: boolean;
     },
   },
+  /** IP address and port of the TensorFlow model server used to solve ZRA's captchas. */
+  tensorflowCaptchaServerUrl: string;
 }
 
 const defaultConfig: ConfigState = {
@@ -133,6 +139,7 @@ const defaultConfig: ConfigState = {
     missingElementInfo: true,
     anonymizeClientsInExports: false,
     calculateTaskDuration: false,
+    captchaSolving: false,
   },
   tabLoadTimeout: 20000,
   requestTimeout: 20000,
@@ -165,6 +172,7 @@ const defaultConfig: ConfigState = {
       ackReceiptsPerformanceWarning: false,
     },
   },
+  tensorflowCaptchaServerUrl: 'http://localhost:8501',
 };
 
 // TODO: Use TypeScript

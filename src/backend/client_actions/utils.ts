@@ -4,14 +4,14 @@ import createTask, { TaskObject } from '@/transitional/tasks';
 import config from '@/transitional/config';
 import {
   getDocumentByAjax,
-  createTabPost,
+  createTabFromRequest,
   tabLoaded,
   saveAsMHTML,
   closeTab,
   monitorDownloadProgress,
   startDownload,
   runContentScript,
-  CreateTabPostOptions,
+  CreateTabRequestOptions,
   createTabFromHtml,
 } from '../utils';
 import {
@@ -24,7 +24,7 @@ import {
   ZraDomain,
 } from '../constants';
 import { getCurrentBrowser, RequiredBy, Omit } from '@/utils';
-import { parseTableAdvanced, ParsedTableRecord } from '../content_scripts/helpers/zra';
+import { parseTable, ParsedTableRecord } from '../content_scripts/helpers/zra';
 import { getElementFromDocument } from '../content_scripts/helpers/elements';
 import { Store } from 'vuex';
 import getSingleFileHtmlBlob from '../html_bundler';
@@ -400,15 +400,39 @@ export async function getPagedData<R>({
   });
 }
 
+/**
+ *
+ * @param accountName Must be lower case
+ */
+export function getTaxTypeIdFromAccountName(
+  accountName: TaxAccountName,
+): TaxTypeNumericalCode | null {
+  /* The account name contains the name of the client and the name of the tax type separated
+  by a hyphen. We can thus figure out the account's tax type ID from the account name.
+  Account names can be in various formats;
+  - "CLIENT NAME-INCOME TAX"
+  - "CLIENT-NAME-INCOME TAX"
+  - "CLIENT-WITHHOLDING TAX"
+  - "CLIENT-WITHHOLDING TAX-02"
+  */
+  let taxTypeId = null;
+  for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNamesMap)) {
+    if (accountName.indexOf(taxTypeName) > -1) {
+      taxTypeId = taxPayerSearchTaxTypeNamesMap[taxTypeName];
+      break;
+    }
+  }
+  return taxTypeId;
+}
+
 interface TaxAccountRecord {
   srNo: string;
   /** E.g. "john smith-income tax" */
   accountName: TaxAccountName;
   /** E.g. "1997-02-01" */
   effectiveDateOfRegistration: string;
-  status: 'registered' | 'cancelled' | 'suspended';
-  /** E.g. "2014-07-25" */
-  effectiveCancellationDate: string;
+  // FIXME: Find out new tax account statuses
+  status: 'active' | 'cancelled' | 'suspended';
 }
 
 export interface TaxAccount extends TaxAccountRecord {
@@ -429,38 +453,28 @@ export async function getTaxAccountPage({
 }: GetTaxAccountPageFnOptions): Promise<
   GetDataFromPageFunctionReturn<ParsedTableRecord<keyof TaxAccountRecord>[]>
 > {
-  const doc = await getDocumentByAjax({
-    url: `${ZraDomain}/WebContentMgmt.htm`,
-    method: 'post',
-    data: {
-      actionCode: 'getTaxPayerRegistrationDetail',
-      tpinNo: tpin,
-      currentPage: page,
-    },
-  });
+  // TODO: [performance] Don't get this page again since it's already the default after login
+  const doc = await getDocumentByAjax({ url: `${ZraDomain}/taxpayer-details` });
 
   const tableWrapper = getElementFromDocument(
     doc,
-    '[name="interestRateForm"] table:nth-of-type(2)>tbody>tr:nth-child(2)>td',
+    '#simpletable',
     'tax account table wrapper',
   );
-  const parsedTable = await parseTableAdvanced({
+  const parsedTableRecords = await parseTable({
     root: tableWrapper,
     headers: [
       'srNo',
+      'taxType',
       'accountName',
       'effectiveDateOfRegistration',
       'status',
-      'effectiveCancellationDate',
     ],
-    recordSelector: 'table:nth-of-type(2)>tbody>tr:not(:first-child)',
-    tableInfoSelector: 'table.pagebody>tbody>tr>td',
-    /* TODO: There is always at least one tax account. Because of the this, the no records string
-    should not be checked. */
+    recordSelector: 'tbody>tr',
   });
   return {
-    numPages: parsedTable.numPages,
-    value: parsedTable.records,
+    numPages: 1, // ZRA V2 paginates using JavaScript so all the data is already there
+    value: parsedTableRecords,
   };
 }
 
@@ -501,21 +515,8 @@ export async function getTaxAccounts<S>({
       const records = pageResponse.value;
       for (const account of records) {
         const accountName = account.accountName.toLowerCase();
-        /* The account name contains the name of the client and the name of the tax type separated
-        by a hyphen. We can thus figure out the account's tax type ID from the account name.
-        Account names can be in various formats;
-        - "CLIENT NAME-INCOME TAX"
-        - "CLIENT-NAME-INCOME TAX"
-        - "CLIENT-WITHHOLDING TAX"
-        - "CLIENT-WITHHOLDING TAX-02"
-        */
-        let taxTypeId = null;
-        for (const taxTypeName of Object.keys(taxPayerSearchTaxTypeNamesMap)) {
-          if (accountName.indexOf(taxTypeName) > -1) {
-            taxTypeId = taxPayerSearchTaxTypeNamesMap[taxTypeName];
-            break;
-          }
-        }
+
+        const taxTypeId = getTaxTypeIdFromAccountName(accountName);
 
         let status = account.status.toLowerCase();
         // Replace "De-registered" with "Cancelled" since it's the same thing.
@@ -526,7 +527,6 @@ export async function getTaxAccounts<S>({
           accountName,
           effectiveDateOfRegistration: account.effectiveDateOfRegistration,
           status,
-          effectiveCancellationDate: account.effectiveCancellationDate,
           taxTypeId,
         });
       }
@@ -615,7 +615,7 @@ interface BaseDownloadPageOptions {
 }
 
 interface DownloadPageByRequestOptions extends BaseDownloadPageOptions {
-  createTabPostOptions: CreateTabPostOptions;
+  createTabFromRequestOptions: CreateTabRequestOptions;
 }
 
 interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
@@ -624,7 +624,12 @@ interface DownloadPageByDocumentOptions extends BaseDownloadPageOptions {
   htmlDocumentUrl: string;
 }
 
-type DownloadPageOptions = DownloadPageByRequestOptions | DownloadPageByDocumentOptions;
+interface DownloadPageByUrl extends BaseDownloadPageOptions {
+  downloadUrl: string;
+}
+
+type DownloadPageOptions =
+  DownloadPageByRequestOptions | DownloadPageByDocumentOptions | DownloadPageByUrl;
 
 /**
  * Downloads a page generated from a `HTMLDocument`.
@@ -634,6 +639,7 @@ export async function downloadPage(options: DownloadPageByDocumentOptions): Prom
  * Downloads a page generated from a POST request.
  */
 export async function downloadPage(options: DownloadPageByRequestOptions): Promise<void>;
+export async function downloadPage(options: DownloadPageByUrl): Promise<void>;
 export async function downloadPage(options: DownloadPageOptions): Promise<void> {
   const { filename, taskTitle, parentTaskId } = options;
 
@@ -660,15 +666,26 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
   return taskFunction({
     task,
     async func() {
-      const blobs: { [filename: string]: Blob } = {};
-      if (config.export.pageDownloadFileType === 'mhtml') {
+      const downloads: { [filename: string]: Blob | string } = {};
+      let fileTypeName = 'file';
+      // TODO: Merge duplicate code
+      if ('downloadUrl' in options) {
+        if (Array.isArray(generatedFilename)) {
+          for (const filename of generatedFilename) {
+            downloads[filename] = options.downloadUrl;
+          }
+        } else {
+          downloads[generatedFilename] = options.downloadUrl;
+        }
+      } else if (config.export.pageDownloadFileType === 'mhtml') {
+        fileTypeName = 'MHTML file';
         task.status = 'Opening tab';
         // FIXME: Handle changing maxOpenTabs when downloading more gracefully.
         const initialMaxOpenTabs = config.maxOpenTabs;
         config.maxOpenTabs = config.maxOpenTabsWhenDownloading;
         let tab: browser.tabs.Tab;
-        if ('createTabPostOptions' in options) {
-          tab = await createTabPost(options.createTabPostOptions);
+        if ('createTabFromRequestOptions' in options) {
+          tab = await createTabFromRequest(options.createTabFromRequestOptions);
         } else {
           tab = await createTabFromHtml(options.htmlDocument);
         }
@@ -693,25 +710,26 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
           const blob = await saveAsMHTML({ tabId: tab.id });
           if (Array.isArray(generatedFilename)) {
             for (const filename of generatedFilename) {
-              blobs[filename] = blob;
+              downloads[filename] = blob;
             }
           } else {
-            blobs[generatedFilename] = blob;
+            downloads[generatedFilename] = blob;
           }
         } finally {
           // TODO: Catch tab close errors
           closeTab(tab.id);
         }
       } else if (config.export.pageDownloadFileType === 'html') {
+        fileTypeName = 'HTML file';
         let url: string;
         let doc: HTMLDocument;
-        if ('createTabPostOptions' in options) {
+        if ('createTabFromRequestOptions' in options) {
           task.status = 'Fetching page';
           doc = await getDocumentByAjax({
-            ...options.createTabPostOptions,
             method: 'post',
+            ...options.createTabFromRequestOptions,
           });
-          ({ url } = options.createTabPostOptions);
+          ({ url } = options.createTabFromRequestOptions);
         } else {
           doc = options.htmlDocument;
           url = options.htmlDocumentUrl;
@@ -731,38 +749,31 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
           const promises: Promise<any>[] = [];
           for (const filename of filenames) {
             promises.push((async () => {
-              blobs[filename] = await getSingleFileHtmlBlob(doc, url, filename);
+              downloads[filename] = await getSingleFileHtmlBlob(doc, url, filename);
             })());
           }
           await Promise.all(promises);
         } else {
           const blob = await getSingleFileHtmlBlob(doc, url);
           for (const filename of filenames) {
-            blobs[filename] = blob;
+            downloads[filename] = blob;
           }
         }
-      }
-
-      let fileTypeName = 'file';
-      if (config.export.pageDownloadFileType === 'mhtml') {
-        fileTypeName = 'MHTML file';
-      } else if (config.export.pageDownloadFileType === 'html') {
-        fileTypeName = 'HTML file';
       }
 
       task.addStep(`Downloading generated ${fileTypeName}`);
 
       const taskProgressBeforeDownload = task.progress;
       const promises: Promise<any>[] = [];
-      for (const filename of Object.keys(blobs)) {
+      for (const filename of Object.keys(downloads)) {
         // eslint-disable-next-line no-loop-func
         promises.push((async () => {
           if (typeof filename !== 'string') {
             throw new Error('Invalid filename attribute; filename must be a string, array or function.');
           }
 
-          const blob = blobs[filename];
-          const url = URL.createObjectURL(blob);
+          const download = downloads[filename];
+          const url = download instanceof Blob ? URL.createObjectURL(download) : download;
           try {
             let downloadFilename = filename;
             if (
@@ -784,7 +795,9 @@ export async function downloadPage(options: DownloadPageOptions): Promise<void> 
               }
             });
           } finally {
-            URL.revokeObjectURL(url);
+            if (download instanceof Blob) {
+              URL.revokeObjectURL(url);
+            }
           }
         })());
       }

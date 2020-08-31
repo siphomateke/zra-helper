@@ -1,4 +1,4 @@
-import { TaxAccountName } from './constants';
+import { TaxTypeNumericalCode } from './constants';
 
 interface ExtendedErrorJson {
   message: string;
@@ -113,6 +113,12 @@ export class CaptchaLoadError extends ImageLoadError {
     this.setType('CaptchaLoadError');
   }
 }
+export class CaptchaSolveError extends ExtendedError {
+  constructor(...args) {
+    super(...args);
+    this.setType('CaptchaSolveError');
+  }
+}
 
 interface LoginErrorProps {
   /** The name of the client that failed to login. */
@@ -123,8 +129,10 @@ interface LoginErrorProps {
   attemptsRemaining?: number | null;
   /** Entire document string.Only thrown when the login error is unknown. */
   documentString?: string | null;
+  /** Error encountered when verifying if the client was logged in */
+  verificationError?: Error;
 }
-type LoginErrorCodes = 'PasswordExpired' | 'InvalidUsernameOrPassword' | 'WrongClient';
+type LoginErrorCodes = 'PasswordExpired' | 'InvalidUsernameOrPassword' | 'WrongClient' | 'VerificationFailed';
 // TODO: Handle storing attempts remaining better. Perhaps a class that extends LoginError somehow
 export class LoginError extends ExtendedError {
   constructor(message: string, code: LoginErrorCodes | null = null, props: LoginErrorProps) {
@@ -225,14 +233,13 @@ export class MissingTaxTypesError extends ExtendedError {
   }
 }
 
-interface TaxAccountNameNotFoundProps {
-  /** The name of the account that could not be found. */
-  accountName: TaxAccountName;
+interface TaxAccountCodeNotFoundProps {
+  taxTypeId: TaxTypeNumericalCode;
 }
-export class TaxAccountNameNotFound extends ExtendedError {
-  constructor(message: string, code = null, props: TaxAccountNameNotFoundProps) {
+export class TaxAccountCodeNotFound extends ExtendedError {
+  constructor(message: string, code = null, props: TaxAccountCodeNotFoundProps) {
     super(message, code, props);
-    this.setType('TaxAccountNameNotFound');
+    this.setType('TaxAccountCodeNotFound');
   }
 }
 

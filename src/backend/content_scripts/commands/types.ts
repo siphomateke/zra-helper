@@ -52,10 +52,6 @@ export interface FindUnloadedImages extends ContentScriptListenerMessage {
   command: 'find_unloaded_images';
 }
 
-export interface GetPasswordExpiryDateMessage extends ContentScriptListenerMessage {
-  command: 'get_password_expiry_date';
-}
-
 export interface ContentScriptMessages {
   check_login: CheckLoginMessage;
   click_element: ClickElementMessage;
@@ -64,7 +60,6 @@ export interface ContentScriptMessages {
   inject_form: InjectFormMessage;
   receive_config: ConfigMessage;
   find_unloaded_images: FindUnloadedImages;
-  get_password_expiry_date: GetPasswordExpiryDateMessage;
 }
 
 export type ContentScriptCommand = keyof ContentScriptMessages;
@@ -74,11 +69,6 @@ export type ContentScriptMessageFromCommand<
   > = ContentScriptMessages[Command];
 
 export type FindUnloadedImagesResponse = LoadedImagesResponse;
-
-export interface GetPasswordExpiryDateResponse {
-  /** E.g. `13/12/2019 00:44:13` */
-  expiryDate: string
-};
 
 export interface ContentScriptResponses<
   Command extends ContentScriptCommand,
@@ -92,7 +82,6 @@ export interface ContentScriptResponses<
   inject_form: void;
   receive_config: void;
   find_unloaded_images: FindUnloadedImagesResponse;
-  get_password_expiry_date: GetPasswordExpiryDateResponse;
 }
 
 export type ContentScriptResponseFromCommand<

@@ -245,7 +245,7 @@ class TabCreator {
     if (!this.drainingQueue) {
       this.drainingQueue = true;
       while (this.queue.length > 0 && this.slotFree()) {
-        const callback = <Function> this.queue.shift();
+        const callback = <Function>this.queue.shift();
         this.openTabsCount++;
         this.lastTabOpenTime = Date.now();
 
@@ -404,31 +404,35 @@ export async function createTabFromHtml(
   }
 }
 
-export interface CreateTabPostOptions {
-  /** The URL to send a POST request to */
+export interface CreateTabRequestOptions {
+  /** The URL to send a request to */
   url: string;
-  /** The POST parameters */
-  data: { [key: string]: any };
+  method?: 'post' | 'get';
+  /** Request if any parameters */
+  data?: { [key: string]: any };
   /** Whether the tab should become the active tab in the window */
   active?: boolean;
 }
 /**
- * Creates a tab with the result of a POST request.
+ * Creates a tab with the result of a HTTP request.
  */
-export async function createTabPost({
+export async function createTabFromRequest({
   url,
   data,
+  method = 'post',
   active = false,
-}: CreateTabPostOptions): Promise<browser.tabs.Tab> {
+}: CreateTabRequestOptions): Promise<browser.tabs.Tab> {
   const form = document.createElement('form');
-  form.method = 'POST';
+  form.method = method;
   form.action = url;
-  form.id = 'zra-helper-post-form';
-  for (const key of Object.keys(data)) {
-    const input = document.createElement('textarea');
-    input.setAttribute('name', key);
-    input.textContent = data[key];
-    form.appendChild(input);
+  form.id = 'zra-helper-http-request-form';
+  if (typeof data !== 'undefined') {
+    for (const key of Object.keys(data)) {
+      const input = document.createElement('textarea');
+      input.setAttribute('name', key);
+      input.textContent = data[key];
+      form.appendChild(input);
+    }
   }
 
   let formHtml = form.outerHTML;
@@ -674,15 +678,6 @@ async function parseXml<R extends object>(str: string): Promise<R> {
       resolve(result);
     });
   });
-}
-
-/**
- * Makes a request that returns XML and parses the XML response.
- * @returns The parsed XML.
- */
-export async function xmlRequest<R extends object>(options: RequestOptions): Promise<R> {
-  const xml: string = await makeRequest(options);
-  return parseXml<R>(xml);
 }
 
 /**

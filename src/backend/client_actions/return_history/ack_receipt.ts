@@ -7,21 +7,14 @@ import {
 } from './base';
 import { downloadPage } from '../utils';
 import { TaxTypeNumericalCode, ReferenceNumber, ZraDomain } from '@/backend/constants';
-import { CreateTabPostOptions } from '@/backend/utils';
+import { CreateTabRequestOptions } from '@/backend/utils';
 
 export function generateAckReceiptRequest(
   taxType: TaxTypeNumericalCode,
   referenceNumber: ReferenceNumber,
-): CreateTabPostOptions {
-  return {
-    url: `${ZraDomain}/retHist.htm`,
-    data: {
-      actionCode: 'printReceipt',
-      flag: 'rtnHistRcpt',
-      ackNo: referenceNumber,
-      rtnType: taxType,
-    },
-  };
+): CreateTabRequestOptions {
+  // FIXME: This isn't the URL for ack receipts
+  return { url: `${ZraDomain}/returns/view/${referenceNumber}`, method: 'get' };
 }
 
 const downloadAckReceipt: ReturnHistoryDownloadFn = function downloadAckReceipt({
@@ -32,15 +25,15 @@ const downloadAckReceipt: ReturnHistoryDownloadFn = function downloadAckReceipt(
 }) {
   const referenceNumber = taxReturn.referenceNo;
   return downloadPage({
-    filename: generateDownloadFilename({
+    filename: `ack-${generateDownloadFilename({
       type: 'receipt',
       taxReturn,
       client,
       taxType,
-    }),
+    })}`,
     taskTitle: `Download acknowledgement receipt ${referenceNumber}`,
     parentTaskId,
-    createTabPostOptions: generateAckReceiptRequest(taxType, referenceNumber),
+    downloadUrl: `${ZraDomain}/uploads/returns/acknowledgements/${referenceNumber}.pdf`,
   });
 };
 

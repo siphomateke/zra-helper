@@ -23,7 +23,9 @@
     "downloads.open",
     "tabs",
     "storage",
-    "https://eservices.zra.org.zm/*",
+    "*://eservices.zra.org.zm/*",
+    "*://portal.zra.org.zm/*",
+    "<all_urls>",
     "notifications",
     "webRequest",
     "webRequestBlocking"

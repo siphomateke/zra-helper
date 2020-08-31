@@ -1,9 +1,8 @@
-import { TaxAccountNameNotFound } from '@/backend/errors';
+import { TaxAccountCodeNotFound } from '@/backend/errors';
 import createTask from '@/transitional/tasks';
-import { taskFunction } from '@/backend/client_actions/utils';
-import { xmlRequest } from '@/backend/utils';
+import { taskFunction, getTaxTypeIdFromAccountName } from '@/backend/client_actions/utils';
+import { getDocumentByAjax } from '@/backend/utils';
 import store from '@/store';
-import { ReportCode } from './reports';
 import {
   TaxAccountName, TaxAccountCode, TaxTypeNumericalCode, ZraDomain,
 } from './constants';
@@ -19,10 +18,8 @@ export function getAnonymousAccountName(accountName: TaxAccountName): string {
 }
 
 interface AccountData {
-  /** The account's code. */
-  name: TaxAccountCode;
-  /** The account's name. */
-  value: TaxAccountName;
+  code: TaxAccountCode;
+  accountName: TaxAccountName;
 }
 
 interface GetAccountCodeFnOptions {
@@ -46,35 +43,29 @@ export async function getTaxAccountCode({
   taxTypeId,
 }: GetAccountCodeFnOptions): Promise<TaxAccountCode> {
   // Get the codes and names of all tax accounts that have the specified tax type.
-  const response = await xmlRequest({
-    url: `${ZraDomain}/frontController.do?actionCode=RPRTPAJAXCHILDCOMBO`,
+  const doc = await getDocumentByAjax({
+    url: `${ZraDomain}/returns/filedReturns`,
     method: 'post',
-    data: {
-      prm_ajaxComboTarget: 'accountName',
-      reportCode: ReportCode.PENDING_LIABILITY,
-      prm_TaxType: taxTypeId,
-    },
   });
 
-  let accountData: AccountData | AccountData[] | undefined = response['request-params'].param;
-  let accountNameNotFound: boolean = false;
-  if (Array.isArray(accountData)) {
-    // If there is more than one tax account with the specified tax type, use the one whose
-    // name matches the `accountName` param.
-    accountData = accountData.find(account => account.value.toLowerCase() === accountName);
-    if (typeof accountData === 'undefined') {
-      accountNameNotFound = true;
-    }
-  } else if (!accountData || accountData.value.toLowerCase() !== accountName) {
-    accountNameNotFound = true;
-  }
-  if (accountNameNotFound) {
-    throw new TaxAccountNameNotFound(`Cannot find account with name "${accountName}"`, null, {
+  const optionEls = doc.querySelectorAll<HTMLOptionElement>('select[name="taxAccountId"] option');
+  const accountCodes = [];
+  optionEls.forEach((option) => {
+    const accountName = option.innerText.toLowerCase();
+    accountCodes.push({
+      code: option.value,
       accountName,
+      taxTypeId: getTaxTypeIdFromAccountName(accountName),
+    });
+  });
+
+  const accountData: AccountData = accountCodes.find(account => account.taxTypeId === taxTypeId);
+  if (typeof accountData === 'undefined') {
+    throw new TaxAccountCodeNotFound(`Cannot find the code for the tax type ID "${taxTypeId}"`, null, {
+      taxTypeId,
     });
   }
-  const accountCode = accountData!.name;
-  return accountCode;
+  return accountData.code;
 }
 
 /**

@@ -1,38 +1,20 @@
 import { LoginError } from '../../errors';
-import { getHtmlFromNode, getElementText } from './elements';
+import { getHtmlFromNode, getElementText, getElementFromDocument } from './elements';
 import { Client } from '@/backend/constants';
 
 /**
- * Client's name and username in the format: "<name>  (<username>)""
- *
- * For example, "JOHN DOE  (1000000000)"
+ * Client's username. E.g. "1000000000". This is vaguely called "client info" in case ZRA changes
+ * again and includes more information in the username field.
  */
 type ClientInfo = string;
 
 /**
  * Gets the currently logged in client's information.
+ * @throws {ElementNotFoundError}
  */
-export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo | null {
-  const clientEl = <HTMLElement | null>(
-    root.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(27)>b>label')
-  );
-  if (clientEl) {
-    return clientEl.innerText;
-  }
-  return null;
-}
-
-/**
- * Gets the date when a client's password will expire.
- */
-export function getPasswordExpiryDate(root: HTMLDocument | HTMLElement) {
-  const passwordExpiryEl = <HTMLElement | null>(
-    root.querySelector('#headerContent>tbody>tr>td:nth-child(3)>p:nth-child(29)>b>label')
-  );
-  if (passwordExpiryEl) {
-    return passwordExpiryEl.innerText;
-  }
-  return null;
+export function getClientInfo(root: HTMLDocument | HTMLElement): ClientInfo {
+  const usernameField = getElementFromDocument<HTMLInputElement>(root, '.page-body #frm-reset-password [name="username"]', 'username field');
+  return usernameField.value;
 }
 
 /**
@@ -59,7 +41,7 @@ export function getWrongClientError(clientInfo: ClientInfo): LoginError {
 export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
   // Detect login errors such as expired password, invalid username and invalid password
   const expiredPasswordErrorEl = <HTMLElement | null>(
-    root.querySelector('#loginAdminForm>p.tablerowhead')
+    root.querySelector('.auth-box>.alert')
   );
   const errorEl = <HTMLElement | null>root.querySelector('.error');
   if (expiredPasswordErrorEl || errorEl) {
@@ -76,8 +58,8 @@ export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
         error = new LoginError("Client's password has expired", 'PasswordExpired', {
           clientName: client.username,
         });
-      } else if (lowerCaseErrorString.includes('invalid login id or password')) {
-        let errorMessage = 'Invalid login ID or password';
+      } else if (lowerCaseErrorString.includes('invalid username or password or captcha')) {
+        let errorMessage = 'Invalid username or password or captcha';
         const errorData: { clientName: string; attemptsRemaining: number | null } = {
           clientName: client.username,
           attemptsRemaining: null,
@@ -86,6 +68,7 @@ export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
         // Add extra information about the error if it's available.
         // This is mainly used to show the number of attempts left.
         const loginErrorDetailsEl = <HTMLElement | null>(
+          // TODO: Update
           root.querySelector('#loginForm #layer1>table>tbody>tr.whitepapartdBig')
         );
         if (loginErrorDetailsEl) {
@@ -117,21 +100,25 @@ export function checkLogin(root: HTMLDocument | HTMLElement, client: Client) {
       throw error;
     }
   }
+}
 
-  const clientInfo = getClientInfo(root);
-  if (clientInfo) {
-    const foundUsername = usernameInClientInfo(client.username, clientInfo);
-    // If we did not find the username in the client info, then another client
-    // is already logged in.
-    if (foundUsername) {
-      return;
-    }
-    throw getWrongClientError(clientInfo);
+export function checkLoggedInProfile(root: HTMLDocument | HTMLElement, client: Client) {
+  let clientInfo;
+  try {
+    clientInfo = getClientInfo(root);
+  } catch (error) {
+    throw new LoginError('Error finding element to verify if login was successful', 'VerificationFailed', {
+      clientName: client.username,
+      documentString: getHtmlFromNode(root),
+      verificationError: error,
+    });
   }
-  // TODO: log no client info error
 
-  throw new LoginError('Unknown error logging in', null, {
-    clientName: client.username,
-    documentString: getHtmlFromNode(root),
-  });
+  const foundUsername = usernameInClientInfo(client.username, clientInfo);
+  // If we did not find the username in the client info, then another client
+  // is already logged in.
+  if (foundUsername) {
+    return;
+  }
+  throw getWrongClientError(clientInfo);
 }

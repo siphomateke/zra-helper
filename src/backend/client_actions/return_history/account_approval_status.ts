@@ -200,10 +200,7 @@ async function getAckReceiptData(
   taxTypeId: TaxTypeNumericalCode,
   taxReturn: TaxReturn,
 ): Promise<AcknowledgementReceiptData> {
-  const doc = await getDocumentByAjax({
-    ...generateAckReceiptRequest(taxTypeId, taxReturn.referenceNo),
-    method: 'post',
-  });
+  const doc = await getDocumentByAjax(generateAckReceiptRequest(taxTypeId, taxReturn.referenceNo));
   const receiptData = await getDataFromReceipt(doc, 'ack_receipt');
   return receiptData;
 }

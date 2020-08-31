@@ -10,7 +10,7 @@ import {
 } from './utils';
 import { TaskId } from '@/store/modules/tasks';
 
-export type ReceiptType = 'payment' | 'ack_receipt';
+export type ReceiptType = 'ack_receipt';
 
 /**
  * Extracts information from a receipt that has been opened in a tab.

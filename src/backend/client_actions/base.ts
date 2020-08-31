@@ -233,7 +233,8 @@ export abstract class ClientActionRunner<
   }
 
   setOutput(output: Output) {
-    this.storeProxy.allRunOutputs.push(output);
+    // TODO: Figure out how to do this in the proxy
+    store.commit('clientActions/pushInstanceProperty', { id: this.id, prop: 'allRunOutputs', value: output });
   }
 
   /**

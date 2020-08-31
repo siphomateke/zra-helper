@@ -1,7 +1,8 @@
 import { objectFlip } from '@/utils';
 import { TaxAccount } from './client_actions/utils';
 
-export const ZraDomain = 'https://eservices.zra.org.zm';
+export const ZraDomain = 'https://portal.zra.org.zm';
+export const ZraCaptchaUrl = `${ZraDomain}/captcha.jpg`;
 
 // #region Browser
 export enum BrowserCode {
@@ -63,7 +64,7 @@ export interface ClientState {
   taxTypes: TaxTypeNumericalCode[] | null;
   /** All the tax accounts this client has. */
   taxAccounts: TaxAccount[] | null;
-  /** Tax accounts whose status is 'registered'. */
+  /** Tax accounts whose status is 'active'. */
   registeredTaxAccounts: TaxAccount[] | null;
 }
 
@@ -121,12 +122,21 @@ export const taxTypeNamesMap: {
   'income tax': TaxTypeNumericalCode.ITX,
   'value added tax': TaxTypeNumericalCode.VAT,
   'employment tax (pay as you earn)': TaxTypeNumericalCode.PAYE,
+  paye: TaxTypeNumericalCode.PAYE,
+  'pay as you earn': TaxTypeNumericalCode.PAYE,
+  'skills development levy': TaxTypeNumericalCode.PAYE,
   'turnover tax': TaxTypeNumericalCode.TOT,
   'withholding tax': TaxTypeNumericalCode.WHT,
+  rents: TaxTypeNumericalCode.WHT,
+  commissions: TaxTypeNumericalCode.WHT,
+  'management or consultant fees': TaxTypeNumericalCode.WHT,
   'property transfer tax': TaxTypeNumericalCode.PTT,
+  // Note that the space after "property transfer" is intentional
+  'property transfer ': TaxTypeNumericalCode.PTT,
   'mineral royalty': TaxTypeNumericalCode.MINROY,
   'mineral royalty tax': TaxTypeNumericalCode.MINROY,
-  'medical levy tax': TaxTypeNumericalCode.TLEVY,
+  // Note that "TLEVY" is "medical levy tax" everywhere else except payment history
+  'tourism levy': TaxTypeNumericalCode.TLEVY,
 };
 
 /**
@@ -166,6 +176,7 @@ export type TaxAccountName = string;
 // #endregion
 
 // #region Financial accounts
+// FIXME: Update these codes
 export enum FinancialAccountStatus {
   /** Fact of Filling Completed */
   RECD = 'RECD',
@@ -176,7 +187,7 @@ export enum FinancialAccountStatus {
   /** Assessment Initiated */
   ASMT = 'ASMT',
   /** Approval Completed */
-  APRV = 'APRV',
+  APPROVED = 'APPROVED',
   /** Incomplete return Notice issued at FOF, task pending for clarification */
   ACKNPEND = 'ACKNPEND',
   /** Return rejected by Acknowledgement Authority from pending clarification - ackn */
@@ -190,7 +201,8 @@ export enum FinancialAccountStatus {
   /** Pending for Document upload */
   PNDC = 'PNDC',
   /** Rejected */
-  REJD = 'REJD',
+  REJECTED = 'REJECTED',
+  SUBMITTED = 'SUBMITTED',
 }
 
 const f = FinancialAccountStatus;
@@ -200,14 +212,15 @@ export const financialAccountStatusDescriptionsMap: { [key in FinancialAccountSt
   [f.DDED]: 'Detail Data Entry Completed',
   [f.PRCD]: 'Data Entry Verification Completed/Bypassed Sampling.',
   [f.ASMT]: 'Assessment Initiated',
-  [f.APRV]: 'Approval Completed',
+  [f.APPROVED]: 'Approval Completed',
   [f.ACKNPEND]: 'Incomplete return Notice issued at FOF, task pending for clarification',
   [f.RJCTACKN]: 'Return rejected by Acknowledgement Authority from pending clarification - ackn',
   [f.RJCTDDED]: 'Return Rejected by dde authority from pending clarification - dde',
   [f.RJCTAMND]: 'Return Rejected by approving authority from Acceptance of Amended return',
   [f.SBJTAPRV]: 'Acceptance of amended return task subject to approval from approving authority',
   [f.PNDC]: 'Pending for Document upload',
-  [f.REJD]: 'Rejected',
+  [f.REJECTED]: 'Rejected',
+  [f.SUBMITTED]: 'Submitted',
 };
 
 export enum FinancialAccountStatusType {
@@ -225,12 +238,12 @@ export const financialAccountStatusTypeNames: { [key in FinancialAccountStatusTy
 export const financialAccountStatusTypesMap: {
   [key in FinancialAccountStatusType]: FinancialAccountStatus[]
 } = {
-  [FinancialAccountStatusType.APPROVED]: [f.APRV],
+  [FinancialAccountStatusType.APPROVED]: [f.APPROVED],
   [FinancialAccountStatusType.REJECTED]: [
     f.RJCTACKN,
     f.RJCTAMND,
     f.RJCTDDED,
-    f.REJD,
+    f.REJECTED,
   ],
   [FinancialAccountStatusType.IN_PROGRESS]: [
     f.RECD,
@@ -240,6 +253,7 @@ export const financialAccountStatusTypesMap: {
     f.ACKNPEND,
     f.SBJTAPRV,
     f.PNDC,
+    f.SUBMITTED,
   ],
 };
 // #endregion
