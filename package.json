@@ -17,7 +17,7 @@
     "build:all": "yarn run build:firefox || true && yarn run build:chrome",
     "lint": "vue-cli-service lint --format stylish --mode production",
     "devtools": "vue-devtools",
-    "postversion": "concurrently \"git push --tags\" \"yarn run build:all\"",
+    "postversion": "git push --tags",
     "test:unit": "vue-cli-service test:unit"
   },
   "contributors": [
@@ -75,7 +75,6 @@
     "@vue/test-utils": "1.0.0-beta.29",
     "babel-core": "7.0.0-bridge.0",
     "babel-jest": "^23.6.0",
-    "concurrently": "^4.1.0",
     "cross-env": "^5.2.0",
     "eslint": "^5.8.0",
     "eslint-plugin-import": "^2.17.2",
