@@ -111,6 +111,12 @@ module.exports = {
       },
       manifestSync: ['description'],
       outputDir: `dist/${browser}`,
+      artifactFilename: ({ name, version, mode }) => {
+        if (mode === 'production') {
+          return `${name}-v${version}-${browser}.zip`;
+        }
+        return `${name}-v${version}-${browser}-${mode}.zip`;
+      },
       manifestTransformer(originalManifest) {
         const manifest = Object.assign({}, originalManifest);
         if (browser === 'firefox') {

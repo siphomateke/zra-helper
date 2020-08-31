@@ -86,7 +86,7 @@
     "sass-loader": "^7.0.1",
     "sinon-chrome": "^3.0.1",
     "typescript": "^3.4.4",
-    "vue-cli-plugin-browser-extension": "https://github.com/siphomateke/vue-cli-plugin-browser-extension#add-manifest-transformer",
+    "vue-cli-plugin-browser-extension": "https://github.com/siphomateke/vue-cli-plugin-browser-extension#custom-artifact-filename",
     "vue-template-compiler": "^2.5.17"
   },
   "gitHooks": {
