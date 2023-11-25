@@ -6,12 +6,18 @@
     "48": "icons/48.png"
   },
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "js/background.js"
+    ]
   },
   "content_scripts": [
     {
-      "matches": ["https://eservices.zra.org.zm/login.htm*"],
-      "js": ["content_scripts/pages/login_page.js"]
+      "matches": [
+        "https://eservices.zra.org.zm/login.htm*"
+      ],
+      "js": [
+        "js/content_scripts/pages/login_page.js"
+      ]
     }
   ],
   "options_ui": {
