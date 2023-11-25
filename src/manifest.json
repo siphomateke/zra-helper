@@ -25,6 +25,7 @@
     "page": "src/options/options.html"
   },
   "permissions": [
+    "pageCapture",
     "downloads",
     "downloads.open",
     "tabs",

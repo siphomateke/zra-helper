@@ -7,11 +7,16 @@ import { fileURLToPath, URL } from "url";
 function generateManifest() {
   const manifest = readJsonFile("src/manifest.json");
   const pkg = readJsonFile("package.json");
+  let permissions = manifest.permissions || [];
+  if (process.env.VITE_BROWSER === 'firefox') {
+    permissions = permissions.filter((permission) => permission !== 'pageCapture');
+  }
   return {
     name: pkg.name,
     description: pkg.description,
     version: pkg.version,
     ...manifest,
+    permissions,
   };
 }
 
@@ -26,7 +31,7 @@ export default defineConfig({
       browser: process.env.VITE_BROWSER === 'firefox' || 'chrome',
       additionalInputs: [
           'src/app.html'
-      ]
+      ],
     }),
   ],
   resolve: {
