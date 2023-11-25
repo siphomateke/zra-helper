@@ -1,5 +1,6 @@
 {
   "manifest_version": 2,
+  "version": "2.0.0",
   "name": "ZRA Helper",
   "homepage_url": "https://github.com/siphomateke/zra-helper/",
   "icons": {
@@ -24,7 +25,6 @@
     "page": "src/options/options.html"
   },
   "permissions": [
-    "pageCapture",
     "downloads",
     "downloads.open",
     "tabs",
