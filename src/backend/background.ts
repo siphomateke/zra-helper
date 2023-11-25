@@ -4,7 +4,7 @@ import { BrowserCode, ZraDomain, ZraCaptchaUrl } from './constants';
 const currentBrowser = getCurrentBrowser();
 
 browser.browserAction.onClicked.addListener(() => {
-  browser.tabs.create({ url: 'app.html' });
+  browser.tabs.create({ url: 'src/app.html' });
 });
 
 // #region Lite mode
