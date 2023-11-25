@@ -64,8 +64,7 @@ export default {
   name: 'TaskList',
   components: {
     EmptyMessage,
-    // TODO: Find out why this breaks Vetur
-    // TaskListItem: () => import(/* webpackChunkName: "task-list-item" */'./TaskListItem.vue'),
+    TaskListItem: () => import(/* webpackChunkName: "task-list-item" */'./TaskListItem.vue'),
     ExportButtons,
   },
   mixins: [
@@ -110,11 +109,6 @@ export default {
     eolCharacter() {
       return this.$store.state.eol;
     },
-  },
-  beforeCreate() {
-    // TODO: Use async import instead of require
-    // eslint-disable-next-line global-require, max-len
-    this.$options.components.TaskListItem = require(/* webpackChunkName: "task-list-item" */'./TaskListItem.vue').default;
   },
   methods: {
     getTaskById(id) {

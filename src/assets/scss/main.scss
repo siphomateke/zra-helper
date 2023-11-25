@@ -1,4 +1,4 @@
-$fontPath: '~@/assets/fonts/';
+$fontPath: '@/assets/fonts/';
 
 /* nunito-regular - latin */
 @font-face {
@@ -6,46 +6,47 @@ $fontPath: '~@/assets/fonts/';
   font-style: normal;
   font-weight: 400;
   // IE9 Compat Modes
-  src: url($fontPath+'nunito-v9-latin-regular.eot');
+  src: url($fontPath + 'nunito-v9-latin-regular.eot');
   src: local('Nunito Regular'), local('Nunito-Regular'),
     // IE6-IE8
-      url($fontPath+'nunito-v9-latin-regular.eot?#iefix') format('embedded-opentype'),
+    url($fontPath + 'nunito-v9-latin-regular.eot?#iefix') format('embedded-opentype'),
     // Super Modern Browsers
-      url($fontPath+'nunito-v9-latin-regular.woff2') format('woff2'),
+    url($fontPath + 'nunito-v9-latin-regular.woff2') format('woff2'),
     // Modern Browsers
-      url($fontPath+'nunito-v9-latin-regular.woff') format('woff'),
+    url($fontPath + 'nunito-v9-latin-regular.woff') format('woff'),
     // Safari, Android, iOS
-      url($fontPath+'nunito-v9-latin-regular.ttf') format('truetype'),
+    url($fontPath + 'nunito-v9-latin-regular.ttf') format('truetype'),
     // Legacy iOS
-      url($fontPath+'nunito-v9-latin-regular.svg#Nunito') format('svg');
+    url($fontPath + 'nunito-v9-latin-regular.svg#Nunito') format('svg');
 }
+
 /* nunito-700 - latin */
 @font-face {
   font-family: 'Nunito';
   font-style: normal;
   font-weight: 700;
   // IE9 Compat Modes
-  src: url($fontPath+'nunito-v9-latin-700.eot');
+  src: url($fontPath + 'nunito-v9-latin-700.eot');
   src: local('Nunito Bold'), local('Nunito-Bold'),
     // IE6-IE8
-      url($fontPath+'nunito-v9-latin-700.eot?#iefix') format('embedded-opentype'),
+    url($fontPath + 'nunito-v9-latin-700.eot?#iefix') format('embedded-opentype'),
     // Super Modern Browsers
-      url($fontPath+'nunito-v9-latin-700.woff2') format('woff2'),
+    url($fontPath + 'nunito-v9-latin-700.woff2') format('woff2'),
     // Modern Browsers
-      url($fontPath+'nunito-v9-latin-700.woff') format('woff'),
+    url($fontPath + 'nunito-v9-latin-700.woff') format('woff'),
     // Safari, Android, iOS
-      url($fontPath+'nunito-v9-latin-700.ttf') format('truetype'),
+    url($fontPath + 'nunito-v9-latin-700.ttf') format('truetype'),
     // Legacy iOS
-      url($fontPath+'nunito-v9-latin-700.svg#Nunito') format('svg');
+    url($fontPath + 'nunito-v9-latin-700.svg#Nunito') format('svg');
 }
 
 @import './variables.scss';
 
-@import '~bulma';
+@import '~bulma/bulma.sass';
 
 // Font Awesome 5
 $fa-font-path: '~@fortawesome/fontawesome-free/webfonts';
-@import '~@fortawesome/fontawesome-free/scss/fontawesome';
-@import '~@fortawesome/fontawesome-free/scss/regular';
-@import '~@fortawesome/fontawesome-free/scss/solid';
-@import '~@fortawesome/fontawesome-free/scss/brands';
+@import '~@fortawesome/fontawesome-free/scss/fontawesome.scss';
+@import '~@fortawesome/fontawesome-free/scss/regular.scss';
+@import '~@fortawesome/fontawesome-free/scss/solid.scss';
+@import '~@fortawesome/fontawesome-free/scss/brands.scss';

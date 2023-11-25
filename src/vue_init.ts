@@ -11,7 +11,7 @@ import store from './store';
 import initStoreModules from './store/modules/init';
 import './store/modules/tasks_watch';
 
-if (process.env.NODE_ENV === 'development' && store.state.config.debug.devtools) {
+if (import.meta.env.VITE_NODE_ENV === 'development' && store.state.config.debug.devtools) {
   devtools.connect();
 }
 

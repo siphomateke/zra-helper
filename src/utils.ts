@@ -115,7 +115,7 @@ export function deepAssign<T extends object, S extends object>(target: T, source
  * Gets the browser code of the current browser.
  */
 export function getCurrentBrowser(): BrowserCode {
-  return process.env.BROWSER;
+  return import.meta.env.VITE_BROWSER;
 }
 
 /**

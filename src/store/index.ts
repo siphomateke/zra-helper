@@ -78,6 +78,6 @@ export const storeOptions: StoreOptions<RootState> = {
       });
     },
   },
-  strict: process.env.NODE_ENV !== 'production',
+  strict: import.meta.env.VITE_NODE_ENV !== 'production',
 };
 export default new Vuex.Store(storeOptions);

@@ -1,21 +1,28 @@
 {
   "manifest_version": 2,
+  "version": "2.0.0",
   "name": "ZRA Helper",
   "homepage_url": "https://github.com/siphomateke/zra-helper/",
   "icons": {
     "48": "icons/48.png"
   },
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "src/backend/background.ts"
+    ]
   },
   "content_scripts": [
     {
-      "matches": ["https://eservices.zra.org.zm/login.htm*"],
-      "js": ["content_scripts/pages/login_page.js"]
+      "matches": [
+        "https://eservices.zra.org.zm/login.htm*"
+      ],
+      "js": [
+        "src/backend/content_scripts/pages/login_page.ts"
+      ]
     }
   ],
   "options_ui": {
-    "page": "options.html"
+    "page": "src/options/options.html"
   },
   "permissions": [
     "pageCapture",
@@ -31,11 +38,11 @@
     "webRequestBlocking"
   ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
-  "browser_action": {
+  "{{firefox}}.browser_action": {
     "default_icon": "icons/32.png",
     "default_title": "ZRA Helper"
   },
-  "applications": {
+  "{{firefox}}.applications": {
     "gecko": {
       "id": "zra-helper@siphomateke.github.com"
     }

@@ -2,6 +2,10 @@
 
 A browser extension that automates various aspects of the [ZRA website](https://www.zra.org.zm/).
 
+## Chrome Build
+
+The chrome build currently doesn't work because it uses a different extension API. We previously automatically imported the `webextension-polyfill` API depending on which browser we were building for. But now we will probably have to update our code to manually import the polyfill everywhere `browser` is used.
+
 ## Project setup
 
 ```bash
