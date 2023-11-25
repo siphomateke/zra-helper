@@ -7,7 +7,7 @@
   },
   "background": {
     "scripts": [
-      "js/background.js"
+      "src/backend/background.ts"
     ]
   },
   "content_scripts": [
@@ -16,12 +16,12 @@
         "https://eservices.zra.org.zm/login.htm*"
       ],
       "js": [
-        "js/content_scripts/pages/login_page.js"
+        "src/backend/content_scripts/pages/login_page.ts"
       ]
     }
   ],
   "options_ui": {
-    "page": "options.html"
+    "page": "src/options/options.html"
   },
   "permissions": [
     "pageCapture",
@@ -37,11 +37,11 @@
     "webRequestBlocking"
   ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
-  "browser_action": {
+  "{{firefox}}.browser_action": {
     "default_icon": "icons/32.png",
     "default_title": "ZRA Helper"
   },
-  "applications": {
+  "{{firefox}}.applications": {
     "gecko": {
       "id": "zra-helper@siphomateke.github.com"
     }
