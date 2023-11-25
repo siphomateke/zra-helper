@@ -23,8 +23,7 @@ export default defineConfig({
       manifest: generateManifest,
       watchFilePaths: ["package.json", "manifest.json"],
       disableAutoLaunch: true,
-      browser: 'firefox',
-      // browser: 'chrome',
+      browser: process.env.VITE_BROWSER === 'firefox' || 'chrome',
       additionalInputs: [
           'src/app.html'
       ]
