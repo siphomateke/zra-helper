@@ -8,7 +8,7 @@ import TaskViewer from './views/TaskViewer.vue';
 Vue.use(Router);
 
 export default new Router({
-  base: process.env.BASE_URL,
+  base: import.meta.env.VITE_BASE_URL,
   routes: [
     {
       path: '/',
